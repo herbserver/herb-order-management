@@ -3,9 +3,13 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const xlsx = require('xlsx');
+require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+// Initialize MongoDB
+const { connectDatabase, initializeDefaultData, Order, Department, ShiprocketConfig } = require('./database');
 
 // Middleware
 app.use(cors());
@@ -44,12 +48,24 @@ try {
     console.error('❌ Error loading pincode database:', error.message);
     pincodeDatabase = [];
 }
+
+// Track database connection status
+let isMongoDBConnected = false;
+
+// Set MongoDB connection flag (called from database.js after successful connection)
+function setDBStatus(status) {
+    isMongoDBConnected = status;
+}
+
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Helper Functions
+// ==================== HYBRID DATA ACCESS LAYER ====================
+// These functions use MongoDB when available, fall back to JSON files
+
+// Helper Functions for JSON (Fallback)
 function readJSON(filePath, defaultValue = []) {
     try {
         if (fs.existsSync(filePath)) {
@@ -73,7 +89,7 @@ function writeJSON(filePath, data) {
     }
 }
 
-// Initialize default data
+// Initialize default JSON data (fallback)
 function initializeData() {
     if (!fs.existsSync(EMPLOYEES_FILE)) writeJSON(EMPLOYEES_FILE, {});
     if (!fs.existsSync(DEPARTMENTS_FILE)) writeJSON(DEPARTMENTS_FILE, {});
@@ -83,6 +99,9 @@ function initializeData() {
 }
 
 initializeData();
+
+// Export DB status setter for database.js
+module.exports.setDBStatus = setDBStatus;
 
 // ==================== EMPLOYEE APIs ====================
 
@@ -1649,26 +1668,46 @@ app.post('/api/shiprocket/pickup', async (req, res) => {
 });
 
 // ==================== START SERVER ====================
-app.listen(PORT, '0.0.0.0', () => {
-    console.log('');
-    console.log('╔═══════════════════════════════════════════════════════════╗');
-    console.log('║       🌿 HERB ON NATURALS SERVER v3.5 STARTED 🌿          ║');
-    console.log('╠═══════════════════════════════════════════════════════════╣');
-    console.log(`║  Local:    http://localhost:${PORT}                         ║`);
-    console.log(`║  Network:  http://192.168.1.6:${PORT}                       ║`);
-    console.log('╠═══════════════════════════════════════════════════════════╣');
-    console.log('║  FEATURES:                                                ║');
-    console.log('║  ✅ Order Edit in Verification & Dispatch Dept            ║');
-    console.log('║  ✅ Employee Delivery Request System                      ║');
-    console.log('║  ✅ Dispatch Dept Approves Delivery                       ║');
-    console.log('║  ✅ Admin Full Department Edit (ID, Pass, Type)           ║');
-    console.log('║  ✅ Department Delete Option                              ║');
-    console.log('║  ✅ Employee & Admin Progress Reports                     ║');
-    console.log('╠═══════════════════════════════════════════════════════════╣');
-    console.log('║  ORDER FLOW:                                              ║');
-    console.log('║  Employee → Pending → [Edit] Verification Dept            ║');
-    console.log('║  → Verified → [Edit] Dispatch Dept → Dispatched           ║');
-    console.log('║  → Employee Request → Dispatch Approve → Delivered        ║');
-    console.log('╚═══════════════════════════════════════════════════════════╝');
-    console.log('');
+async function startServer() {
+    // Connect to MongoDB
+    const dbConnected = await connectDatabase();
+
+    if (dbConnected) {
+        await initializeDefaultData();
+        console.log('✅ Database initialized!');
+    } else {
+        console.warn('⚠️ Running without MongoDB - Data will not persist!');
+    }
+
+    // Start Express server
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log('');
+        console.log('╔═══════════════════════════════════════════════════════════╗');
+        console.log('║       🌿 HERB ON NATURALS SERVER v4.0 STARTED 🌿          ║');
+        console.log('╠═══════════════════════════════════════════════════════════╣');
+        console.log(`║  Status:   ${dbConnected ? '🟢 MongoDB Connected' : '🔴 JSON Mode (Temporary)'}           ║`);
+        console.log(`║  Port:     ${PORT}                                            ║`);
+        console.log('╠═══════════════════════════════════════════════════════════╣');
+        console.log('║  FEATURES:                                                ║');
+        console.log('║  ✅ Order Edit in Verification & Dispatch Dept            ║');
+        console.log('║  ✅ Employee Delivery Request System                      ║');
+        console.log('║  ✅ Dispatch Dept Approves Delivery                       ║');
+        console.log('║  ✅ Admin Full Department Edit (ID, Pass, Type)           ║');
+        console.log('║  ✅ Department Delete Option                              ║');
+        console.log('║  ✅ Employee & Admin Progress Reports                     ║');
+        console.log('║  ✅ Shiprocket Integration (AWB, Tracking)                ║');
+        console.log('╠═══════════════════════════════════════════════════════════╣');
+        console.log('║  ORDER FLOW:                                              ║');
+        console.log('║  Employee → Pending → [Edit] Verification Dept            ║');
+        console.log('║  → Verified → [Edit] Dispatch Dept → Dispatched           ║');
+        console.log('║  → Employee Request → Dispatch Approve → Delivered        ║');
+        console.log('╚═══════════════════════════════════════════════════════════╝');
+        console.log('');
+    });
+}
+
+// Start the application
+startServer().catch(err => {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
 });
