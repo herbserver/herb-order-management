@@ -878,6 +878,7 @@
                         </button>
                     </div>
                 </div>
+            </div>
 
             <!-- READY TAB -->
             <div id="dispatchReadyTab" class="hidden animate-fadeIn">
@@ -1013,7 +1014,7 @@
                 <div id="dispatchHistoryList" class="space-y-4"></div>
             </div>
 
-            </div> <!-- End dispatchDeptContent -->
+        </div>
 
         <!-- Delivery Dept Content -->
         <div id="deliveryDeptContent" class="hidden space-y-6">
@@ -1811,10 +1812,8 @@
         // Automatically detect server address
         const protocol = window.location.protocol.startsWith('http') ? window.location.protocol : 'http:';
         const hostname = window.location.hostname || 'localhost';
-        
-        // Use port only for localhost, not for production
-        const port = hostname === 'localhost' ? ':3000' : '';
-        const API_URL = `${protocol}//${hostname}${port}/api`;
+
+        const API_URL = `${protocol}//${hostname}:3000/api`;
 
         console.log('Connecting to API at:', API_URL);
         const ADMIN_PASS = 'admin123';
@@ -2010,21 +2009,12 @@
             }
 
             loadDeptOrders();
-            // Start auto-tracking for Out for Delivery alerts
-            if (typeof initializeAutoTracking === 'function') {
-                initializeAutoTracking();
-            }
         }
 
         function showAdminPanel() {
             document.querySelectorAll('#app> div').forEach(d => d.classList.add('hidden'));
             document.getElementById('adminPanel').classList.remove('hidden');
             loadAdminData();
-            
-            // Start auto-tracking for Out for Delivery alerts
-            if (typeof initializeAutoTracking === 'function') {
-                initializeAutoTracking();
-            }
         }
 
         // ==================== AUTH FUNCTIONS ====================
@@ -7726,9 +7716,6 @@ ${po.Name}</li>`;
             }
         };
     </script>
-
-<!-- Auto Tracking Script -->
-<script src="auto-tracking.js"></script>
 
 </body>
 
