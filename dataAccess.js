@@ -117,16 +117,8 @@ async function getOrderById(orderId) {
 
 async function getOrdersByStatus(status) {
     if (mongoConnected) {
-        // Handle various status formats
-        const statusMap = {
-            'Pending': 'pending',
-            'Address Verified': 'verified',
-            'Dispatched': 'dispatched',
-            'Delivered': 'delivered',
-            'On Hold': 'On Hold' // Keep as-is for special status
-        };
-        const searchStatus = statusMap[status] || status;
-        return await Order.find({ status: searchStatus }).sort({ timestamp: -1 });
+        // Use status as-is - MongoDB has proper case: 'Pending', 'Address Verified', etc.
+        return await Order.find({ status: status }).sort({ timestamp: -1 });
     }
     // Fallback to JSON
     const orders = readJSONFile(path.join(__dirname, 'data', 'orders.json'), []);
