@@ -366,7 +366,33 @@ app.delete('/api/departments/:deptId', (req, res) => {
 // ==================== ORDER APIs ====================
 
 // Create Order (Employee)
-app.post('/api/orders', (req, res) => {
+app.post('/api/orders', async (req, res) => {
+    try {
+        const orderData = req.body;
+        const config = await dataAccess.getShiprocketConfig();
+        const nextId = config.shiprocketOrderCounter || 7417;
+        const orderId = `HON${nextId.toString().padStart(4, '0')}`;
+
+        // Update counter
+        await dataAccess.updateShiprocketConfig({ shiprocketOrderCounter: nextId + 1 });
+
+        const newOrder = {
+            ...orderData,
+            orderId,
+            status: 'Pending',
+            tracking: null,
+            deliveryRequested: false,
+            timestamp: new Date().toISOString()
+        };
+
+        await dataAccess.createOrder(newOrder);
+
+        console.log(`📦 New Order: ${orderId} by ${orderData.employee} (${orderData.employeeId}) - Status: Pending`);
+        res.json({ success: true, message: 'Order saved!', orderId });
+    } catch (error) {
+        console.error('❌ Create order error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
     const orderData = req.body;
 
     if (!orderData || !orderData.customerName || !orderData.telNo) {
@@ -396,64 +422,80 @@ app.post('/api/orders', (req, res) => {
 });
 
 // Update Order (Department Edit)
-app.put('/api/orders/:orderId', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+app.put('/api/orders/:orderId', async (req, res) => {
+    try {
+        const order = await dataAccess.getOrderById(req.params.orderId);
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        const updates = { ...req.body, updatedAt: new Date().toISOString() };
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        console.log(`✏️ Order Updated: ${req.params.orderId}`);
+        res.json({ success: true, message: 'Order updated!', order: updated });
+    } catch (error) {
+        console.error('❌ Update order error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index] = { ...orders[index], ...req.body, updatedAt: new Date().toISOString() };
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`✏️ Order Updated: ${req.params.orderId}`);
-    res.json({ success: true, message: 'Order updated!', order: orders[index] });
 });
 
 // Get All Orders
-app.get('/api/orders', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    res.json({ success: true, orders });
+app.get('/api/orders', async (req, res) => {
+    try {
+        const orders = await dataAccess.getAllOrders();
+        res.json({ success: true, orders });
+    } catch (error) {
+        console.error('❌ Get orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Pending Orders (for Verification Dept)
-app.get('/api/orders/pending', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const pendingOrders = orders.filter(o => o.status === 'Pending');
-    pendingOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    console.log(`📋 Pending Orders for Verification: ${pendingOrders.length}`);
-    res.json({ success: true, orders: pendingOrders });
+app.get('/api/orders/pending', async (req, res) => {
+    try {
+        const pendingOrders = await dataAccess.getOrdersByStatus('Pending');
+        console.log(`📋 Pending Orders for Verification: ${pendingOrders.length}`);
+        res.json({ success: true, orders: pendingOrders });
+    } catch (error) {
+        console.error('❌ Get pending orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Verified Orders (for Dispatch Dept)
-app.get('/api/orders/verified', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const verifiedOrders = orders.filter(o => o.status === 'Address Verified');
-    verifiedOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    console.log(`📋 Verified Orders for Dispatch: ${verifiedOrders.length}`);
-    res.json({ success: true, orders: verifiedOrders });
+app.get('/api/orders/verified', async (req, res) => {
+    try {
+        const verifiedOrders = await dataAccess.getOrdersByStatus('Address Verified');
+        console.log(`📋 Verified Orders for Dispatch: ${verifiedOrders.length}`);
+        res.json({ success: true, orders: verifiedOrders });
+    } catch (error) {
+        console.error('❌ Get verified orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Dispatched Orders
-app.get('/api/orders/dispatched', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const dispatchedOrders = orders.filter(o => o.status === 'Dispatched');
-    dispatchedOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    res.json({ success: true, orders: dispatchedOrders });
+app.get('/api/orders/dispatched', async (req, res) => {
+    try {
+        const dispatchedOrders = await dataAccess.getOrdersByStatus('Dispatched');
+        res.json({ success: true, orders: dispatchedOrders });
+    } catch (error) {
+        console.error('❌ Get dispatched orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Delivered Orders
-app.get('/api/orders/delivered', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const deliveredOrders = orders.filter(o => o.status === 'Delivered');
-    deliveredOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    res.json({ success: true, orders: deliveredOrders });
+app.get('/api/orders/delivered', async (req, res) => {
+    try {
+        const deliveredOrders = await dataAccess.getOrdersByStatus('Delivered');
+        res.json({ success: true, orders: deliveredOrders });
+    } catch (error) {
+        console.error('❌ Get delivered orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Employee's Orders
@@ -466,15 +508,19 @@ app.get('/api/orders/employee/:empId', (req, res) => {
 });
 
 // Get Single Order
-app.get('/api/orders/:orderId', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const order = orders.find(o => o.orderId === req.params.orderId);
+app.get('/api/orders/:orderId', async (req, res) => {
+    try {
+        const order = await dataAccess.getOrderById(req.params.orderId);
 
-    if (!order) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        res.json({ success: true, order });
+    } catch (error) {
+        console.error('❌ Get order error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    res.json({ success: true, order });
 });
 
 // Update Order Status (Generic - e.g. On Hold)
