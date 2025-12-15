@@ -100,6 +100,15 @@ const orderSchema = new mongoose.Schema({
         dispatchedAt: String
     },
 
+    // Hold Order Details
+    holdDetails: {
+        isOnHold: { type: Boolean, default: false },
+        holdReason: String,
+        expectedDispatchDate: Date,
+        holdBy: String,
+        holdAt: String
+    },
+
     // Remarks
     remarks: [{
         text: String,

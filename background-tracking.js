@@ -80,17 +80,82 @@ async function checkOutForDelivery() {
     }
 }
 
-// Run check every 5 minutes
-const INTERVAL = 5 * 60 * 1000; // 5 minutes
+// Check for Hold Order Dispatch Reminders
+async function checkHoldOrderReminders() {
+    try {
+        // Check current time - only alert between 9 AM to 6 PM
+        const now = new Date();
+        const hour = now.getHours();
+
+        if (hour < 9 || hour >= 18) {
+            // Outside working hours, skip
+            return;
+        }
+
+        console.log('📅 [Background] Checking for Hold Order Dispatch Reminders...');
+
+        // Get today's date (start of day)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // Find hold orders with expected dispatch date = today
+        const holdOrders = await Order.find({
+            'holdDetails.isOnHold': true,
+            'holdDetails.expectedDispatchDate': {
+                $gte: today,
+                $lt: tomorrow
+            },
+            status: 'On Hold'
+        });
+
+        if (holdOrders.length === 0) {
+            console.log('   No hold orders scheduled for today');
+            return;
+        }
+
+        console.log(`🔔 Found ${holdOrders.length} hold order(s) scheduled for dispatch today!`);
+
+        for (const order of holdOrders) {
+            console.log('═'.repeat(60));
+            console.log('⏰ HOLD ORDER DISPATCH REMINDER!');
+            console.log('Order ID:', order.orderId);
+            console.log('Customer:', order.customerName);
+            console.log('Phone:', order.telNo);
+            console.log('Employee:', order.employee, `(${order.employeeId})`);
+            console.log('Expected Dispatch:', order.holdDetails.expectedDispatchDate.toLocaleDateString());
+            console.log('Hold Reason:', order.holdDetails.holdReason || 'N/A');
+            console.log('Current Time:', now.toLocaleTimeString());
+            console.log('═'.repeat(60));
+
+            // Frontend will show alerts via auto-tracking.js
+        }
+
+        console.log('✅ [Background] Hold reminder check complete\n');
+
+    } catch (error) {
+        console.error('❌ [Background] Hold reminder error:', error.message);
+    }
+}
+
+// Run check every 15 minutes (for hold order reminders)
+const INTERVAL = 15 * 60 * 1000; // 15 minutes
 
 console.log('🚀 Starting Background Tracking Service...');
-console.log(`⏰ Check interval: ${INTERVAL / 1000 / 60} minutes\n`);
+console.log(`⏰ Check interval: ${INTERVAL / 1000 / 60} minutes`);
+console.log('📦 Monitoring: Out for Delivery + Hold Order Reminders\n');
 
-// Initial check
+// Initial checks
 checkOutForDelivery();
+checkHoldOrderReminders();
 
-// Schedule recurring checks
-setInterval(checkOutForDelivery, INTERVAL);
+// Schedule recurring checks (both functions every 15 min)
+setInterval(() => {
+    checkOutForDelivery();
+    checkHoldOrderReminders();
+}, INTERVAL);
 
 // Keep process alive
 process.on('SIGINT', () => {

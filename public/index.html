@@ -2274,19 +2274,25 @@
                 if (input) input.addEventListener('input', updateAddress);
             });
 
-            // Set today's date for type="date" input (YYYY-MM-DD)
-            const today = new Date();
-            const dd = String(today.getDate()).padStart(2, '0');
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const yyyy = today.getFullYear();
+            // Set today's date and current time
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
 
-            document.querySelector('[name="date"]').value = `${yyyy}
+            // Auto-fill date (YYYY-MM-DD format for input type="date")
+            const dateInput = document.querySelector('[name="date"]');
+            if (dateInput) {
+                dateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
 
-            -${mm}
-
-            -${dd}
-
-            `;
+            // Auto-fill time (HH:MM format for input type="time")
+            const timeInput = document.querySelector('[name="time"]');
+            if (timeInput) {
+                timeInput.value = `${hh}:${min}`;
+            }
         }
 
         function updateAddress() {
@@ -6453,33 +6459,93 @@ ${po.Name}</li>`;
 
 
         async function markAsUnverified(orderId) {
-            if (!confirm('Kya aap is order ko Unverified/Hold list mein daalna chahte hain?')) return;
+            // Show modal with date picker for expected dispatch date
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 animate-scaleIn">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <span>⏸️</span> Put Order on Hold
+                    </h3>
+                    
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">
+                                Expected Dispatch Date *
+                            </label>
+                            <input type="date" id="expectedDispatchDate" 
+                                min="${new Date().toISOString().split('T')[0]}"
+                                class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-orange-500 outline-none text-lg">
+                            <p class="text-xs text-gray-500 mt-1">📅 Jis din dispatch karna ho, select karo</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">
+                                Hold Reason (Optional)
+                            </label>
+                            <textarea id="holdReason" rows="3" 
+                                placeholder="e.g., Customer requested delay, Stock issue, etc."
+                                class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-orange-500 outline-none resize-none"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button onclick="this.closest('.fixed').remove()" 
+                            class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-300 transition-colors">
+                            Cancel
+                        </button>
+                        <button onclick="submitHoldOrder('${orderId}')" 
+                            class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-bold hover:from-orange-600 hover:to-orange-700 transition-colors shadow-lg">
+                            ⏸️ Put on Hold
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // Submit hold order with expected dispatch date
+        async function submitHoldOrder(orderId) {
+            const expectedDate = document.getElementById('expectedDispatchDate').value;
+            const holdReason = document.getElementById('holdReason').value.trim();
+            
+            if (!expectedDate) {
+                alert('❌ Expected dispatch date required!');
+                return;
+            }
+            
             try {
-                const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
+                const holdModal = document.querySelector('.fixed.inset-0');
+                if (holdModal) holdModal.remove();
+                
+                const res = await fetch(`${API_URL}/orders/${orderId}/hold`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: 'On Hold', employee: currentUser.name })
+                    body: JSON.stringify({
+                        holdReason: holdReason || 'On hold',
+                        expectedDispatchDate: expectedDate,
+                        holdBy: currentUser.id || currentUser.name
+                    })
                 });
                 const data = await res.json();
+                
                 if (data.success) {
-                    // Update UI without full reload
+                    // Update UI
                     const card = document.querySelector(`button[onclick="viewOrder('${orderId}')"]`)?.closest('.order-card');
                     if (card) card.remove();
-
-                    // Logic to refresh active tab if needed
+                    
                     const activeTab = document.querySelector('[id^="verificationTab"].tab-active')?.id.replace("verificationTab", "").toLowerCase();
                     if (activeTab === 'pending') loadDeptOrders();
-
-                    // Show beautiful popup
+                    
                     showSuccessPopup(
                         'Order On Hold! ⏸️',
-                        `Order ${orderId} ko Unverified list mein daal diya!\n\nBaad mein verify kar sakte hain.`,
+                        `Order ${orderId} hold pe daal diya!\\n\\nExpected Dispatch: ${new Date(expectedDate).toLocaleDateString()}\\n\\nReminder aayega us din!`,
                         '⏸️',
                         '#f59e0b'
                     );
                     setTimeout(() => loadVerificationUnverified(), 1000);
                 } else {
-                    alert(data.message || 'Error updating status');
+                    alert(data.message || 'Error putting order on hold');
                 }
             } catch (e) {
                 console.error(e);
@@ -7731,27 +7797,6 @@ ${po.Name}</li>`;
             }
         };
     </script>
-
-<!-- TEST ALERT BUTTON - Remove before production -->
-<button onclick="testOutForDeliveryAlert()" 
-    style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 16px 24px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-    🧪 Test Alert
-</button>
-
-<script>
-function testOutForDeliveryAlert() {
-    if (typeof showOutForDeliveryAlert === 'function') {
-        console.log('🧪 Testing Out for Delivery Alert...');
-        showOutForDeliveryAlert(
-            {orderId: 'TEST123', customerName: 'Test Customer', telNo: '9876543210'},
-            {currentStatus: 'Out for Delivery', location: 'Delhi Hub'}
-        );
-        console.log('✅ Alert triggered!');
-    } else {
-        alert('❌ Alert function not found! Make sure you are logged in as Admin/Dispatch.');
-    }
-}
-</script>
 
 <!-- Auto Tracking Script -->
 <script src="auto-tracking.js"></script>

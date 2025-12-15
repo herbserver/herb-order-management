@@ -1875,6 +1875,73 @@ app.post('/api/shiprocket/bulk-update', async (req, res) => {
     }
 });
 
+// ==================== HOLD ORDER ENDPOINTS ====================
+
+// PUT /api/orders/:orderId/hold - Put order on hold with expected dispatch date
+app.put('/api/orders/:orderId/hold', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { holdReason, expectedDispatchDate, holdBy } = req.body;
+
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        const holdDetails = {
+            isOnHold: true,
+            holdReason: holdReason || '',
+            expectedDispatchDate: expectedDispatchDate ? new Date(expectedDispatchDate) : null,
+            holdBy: holdBy || '',
+            holdAt: new Date().toISOString()
+        };
+
+        await dataAccess.updateOrder(orderId, {
+            status: 'On Hold',
+            holdDetails
+        });
+
+        console.log(`📍 Order ${orderId} put on hold until ${expectedDispatchDate || 'TBD'}`);
+        res.json({
+            success: true,
+            message: 'Order put on hold successfully'
+        });
+    } catch (error) {
+        console.error('Hold order error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// PUT /api/orders/:orderId/unhold - Remove order from hold
+app.put('/api/orders/:orderId/unhold', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        await dataAccess.updateOrder(orderId, {
+            status: 'Pending',
+            holdDetails: {
+                isOnHold: false,
+                holdReason: null,
+                expectedDispatchDate: null
+            }
+        });
+
+        console.log(`✅ Order ${orderId} removed from hold`);
+        res.json({
+            success: true,
+            message: 'Order removed from hold'
+        });
+    } catch (error) {
+        console.error('Unhold order error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // Start the application
 startServer().catch(err => {
     console.error('❌ Failed to start server:', err);

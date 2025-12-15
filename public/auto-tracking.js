@@ -97,30 +97,30 @@ function showOutForDeliveryAlert(order, tracking) {
         });
     }
 
-    // Show visual alert on page
+    // Show visual alert on page - Responsive design
     const alertHTML = `
-    <div id="ofdAlert-${order.orderId}" style="position: fixed; top: 20px; right: 20px; z-index: 10000; max-width: 400px; animation: slideInRight 0.5s;">
-        <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border-radius: 16px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); border: 3px solid #fbbf24;">
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                <span style="font-size: 48px;">🚚</span>
-                <div>
-                    <h3 style="margin: 0; font-size: 20px; font-weight: bold;">Out for Delivery!</h3>
-                    <p style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9;">Call customer now</p>
+    <div id="ofdAlert-${order.orderId}" class="ofd-alert-container">
+        <div class="ofd-alert-content">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <span class="ofd-emoji">🚚</span>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0; font-size: 18px; font-weight: bold;">Out for Delivery!</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Call customer now</p>
                 </div>
             </div>
             
-            <div style="background: rgba(255,255,255,0.2); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-                <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold;">${order.orderId}</p>
-                <p style="margin: 0 0 4px 0; font-size: 14px;">👤 ${order.customerName}</p>
-                <p style="margin: 0 0 4px 0; font-size: 18px; font-weight: bold;">📞 ${order.telNo}</p>
-                <p style="margin: 0; font-size: 12px; opacity: 0.8;">📍 ${tracking.location || 'N/A'}</p>
+            <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
+                <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: bold;">${order.orderId}</p>
+                <p style="margin: 0 0 4px 0; font-size: 13px;">👤 ${order.customerName}</p>
+                <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: bold;">📞 ${order.telNo}</p>
+                <p style="margin: 0; font-size: 11px; opacity: 0.8;">📍 ${tracking.location || 'N/A'}</p>
             </div>
             
-            <div style="display: flex; gap: 8px;">
-                <a href="tel:${order.telNo}" style="flex: 1; background: white; color: #d97706; text-decoration: none; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 14px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="tel:${order.telNo}" style="flex: 1; min-width: 120px; background: white; color: #d97706; text-decoration: none; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 14px;">
                     📞 Call Now
                 </a>
-                <button onclick="dismissAlert('${order.orderId}')" style="flex: 1; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;">
+                <button onclick="dismissAlert('${order.orderId}')" style="flex: 1; min-width: 120px; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;">
                     ✓ Dismiss
                 </button>
             </div>
@@ -180,9 +180,56 @@ if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
 }
 
-// Add CSS animations
+// Add CSS animations and responsive styles
 const style = document.createElement('style');
 style.textContent = `
+    /* Mobile-first: Center top positioning */
+    .ofd-alert-container {
+        position: fixed;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10000;
+        width: 95%;
+        max-width: 400px;
+        animation: slideInDown 0.5s;
+    }
+    
+    .ofd-alert-content {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        border: 3px solid #fbbf24;
+    }
+    
+    .ofd-emoji {
+        font-size: 40px;
+    }
+    
+    /* Desktop: Right side positioning */
+    @media (min-width: 768px) {
+        .ofd-alert-container {
+            top: 20px;
+            left: auto;
+            right: 20px;
+            transform: none;
+            width: auto;
+            max-width: 420px;
+            animation: slideInRight 0.5s;
+        }
+        
+        .ofd-alert-content {
+            padding: 24px;
+        }
+        
+        .ofd-emoji {
+            font-size: 48px;
+        }
+    }
+    
+    /* Animations */
     @keyframes slideInRight {
         from {
             transform: translateX(100%);
@@ -190,6 +237,17 @@ style.textContent = `
         }
         to {
             transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideInDown {
+        from {
+            transform: translate(-50%, -100%);
+            opacity: 0;
+        }
+        to {
+            transform: translate(-50%, 0);
             opacity: 1;
         }
     }
