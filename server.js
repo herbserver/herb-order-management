@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 
 // Initialize MongoDB
 const { connectDatabase, initializeDefaultData, Order, Department, ShiprocketConfig } = require('./database');
+const dataAccess = require('./dataAccess');
 
 // Middleware
 app.use(cors());
@@ -228,87 +229,122 @@ app.get('/api/employees/:empId', (req, res) => {
 // ==================== DEPARTMENT APIs ====================
 
 // Register Department
-app.post('/api/departments/register', (req, res) => {
-    const { name, deptId, password, deptType } = req.body;
+app.post('/api/departments/register', async (req, res) => {
+    try {
+        const { name, deptId, password, deptType } = req.body;
 
-    if (!name || !deptId || !password || !deptType) {
-        return res.status(400).json({ success: false, message: 'All fields required!' });
+        if (!name || !deptId || !password || !deptType) {
+            return res.status(400).json({ success: false, message: 'All fields required!' });
+        }
+
+        const id = deptId.toUpperCase();
+        const existing = await dataAccess.getDepartment(id);
+
+        if (existing) {
+            return res.status(400).json({ success: false, message: `Department ID (${id}) already exists!` });
+        }
+
+        await dataAccess.createDepartment(id, name, password, deptType);
+
+        console.log(`✅ New Department Registered: ${name} (${id}) - Type: ${deptType}`);
+        res.json({ success: true, message: 'Department registered!', department: { id, name, type: deptType } });
+    } catch (error) {
+        console.error('❌ Department register error:', error);
+        res.status(500).json({ success: false, message: 'Server error during registration' });
     }
-
-    const departments = readJSON(DEPARTMENTS_FILE, {});
-    const id = deptId.toUpperCase();
-
-    if (departments[id]) {
-        return res.status(400).json({ success: false, message: `Department ID (${id}) already exists!` });
-    }
-
-    departments[id] = { name, password, type: deptType, createdAt: new Date().toISOString() };
-    writeJSON(DEPARTMENTS_FILE, departments);
-
-    console.log(`✅ New Department Registered: ${name} (${id}) - Type: ${deptType}`);
-    res.json({ success: true, message: 'Department registered!', department: { id, name, type: deptType } });
 });
 
 // Department Login
-app.post('/api/departments/login', (req, res) => {
-    const { deptId, password, deptType } = req.body;
+app.post('/api/departments/login', async (req, res) => {
+    try {
+        const { deptId, password, deptType } = req.body;
 
-    if (!deptId || !password) {
-        return res.status(400).json({ success: false, message: 'ID and Password required!' });
+        if (!deptId || !password) {
+            return res.status(400).json({ success: false, message: 'ID and Password required!' });
+        }
+
+        const id = deptId.toUpperCase();
+        const department = await dataAccess.getDepartment(id);
+
+        if (!department) {
+            return res.status(401).json({ success: false, message: 'Department ID not found!' });
+        }
+
+        if (department.password !== password) {
+            return res.status(401).json({ success: false, message: 'Wrong Password!' });
+        }
+
+        if (department.departmentType !== deptType) {
+            return res.status(401).json({ success: false, message: 'Wrong department type!' });
+        }
+
+        console.log(`✅ Department Login: ${department.departmentName} (${id}) - ${deptType}`);
+        res.json({
+            success: true,
+            message: 'Login successful!',
+            department: {
+                id,
+                name: department.departmentName,
+                type: department.departmentType
+            }
+        });
+    } catch (error) {
+        console.error('Department login error:', error);
+        res.status(500).json({ success: false, message: 'Server error during login' });
     }
-
-    const departments = readJSON(DEPARTMENTS_FILE, {});
-    const id = deptId.toUpperCase();
-
-    if (!departments[id]) {
-        return res.status(401).json({ success: false, message: 'Department ID not found!' });
-    }
-
-    if (departments[id].password !== password) {
-        return res.status(401).json({ success: false, message: 'Wrong Password!' });
-    }
-
-    if (departments[id].type !== deptType) {
-        return res.status(401).json({ success: false, message: 'Wrong department type!' });
-    }
-
-    console.log(`✅ Department Login: ${departments[id].name} (${id}) - ${deptType}`);
-    res.json({ success: true, message: 'Login successful!', department: { id, name: departments[id].name, type: departments[id].type } });
 });
 
 // Get All Departments (for Admin)
-app.get('/api/departments', (req, res) => {
-    const departments = readJSON(DEPARTMENTS_FILE, {});
+app.get('/api/departments', async (req, res) => {
+    try {
+        const departments = await dataAccess.getAllDepartments();
 
-    const deptList = Object.entries(departments).map(([id, data]) => ({
-        id,
-        name: data.name,
-        type: data.type,
-        createdAt: data.createdAt
-    }));
+        const deptList = departments.map(dept => ({
+            id: dept.departmentId,
+            name: dept.departmentName || dept.name,
+            type: dept.departmentType || dept.type,
+            createdAt: dept.createdAt
+        }));
 
-    res.json({ success: true, departments: deptList });
+        res.json({ success: true, departments: deptList });
+    } catch (error) {
+        console.error('❌ Get departments error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Update Department (Admin Edit)
-app.put('/api/departments/:deptId', (req, res) => {
-    const { name, password } = req.body;
-    const id = req.params.deptId.toUpperCase();
+app.put('/api/departments/:deptId', async (req, res) => {
+    try {
+        const { name, password } = req.body;
+        const id = req.params.deptId.toUpperCase();
 
-    const departments = readJSON(DEPARTMENTS_FILE, {});
+        const department = await dataAccess.getDepartment(id);
 
-    if (!departments[id]) {
-        return res.status(404).json({ success: false, message: 'Department not found!' });
+        if (!department) {
+            return res.status(404).json({ success: false, message: 'Department not found!' });
+        }
+
+        // Build update object
+        const updates = {};
+        if (name) {
+            updates.departmentName = name;
+            updates.name = name; // For JSON compatibility
+        }
+        if (password) updates.password = password;
+
+        const updated = await dataAccess.updateDepartment(id, updates);
+
+        console.log(`✅ Department Updated: ${updated.departmentName || updated.name} (${id})`);
+        res.json({
+            success: true,
+            message: 'Department updated successfully!',
+            department: { id, name: updated.departmentName || updated.name, type: updated.departmentType || updated.type }
+        });
+    } catch (error) {
+        console.error('❌ Update department error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    if (name) departments[id].name = name;
-    if (password) departments[id].password = password;
-    departments[id].updatedAt = new Date().toISOString();
-
-    writeJSON(DEPARTMENTS_FILE, departments);
-
-    console.log(`✅ Department Updated: ${id}`);
-    res.json({ success: true, message: 'Department updated successfully!', department: departments[id] });
 });
 
 // Delete Department (Admin)

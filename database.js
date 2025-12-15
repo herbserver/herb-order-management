@@ -2,6 +2,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { Order, Department, ShiprocketConfig } = require('./models');
+const dataAccess = require('./dataAccess');
 
 // Connect to MongoDB
 async function connectDatabase() {
@@ -10,15 +11,18 @@ async function connectDatabase() {
 
         if (!mongoURI) {
             console.error('❌ MONGODB_URI environment variable not set!');
+            dataAccess.setMongoStatus(false);
             return false;
         }
 
         await mongoose.connect(mongoURI);
         console.log('✅ MongoDB Connected Successfully!');
         console.log('📊 Database:', mongoose.connection.name);
+        dataAccess.setMongoStatus(true);
         return true;
     } catch (error) {
         console.error('❌ MongoDB Connection Failed:', error.message);
+        dataAccess.setMongoStatus(false);
         return false;
     }
 }
