@@ -393,33 +393,8 @@ app.post('/api/orders', async (req, res) => {
         console.error('❌ Create order error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
-    const orderData = req.body;
-
-    if (!orderData || !orderData.customerName || !orderData.telNo) {
-        return res.status(400).json({ success: false, message: 'Customer Name and Tel No required!' });
-    }
-
-    const config = readJSON(CONFIG_FILE, { nextOrderId: 1 });
-    const orderId = 'ORD-' + String(config.nextOrderId).padStart(5, '0');
-    config.nextOrderId += 1;
-    writeJSON(CONFIG_FILE, config);
-
-    const newOrder = {
-        ...orderData,
-        orderId,
-        status: 'Pending',
-        tracking: null,
-        deliveryRequested: false,
-        timestamp: new Date().toISOString()
-    };
-
-    const orders = readJSON(ORDERS_FILE, []);
-    orders.push(newOrder);
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`📦 New Order: ${orderId} by ${orderData.employee} (${orderData.employeeId}) - Status: Pending`);
-    res.json({ success: true, message: 'Order saved!', orderId });
 });
+
 
 // Update Order (Department Edit)
 app.put('/api/orders/:orderId', async (req, res) => {
