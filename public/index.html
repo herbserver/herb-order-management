@@ -1812,8 +1812,10 @@
         // Automatically detect server address
         const protocol = window.location.protocol.startsWith('http') ? window.location.protocol : 'http:';
         const hostname = window.location.hostname || 'localhost';
-
-        const API_URL = `${protocol}//${hostname}:3000/api`;
+        
+        // Use port only for localhost, not for production
+        const port = hostname === 'localhost' ? ':3000' : '';
+        const API_URL = `${protocol}//${hostname}${port}/api`;
 
         console.log('Connecting to API at:', API_URL);
         const ADMIN_PASS = 'admin123';
