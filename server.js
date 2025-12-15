@@ -3,9 +3,16 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const xlsx = require('xlsx');
+require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+// Initialize MongoDB
+const { connectDatabase, initializeDefaultData, Order, Department, ShiprocketConfig } = require('./database');
+const dataAccess = require('./dataAccess');
+const shiprocket = require('./shiprocket');
+
 
 // Middleware
 app.use(cors());
@@ -44,12 +51,24 @@ try {
     console.error('❌ Error loading pincode database:', error.message);
     pincodeDatabase = [];
 }
+
+// Track database connection status
+let isMongoDBConnected = false;
+
+// Set MongoDB connection flag (called from database.js after successful connection)
+function setDBStatus(status) {
+    isMongoDBConnected = status;
+}
+
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Helper Functions
+// ==================== HYBRID DATA ACCESS LAYER ====================
+// These functions use MongoDB when available, fall back to JSON files
+
+// Helper Functions for JSON (Fallback)
 function readJSON(filePath, defaultValue = []) {
     try {
         if (fs.existsSync(filePath)) {
@@ -73,7 +92,7 @@ function writeJSON(filePath, data) {
     }
 }
 
-// Initialize default data
+// Initialize default JSON data (fallback)
 function initializeData() {
     if (!fs.existsSync(EMPLOYEES_FILE)) writeJSON(EMPLOYEES_FILE, {});
     if (!fs.existsSync(DEPARTMENTS_FILE)) writeJSON(DEPARTMENTS_FILE, {});
@@ -83,6 +102,9 @@ function initializeData() {
 }
 
 initializeData();
+
+// Export DB status setter for database.js
+module.exports.setDBStatus = setDBStatus;
 
 // ==================== EMPLOYEE APIs ====================
 
@@ -209,87 +231,122 @@ app.get('/api/employees/:empId', (req, res) => {
 // ==================== DEPARTMENT APIs ====================
 
 // Register Department
-app.post('/api/departments/register', (req, res) => {
-    const { name, deptId, password, deptType } = req.body;
+app.post('/api/departments/register', async (req, res) => {
+    try {
+        const { name, deptId, password, deptType } = req.body;
 
-    if (!name || !deptId || !password || !deptType) {
-        return res.status(400).json({ success: false, message: 'All fields required!' });
+        if (!name || !deptId || !password || !deptType) {
+            return res.status(400).json({ success: false, message: 'All fields required!' });
+        }
+
+        const id = deptId.toUpperCase();
+        const existing = await dataAccess.getDepartment(id);
+
+        if (existing) {
+            return res.status(400).json({ success: false, message: `Department ID (${id}) already exists!` });
+        }
+
+        await dataAccess.createDepartment(id, name, password, deptType);
+
+        console.log(`✅ New Department Registered: ${name} (${id}) - Type: ${deptType}`);
+        res.json({ success: true, message: 'Department registered!', department: { id, name, type: deptType } });
+    } catch (error) {
+        console.error('❌ Department register error:', error);
+        res.status(500).json({ success: false, message: 'Server error during registration' });
     }
-
-    const departments = readJSON(DEPARTMENTS_FILE, {});
-    const id = deptId.toUpperCase();
-
-    if (departments[id]) {
-        return res.status(400).json({ success: false, message: `Department ID (${id}) already exists!` });
-    }
-
-    departments[id] = { name, password, type: deptType, createdAt: new Date().toISOString() };
-    writeJSON(DEPARTMENTS_FILE, departments);
-
-    console.log(`✅ New Department Registered: ${name} (${id}) - Type: ${deptType}`);
-    res.json({ success: true, message: 'Department registered!', department: { id, name, type: deptType } });
 });
 
 // Department Login
-app.post('/api/departments/login', (req, res) => {
-    const { deptId, password, deptType } = req.body;
+app.post('/api/departments/login', async (req, res) => {
+    try {
+        const { deptId, password, deptType } = req.body;
 
-    if (!deptId || !password) {
-        return res.status(400).json({ success: false, message: 'ID and Password required!' });
+        if (!deptId || !password) {
+            return res.status(400).json({ success: false, message: 'ID and Password required!' });
+        }
+
+        const id = deptId.toUpperCase();
+        const department = await dataAccess.getDepartment(id);
+
+        if (!department) {
+            return res.status(401).json({ success: false, message: 'Department ID not found!' });
+        }
+
+        if (department.password !== password) {
+            return res.status(401).json({ success: false, message: 'Wrong Password!' });
+        }
+
+        if (department.departmentType !== deptType) {
+            return res.status(401).json({ success: false, message: 'Wrong department type!' });
+        }
+
+        console.log(`✅ Department Login: ${department.departmentName} (${id}) - ${deptType}`);
+        res.json({
+            success: true,
+            message: 'Login successful!',
+            department: {
+                id,
+                name: department.departmentName,
+                type: department.departmentType
+            }
+        });
+    } catch (error) {
+        console.error('Department login error:', error);
+        res.status(500).json({ success: false, message: 'Server error during login' });
     }
-
-    const departments = readJSON(DEPARTMENTS_FILE, {});
-    const id = deptId.toUpperCase();
-
-    if (!departments[id]) {
-        return res.status(401).json({ success: false, message: 'Department ID not found!' });
-    }
-
-    if (departments[id].password !== password) {
-        return res.status(401).json({ success: false, message: 'Wrong Password!' });
-    }
-
-    if (departments[id].type !== deptType) {
-        return res.status(401).json({ success: false, message: 'Wrong department type!' });
-    }
-
-    console.log(`✅ Department Login: ${departments[id].name} (${id}) - ${deptType}`);
-    res.json({ success: true, message: 'Login successful!', department: { id, name: departments[id].name, type: departments[id].type } });
 });
 
 // Get All Departments (for Admin)
-app.get('/api/departments', (req, res) => {
-    const departments = readJSON(DEPARTMENTS_FILE, {});
+app.get('/api/departments', async (req, res) => {
+    try {
+        const departments = await dataAccess.getAllDepartments();
 
-    const deptList = Object.entries(departments).map(([id, data]) => ({
-        id,
-        name: data.name,
-        type: data.type,
-        createdAt: data.createdAt
-    }));
+        const deptList = departments.map(dept => ({
+            id: dept.departmentId,
+            name: dept.departmentName || dept.name,
+            type: dept.departmentType || dept.type,
+            createdAt: dept.createdAt
+        }));
 
-    res.json({ success: true, departments: deptList });
+        res.json({ success: true, departments: deptList });
+    } catch (error) {
+        console.error('❌ Get departments error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Update Department (Admin Edit)
-app.put('/api/departments/:deptId', (req, res) => {
-    const { name, password } = req.body;
-    const id = req.params.deptId.toUpperCase();
+app.put('/api/departments/:deptId', async (req, res) => {
+    try {
+        const { name, password } = req.body;
+        const id = req.params.deptId.toUpperCase();
 
-    const departments = readJSON(DEPARTMENTS_FILE, {});
+        const department = await dataAccess.getDepartment(id);
 
-    if (!departments[id]) {
-        return res.status(404).json({ success: false, message: 'Department not found!' });
+        if (!department) {
+            return res.status(404).json({ success: false, message: 'Department not found!' });
+        }
+
+        // Build update object
+        const updates = {};
+        if (name) {
+            updates.departmentName = name;
+            updates.name = name; // For JSON compatibility
+        }
+        if (password) updates.password = password;
+
+        const updated = await dataAccess.updateDepartment(id, updates);
+
+        console.log(`✅ Department Updated: ${updated.departmentName || updated.name} (${id})`);
+        res.json({
+            success: true,
+            message: 'Department updated successfully!',
+            department: { id, name: updated.departmentName || updated.name, type: updated.departmentType || updated.type }
+        });
+    } catch (error) {
+        console.error('❌ Update department error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    if (name) departments[id].name = name;
-    if (password) departments[id].password = password;
-    departments[id].updatedAt = new Date().toISOString();
-
-    writeJSON(DEPARTMENTS_FILE, departments);
-
-    console.log(`✅ Department Updated: ${id}`);
-    res.json({ success: true, message: 'Department updated successfully!', department: departments[id] });
 });
 
 // Delete Department (Admin)
@@ -311,242 +368,269 @@ app.delete('/api/departments/:deptId', (req, res) => {
 // ==================== ORDER APIs ====================
 
 // Create Order (Employee)
-app.post('/api/orders', (req, res) => {
-    const orderData = req.body;
+app.post('/api/orders', async (req, res) => {
+    try {
+        const orderData = req.body;
+        const config = await dataAccess.getShiprocketConfig();
+        const nextId = config.shiprocketOrderCounter || 7417;
+        const orderId = `HON${nextId.toString().padStart(4, '0')}`;
 
-    if (!orderData || !orderData.customerName || !orderData.telNo) {
-        return res.status(400).json({ success: false, message: 'Customer Name and Tel No required!' });
+        // Update counter
+        await dataAccess.updateShiprocketConfig({ shiprocketOrderCounter: nextId + 1 });
+
+        const newOrder = {
+            ...orderData,
+            orderId,
+            status: 'Pending',
+            tracking: null,
+            deliveryRequested: false,
+            timestamp: new Date().toISOString()
+        };
+
+        await dataAccess.createOrder(newOrder);
+
+        console.log(`📦 New Order: ${orderId} by ${orderData.employee} (${orderData.employeeId}) - Status: Pending`);
+        res.json({ success: true, message: 'Order saved!', orderId });
+    } catch (error) {
+        console.error('❌ Create order error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    const config = readJSON(CONFIG_FILE, { nextOrderId: 1 });
-    const orderId = 'ORD-' + String(config.nextOrderId).padStart(5, '0');
-    config.nextOrderId += 1;
-    writeJSON(CONFIG_FILE, config);
-
-    const newOrder = {
-        ...orderData,
-        orderId,
-        status: 'Pending',
-        tracking: null,
-        deliveryRequested: false,
-        timestamp: new Date().toISOString()
-    };
-
-    const orders = readJSON(ORDERS_FILE, []);
-    orders.push(newOrder);
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`📦 New Order: ${orderId} by ${orderData.employee} (${orderData.employeeId}) - Status: Pending`);
-    res.json({ success: true, message: 'Order saved!', orderId });
 });
 
+
 // Update Order (Department Edit)
-app.put('/api/orders/:orderId', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+app.put('/api/orders/:orderId', async (req, res) => {
+    try {
+        const order = await dataAccess.getOrderById(req.params.orderId);
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        const updates = { ...req.body, updatedAt: new Date().toISOString() };
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        console.log(`✏️ Order Updated: ${req.params.orderId}`);
+        res.json({ success: true, message: 'Order updated!', order: updated });
+    } catch (error) {
+        console.error('❌ Update order error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index] = { ...orders[index], ...req.body, updatedAt: new Date().toISOString() };
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`✏️ Order Updated: ${req.params.orderId}`);
-    res.json({ success: true, message: 'Order updated!', order: orders[index] });
 });
 
 // Get All Orders
-app.get('/api/orders', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    res.json({ success: true, orders });
+app.get('/api/orders', async (req, res) => {
+    try {
+        const orders = await dataAccess.getAllOrders();
+        res.json({ success: true, orders });
+    } catch (error) {
+        console.error('❌ Get orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Pending Orders (for Verification Dept)
-app.get('/api/orders/pending', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const pendingOrders = orders.filter(o => o.status === 'Pending');
-    pendingOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    console.log(`📋 Pending Orders for Verification: ${pendingOrders.length}`);
-    res.json({ success: true, orders: pendingOrders });
+app.get('/api/orders/pending', async (req, res) => {
+    try {
+        const pendingOrders = await dataAccess.getOrdersByStatus('Pending');
+        console.log(`📋 Pending Orders for Verification: ${pendingOrders.length}`);
+        res.json({ success: true, orders: pendingOrders });
+    } catch (error) {
+        console.error('❌ Get pending orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Verified Orders (for Dispatch Dept)
-app.get('/api/orders/verified', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const verifiedOrders = orders.filter(o => o.status === 'Address Verified');
-    verifiedOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    console.log(`📋 Verified Orders for Dispatch: ${verifiedOrders.length}`);
-    res.json({ success: true, orders: verifiedOrders });
+app.get('/api/orders/verified', async (req, res) => {
+    try {
+        const verifiedOrders = await dataAccess.getOrdersByStatus('Address Verified');
+        console.log(`📋 Verified Orders for Dispatch: ${verifiedOrders.length}`);
+        res.json({ success: true, orders: verifiedOrders });
+    } catch (error) {
+        console.error('❌ Get verified orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Dispatched Orders
-app.get('/api/orders/dispatched', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const dispatchedOrders = orders.filter(o => o.status === 'Dispatched');
-    dispatchedOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    res.json({ success: true, orders: dispatchedOrders });
+app.get('/api/orders/dispatched', async (req, res) => {
+    try {
+        const dispatchedOrders = await dataAccess.getOrdersByStatus('Dispatched');
+        res.json({ success: true, orders: dispatchedOrders });
+    } catch (error) {
+        console.error('❌ Get dispatched orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Delivered Orders
-app.get('/api/orders/delivered', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const deliveredOrders = orders.filter(o => o.status === 'Delivered');
-    deliveredOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    res.json({ success: true, orders: deliveredOrders });
+app.get('/api/orders/delivered', async (req, res) => {
+    try {
+        const deliveredOrders = await dataAccess.getOrdersByStatus('Delivered');
+        res.json({ success: true, orders: deliveredOrders });
+    } catch (error) {
+        console.error('❌ Get delivered orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Employee's Orders
-app.get('/api/orders/employee/:empId', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const empOrders = orders.filter(o => o.employeeId === req.params.empId.toUpperCase());
-    empOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    res.json({ success: true, orders: empOrders });
+app.get('/api/orders/employee/:empId', async (req, res) => {
+    try {
+        const orders = await dataAccess.getAllOrders();
+        const empOrders = orders.filter(o => o.employeeId === req.params.empId.toUpperCase());
+        res.json({ success: true, orders: empOrders });
+    } catch (error) {
+        console.error('❌ Get employee orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Single Order
-app.get('/api/orders/:orderId', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const order = orders.find(o => o.orderId === req.params.orderId);
+app.get('/api/orders/:orderId', async (req, res) => {
+    try {
+        const order = await dataAccess.getOrderById(req.params.orderId);
 
-    if (!order) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        res.json({ success: true, order });
+    } catch (error) {
+        console.error('❌ Get order error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    res.json({ success: true, order });
 });
 
 // Update Order Status (Generic - e.g. On Hold)
-app.put('/api/orders/:orderId/status', (req, res) => {
-    const { status, employee } = req.body;
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+app.put('/api/orders/:orderId/status', async (req, res) => {
+    try {
+        const { status, employee } = req.body;
+        const updates = {
+            status,
+            updatedAt: new Date().toISOString()
+        };
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`🔄 Status Update: ${req.params.orderId} -> ${status} (${employee || 'Unknown'})`);
+        res.json({ success: true, message: 'Status updated!', order: updated });
+    } catch (error) {
+        console.error('❌ Status update error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index].status = status;
-    orders[index].updatedAt = new Date().toISOString();
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`🔄 Status Update: ${req.params.orderId} -> ${status} (${employee || 'Unknown'})`);
-    res.json({ success: true, message: 'Status updated!', order: orders[index] });
 });
 
 // Verify Address (Verification Dept)
-app.put('/api/orders/:orderId/verify', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+app.put('/api/orders/:orderId/verify', async (req, res) => {
+    try {
+        const updates = {
+            status: 'Address Verified',
+            verifiedAt: new Date().toISOString(),
+            verifiedBy: req.body.verifiedBy || 'Address Dept'
+        };
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`✅ Address Verified: ${req.params.orderId} - Now goes to Dispatch Dept`);
+        res.json({ success: true, message: 'Address verified! Order moved to Dispatch Department.', order: updated });
+    } catch (error) {
+        console.error('❌ Verify error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index].status = 'Address Verified';
-    orders[index].verifiedAt = new Date().toISOString();
-    orders[index].verifiedBy = req.body.verifiedBy || 'Address Dept';
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`✅ Address Verified: ${req.params.orderId} - Now goes to Dispatch Dept`);
-    res.json({ success: true, message: 'Address verified! Order moved to Dispatch Department.', order: orders[index] });
 });
 
 // Save Remark (Verification Dept)
-app.put('/api/orders/:orderId/remark', (req, res) => {
-    const { remark, remarkBy } = req.body;
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+app.put('/api/orders/:orderId/remark', async (req, res) => {
+    try {
+        const { remark, remarkBy } = req.body;
+        const updates = {
+            verificationRemark: {
+                text: remark || '',
+                addedBy: remarkBy || 'Verification Dept',
+                addedAt: new Date().toISOString()
+            }
+        };
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`📝 Remark Added to ${req.params.orderId}: "${remark?.substring(0, 50)}..."`);
+        res.json({ success: true, message: 'Remark saved!', order: updated });
+    } catch (error) {
+        console.error('❌ Remark error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index].verificationRemark = {
-        text: remark || '',
-        addedBy: remarkBy || 'Verification Dept',
-        addedAt: new Date().toISOString()
-    };
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`📝 Remark Added to ${req.params.orderId}: "${remark?.substring(0, 50)}..."`);
-    res.json({ success: true, message: 'Remark saved!', order: orders[index] });
 });
 
 // Dispatch Order (Dispatch Dept)
-app.put('/api/orders/:orderId/dispatch', (req, res) => {
-    const { courier, trackingId, dispatchedBy } = req.body;
+app.put('/api/orders/:orderId/dispatch', async (req, res) => {
+    try {
+        const { courier, trackingId, dispatchedBy } = req.body;
 
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+        const updates = {
+            status: 'Dispatched',
+            tracking: {
+                courier: courier || '',
+                trackingId: trackingId || '',
+                dispatchedAt: new Date().toISOString()
+            },
+            dispatchedBy: dispatchedBy || 'Dispatch Dept'
+        };
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`🚚 Order Dispatched: ${req.params.orderId} - Courier: ${courier}, Tracking: ${trackingId}`);
+        res.json({ success: true, message: 'Order dispatched with tracking!', order: updated });
+    } catch (error) {
+        console.error('❌ Dispatch error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index].status = 'Dispatched';
-    orders[index].tracking = {
-        courier: courier || '',
-        trackingId: trackingId || '',
-        dispatchedAt: new Date().toISOString()
-    };
-    orders[index].dispatchedBy = dispatchedBy || 'Dispatch Dept';
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`🚚 Order Dispatched: ${req.params.orderId} - Courier: ${courier}, Tracking: ${trackingId}`);
-    res.json({ success: true, message: 'Order dispatched with tracking!', order: orders[index] });
 });
 
 // Request Delivery (Employee creates request)
-app.post('/api/orders/:orderId/request-delivery', (req, res) => {
-    const { employeeId, employeeName } = req.body;
-    const orderId = req.params.orderId;
+app.post('/api/orders/:orderId/request-delivery', async (req, res) => {
+    try {
+        const { employeeId, employeeName } = req.body;
+        const orderId = req.params.orderId;
 
-    const orders = readJSON(ORDERS_FILE, []);
-    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+        const updates = {
+            deliveryRequested: true,
+            deliveryRequestedBy: {
+                employeeId,
+                employeeName,
+                requestedAt: new Date().toISOString()
+            }
+        };
 
-    if (orderIndex === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' })
+        }
+
+        console.log(`📦 Delivery Request: ${orderId} by ${employeeName} (${employeeId})`);
+        res.json({ success: true, message: 'Delivery request sent to Dispatch Dept!', order: updated });
+    } catch (error) {
+        console.error('❌ Delivery request error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    const order = orders[orderIndex];
-
-    if (order.status !== 'Dispatched') {
-        return res.status(400).json({ success: false, message: 'Order must be dispatched first!' });
-    }
-
-    const requests = readJSON(DELIVERY_REQUESTS_FILE, []);
-
-    // Check if request already exists
-    const existingRequest = requests.find(r => r.orderId === orderId && r.status === 'pending');
-    if (existingRequest) {
-        return res.status(400).json({ success: false, message: 'Delivery request already sent!' });
-    }
-
-    const newRequest = {
-        orderId,
-        employeeId,
-        employeeName,
-        customerName: order.customerName,
-        requestedAt: new Date().toISOString(),
-        status: 'pending'
-    };
-
-    requests.push(newRequest);
-    writeJSON(DELIVERY_REQUESTS_FILE, requests);
-
-    // Mark order as delivery requested
-    orders[orderIndex].deliveryRequested = true;
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`📬 Delivery Request: ${orderId} by ${employeeName}`);
-    res.json({ success: true, message: 'Delivery request sent to Dispatch Department!' });
 });
 
 // Get Delivery Requests (For Dispatch Dept)
@@ -585,7 +669,7 @@ app.put('/api/orders/:orderId/deliver', (req, res) => {
         writeJSON(DELIVERY_REQUESTS_FILE, requests);
     }
 
-    console.log(`✅ Order Delivered: ${orderId}`);
+    console.log(`✅ Order Delivered: ${orderId} `);
     res.json({ success: true, message: 'Order marked as delivered!', order: orders[index] });
 });
 
@@ -601,7 +685,7 @@ app.delete('/api/orders/:orderId', (req, res) => {
 
     writeJSON(ORDERS_FILE, orders);
 
-    console.log(`🗑️ Order Deleted: ${req.params.orderId}`);
+    console.log(`🗑️ Order Deleted: ${req.params.orderId} `);
     res.json({ success: true, message: 'Order deleted!' });
 });
 
@@ -612,7 +696,7 @@ app.get('/api/orders/export', (req, res) => {
     console.log('📊 Export request received');
     try {
         const orders = readJSON(ORDERS_FILE, []);
-        console.log(`📊 Found ${orders.length} orders to export`);
+        console.log(`📊 Found ${orders.length} orders to export `);
 
         if (!Array.isArray(orders)) {
             throw new Error('Orders data is not an array');
@@ -624,7 +708,7 @@ app.get('/api/orders/export', (req, res) => {
                 let address = order.address || '';
                 // Format address if it's an object
                 if (typeof address === 'object' && address !== null) {
-                    address = `${address.houseNo || ''}, ${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''}`;
+                    address = `${address.houseNo || ''}, ${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''} `;
                 }
 
                 // Handle items safely
@@ -658,7 +742,7 @@ app.get('/api/orders/export', (req, res) => {
                     "RTO Status": order.rtoStatus || ''
                 };
             } catch (err) {
-                console.error(`⚠️ Error processing order index ${index}:`, err);
+                console.error(`⚠️ Error processing order index ${index}: `, err);
                 return null; // Skip bad records
             }
         }).filter(item => item !== null); // Filter out failed records
@@ -673,7 +757,7 @@ app.get('/api/orders/export', (req, res) => {
         const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
         // Send headers
-        res.setHeader('Content-Disposition', `attachment; filename="HerbOrders_${new Date().toISOString().split('T')[0]}.xlsx"`);
+        res.setHeader('Content-Disposition', `attachment; filename = "HerbOrders_${new Date().toISOString().split('T')[0]}.xlsx"`);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(buf);
 
@@ -806,7 +890,7 @@ app.get('/api/locations/search-district', (req, res) => {
 
         for (const item of pincodeDatabase) {
             if (item.districtName.toLowerCase().includes(q)) {
-                const key = `${item.districtName}|${item.stateName}`;
+                const key = `${item.districtName}| ${item.stateName} `;
                 if (!seen.has(key)) {
                     seen.add(key);
                     const distLower = item.districtName.toLowerCase();
@@ -1143,7 +1227,7 @@ app.get('/api/postoffice/:query', (req, res) => {
         // Group by office name to get all unique offices
         const uniqueOffices = {};
         results.forEach(item => {
-            const key = `${item.officeName}_${item.pincode}`;
+            const key = `${item.officeName}_${item.pincode} `;
             if (!uniqueOffices[key]) {
                 uniqueOffices[key] = {
                     Name: item.officeName,
@@ -1649,26 +1733,150 @@ app.post('/api/shiprocket/pickup', async (req, res) => {
 });
 
 // ==================== START SERVER ====================
-app.listen(PORT, '0.0.0.0', () => {
-    console.log('');
-    console.log('╔═══════════════════════════════════════════════════════════╗');
-    console.log('║       🌿 HERB ON NATURALS SERVER v3.5 STARTED 🌿          ║');
-    console.log('╠═══════════════════════════════════════════════════════════╣');
-    console.log(`║  Local:    http://localhost:${PORT}                         ║`);
-    console.log(`║  Network:  http://192.168.1.6:${PORT}                       ║`);
-    console.log('╠═══════════════════════════════════════════════════════════╣');
-    console.log('║  FEATURES:                                                ║');
-    console.log('║  ✅ Order Edit in Verification & Dispatch Dept            ║');
-    console.log('║  ✅ Employee Delivery Request System                      ║');
-    console.log('║  ✅ Dispatch Dept Approves Delivery                       ║');
-    console.log('║  ✅ Admin Full Department Edit (ID, Pass, Type)           ║');
-    console.log('║  ✅ Department Delete Option                              ║');
-    console.log('║  ✅ Employee & Admin Progress Reports                     ║');
-    console.log('╠═══════════════════════════════════════════════════════════╣');
-    console.log('║  ORDER FLOW:                                              ║');
-    console.log('║  Employee → Pending → [Edit] Verification Dept            ║');
-    console.log('║  → Verified → [Edit] Dispatch Dept → Dispatched           ║');
-    console.log('║  → Employee Request → Dispatch Approve → Delivered        ║');
-    console.log('╚═══════════════════════════════════════════════════════════╝');
-    console.log('');
+async function startServer() {
+    // Connect to MongoDB
+    const dbConnected = await connectDatabase();
+
+    if (dbConnected) {
+        await initializeDefaultData();
+        console.log('✅ Database initialized!');
+    } else {
+        console.warn('⚠️ Running without MongoDB - Data will not persist!');
+    }
+
+    // Start Express server
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log('');
+        console.log('╔═══════════════════════════════════════════════════════════╗');
+        console.log('║       🌿 HERB ON NATURALS SERVER v4.0 STARTED 🌿          ║');
+        console.log('╠═══════════════════════════════════════════════════════════╣');
+        console.log(`║  Status:   ${dbConnected ? '🟢 MongoDB Connected' : '🔴 JSON Mode (Temporary)'}           ║`);
+        console.log(`║  Port:     ${PORT}                                            ║`);
+        console.log('╠═══════════════════════════════════════════════════════════╣');
+        console.log('║  FEATURES:                                                ║');
+        console.log('║  ✅ Order Edit in Verification & Dispatch Dept            ║');
+        console.log('║  ✅ Employee Delivery Request System                      ║');
+        console.log('║  ✅ Dispatch Dept Approves Delivery                       ║');
+        console.log('║  ✅ Admin Full Department Edit (ID, Pass, Type)           ║');
+        console.log('║  ✅ Department Delete Option                              ║');
+        console.log('║  ✅ Employee & Admin Progress Reports                     ║');
+        console.log('║  ✅ Shiprocket Integration (AWB, Tracking)                ║');
+        console.log('╠═══════════════════════════════════════════════════════════╣');
+        console.log('║  ORDER FLOW:                                              ║');
+        console.log('║  Employee → Pending → [Edit] Verification Dept            ║');
+        console.log('║  → Verified → [Edit] Dispatch Dept → Dispatched           ║');
+        console.log('║  → Employee Request → Dispatch Approve → Delivered        ║');
+        console.log('╚═══════════════════════════════════════════════════════════╝');
+        console.log('');
+    });
+}
+
+// ==================== SHIPROCKET TRACKING APIs ====================
+
+// Track shipment by AWB number
+app.get('/api/shiprocket/track/:awb', async (req, res) => {
+    try {
+        const awb = req.params.awb;
+        console.log(`📦 Tracking shipment: ${awb}`);
+
+        const trackingInfo = await shiprocket.trackShipment(awb);
+
+        if (trackingInfo.success) {
+            res.json({ success: true, tracking: trackingInfo });
+        } else {
+            res.status(404).json({ success: false, message: trackingInfo.message });
+        }
+    } catch (error) {
+        console.error('❌ Tracking error:', error);
+        res.status(500).json({ success: false, message: 'Tracking failed' });
+    }
+});
+
+// Update order with tracking information
+app.post('/api/orders/:orderId/update-tracking', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { awb } = req.body;
+
+        if (!awb) {
+            return res.status(400).json({ success: false, message: 'AWB number required' });
+        }
+
+        // Get tracking info from Shiprocket
+        const trackingInfo = await shiprocket.trackShipment(awb);
+
+        if (!trackingInfo.success) {
+            return res.status(404).json({ success: false, message: 'Tracking not found' });
+        }
+
+        // Update order with tracking data
+        const updates = {
+            'shiprocket.awb': awb,
+            'tracking.currentStatus': trackingInfo.currentStatus,
+            'tracking.lastUpdate': trackingInfo.lastUpdate,
+            'tracking.lastUpdatedAt': new Date().toISOString()
+        };
+
+        // If delivered, update order status
+        if (trackingInfo.delivered) {
+            updates.status = 'Delivered';
+            updates.deliveredAt = new Date().toISOString();
+        }
+
+        const updated = await dataAccess.updateOrder(orderId, updates);
+
+        console.log(`✅ Tracking updated for ${orderId}: ${trackingInfo.currentStatus}`);
+        res.json({ success: true, order: updated, tracking: trackingInfo });
+
+    } catch (error) {
+        console.error('❌ Update tracking error:', error);
+        res.status(500).json({ success: false, message: 'Update failed' });
+    }
+});
+
+// Bulk update all active shipments
+app.post('/api/shiprocket/bulk-update', async (req, res) => {
+    try {
+        const dispatchedOrders = await dataAccess.getOrdersByStatus('Dispatched');
+        const updates = [];
+
+        for (const order of dispatchedOrders) {
+            if (order.shiprocket && order.shiprocket.awb) {
+                const awb = order.shiprocket.awb;
+                const trackingInfo = await shiprocket.trackShipment(awb);
+
+                if (trackingInfo.success) {
+                    const orderUpdates = {
+                        'tracking.currentStatus': trackingInfo.currentStatus,
+                        'tracking.lastUpdate': trackingInfo.lastUpdate,
+                        'tracking.lastUpdatedAt': new Date().toISOString()
+                    };
+
+                    if (trackingInfo.delivered) {
+                        orderUpdates.status = 'Delivered';
+                        orderUpdates.deliveredAt = new Date().toISOString();
+                    }
+
+                    await dataAccess.updateOrder(order.orderId, orderUpdates);
+                    updates.push({ orderId: order.orderId, status: trackingInfo.currentStatus });
+                }
+
+                // Add delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+
+        console.log(`✅ Bulk update completed: ${updates.length} orders updated`);
+        res.json({ success: true, updated: updates });
+
+    } catch (error) {
+        console.error('❌ Bulk update error:', error);
+        res.status(500).json({ success: false, message: 'Bulk update failed' });
+    }
+});
+
+// Start the application
+startServer().catch(err => {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
 });

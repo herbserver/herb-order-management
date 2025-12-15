@@ -878,7 +878,6 @@
                         </button>
                     </div>
                 </div>
-            </div>
 
             <!-- READY TAB -->
             <div id="dispatchReadyTab" class="hidden animate-fadeIn">
@@ -1014,7 +1013,7 @@
                 <div id="dispatchHistoryList" class="space-y-4"></div>
             </div>
 
-        </div>
+            </div> <!-- End dispatchDeptContent -->
 
         <!-- Delivery Dept Content -->
         <div id="deliveryDeptContent" class="hidden space-y-6">
@@ -1812,8 +1811,10 @@
         // Automatically detect server address
         const protocol = window.location.protocol.startsWith('http') ? window.location.protocol : 'http:';
         const hostname = window.location.hostname || 'localhost';
-
-        const API_URL = `${protocol}//${hostname}:3000/api`;
+        
+        // Use port only for localhost, not for production
+        const port = hostname === 'localhost' ? ':3000' : '';
+        const API_URL = `${protocol}//${hostname}${port}/api`;
 
         console.log('Connecting to API at:', API_URL);
         const ADMIN_PASS = 'admin123';
@@ -1973,6 +1974,11 @@
             document.getElementById('empNameDisplay').textContent = currentUser.name + ' (' + currentUser.id + ')';
             initOrderForm();
             loadMyOrders();
+            
+            // Start auto-tracking for Out for Delivery alerts (employee's own orders)
+            if (typeof initializeAutoTracking === 'function') {
+                initializeAutoTracking();
+            }
         }
 
         function showDepartmentPanel() {
@@ -2009,12 +2015,21 @@
             }
 
             loadDeptOrders();
+            // Start auto-tracking for Out for Delivery alerts
+            if (typeof initializeAutoTracking === 'function') {
+                initializeAutoTracking();
+            }
         }
 
         function showAdminPanel() {
             document.querySelectorAll('#app> div').forEach(d => d.classList.add('hidden'));
             document.getElementById('adminPanel').classList.remove('hidden');
             loadAdminData();
+            
+            // Start auto-tracking for Out for Delivery alerts
+            if (typeof initializeAutoTracking === 'function') {
+                initializeAutoTracking();
+            }
         }
 
         // ==================== AUTH FUNCTIONS ====================
@@ -7716,6 +7731,30 @@ ${po.Name}</li>`;
             }
         };
     </script>
+
+<!-- TEST ALERT BUTTON - Remove before production -->
+<button onclick="testOutForDeliveryAlert()" 
+    style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 16px 24px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+    🧪 Test Alert
+</button>
+
+<script>
+function testOutForDeliveryAlert() {
+    if (typeof showOutForDeliveryAlert === 'function') {
+        console.log('🧪 Testing Out for Delivery Alert...');
+        showOutForDeliveryAlert(
+            {orderId: 'TEST123', customerName: 'Test Customer', telNo: '9876543210'},
+            {currentStatus: 'Out for Delivery', location: 'Delhi Hub'}
+        );
+        console.log('✅ Alert triggered!');
+    } else {
+        alert('❌ Alert function not found! Make sure you are logged in as Admin/Dispatch.');
+    }
+}
+</script>
+
+<!-- Auto Tracking Script -->
+<script src="auto-tracking.js"></script>
 
 </body>
 

@@ -1,12 +1,17 @@
 // Auto Tracking System - Checks for Out for Delivery status
-let trackingInterval = null;
-let notifiedOrders = new Set(); // Track which orders we've already notified about
+// Use window object to avoid duplicate declaration errors
+if (!window.trackingInterval) {
+    window.trackingInterval = null;
+}
+if (!window.notifiedOrders) {
+    window.notifiedOrders = new Set(); // Track which orders we've already notified about
+}
 
 // Initialize auto tracking when admin/dispatch panel loads
 function initializeAutoTracking() {
     // Clear existing interval
-    if (trackingInterval) {
-        clearInterval(trackingInterval);
+    if (window.trackingInterval) {
+        clearInterval(window.trackingInterval);
     }
 
     console.log('🔔 Auto-tracking initialized - checking every 5 minutes');
@@ -15,7 +20,7 @@ function initializeAutoTracking() {
     checkForOutForDelivery();
 
     // Then check every 5 minutes
-    trackingInterval = setInterval(checkForOutForDelivery, 5 * 60 * 1000);
+    window.trackingInterval = setInterval(checkForOutForDelivery, 5 * 60 * 1000);
 }
 
 // Check all dispatched orders for "Out for Delivery" status
@@ -25,14 +30,22 @@ async function checkForOutForDelivery() {
 
         const res = await fetch(`${API_URL}/orders/dispatched`);
         const data = await res.json();
-        const orders = data.orders || [];
+        let orders = data.orders || [];
+
+        // Filter for employee's own orders if logged in as employee
+        if (typeof currentUserType !== 'undefined' && currentUserType === 'employee') {
+            if (typeof currentUser !== 'undefined' && currentUser.id) {
+                orders = orders.filter(o => o.employeeId === currentUser.id);
+                console.log(`📦 Checking ${orders.length} orders for employee ${currentUser.id}`);
+            }
+        }
 
         for (const order of orders) {
             if (order.shiprocket && order.shiprocket.awb) {
                 const awb = order.shiprocket.awb;
 
                 // Skip if already notified
-                if (notifiedOrders.has(order.orderId)) {
+                if (window.notifiedOrders.has(order.orderId)) {
                     continue;
                 }
 
@@ -46,7 +59,7 @@ async function checkForOutForDelivery() {
                     // Check if Out for Delivery
                     if (status.toLowerCase().includes('out for delivery')) {
                         // Mark as notified
-                        notifiedOrders.add(order.orderId);
+                        window.notifiedOrders.add(order.orderId);
 
                         // Show alert
                         showOutForDeliveryAlert(order, trackData.tracking);
