@@ -499,12 +499,15 @@ app.get('/api/orders/delivered', async (req, res) => {
 });
 
 // Get Employee's Orders
-app.get('/api/orders/employee/:empId', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const empOrders = orders.filter(o => o.employeeId === req.params.empId.toUpperCase());
-    empOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    res.json({ success: true, orders: empOrders });
+app.get('/api/orders/employee/:empId', async (req, res) => {
+    try {
+        const orders = await dataAccess.getAllOrders();
+        const empOrders = orders.filter(o => o.employeeId === req.params.empId.toUpperCase());
+        res.json({ success: true, orders: empOrders });
+    } catch (error) {
+        console.error('❌ Get employee orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Single Order
@@ -524,130 +527,133 @@ app.get('/api/orders/:orderId', async (req, res) => {
 });
 
 // Update Order Status (Generic - e.g. On Hold)
-app.put('/api/orders/:orderId/status', (req, res) => {
-    const { status, employee } = req.body;
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+app.put('/api/orders/:orderId/status', async (req, res) => {
+    try {
+        const { status, employee } = req.body;
+        const updates = {
+            status,
+            updatedAt: new Date().toISOString()
+        };
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`🔄 Status Update: ${req.params.orderId} -> ${status} (${employee || 'Unknown'})`);
+        res.json({ success: true, message: 'Status updated!', order: updated });
+    } catch (error) {
+        console.error('❌ Status update error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index].status = status;
-    orders[index].updatedAt = new Date().toISOString();
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`🔄 Status Update: ${req.params.orderId} -> ${status} (${employee || 'Unknown'})`);
-    res.json({ success: true, message: 'Status updated!', order: orders[index] });
 });
 
 // Verify Address (Verification Dept)
-app.put('/api/orders/:orderId/verify', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+app.put('/api/orders/:orderId/verify', async (req, res) => {
+    try {
+        const updates = {
+            status: 'Address Verified',
+            verifiedAt: new Date().toISOString(),
+            verifiedBy: req.body.verifiedBy || 'Address Dept'
+        };
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`✅ Address Verified: ${req.params.orderId} - Now goes to Dispatch Dept`);
+        res.json({ success: true, message: 'Address verified! Order moved to Dispatch Department.', order: updated });
+    } catch (error) {
+        console.error('❌ Verify error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index].status = 'Address Verified';
-    orders[index].verifiedAt = new Date().toISOString();
-    orders[index].verifiedBy = req.body.verifiedBy || 'Address Dept';
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`✅ Address Verified: ${req.params.orderId} - Now goes to Dispatch Dept`);
-    res.json({ success: true, message: 'Address verified! Order moved to Dispatch Department.', order: orders[index] });
 });
 
 // Save Remark (Verification Dept)
-app.put('/api/orders/:orderId/remark', (req, res) => {
-    const { remark, remarkBy } = req.body;
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+app.put('/api/orders/:orderId/remark', async (req, res) => {
+    try {
+        const { remark, remarkBy } = req.body;
+        const updates = {
+            verificationRemark: {
+                text: remark || '',
+                addedBy: remarkBy || 'Verification Dept',
+                addedAt: new Date().toISOString()
+            }
+        };
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`📝 Remark Added to ${req.params.orderId}: "${remark?.substring(0, 50)}..."`);
+        res.json({ success: true, message: 'Remark saved!', order: updated });
+    } catch (error) {
+        console.error('❌ Remark error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index].verificationRemark = {
-        text: remark || '',
-        addedBy: remarkBy || 'Verification Dept',
-        addedAt: new Date().toISOString()
-    };
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`📝 Remark Added to ${req.params.orderId}: "${remark?.substring(0, 50)}..."`);
-    res.json({ success: true, message: 'Remark saved!', order: orders[index] });
 });
 
 // Dispatch Order (Dispatch Dept)
-app.put('/api/orders/:orderId/dispatch', (req, res) => {
-    const { courier, trackingId, dispatchedBy } = req.body;
+app.put('/api/orders/:orderId/dispatch', async (req, res) => {
+    try {
+        const { courier, trackingId, dispatchedBy } = req.body;
 
-    const orders = readJSON(ORDERS_FILE, []);
-    const index = orders.findIndex(o => o.orderId === req.params.orderId);
+        const updates = {
+            status: 'Dispatched',
+            tracking: {
+                courier: courier || '',
+                trackingId: trackingId || '',
+                dispatchedAt: new Date().toISOString()
+            },
+            dispatchedBy: dispatchedBy || 'Dispatch Dept'
+        };
 
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`🚚 Order Dispatched: ${req.params.orderId} - Courier: ${courier}, Tracking: ${trackingId}`);
+        res.json({ success: true, message: 'Order dispatched with tracking!', order: updated });
+    } catch (error) {
+        console.error('❌ Dispatch error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    orders[index].status = 'Dispatched';
-    orders[index].tracking = {
-        courier: courier || '',
-        trackingId: trackingId || '',
-        dispatchedAt: new Date().toISOString()
-    };
-    orders[index].dispatchedBy = dispatchedBy || 'Dispatch Dept';
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`🚚 Order Dispatched: ${req.params.orderId} - Courier: ${courier}, Tracking: ${trackingId}`);
-    res.json({ success: true, message: 'Order dispatched with tracking!', order: orders[index] });
 });
 
 // Request Delivery (Employee creates request)
-app.post('/api/orders/:orderId/request-delivery', (req, res) => {
-    const { employeeId, employeeName } = req.body;
-    const orderId = req.params.orderId;
+app.post('/api/orders/:orderId/request-delivery', async (req, res) => {
+    try {
+        const { employeeId, employeeName } = req.body;
+        const orderId = req.params.orderId;
 
-    const orders = readJSON(ORDERS_FILE, []);
-    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+        const updates = {
+            deliveryRequested: true,
+            deliveryRequestedBy: {
+                employeeId,
+                employeeName,
+                requestedAt: new Date().toISOString()
+            }
+        };
 
-    if (orderIndex === -1) {
-        return res.status(404).json({ success: false, message: 'Order not found!' });
+        const updated = await dataAccess.updateOrder(orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' })
+        }
+
+        console.log(`📦 Delivery Request: ${orderId} by ${employeeName} (${employeeId})`);
+        res.json({ success: true, message: 'Delivery request sent to Dispatch Dept!', order: updated });
+    } catch (error) {
+        console.error('❌ Delivery request error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    const order = orders[orderIndex];
-
-    if (order.status !== 'Dispatched') {
-        return res.status(400).json({ success: false, message: 'Order must be dispatched first!' });
-    }
-
-    const requests = readJSON(DELIVERY_REQUESTS_FILE, []);
-
-    // Check if request already exists
-    const existingRequest = requests.find(r => r.orderId === orderId && r.status === 'pending');
-    if (existingRequest) {
-        return res.status(400).json({ success: false, message: 'Delivery request already sent!' });
-    }
-
-    const newRequest = {
-        orderId,
-        employeeId,
-        employeeName,
-        customerName: order.customerName,
-        requestedAt: new Date().toISOString(),
-        status: 'pending'
-    };
-
-    requests.push(newRequest);
-    writeJSON(DELIVERY_REQUESTS_FILE, requests);
-
-    // Mark order as delivery requested
-    orders[orderIndex].deliveryRequested = true;
-    writeJSON(ORDERS_FILE, orders);
-
-    console.log(`📬 Delivery Request: ${orderId} by ${employeeName}`);
-    res.json({ success: true, message: 'Delivery request sent to Dispatch Department!' });
 });
 
 // Get Delivery Requests (For Dispatch Dept)
@@ -686,7 +692,7 @@ app.put('/api/orders/:orderId/deliver', (req, res) => {
         writeJSON(DELIVERY_REQUESTS_FILE, requests);
     }
 
-    console.log(`✅ Order Delivered: ${orderId}`);
+    console.log(`✅ Order Delivered: ${orderId} `);
     res.json({ success: true, message: 'Order marked as delivered!', order: orders[index] });
 });
 
@@ -702,7 +708,7 @@ app.delete('/api/orders/:orderId', (req, res) => {
 
     writeJSON(ORDERS_FILE, orders);
 
-    console.log(`🗑️ Order Deleted: ${req.params.orderId}`);
+    console.log(`🗑️ Order Deleted: ${req.params.orderId} `);
     res.json({ success: true, message: 'Order deleted!' });
 });
 
@@ -713,7 +719,7 @@ app.get('/api/orders/export', (req, res) => {
     console.log('📊 Export request received');
     try {
         const orders = readJSON(ORDERS_FILE, []);
-        console.log(`📊 Found ${orders.length} orders to export`);
+        console.log(`📊 Found ${orders.length} orders to export `);
 
         if (!Array.isArray(orders)) {
             throw new Error('Orders data is not an array');
@@ -725,7 +731,7 @@ app.get('/api/orders/export', (req, res) => {
                 let address = order.address || '';
                 // Format address if it's an object
                 if (typeof address === 'object' && address !== null) {
-                    address = `${address.houseNo || ''}, ${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''}`;
+                    address = `${address.houseNo || ''}, ${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''} `;
                 }
 
                 // Handle items safely
@@ -759,7 +765,7 @@ app.get('/api/orders/export', (req, res) => {
                     "RTO Status": order.rtoStatus || ''
                 };
             } catch (err) {
-                console.error(`⚠️ Error processing order index ${index}:`, err);
+                console.error(`⚠️ Error processing order index ${index}: `, err);
                 return null; // Skip bad records
             }
         }).filter(item => item !== null); // Filter out failed records
@@ -774,7 +780,7 @@ app.get('/api/orders/export', (req, res) => {
         const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
         // Send headers
-        res.setHeader('Content-Disposition', `attachment; filename="HerbOrders_${new Date().toISOString().split('T')[0]}.xlsx"`);
+        res.setHeader('Content-Disposition', `attachment; filename = "HerbOrders_${new Date().toISOString().split('T')[0]}.xlsx"`);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(buf);
 
@@ -907,7 +913,7 @@ app.get('/api/locations/search-district', (req, res) => {
 
         for (const item of pincodeDatabase) {
             if (item.districtName.toLowerCase().includes(q)) {
-                const key = `${item.districtName}|${item.stateName}`;
+                const key = `${item.districtName}| ${item.stateName} `;
                 if (!seen.has(key)) {
                     seen.add(key);
                     const distLower = item.districtName.toLowerCase();
@@ -1244,7 +1250,7 @@ app.get('/api/postoffice/:query', (req, res) => {
         // Group by office name to get all unique offices
         const uniqueOffices = {};
         results.forEach(item => {
-            const key = `${item.officeName}_${item.pincode}`;
+            const key = `${item.officeName}_${item.pincode} `;
             if (!uniqueOffices[key]) {
                 uniqueOffices[key] = {
                     Name: item.officeName,
