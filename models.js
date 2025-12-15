@@ -17,7 +17,7 @@ const orderSchema = new mongoose.Schema({
     state: { type: String, required: true },
     pin: String,
     pincode: String,
-    paymentMode: { type: String, required: true },
+    paymentMode: { type: String, default: 'COD' },
     total: { type: Number, required: true },
     items: [{
         description: String,
