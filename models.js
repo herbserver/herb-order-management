@@ -26,8 +26,8 @@ const orderSchema = new mongoose.Schema({
     }],
     status: {
         type: String,
-        enum: ['pending', 'verified', 'dispatched', 'delivered', 'cancelled'],
-        default: 'pending',
+        enum: ['Pending', 'Address Verified', 'Dispatched', 'Delivered', 'Cancelled', 'On Hold', 'Unverified'],
+        default: 'Pending',
         index: true
     },
     verifiedBy: String,
