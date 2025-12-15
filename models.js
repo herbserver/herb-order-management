@@ -60,15 +60,17 @@ const orderSchema = new mongoose.Schema({
 
 // Department Schema
 const departmentSchema = new mongoose.Schema({
-    deptId: { type: String, required: true, unique: true, index: true },
-    type: {
+    departmentId: { type: String, required: true, unique: true, index: true },
+    departmentName: { type: String, required: true },
+    password: { type: String, required: true },
+    departmentType: {
         type: String,
         required: true,
         enum: ['employee', 'verification', 'dispatch', 'delivery'],
         index: true
     },
-    password: { type: String, required: true },
-    createdAt: { type: String, required: true }
+    employees: { type: mongoose.Schema.Types.Mixed, default: {} },
+    createdAt: String
 }, {
     timestamps: true,
     collection: 'departments'
