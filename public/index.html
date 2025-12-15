@@ -2010,12 +2010,21 @@
             }
 
             loadDeptOrders();
+            // Start auto-tracking for Out for Delivery alerts
+            if (typeof initializeAutoTracking === 'function') {
+                initializeAutoTracking();
+            }
         }
 
         function showAdminPanel() {
             document.querySelectorAll('#app> div').forEach(d => d.classList.add('hidden'));
             document.getElementById('adminPanel').classList.remove('hidden');
             loadAdminData();
+            
+            // Start auto-tracking for Out for Delivery alerts
+            if (typeof initializeAutoTracking === 'function') {
+                initializeAutoTracking();
+            }
         }
 
         // ==================== AUTH FUNCTIONS ====================
@@ -7717,6 +7726,9 @@ ${po.Name}</li>`;
             }
         };
     </script>
+
+<!-- Auto Tracking Script -->
+<script src="auto-tracking.js"></script>
 
 </body>
 

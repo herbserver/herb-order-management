@@ -1,58 +1,115 @@
 const mongoose = require('mongoose');
 
-// Order Schema
+// Order Schema - COMPLETE with all fields from old system
 const orderSchema = new mongoose.Schema({
     orderId: { type: String, required: true, unique: true, index: true },
     timestamp: { type: String, required: true },
+
+    // Employee Info
+    employee: String,
+    employeeId: String,
+
+    // Customer Info
     customerName: { type: String, required: true },
     telNo: String,
     mobile: String,
+    altNo: String,
     email: String,
+
+    // Address Info
     address: { type: String, required: true },
+    hNo: String,
+    blockGaliNo: String,
+    villColony: String,
     landmark: String,
+    landMark: String,  // Keep both for compatibility
     postOfficeName: String,
+    po: String,  // Keep both
     tahTaluka: String,
     distt: String,
     city: String,
     state: { type: String, required: true },
     pin: String,
-    pincode: String,
+    pincode: String,  // Keep both
+
+    // Order Info
+    orderType: String,
+    date: String,
+    time: String,
+    treatment: String,
     paymentMode: { type: String, default: 'COD' },
     total: { type: Number, required: true },
+    advance: Number,
+    codAmount: Number,
+
+    // Items
     items: [{
         description: String,
         quantity: Number,
-        price: Number
+        price: Number,
+        rate: Number,
+        amount: Number
     }],
+
+    // Status
     status: {
         type: String,
         enum: ['Pending', 'Address Verified', 'Dispatched', 'Delivered', 'Cancelled', 'On Hold', 'Unverified'],
         default: 'Pending',
         index: true
     },
+
+    // Verification Info
     verifiedBy: String,
     verifiedAt: String,
+    verificationRemark: {
+        text: String,
+        addedBy: String,
+        addedAt: String
+    },
+
+    // Dispatch Info
     dispatchedBy: String,
     dispatchedAt: String,
+
+    // Delivery Info
     deliveredBy: String,
     deliveredAt: String,
+    deliveryRequested: Boolean,
+    deliveryRequestedBy: {
+        employeeId: String,
+        employeeName: String,
+        requestedAt: String
+    },
+
+    // Shiprocket
     shiprocket: {
         awb: String,
         courierName: String,
         shiprocketOrderId: String,
         dispatchedAt: String
     },
+
+    // Tracking
     tracking: {
+        courier: String,
+        trackingId: String,
         currentStatus: String,
         lastUpdate: String,
-        lastUpdatedAt: String
+        lastUpdatedAt: String,
+        dispatchedAt: String
     },
+
+    // Remarks
     remarks: [{
         text: String,
         addedBy: String,
         addedAt: String,
         timestamp: String
-    }]
+    }],
+
+    // Misc
+    updatedAt: String
 }, {
     timestamps: true,
     collection: 'orders'

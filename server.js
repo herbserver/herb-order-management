@@ -11,6 +11,8 @@ const PORT = process.env.PORT || 3000;
 // Initialize MongoDB
 const { connectDatabase, initializeDefaultData, Order, Department, ShiprocketConfig } = require('./database');
 const dataAccess = require('./dataAccess');
+const shiprocket = require('./shiprocket');
+
 
 // Middleware
 app.use(cors());
@@ -1768,6 +1770,110 @@ async function startServer() {
         console.log('');
     });
 }
+
+// ==================== SHIPROCKET TRACKING APIs ====================
+
+// Track shipment by AWB number
+app.get('/api/shiprocket/track/:awb', async (req, res) => {
+    try {
+        const awb = req.params.awb;
+        console.log(`📦 Tracking shipment: ${awb}`);
+
+        const trackingInfo = await shiprocket.trackShipment(awb);
+
+        if (trackingInfo.success) {
+            res.json({ success: true, tracking: trackingInfo });
+        } else {
+            res.status(404).json({ success: false, message: trackingInfo.message });
+        }
+    } catch (error) {
+        console.error('❌ Tracking error:', error);
+        res.status(500).json({ success: false, message: 'Tracking failed' });
+    }
+});
+
+// Update order with tracking information
+app.post('/api/orders/:orderId/update-tracking', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { awb } = req.body;
+
+        if (!awb) {
+            return res.status(400).json({ success: false, message: 'AWB number required' });
+        }
+
+        // Get tracking info from Shiprocket
+        const trackingInfo = await shiprocket.trackShipment(awb);
+
+        if (!trackingInfo.success) {
+            return res.status(404).json({ success: false, message: 'Tracking not found' });
+        }
+
+        // Update order with tracking data
+        const updates = {
+            'shiprocket.awb': awb,
+            'tracking.currentStatus': trackingInfo.currentStatus,
+            'tracking.lastUpdate': trackingInfo.lastUpdate,
+            'tracking.lastUpdatedAt': new Date().toISOString()
+        };
+
+        // If delivered, update order status
+        if (trackingInfo.delivered) {
+            updates.status = 'Delivered';
+            updates.deliveredAt = new Date().toISOString();
+        }
+
+        const updated = await dataAccess.updateOrder(orderId, updates);
+
+        console.log(`✅ Tracking updated for ${orderId}: ${trackingInfo.currentStatus}`);
+        res.json({ success: true, order: updated, tracking: trackingInfo });
+
+    } catch (error) {
+        console.error('❌ Update tracking error:', error);
+        res.status(500).json({ success: false, message: 'Update failed' });
+    }
+});
+
+// Bulk update all active shipments
+app.post('/api/shiprocket/bulk-update', async (req, res) => {
+    try {
+        const dispatchedOrders = await dataAccess.getOrdersByStatus('Dispatched');
+        const updates = [];
+
+        for (const order of dispatchedOrders) {
+            if (order.shiprocket && order.shiprocket.awb) {
+                const awb = order.shiprocket.awb;
+                const trackingInfo = await shiprocket.trackShipment(awb);
+
+                if (trackingInfo.success) {
+                    const orderUpdates = {
+                        'tracking.currentStatus': trackingInfo.currentStatus,
+                        'tracking.lastUpdate': trackingInfo.lastUpdate,
+                        'tracking.lastUpdatedAt': new Date().toISOString()
+                    };
+
+                    if (trackingInfo.delivered) {
+                        orderUpdates.status = 'Delivered';
+                        orderUpdates.deliveredAt = new Date().toISOString();
+                    }
+
+                    await dataAccess.updateOrder(order.orderId, orderUpdates);
+                    updates.push({ orderId: order.orderId, status: trackingInfo.currentStatus });
+                }
+
+                // Add delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+
+        console.log(`✅ Bulk update completed: ${updates.length} orders updated`);
+        res.json({ success: true, updated: updates });
+
+    } catch (error) {
+        console.error('❌ Bulk update error:', error);
+        res.status(500).json({ success: false, message: 'Bulk update failed' });
+    }
+});
 
 // Start the application
 startServer().catch(err => {
