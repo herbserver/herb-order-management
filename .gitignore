@@ -6,7 +6,7 @@ package-lock.json
 .env
 
 # Data files (will use MongoDB instead)
-data/*.json
+# data/*.json  # TEMPORARY: Allowing data files until MongoDB migration complete
 
 # Logs
 *.log
