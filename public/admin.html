@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Employee Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 50%, #dfe4ea 100%);
+            min-height: 100vh;
+        }
+    </style>
+</head>
+
+<body class="p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">👤 Employee Management</h1>
+                    <p class="text-gray-500 mt-1">View and manage all employees</p>
+                </div>
+                <button onclick="window.location.href='/'"
+                    class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg font-semibold">
+                    ← Back to Login
+                </button>
+            </div>
+        </div>
+
+        <!-- Search -->
+        <div class="bg-white rounded-2xl shadow-lg p-4 mb-6">
+            <input type="text" id="searchEmployee" placeholder="🔍 Search by Name or ID..."
+                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 outline-none"
+                oninput="filterEmployees(this.value)">
+        </div>
+
+        <!-- Employee List -->
+        <div id="employeeList" class="space-y-4">
+            <!-- Employees will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Password Reset Modal -->
+    <div id="resetModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-4">🔑 Reset Password</h2>
+            <p class="text-gray-600 mb-4">Employee: <span id="resetEmpName" class="font-bold text-emerald-600"></span>
+            </p>
+            <p class="text-gray-600 mb-4">ID: <span id="resetEmpId" class="font-mono font-bold"></span></p>
+            <input type="password" id="newPassword" placeholder="New Password (min 6 chars)"
+                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:border-emerald-500 outline-none">
+            <input type="password" id="confirmPassword" placeholder="Confirm Password"
+                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-6 focus:border-emerald-500 outline-none">
+            <div class="flex gap-3">
+                <button onclick="closeResetModal()"
+                    class="flex-1 bg-gray-200 hover:bg-gray-300 px-4 py-3 rounded-xl font-bold">
+                    Cancel
+                </button>
+                <button onclick="resetPassword()"
+                    class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-xl font-bold">
+                    Reset Password
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Employee Modal -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-4">✏️ Edit Employee</h2>
+            <p class="text-gray-600 mb-4">Current ID: <span id="editCurrentId"
+                    class="font-mono font-bold text-blue-600"></span></p>
+
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Employee Name</label>
+            <input type="text" id="editName" placeholder="Employee Name"
+                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:border-blue-500 outline-none">
+
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Employee ID</label>
+            <input type="text" id="editNewId" placeholder="New Employee ID (Optional)"
+                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-2 focus:border-blue-500 outline-none">
+            <p class="text-xs text-gray-500 mb-6">⚠️ Changing ID will update all associated orders</p>
+
+            <div class="flex gap-3">
+                <button onclick="closeEditModal()"
+                    class="flex-1 bg-gray-200 hover:bg-gray-300 px-4 py-3 rounded-xl font-bold">
+                    Cancel
+                </button>
+                <button onclick="updateEmployee()"
+                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-xl font-bold">
+                    Update
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        let allEmployees = [];
+        let currentResetEmpId = null;
+
+        // Load employees on page load
+        loadEmployees();
+
+        async function loadEmployees() {
+            try {
+                const res = await fetch(`${API_URL}/api/employees`);
+                const data = await res.json();
+
+                if (data.success) {
+                    allEmployees = data.employees;
+                    displayEmployees(allEmployees);
+                } else {
+                    alert('Failed to load employees');
+                }
+            } catch (error) {
+                console.error('Error loading employees:', error);
+                alert('Error loading employees: ' + error.message);
+            }
+        }
+
+        function displayEmployees(employees) {
+            const container = document.getElementById('employeeList');
+
+            if (employees.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl p-8 text-center">
+                        <p class="text-gray-500">No employees found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = employees.map(emp => `
+                <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <h3 class="text-xl font-bold text-gray-800">${emp.name}</h3>
+                                <span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-bold">${emp.id}</span>
+                            </div>
+                            <p class="text-gray-500 text-sm mb-4">Created: ${new Date(emp.createdAt).toLocaleDateString()}</p>
+                            
+                            <!-- Order Stats -->
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-4">
+                                <div class="bg-gray-50 rounded-lg p-3 text-center">
+                                    <p class="text-2xl font-bold text-gray-800">${emp.totalOrders}</p>
+                                    <p class="text-xs text-gray-500">Total</p>
+                                </div>
+                                <div class="bg-red-50 rounded-lg p-3 text-center">
+                                    <p class="text-2xl font-bold text-red-600">${emp.pendingOrders}</p>
+                                    <p class="text-xs text-gray-500">Pending</p>
+                                </div>
+                                <div class="bg-blue-50 rounded-lg p-3 text-center">
+                                    <p class="text-2xl font-bold text-blue-600">${emp.verifiedOrders}</p>
+                                    <p class="text-xs text-gray-500">Verified</p>
+                                </div>
+                                <div class="bg-purple-50 rounded-lg p-3 text-center">
+                                    <p class="text-2xl font-bold text-purple-600">${emp.dispatchedOrders}</p>
+                                    <p class="text-xs text-gray-500">Dispatched</p>
+                                </div>
+                                <div class="bg-green-50 rounded-lg p-3 text-center">
+                                    <p class="text-2xl font-bold text-green-600">${emp.deliveredOrders}</p>
+                                    <p class="text-xs text-gray-500">Delivered</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="ml-4 flex flex-col gap-2">
+                            <button onclick="openEditModal('${emp.id}', '${emp.name}')" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap">
+                                ✏️ Edit
+                            </button>
+                            <button onclick="openResetModal('${emp.id}', '${emp.name}')" 
+                                    class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap">
+                                🔑 Reset Pass
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterEmployees(query) {
+            if (!query.trim()) {
+                displayEmployees(allEmployees);
+                return;
+            }
+
+            const filtered = allEmployees.filter(emp =>
+                emp.name.toLowerCase().includes(query.toLowerCase()) ||
+                emp.id.toLowerCase().includes(query.toLowerCase())
+            );
+
+            displayEmployees(filtered);
+        }
+
+        function openResetModal(empId, empName) {
+            currentResetEmpId = empId;
+            document.getElementById('resetEmpName').textContent = empName;
+            document.getElementById('resetEmpId').textContent = empId;
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('resetModal').classList.remove('hidden');
+        }
+
+        function closeResetModal() {
+            document.getElementById('resetModal').classList.add('hidden');
+            currentResetEmpId = null;
+        }
+
+        async function resetPassword() {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!newPassword || !confirmPassword) {
+                return alert('Please fill both password fields');
+            }
+
+            if (newPassword.length < 6) {
+                return alert('Password must be at least 6 characters long');
+            }
+
+            if (newPassword !== confirmPassword) {
+                return alert('Passwords do not match!');
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employeeId: currentResetEmpId,
+                        newPassword: newPassword
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('✅ Password reset successful!');
+                    closeResetModal();
+                } else {
+                    alert('❌ ' + (data.message || 'Password reset failed'));
+                }
+            } catch (error) {
+                console.error('Error resetting password:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeResetModal();
+                closeEditModal();
+            }
+        });
+
+        // Edit Employee Modal Functions
+        let currentEditEmpId = null;
+
+        function openEditModal(empId, empName) {
+            currentEditEmpId = empId;
+            document.getElementById('editCurrentId').textContent = empId;
+            document.getElementById('editName').value = empName;
+            document.getElementById('editNewId').value = '';
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            currentEditEmpId = null;
+        }
+
+        async function updateEmployee() {
+            const newName = document.getElementById('editName').value.trim();
+            const newId = document.getElementById('editNewId').value.trim();
+
+            if (!newName && !newId) {
+                return alert('Please provide at least name or new ID');
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/employees/${currentEditEmpId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: newName || undefined,
+                        newId: newId || undefined
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    closeEditModal();
+                    loadEmployees(); // Reload employee list
+                } else {
+                    alert('❌ ' + (data.message || 'Update failed'));
+                }
+            } catch (error) {
+                console.error('Error updating employee:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

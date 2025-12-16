@@ -36,12 +36,11 @@ const validateEmployeeRegistration = [
         .trim()
         .notEmpty().withMessage('Employee ID is required')
         .isLength({ min: 2, max: 20 }).withMessage('Employee ID must be 2-20 characters')
-        .matches(/^[A-Z0-9]+$/).withMessage('Employee ID should be uppercase alphanumeric'),
+        .matches(/^[A-Z0-9-]+$/).withMessage('Employee ID should be uppercase alphanumeric (hyphens allowed)'),
 
     body('password')
         .notEmpty().withMessage('Password is required')
-        .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain uppercase, lowercase, and number'),
+        .isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 
     handleValidationErrors
 ];
@@ -144,8 +143,7 @@ const validatePasswordReset = [
 
     body('newPassword')
         .notEmpty().withMessage('New password is required')
-        .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain uppercase, lowercase, and number'),
+        .isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 
     handleValidationErrors
 ];
