@@ -3,6 +3,8 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const xlsx = require('xlsx');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
@@ -13,15 +15,77 @@ const { connectDatabase, initializeDefaultData, Order, Department, ShiprocketCon
 const dataAccess = require('./dataAccess');
 const shiprocket = require('./shiprocket');
 
+// Import Security Utilities
+const { hashPassword, comparePassword, generateToken, authenticateToken, authorizeRole } = require('./auth');
+const {
+    validateEmployeeRegistration,
+    validateLogin,
+    validateDepartmentRegistration,
+    validateOrderCreation,
+    validatePasswordReset,
+    validateOrderId
+} = require('./validators');
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+
+// ==================== SECURITY MIDDLEWARE ====================
+
+// HTTP Security Headers
+app.use(helmet({
+    contentSecurityPolicy: false, // Disable for now, can be configured later
+    crossOriginEmbedderPolicy: false
+}));
+
+// CORS Configuration - Only allow specific origins
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : ['http://localhost:3000'];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, Postman, curl)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+    credentials: true
+}));
+
+// Rate Limiting for Login/Register endpoints (prevent brute force)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 requests per windowMs
+    message: {
+        success: false,
+        message: 'Too many attempts. Please try again after 15 minutes.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// General API rate limiting
+const apiLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 100, // Limit each IP to 100 requests per minute
+    message: {
+        success: false,
+        message: 'Too many requests. Please slow down.'
+    }
+});
+
+// Body parser middleware
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
-// Request Logger Middleware
+// Secure Request Logger (no sensitive data)
 app.use((req, res, next) => {
-    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+    const timestamp = new Date().toLocaleTimeString();
+    const method = req.method;
+    const url = req.url.split('?')[0]; // Remove query params from log
+    console.log(`[${timestamp}] ${method} ${url}`);
     next();
 });
 
@@ -109,65 +173,97 @@ module.exports.setDBStatus = setDBStatus;
 // ==================== EMPLOYEE APIs ====================
 
 // Register Employee
-app.post('/api/register', (req, res) => {
-    const { name, employeeId, password } = req.body;
+app.post('/api/register', authLimiter, validateEmployeeRegistration, async (req, res) => {
+    try {
+        const { name, employeeId, password } = req.body;
 
-    if (!name || !employeeId || !password) {
-        return res.status(400).json({ success: false, message: 'All fields required!' });
+        const employees = readJSON(EMPLOYEES_FILE, {});
+        const id = employeeId.toUpperCase();
+
+        if (employees[id]) {
+            return res.status(400).json({ success: false, message: `Employee ID (${id}) already exists!` });
+        }
+
+        // Hash password before storing
+        const hashedPassword = await hashPassword(password);
+
+        employees[id] = {
+            name,
+            password: hashedPassword,
+            createdAt: new Date().toISOString()
+        };
+        writeJSON(EMPLOYEES_FILE, employees);
+
+        console.log(`✅ New Employee Registered: ${name} (${id})`);
+        res.json({ success: true, message: 'Registration successful!', employee: { id, name } });
+    } catch (error) {
+        console.error('❌ Registration error:', error.message);
+        res.status(500).json({ success: false, message: 'Registration failed. Please try again.' });
     }
-
-    const employees = readJSON(EMPLOYEES_FILE, {});
-    const id = employeeId.toUpperCase();
-
-    if (employees[id]) {
-        return res.status(400).json({ success: false, message: `Employee ID (${id}) already exists!` });
-    }
-
-    employees[id] = { name, password, createdAt: new Date().toISOString() };
-    writeJSON(EMPLOYEES_FILE, employees);
-
-    console.log(`✅ New Employee Registered: ${name} (${id})`);
-    res.json({ success: true, message: 'Registration successful!', employee: { id, name } });
 });
 
 // Employee Login
-app.post('/api/login', (req, res) => {
-    const { employeeId, password } = req.body;
+app.post('/api/login', authLimiter, validateLogin, async (req, res) => {
+    try {
+        const { employeeId, password } = req.body;
 
-    if (!employeeId || !password) {
-        return res.status(400).json({ success: false, message: 'ID and Password required!' });
+        const employees = readJSON(EMPLOYEES_FILE, {});
+        const id = employeeId.toUpperCase();
+
+        if (!employees[id]) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+
+        // Verify hashed password
+        const isValidPassword = await comparePassword(password, employees[id].password);
+
+        if (!isValidPassword) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+
+        // Generate JWT token
+        const token = generateToken({
+            id,
+            name: employees[id].name,
+            role: 'employee'
+        });
+
+        console.log(`✅ Employee Login: ${employees[id].name} (${id})`);
+        res.json({
+            success: true,
+            message: 'Login successful!',
+            token,
+            employee: { id, name: employees[id].name }
+        });
+    } catch (error) {
+        console.error('❌ Login error:', error.message);
+        res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
     }
-
-    const employees = readJSON(EMPLOYEES_FILE, {});
-    const id = employeeId.toUpperCase();
-
-    if (!employees[id]) {
-        return res.status(401).json({ success: false, message: 'Employee ID not found!' });
-    }
-
-    if (employees[id].password !== password) {
-        return res.status(401).json({ success: false, message: 'Wrong Password!' });
-    }
-
-    console.log(`✅ Employee Login: ${employees[id].name} (${id})`);
-    res.json({ success: true, message: 'Login successful!', employee: { id, name: employees[id].name } });
 });
 
 // Reset Password
-app.post('/api/reset-password', (req, res) => {
-    const { employeeId, newPassword } = req.body;
+app.post('/api/reset-password', authLimiter, validatePasswordReset, async (req, res) => {
+    try {
+        const { employeeId, newPassword } = req.body;
 
-    const employees = readJSON(EMPLOYEES_FILE, {});
-    const id = employeeId.toUpperCase();
+        const employees = readJSON(EMPLOYEES_FILE, {});
+        const id = employeeId.toUpperCase();
 
-    if (!employees[id]) {
-        return res.status(404).json({ success: false, message: 'Employee not found!' });
+        if (!employees[id]) {
+            return res.status(404).json({ success: false, message: 'Employee not found!' });
+        }
+
+        // Hash new password
+        const hashedPassword = await hashPassword(newPassword);
+        employees[id].password = hashedPassword;
+        writeJSON(EMPLOYEES_FILE, employees);
+
+        console.log(`🔄 Password Reset: ${id}`);
+        res.json({ success: true, message: 'Password reset successful!' });
+    } catch (error) {
+        console.error('❌ Password reset error:', error.message);
+        res.status(500).json({ success: false, message: 'Password reset failed. Please try again.' });
     }
-
-    employees[id].password = newPassword;
-    writeJSON(EMPLOYEES_FILE, employees);
-
-    res.json({ success: true, message: 'Password reset successful!' });
 });
 
 // Get All Employees (for Admin)
@@ -231,13 +327,9 @@ app.get('/api/employees/:empId', (req, res) => {
 // ==================== DEPARTMENT APIs ====================
 
 // Register Department
-app.post('/api/departments/register', async (req, res) => {
+app.post('/api/departments/register', authLimiter, validateDepartmentRegistration, async (req, res) => {
     try {
         const { name, deptId, password, deptType } = req.body;
-
-        if (!name || !deptId || !password || !deptType) {
-            return res.status(400).json({ success: false, message: 'All fields required!' });
-        }
 
         const id = deptId.toUpperCase();
         const existing = await dataAccess.getDepartment(id);
@@ -246,44 +338,54 @@ app.post('/api/departments/register', async (req, res) => {
             return res.status(400).json({ success: false, message: `Department ID (${id}) already exists!` });
         }
 
-        await dataAccess.createDepartment(id, name, password, deptType);
+        // Hash password before storing
+        const hashedPassword = await hashPassword(password);
+        await dataAccess.createDepartment(id, name, hashedPassword, deptType);
 
         console.log(`✅ New Department Registered: ${name} (${id}) - Type: ${deptType}`);
         res.json({ success: true, message: 'Department registered!', department: { id, name, type: deptType } });
     } catch (error) {
-        console.error('❌ Department register error:', error);
-        res.status(500).json({ success: false, message: 'Server error during registration' });
+        console.error('❌ Department register error:', error.message);
+        res.status(500).json({ success: false, message: 'Registration failed. Please try again.' });
     }
 });
 
 // Department Login
-app.post('/api/departments/login', async (req, res) => {
+app.post('/api/departments/login', authLimiter, validateLogin, async (req, res) => {
     try {
         const { deptId, password, deptType } = req.body;
-
-        if (!deptId || !password) {
-            return res.status(400).json({ success: false, message: 'ID and Password required!' });
-        }
 
         const id = deptId.toUpperCase();
         const department = await dataAccess.getDepartment(id);
 
         if (!department) {
-            return res.status(401).json({ success: false, message: 'Department ID not found!' });
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        if (department.password !== password) {
-            return res.status(401).json({ success: false, message: 'Wrong Password!' });
+        // Verify hashed password
+        const isValidPassword = await comparePassword(password, department.password);
+
+        if (!isValidPassword) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
         if (department.departmentType !== deptType) {
             return res.status(401).json({ success: false, message: 'Wrong department type!' });
         }
 
+        // Generate JWT token
+        const token = generateToken({
+            id,
+            name: department.departmentName,
+            role: deptType,
+            type: 'department'
+        });
+
         console.log(`✅ Department Login: ${department.departmentName} (${id}) - ${deptType}`);
         res.json({
             success: true,
             message: 'Login successful!',
+            token,
             department: {
                 id,
                 name: department.departmentName,
@@ -291,8 +393,8 @@ app.post('/api/departments/login', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Department login error:', error);
-        res.status(500).json({ success: false, message: 'Server error during login' });
+        console.error('❌ Department login error:', error.message);
+        res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
     }
 });
 
@@ -367,8 +469,8 @@ app.delete('/api/departments/:deptId', (req, res) => {
 
 // ==================== ORDER APIs ====================
 
-// Create Order (Employee)
-app.post('/api/orders', async (req, res) => {
+// Create Order (Employee) - Protected with JWT
+app.post('/api/orders', authenticateToken, apiLimiter, validateOrderCreation, async (req, res) => {
     try {
         const orderData = req.body;
         const config = await dataAccess.getShiprocketConfig();
@@ -384,16 +486,17 @@ app.post('/api/orders', async (req, res) => {
             status: 'Pending',
             tracking: null,
             deliveryRequested: false,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            createdBy: req.user.id // Track who created the order
         };
 
         await dataAccess.createOrder(newOrder);
 
-        console.log(`📦 New Order: ${orderId} by ${orderData.employee} (${orderData.employeeId}) - Status: Pending`);
+        console.log(`📦 New Order: ${orderId} by ${orderData.employee} (${orderData.employeeId})`);
         res.json({ success: true, message: 'Order saved!', orderId });
     } catch (error) {
-        console.error('❌ Create order error:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        console.error('❌ Create order error:', error.message);
+        res.status(500).json({ success: false, message: 'Failed to create order. Please try again.' });
     }
 });
 
