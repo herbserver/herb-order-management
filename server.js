@@ -272,26 +272,31 @@ app.post('/api/reset-password', async (req, res) => {
     }
 });
 
-// Get All Employees (for Admin)
-app.get('/api/employees', (req, res) => {
-    const employees = readJSON(EMPLOYEES_FILE, {});
-    const orders = readJSON(ORDERS_FILE, []);
+// Get All Employees (for Admin) - FIXED: Now uses MongoDB
+app.get('/api/employees', async (req, res) => {
+    try {
+        const employees = readJSON(EMPLOYEES_FILE, {});
+        const orders = await dataAccess.getAllOrders(); // ✅ Fixed: Use MongoDB instead of JSON
 
-    const employeeList = Object.entries(employees).map(([id, data]) => {
-        const empOrders = orders.filter(o => o.employeeId === id);
-        return {
-            id,
-            name: data.name,
-            createdAt: data.createdAt,
-            totalOrders: empOrders.length,
-            pendingOrders: empOrders.filter(o => o.status === 'Pending').length,
-            verifiedOrders: empOrders.filter(o => o.status === 'Address Verified').length,
-            dispatchedOrders: empOrders.filter(o => o.status === 'Dispatched').length,
-            deliveredOrders: empOrders.filter(o => o.status === 'Delivered').length
-        };
-    });
+        const employeeList = Object.entries(employees).map(([id, data]) => {
+            const empOrders = orders.filter(o => o.employeeId === id);
+            return {
+                id,
+                name: data.name,
+                createdAt: data.createdAt,
+                totalOrders: empOrders.length,
+                pendingOrders: empOrders.filter(o => o.status === 'Pending').length,
+                verifiedOrders: empOrders.filter(o => o.status === 'Address Verified').length,
+                dispatchedOrders: empOrders.filter(o => o.status === 'Dispatched').length,
+                deliveredOrders: empOrders.filter(o => o.status === 'Delivered').length
+            };
+        });
 
-    res.json({ success: true, employees: employeeList });
+        res.json({ success: true, employees: employeeList });
+    } catch (error) {
+        console.error('❌ Get employees error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Get Single Employee with Orders (for Admin Profile View)
@@ -656,6 +661,24 @@ app.get('/api/orders/employee/:empId', async (req, res) => {
         res.json({ success: true, orders: empOrders });
     } catch (error) {
         console.error('❌ Get employee orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Delete Order (Admin)
+app.delete('/api/orders/:orderId', async (req, res) => {
+    try {
+        const orderId = req.params.orderId;
+        const deleted = await dataAccess.deleteOrder(orderId);
+
+        if (!deleted) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`🗑️ Order Deleted: ${orderId}`);
+        res.json({ success: true, message: 'Order deleted completely!' });
+    } catch (error) {
+        console.error('❌ Delete order error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

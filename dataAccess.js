@@ -156,6 +156,21 @@ async function updateOrder(orderId, updates) {
     return null;
 }
 
+async function deleteOrder(orderId) {
+    if (mongoConnected) {
+        return await Order.findOneAndDelete({ orderId });
+    }
+    // Fallback to JSON
+    const orders = readJSONFile(path.join(__dirname, 'data', 'orders.json'), []);
+    const index = orders.findIndex(o => o.orderId === orderId);
+    if (index !== -1) {
+        orders.splice(index, 1);
+        writeJSONFile(path.join(__dirname, 'data', 'orders.json'), orders);
+        return true;
+    }
+    return false;
+}
+
 // ==================== SHIPROCKET CONFIG ====================
 
 async function getShiprocketConfig() {
@@ -237,6 +252,7 @@ module.exports = {
     getOrdersByStatus,
     createOrder,
     updateOrder,
+    deleteOrder, // ✅ Added delete function
     // Shiprocket
     getShiprocketConfig,
     updateShiprocketConfig

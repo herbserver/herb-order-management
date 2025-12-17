@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Employee Management</title>
+    <title>Admin - Management Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
@@ -17,17 +17,23 @@
             background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 50%, #dfe4ea 100%);
             min-height: 100vh;
         }
+
+        .tab-active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
     </style>
 </head>
 
 <body class="p-6">
-    <div class="max-w-6xl mx-auto">
+    <div class="max-w-7xl mx-auto">
         <!-- Header -->
         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-800">👤 Employee Management</h1>
-                    <p class="text-gray-500 mt-1">View and manage all employees</p>
+                    <h1 class="text-3xl font-bold text-gray-800">🛡️ Admin Panel</h1>
+                    <p class="text-gray-500 mt-1">Employee & Order Management</p>
                 </div>
                 <button onclick="window.location.href='/'"
                     class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg font-semibold">
@@ -36,20 +42,53 @@
             </div>
         </div>
 
-        <!-- Search -->
-        <div class="bg-white rounded-2xl shadow-lg p-4 mb-6">
-            <input type="text" id="searchEmployee" placeholder="🔍 Search by Name or ID..."
-                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 outline-none"
-                oninput="filterEmployees(this.value)">
+        <!-- Tabs -->
+        <div class="bg-white rounded-2xl shadow-lg p-2 mb-6 flex gap-2">
+            <button onclick="switchTab('employees')" id="tab-employees"
+                class="flex-1 px-6 py-3 rounded-xl font-bold transition-all tab-active">
+                👤 Employees
+            </button>
+            <button onclick="switchTab('orders')" id="tab-orders"
+                class="flex-1 px-6 py-3 rounded-xl font-bold transition-all bg-gray-100 text-gray-600">
+                📦 Orders
+            </button>
         </div>
 
-        <!-- Employee List -->
-        <div id="employeeList" class="space-y-4">
-            <!-- Employees will be loaded here -->
+        <!-- Employees Tab -->
+        <div id="employees-tab" class="">
+            <!-- Search -->
+            <div class="bg-white rounded-2xl shadow-lg p-4 mb-6">
+                <input type="text" id="searchEmployee" placeholder="🔍 Search by Name or ID..."
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 outline-none"
+                    oninput="filterEmployees(this.value)">
+            </div>
+
+            <!-- Employee List -->
+            <div id="employeeList" class="space-y-4">
+                <!-- Employees will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Orders Tab -->
+        <div id="orders-tab" class="hidden">
+            <!-- Search -->
+            <div class="bg-white rounded-2xl shadow-lg p-4 mb-6">
+                <input type="text" id="searchOrder" placeholder="🔍 Search by Order ID or Customer..."
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                    oninput="filterOrders(this.value)">
+            </div>
+
+            <!-- Order Stats -->
+            <div id="orderStats" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6"></div>
+
+            <!-- Order List -->
+            <div id="orderList" class="space-y-4">
+                <!-- Orders will be loaded here -->
+            </div>
         </div>
     </div>
 
-    <!-- Password Reset Modal -->
+    <!-- Employee Modals (Password Reset & Edit) - Same as before -->
     <div id="resetModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
             <h2 class="text-2xl font-bold mb-4">🔑 Reset Password</h2>
@@ -73,22 +112,18 @@
         </div>
     </div>
 
-    <!-- Edit Employee Modal -->
     <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
             <h2 class="text-2xl font-bold mb-4">✏️ Edit Employee</h2>
             <p class="text-gray-600 mb-4">Current ID: <span id="editCurrentId"
                     class="font-mono font-bold text-blue-600"></span></p>
-
             <label class="block text-sm font-semibold text-gray-700 mb-2">Employee Name</label>
             <input type="text" id="editName" placeholder="Employee Name"
                 class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:border-blue-500 outline-none">
-
             <label class="block text-sm font-semibold text-gray-700 mb-2">Employee ID</label>
             <input type="text" id="editNewId" placeholder="New Employee ID (Optional)"
                 class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-2 focus:border-blue-500 outline-none">
             <p class="text-xs text-gray-500 mb-6">⚠️ Changing ID will update all associated orders</p>
-
             <div class="flex gap-3">
                 <button onclick="closeEditModal()"
                     class="flex-1 bg-gray-200 hover:bg-gray-300 px-4 py-3 rounded-xl font-bold">
@@ -105,11 +140,38 @@
     <script>
         const API_URL = window.location.origin;
         let allEmployees = [];
+        let allOrders = [];
         let currentResetEmpId = null;
+        let currentEditEmpId = null;
 
-        // Load employees on page load
-        loadEmployees();
+        // Initialize
+        switchTab('employees');
 
+        function switchTab(tab) {
+            // Update tab buttons
+            document.getElementById('tab-employees').classList.remove('tab-active');
+            document.getElementById('tab-employees').classList.add('bg-gray-100', 'text-gray-600');
+            document.getElementById('tab-orders').classList.remove('tab-active');
+            document.getElementById('tab-orders').classList.add('bg-gray-100', 'text-gray-600');
+
+            // Show/hide content
+            document.getElementById('employees-tab').classList.add('hidden');
+            document.getElementById('orders-tab').classList.add('hidden');
+
+            if (tab === 'employees') {
+                document.getElementById('tab-employees').classList.add('tab-active');
+                document.getElementById('tab-employees').classList.remove('bg-gray-100', 'text-gray-600');
+                document.getElementById('employees-tab').classList.remove('hidden');
+                loadEmployees();
+            } else {
+                document.getElementById('tab-orders').classList.add('tab-active');
+                document.getElementById('tab-orders').classList.remove('bg-gray-100', 'text-gray-600');
+                document.getElementById('orders-tab').classList.remove('hidden');
+                loadOrders();
+            }
+        }
+
+        // ==================== EMPLOYEES ====================
         async function loadEmployees() {
             try {
                 const res = await fetch(`${API_URL}/api/employees`);
@@ -204,6 +266,7 @@
             displayEmployees(filtered);
         }
 
+        // Employee modal functions (same as before)
         function openResetModal(empId, empName) {
             currentResetEmpId = empId;
             document.getElementById('resetEmpName').textContent = empName;
@@ -222,30 +285,18 @@
             const newPassword = document.getElementById('newPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
 
-            if (!newPassword || !confirmPassword) {
-                return alert('Please fill both password fields');
-            }
-
-            if (newPassword.length < 6) {
-                return alert('Password must be at least 6 characters long');
-            }
-
-            if (newPassword !== confirmPassword) {
-                return alert('Passwords do not match!');
-            }
+            if (!newPassword || !confirmPassword) return alert('Please fill both password fields');
+            if (newPassword.length < 6) return alert('Password must be at least 6 characters long');
+            if (newPassword !== confirmPassword) return alert('Passwords do not match!');
 
             try {
                 const res = await fetch(`${API_URL}/api/reset-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        employeeId: currentResetEmpId,
-                        newPassword: newPassword
-                    })
+                    body: JSON.stringify({ employeeId: currentResetEmpId, newPassword })
                 });
 
                 const data = await res.json();
-
                 if (data.success) {
                     alert('✅ Password reset successful!');
                     closeResetModal();
@@ -253,21 +304,9 @@
                     alert('❌ ' + (data.message || 'Password reset failed'));
                 }
             } catch (error) {
-                console.error('Error resetting password:', error);
                 alert('Error: ' + error.message);
             }
         }
-
-        // Close modal on escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeResetModal();
-                closeEditModal();
-            }
-        });
-
-        // Edit Employee Modal Functions
-        let currentEditEmpId = null;
 
         function openEditModal(empId, empName) {
             currentEditEmpId = empId;
@@ -286,34 +325,165 @@
             const newName = document.getElementById('editName').value.trim();
             const newId = document.getElementById('editNewId').value.trim();
 
-            if (!newName && !newId) {
-                return alert('Please provide at least name or new ID');
-            }
+            if (!newName && !newId) return alert('Please provide at least name or new ID');
 
             try {
                 const res = await fetch(`${API_URL}/api/employees/${currentEditEmpId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: newName || undefined,
-                        newId: newId || undefined
-                    })
+                    body: JSON.stringify({ name: newName || undefined, newId: newId || undefined })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    closeEditModal();
+                    loadEmployees();
+                } else {
+                    alert('❌ ' + (data.message || 'Update failed'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // ==================== ORDERS ====================
+        async function loadOrders() {
+            try {
+                const res = await fetch(`${API_URL}/api/orders`);
+                const data = await res.json();
+
+                if (data.success) {
+                    allOrders = data.orders;
+                    displayOrderStats(allOrders);
+                    displayOrders(allOrders);
+                } else {
+                    alert('Failed to load orders');
+                }
+            } catch (error) {
+                console.error('Error loading orders', error);
+                alert('Error loading orders: ' + error.message);
+            }
+        }
+
+        function displayOrderStats(orders) {
+            const stats = {
+                total: orders.length,
+                pending: orders.filter(o => o.status === 'Pending').length,
+                verified: orders.filter(o => o.status === 'Address Verified').length,
+                dispatched: orders.filter(o => o.status === 'Dispatched').length,
+                delivered: orders.filter(o => o.status === 'Delivered').length
+            };
+
+            document.getElementById('orderStats').innerHTML = `
+                <div class="bg-white rounded-xl p-4 shadow">
+                    <p class="text-3xl font-bold text-gray-800">${stats.total}</p>
+                    <p class="text-sm text-gray-500">Total Orders</p>
+                </div>
+                <div class="bg-red-50 rounded-xl p-4 shadow">
+                    <p class="text-3xl font-bold text-red-600">${stats.pending}</p>
+                    <p class="text-sm text-gray-500">Pending</p>
+                </div>
+                <div class="bg-blue-50 rounded-xl p-4 shadow">
+                    <p class="text-3xl font-bold text-blue-600">${stats.verified}</p>
+                    <p class="text-sm text-gray-500">Verified</p>
+                </div>
+                <div class="bg-purple-50 rounded-xl p-4 shadow">
+                    <p class="text-3xl font-bold text-purple-600">${stats.dispatched}</p>
+                    <p class="text-sm text-gray-500">Dispatched</p>
+                </div>
+                <div class="bg-green-50 rounded-xl p-4 shadow">
+                    <p class="text-3xl font-bold text-green-600">${stats.delivered}</p>
+                    <p class="text-sm text-gray-500">Delivered</p>
+                </div>
+            `;
+        }
+
+        function displayOrders(orders) {
+            const container = document.getElementById('orderList');
+
+            if (orders.length === 0) {
+                container.innerHTML = '<div class="bg-white rounded-2xl p-8 text-center"><p class="text-gray-500">No orders found</p></div>';
+                return;
+            }
+
+            container.innerHTML = orders.map(order => {
+                const statusColors = {
+                    'Pending': 'bg-red-100 text-red-700',
+                    'Address Verified': 'bg-blue-100 text-blue-700',
+                    'Dispatched': 'bg-purple-100 text-purple-700',
+                    'Delivered': 'bg-green-100 text-green-700'
+                };
+
+                return `
+                    <div class="bg-white rounded-xl shadow p-4">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <h3 class="text-lg font-bold">${order.orderId}</h3>
+                                    <span class="px-3 py-1 rounded-full text-sm font-bold ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}">${order.status}</span>
+                                </div>
+                                <p class="text-gray-600 text-sm"><strong>Customer:</strong> ${order.customerName}</p>
+                                <p class="text-gray-600 text-sm"><strong>Employee:</strong> ${order.employee} (${order.employeeId})</p>
+                                <p class="text-gray-600 text-sm"><strong>Mobile:</strong> ${order.telNo}</p>
+                                <p class="text-gray-600 text-sm"><strong>Amount:</strong> ₹${order.total}</p>
+                                <p class="text-gray-500 text-xs mt-2">${new Date(order.timestamp).toLocaleString()}</p>
+                            </div>
+                            <button onclick="deleteOrder('${order.orderId}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterOrders(query) {
+            if (!query.trim()) {
+                displayOrders(allOrders);
+                return;
+            }
+
+            const filtered = allOrders.filter(order =>
+                order.orderId.toLowerCase().includes(query.toLowerCase()) ||
+                order.customerName.toLowerCase().includes(query.toLowerCase()) ||
+                order.telNo.includes(query)
+            );
+
+            displayOrders(filtered);
+        }
+
+        async function deleteOrder(orderId) {
+            if (!confirm(`Are you sure you want to DELETE order ${orderId}?\n\nThis action cannot be undone!`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
+                    method: 'DELETE'
                 });
 
                 const data = await res.json();
 
                 if (data.success) {
-                    alert('✅ ' + data.message);
-                    closeEditModal();
-                    loadEmployees(); // Reload employee list
+                    alert('✅ Order deleted successfully!');
+                    loadOrders(); // Reload list
                 } else {
-                    alert('❌ ' + (data.message || 'Update failed'));
+                    alert('❌ ' + (data.message || 'Delete failed'));
                 }
             } catch (error) {
-                console.error('Error updating employee:', error);
+                console.error('Error deleting order:', error);
                 alert('Error: ' + error.message);
             }
         }
+
+        // Close modals on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeResetModal();
+                closeEditModal();
+            }
+        });
     </script>
 </body>
 
