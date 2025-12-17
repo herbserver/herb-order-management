@@ -37,6 +37,7 @@ const connectDB = async () => {
 };
 
 const migrateEmployees = async () => {
+    const today = '2025-12-17'; // Today's date
     // Check multiple paths for employees
     const paths = [
         path.join(__dirname, 'data', 'employees.json'),
@@ -66,35 +67,46 @@ const migrateEmployees = async () => {
         }
     }
 
-    const employees = Object.values(employeeData);
-    if (employees.length === 0) {
-        console.warn('⚠️ No employees found to migrate.');
-        return;
-    }
-
-    console.log(`Processing ${employees.length} unique employees...`);
-    const Employee = mongoose.model('Employee', EmployeeSchema);
-
-    let success = 0;
-    let errors = 0;
-
-    for (const emp of employees) {
+    // Filter for TODAY's employees only
+    console.log(`Filtering ${Object.keys(employeeData).length} total employees for date ${today}...`);
+    const employees = Object.values(employeeData).filter(emp => {
+        if (!emp) return false;
         try {
-            await Employee.updateOne(
-                { employeeId: emp.employeeId },
-                { $set: emp },
-                { upsert: true }
-            );
-            success++;
+            if (!emp.createdAt) return false;
+            return String(emp.createdAt).startsWith(today);
         } catch (e) {
-            console.error(`Error migrating employee ${emp.employeeId}:`, e.message);
-            errors++;
+            return false;
         }
+    });
+
+    if (employees.length === 0) {
+        console.warn(`⚠️ No employees found created on ${today}.`);
+    } else {
+        console.log(`Processing ${employees.length} employees created on ${today}...`);
+        const Employee = mongoose.model('Employee', EmployeeSchema);
+
+        let success = 0;
+        let errors = 0;
+
+        for (const emp of employees) {
+            try {
+                await Employee.updateOne(
+                    { employeeId: emp.employeeId },
+                    { $set: emp },
+                    { upsert: true }
+                );
+                success++;
+            } catch (e) {
+                console.error(`Error migrating employee ${emp.employeeId}:`, e.message);
+                errors++;
+            }
+        }
+        console.log(`✅ Employees Migrated: ${success}, Errors: ${errors}`);
     }
-    console.log(`✅ Employees Migrated: ${success}, Errors: ${errors}`);
 };
 
 const migrateOrders = async () => {
+    const today = '2025-12-17'; // Today's date
     // Check multiple possible locations for orders
     // Added 'data/New folder/orders.json' as primary source since main one was empty
     const possiblePaths = [
@@ -114,9 +126,6 @@ const migrateOrders = async () => {
                     orders = orders.concat(data.orders);
                 } else if (Array.isArray(data)) {
                     orders = orders.concat(data);
-                } else if (data.General) {
-                    // Skip raw Excel dump format for now unless essential
-                    console.log('Skipping raw Excel dump format in', p);
                 }
             } catch (e) {
                 console.warn(`Failed to read ${p}: ${e.message}`);
@@ -129,10 +138,41 @@ const migrateOrders = async () => {
         return;
     }
 
-    // Remove duplicates based on orderId
-    const uniqueOrders = Array.from(new Map(orders.map(item => [item.orderId, item])).values());
+    // Sanitize orders first
+    const validOrders = orders.filter(o => o && o.orderId);
+    console.log(`Found ${validOrders.length} valid orders (from ${orders.length} total raw items)`);
 
-    console.log(`Processing ${uniqueOrders.length} unique orders...`);
+    // Remove duplicates based on orderId
+    // Filter for TODAY's orders only
+    const uniqueOrders = Array.from(new Map(validOrders.map(item => [item.orderId, item])).values())
+        .filter(order => {
+            if (!order) return false;
+
+            // Check date field (YYYY-MM-DD string)
+            const dateMatch = order.date === today;
+
+            // Check timestamp safely
+            let tsMatch = false;
+            if (order.timestamp) {
+                try {
+                    const dateObj = new Date(order.timestamp);
+                    if (!isNaN(dateObj.getTime())) {
+                        tsMatch = dateObj.toISOString().startsWith(today);
+                    }
+                } catch (e) {
+                    // Ignore invalid dates
+                }
+            }
+
+            return dateMatch || tsMatch;
+        });
+
+    if (uniqueOrders.length === 0) {
+        console.warn(`⚠️ No orders found for ${today}.`);
+        return;
+    }
+
+    console.log(`Processing ${uniqueOrders.length} orders from ${today}...`);
     const Order = mongoose.model('Order', OrderSchema);
 
     let success = 0;
