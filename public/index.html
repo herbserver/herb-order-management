@@ -2056,6 +2056,29 @@
             }
         }
 
+        // Load Admin Panel Data
+        async function loadAdminData() {
+            try {
+                // Load employee statistics
+                const empRes = await fetch(`${API_URL}/employees`);
+                const empData = await empRes.json();
+                
+                if (empData.success && empData.employees) {
+                    console.log(`✅ Loaded ${empData.employees.length} employees`);
+                    // Update UI with employee data if needed
+                    // This function can be expanded based on what admin panel displays
+                }
+                
+                // You can add more data loading here like:
+                // - Load all orders
+                // - Load department stats
+                // - Load system metrics
+                
+            } catch (error) {
+                console.error('❌ Error loading admin data:', error);
+            }
+        }
+
         function showAdminPanel() {
             document.querySelectorAll('#app> div').forEach(d => d.classList.add('hidden'));
             document.getElementById('adminPanel').classList.remove('hidden');
