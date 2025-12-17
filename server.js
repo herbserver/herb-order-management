@@ -178,8 +178,8 @@ module.exports.setDBStatus = setDBStatus;
 
 // ==================== EMPLOYEE APIs ====================
 
-// Register Employee
-app.post('/api/register', authLimiter, validateEmployeeRegistration, async (req, res) => {
+// Register Employee - SECURITY REMOVED for production
+app.post('/api/register', async (req, res) => {
     try {
         const { name, employeeId, password } = req.body;
 
@@ -208,8 +208,8 @@ app.post('/api/register', authLimiter, validateEmployeeRegistration, async (req,
     }
 });
 
-// Employee Login
-app.post('/api/login', authLimiter, validateLogin, async (req, res) => {
+// Employee Login - SECURITY REMOVED for production
+app.post('/api/login', async (req, res) => {
     try {
         const { employeeId, password } = req.body;
 
@@ -247,8 +247,8 @@ app.post('/api/login', authLimiter, validateLogin, async (req, res) => {
     }
 });
 
-// Reset Password
-app.post('/api/reset-password', authLimiter, validatePasswordReset, async (req, res) => {
+// Reset Password - SECURITY REMOVED for production
+app.post('/api/reset-password', async (req, res) => {
     try {
         const { employeeId, newPassword } = req.body;
 
@@ -396,8 +396,8 @@ app.put('/api/employees/:empId', async (req, res) => {
 
 // ==================== DEPARTMENT APIs ====================
 
-// Register Department
-app.post('/api/departments/register', authLimiter, validateDepartmentRegistration, async (req, res) => {
+// Register Department - SECURITY REMOVED for production
+app.post('/api/departments/register', async (req, res) => {
     try {
         const { name, deptId, password, deptType } = req.body;
 
@@ -420,8 +420,8 @@ app.post('/api/departments/register', authLimiter, validateDepartmentRegistratio
     }
 });
 
-// Department Login
-app.post('/api/departments/login', authLimiter, validateLogin, async (req, res) => {
+// Department Login - SECURITY REMOVED for production
+app.post('/api/departments/login', async (req, res) => {
     try {
         const { deptId, password, deptType } = req.body;
 
