@@ -1,163 +1,174 @@
-// Data Migration Script - Upload Local JSON to MongoDB
-require('dotenv').config();
-const mongoose = require('mongoose');
 const fs = require('fs');
+const mongoose = require('mongoose');
 const path = require('path');
-const { Order, Department, ShiprocketConfig } = require('./models');
+require('dotenv').config();
 
-// File paths
-const DATA_DIR = path.join(__dirname, 'data');
-const EMPLOYEES_FILE = path.join(DATA_DIR, 'employees.json');
-const DEPARTMENTS_FILE = path.join(DATA_DIR, 'departments.json');
-const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
-const SHIPROCKET_CONFIG_FILE = path.join(DATA_DIR, 'shiprocket_config.json');
+// Mongoose Models Schemas (Simplified for migration)
+const EmployeeSchema = new mongoose.Schema({
+    employeeId: { type: String, required: true, unique: true },
+    password: { type: String },
+    full_name: { type: String },
+    email: { type: String },
+    phone: { type: String },
+    role: { type: String },
+    department: { type: String },
+    createdAt: { type: Date, default: Date.now }
+}, { strict: false });
 
-// Helper to read JSON
-function readJSON(filePath, defaultValue = []) {
+const OrderSchema = new mongoose.Schema({
+    orderId: { type: String, required: true, unique: true },
+    status: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+    // Allow any other fields
+}, { strict: false });
+
+// Reusable connection logic
+const connectDB = async () => {
     try {
-        if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf8');
-            return JSON.parse(data);
+        if (!process.env.MONGODB_URI) {
+            throw new Error('MONGODB_URI is not defined in .env');
         }
-        console.warn(`⚠️ File not found: ${filePath}`);
-        return defaultValue;
-    } catch (error) {
-        console.error(`❌ Error reading ${filePath}:`, error.message);
-        return defaultValue;
-    }
-}
-
-async function migrateData() {
-    try {
-        console.log('🚀 Starting Data Migration to MongoDB...\n');
-
-        // Connect to MongoDB
-        const mongoURI = process.env.MONGODB_URI;
-        if (!mongoURI) {
-            throw new Error('MONGODB_URI not found in .env file!');
-        }
-
-        console.log('📡 Connecting to MongoDB...');
-        await mongoose.connect(mongoURI);
-        console.log('✅ Connected to MongoDB Atlas!\n');
-
-        // Read local data
-        console.log('📂 Reading local data files...');
-        const employees = readJSON(EMPLOYEES_FILE, {});
-        const departments = readJSON(DEPARTMENTS_FILE, {});
-        const orders = readJSON(ORDERS_FILE, []);
-        const shiprocketConfig = readJSON(SHIPROCKET_CONFIG_FILE, {});
-
-        console.log(`   - Employees: ${Object.keys(employees).length}`);
-        console.log(`   - Departments: ${Object.keys(departments).length}`);
-        console.log(`   - Orders: ${orders.length}`);
-        console.log(`   - Shiprocket Config: ${shiprocketConfig.enabled ? 'Yes' : 'No'}\n`);
-
-        // Migrate Departments (includes Employees within departments)
-        console.log('📦 Migrating Departments...');
-        let deptCount = 0;
-        for (const [deptId, dept] of Object.entries(departments)) {
-            await Department.findOneAndUpdate(
-                { departmentId: deptId },
-                {
-                    departmentId: deptId,
-                    departmentName: dept.name || deptId,
-                    password: dept.password,
-                    departmentType: dept.type || 'verification',
-                    employees: dept.employees || {}
-                },
-                { upsert: true, new: true }
-            );
-            deptCount++;
-        }
-        console.log(`✅ Migrated ${deptCount} departments\n`);
-
-        // Migrate Orders
-        console.log('📦 Migrating Orders...');
-        let orderCount = 0;
-        for (const order of orders) {
-            await Order.findOneAndUpdate(
-                { orderId: order.orderId },
-                {
-                    orderId: order.orderId,
-                    customerName: order.customerName,
-                    phone: order.phone,
-                    alternatePhone: order.alternatePhone,
-                    address: order.address,
-                    postOffice: order.postOffice,
-                    pincode: order.pincode,
-                    district: order.district,
-                    state: order.state,
-                    tahTaluka: order.tahTaluka,
-                    product: order.product,
-                    quantity: order.quantity,
-                    price: order.price,
-                    status: order.status || 'Pending',
-                    timestamp: order.timestamp,
-                    employeeId: order.employeeId,
-                    employeeName: order.employeeName,
-                    verifiedBy: order.verifiedBy,
-                    verifiedAt: order.verifiedAt,
-                    verificationRemarks: order.verificationRemarks,
-                    dispatchedBy: order.dispatchedBy,
-                    dispatchedAt: order.dispatchedAt,
-                    courierName: order.courierName,
-                    trackingNumber: order.trackingNumber,
-                    deliveredAt: order.deliveredAt,
-                    deliveryRequestedBy: order.deliveryRequestedBy,
-                    deliveryApprovedBy: order.deliveryApprovedBy,
-                    shiprocket: order.shiprocket
-                },
-                { upsert: true, new: true }
-            );
-            orderCount++;
-            if (orderCount % 50 === 0) {
-                console.log(`   Processed ${orderCount} orders...`);
-            }
-        }
-        console.log(`✅ Migrated ${orderCount} orders\n`);
-
-        // Migrate Shiprocket Config
-        if (shiprocketConfig && shiprocketConfig.enabled !== undefined) {
-            console.log('📦 Migrating Shiprocket Configuration...');
-            await ShiprocketConfig.findOneAndUpdate(
-                { configId: 'main' },
-                {
-                    configId: 'main',
-                    enabled: shiprocketConfig.enabled,
-                    apiEmail: shiprocketConfig.apiEmail || process.env.SHIPROCKET_API_EMAIL,
-                    apiPassword: shiprocketConfig.apiPassword || process.env.SHIPROCKET_API_PASSWORD,
-                    token: shiprocketConfig.token,
-                    tokenExpiry: shiprocketConfig.tokenExpiry,
-                    pickupAddress: shiprocketConfig.pickupAddress,
-                    defaultDimensions: shiprocketConfig.defaultDimensions,
-                    shiprocketOrderCounter: shiprocketConfig.shiprocketOrderCounter || 7417
-                },
-                { upsert: true, new: true }
-            );
-            console.log('✅ Migrated Shiprocket configuration\n');
-        }
-
-        // Summary
-        console.log('╔════════════════════════════════════════╗');
-        console.log('║   🎉 MIGRATION COMPLETED SUCCESSFULLY! ║');
-        console.log('╠════════════════════════════════════════╣');
-        console.log(`║  Departments:  ${deptCount.toString().padEnd(23)} ║`);
-        console.log(`║  Orders:       ${orderCount.toString().padEnd(23)} ║`);
-        console.log(`║  Shiprocket:   ${shiprocketConfig.enabled ? 'Enabled'.padEnd(23) : 'Disabled'.padEnd(23)} ║`);
-        console.log('╚════════════════════════════════════════╝');
-
-        await mongoose.disconnect();
-        console.log('\n✅ Disconnected from MongoDB. Migration complete!');
-        process.exit(0);
-
-    } catch (error) {
-        console.error('\n❌ Migration Failed:', error.message);
-        console.error(error);
-        await mongoose.disconnect();
+        await mongoose.connect(process.env.MONGODB_URI);
+        console.log('✅ Connected to MongoDB Atlas');
+    } catch (err) {
+        console.error('❌ MongoDB Connection Error:', err.message);
         process.exit(1);
     }
-}
+};
 
-// Run migration
-migrateData();
+const migrateEmployees = async () => {
+    // Check multiple paths for employees
+    const paths = [
+        path.join(__dirname, 'data', 'employees.json'),
+        path.join(__dirname, 'data', 'New folder', 'employees.json')
+    ];
+
+    let employeeData = {};
+    for (const p of paths) {
+        if (fs.existsSync(p)) {
+            try {
+                console.log(`Reading employees from: ${p}`);
+                const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+                // Merge data (handling both object and array formats if necessary)
+                if (data.employees && Array.isArray(data.employees)) {
+                    data.employees.forEach(e => employeeData[e.employeeId] = e);
+                } else if (Array.isArray(data)) {
+                    data.forEach(e => employeeData[e.employeeId] = e);
+                } else {
+                    // Object format: { "ID": { ... } }
+                    Object.entries(data).forEach(([id, details]) => {
+                        employeeData[id] = { ...details, employeeId: id };
+                    });
+                }
+            } catch (e) {
+                console.warn(`Failed to read ${p}: ${e.message}`);
+            }
+        }
+    }
+
+    const employees = Object.values(employeeData);
+    if (employees.length === 0) {
+        console.warn('⚠️ No employees found to migrate.');
+        return;
+    }
+
+    console.log(`Processing ${employees.length} unique employees...`);
+    const Employee = mongoose.model('Employee', EmployeeSchema);
+
+    let success = 0;
+    let errors = 0;
+
+    for (const emp of employees) {
+        try {
+            await Employee.updateOne(
+                { employeeId: emp.employeeId },
+                { $set: emp },
+                { upsert: true }
+            );
+            success++;
+        } catch (e) {
+            console.error(`Error migrating employee ${emp.employeeId}:`, e.message);
+            errors++;
+        }
+    }
+    console.log(`✅ Employees Migrated: ${success}, Errors: ${errors}`);
+};
+
+const migrateOrders = async () => {
+    // Check multiple possible locations for orders
+    // Added 'data/New folder/orders.json' as primary source since main one was empty
+    const possiblePaths = [
+        path.join(__dirname, 'data', 'New folder', 'orders.json'),
+        path.join(__dirname, 'data', 'orders.json'),
+        path.join(__dirname, 'data', 'Sale File 2025 All Orders.json')
+    ];
+
+    let orders = [];
+
+    for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+            try {
+                console.log(`Reading orders from: ${p}`);
+                const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+                if (data.orders && Array.isArray(data.orders)) {
+                    orders = orders.concat(data.orders);
+                } else if (Array.isArray(data)) {
+                    orders = orders.concat(data);
+                } else if (data.General) {
+                    // Skip raw Excel dump format for now unless essential
+                    console.log('Skipping raw Excel dump format in', p);
+                }
+            } catch (e) {
+                console.warn(`Failed to read ${p}: ${e.message}`);
+            }
+        }
+    }
+
+    if (orders.length === 0) {
+        console.warn('⚠️ No orders found to migrate.');
+        return;
+    }
+
+    // Remove duplicates based on orderId
+    const uniqueOrders = Array.from(new Map(orders.map(item => [item.orderId, item])).values());
+
+    console.log(`Processing ${uniqueOrders.length} unique orders...`);
+    const Order = mongoose.model('Order', OrderSchema);
+
+    let success = 0;
+    let errors = 0;
+
+    for (const order of uniqueOrders) {
+        try {
+            // Ensure timestamp is a valid date object
+            if (order.timestamp) {
+                order.timestamp = new Date(order.timestamp);
+            }
+
+            await Order.updateOne(
+                { orderId: order.orderId },
+                { $set: order },
+                { upsert: true }
+            );
+            success++;
+            if (success % 50 === 0) process.stdout.write('.');
+        } catch (e) {
+            errors++;
+        }
+    }
+    console.log(`\n✅ Orders Migrated: ${success}, Errors: ${errors}`);
+};
+
+const runMigration = async () => {
+    await connectDB();
+
+    console.log('\n--- STARTING DATA MIGRATION ---\n');
+    await migrateEmployees();
+    await migrateOrders();
+    console.log('\n--- MIGRATION COMPLETE ---');
+
+    await mongoose.connection.close();
+    process.exit(0);
+};
+
+runMigration();
