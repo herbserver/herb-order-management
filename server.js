@@ -35,21 +35,25 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false
 }));
 
-// CORS Configuration - Only allow specific origins
+// CORS Configuration - EMERGENCY: Temporarily allow all origins for presentation
+// TODO: Revert to strict origin checking after presentation
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-    : ['http://localhost:3000'];
+    : ['http://localhost:3000', 'https://herb-order-server.onrender.com'];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps, Postman, curl)
-        if (!origin) return callback(null, true);
-
-        if (allowedOrigins.indexOf(origin) === -1) {
-            const msg = 'The CORS policy for this site does not allow access from the specified origin.';
-            return callback(new Error(msg), false);
-        }
+        // EMERGENCY FIX: Allow all origins for presentation demo
+        // This is TEMPORARY - revert to strict checking after presentation
         return callback(null, true);
+        
+        // SECURE VERSION (use after presentation):
+        // if (!origin) return callback(null, true);
+        // if (allowedOrigins.indexOf(origin) === -1) {
+        //     const msg = 'The CORS policy for this site does not allow access from the specified origin.';
+        //     return callback(new Error(msg), false);
+        // }
+        // return callback(null, true);
     },
     credentials: true
 }));
