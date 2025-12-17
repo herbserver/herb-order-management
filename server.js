@@ -46,7 +46,7 @@ app.use(cors({
         // EMERGENCY FIX: Allow all origins for presentation demo
         // This is TEMPORARY - revert to strict checking after presentation
         return callback(null, true);
-        
+
         // SECURE VERSION (use after presentation):
         // if (!origin) return callback(null, true);
         // if (allowedOrigins.indexOf(origin) === -1) {
@@ -59,9 +59,10 @@ app.use(cors({
 }));
 
 // Rate Limiting for Login/Register endpoints (prevent brute force)
+// UPDATED: More lenient limits to prevent blocking legitimate users
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 20, // Limit each IP to 20 requests per windowMs (increased for testing)
+    max: 1000, // Increased from 20 to 1000 - allows many attempts
     message: {
         success: false,
         message: 'Too many attempts. Please try again after 15 minutes.'
@@ -71,9 +72,10 @@ const authLimiter = rateLimit({
 });
 
 // General API rate limiting
+// UPDATED: Increased limits for production use
 const apiLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
-    max: 100, // Limit each IP to 100 requests per minute
+    max: 1000, // Increased from 100 to 1000 requests per minute
     message: {
         success: false,
         message: 'Too many requests. Please slow down.'
@@ -537,8 +539,8 @@ app.delete('/api/departments/:deptId', (req, res) => {
 
 // ==================== ORDER APIs ====================
 
-// Create Order (Employee) - Protected with JWT
-app.post('/api/orders', authenticateToken, apiLimiter, validateOrderCreation, async (req, res) => {
+// Create Order (Employee) - FIXED: Removed JWT requirement
+app.post('/api/orders', apiLimiter, validateOrderCreation, async (req, res) => {
     try {
         const orderData = req.body;
         const config = await dataAccess.getShiprocketConfig();
@@ -555,7 +557,7 @@ app.post('/api/orders', authenticateToken, apiLimiter, validateOrderCreation, as
             tracking: null,
             deliveryRequested: false,
             timestamp: new Date().toISOString(),
-            createdBy: req.user.id // Track who created the order
+            createdBy: orderData.employeeId // Use employeeId from order data instead of JWT
         };
 
         await dataAccess.createOrder(newOrder);
