@@ -272,11 +272,19 @@ app.post('/api/reset-password', async (req, res) => {
     }
 });
 
-// Get All Employees (for Admin) - FIXED: Now uses MongoDB
+// Get All Employees (for Admin) - With fallback
 app.get('/api/employees', async (req, res) => {
     try {
         const employees = readJSON(EMPLOYEES_FILE, {});
-        const orders = await dataAccess.getAllOrders(); // ✅ Fixed: Use MongoDB instead of JSON
+
+        // Try MongoDB first, fallback to JSON if it fails
+        let orders = [];
+        try {
+            orders = await dataAccess.getAllOrders();
+        } catch (mongoError) {
+            console.warn('⚠️ MongoDB orders failed, using JSON fallback:', mongoError.message);
+            orders = readJSON(ORDERS_FILE, []);
+        }
 
         const employeeList = Object.entries(employees).map(([id, data]) => {
             const empOrders = orders.filter(o => o.employeeId === id);
@@ -292,10 +300,11 @@ app.get('/api/employees', async (req, res) => {
             };
         });
 
+        console.log(`✅ Loaded ${employeeList.length} employees`);
         res.json({ success: true, employees: employeeList });
     } catch (error) {
         console.error('❌ Get employees error:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 });
 
