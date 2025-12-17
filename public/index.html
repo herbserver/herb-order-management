@@ -2056,23 +2056,80 @@
             }
         }
 
-        // Load Admin Panel Data
+        // Load Admin Panel Data - COMPLETE VERSION
         async function loadAdminData() {
             try {
-                // Load employee statistics
-                const empRes = await fetch(`${API_URL}/employees`);
-                const empData = await empRes.json();
+                console.log('📊 Loading admin panel data...');
                 
-                if (empData.success && empData.employees) {
-                    console.log(`✅ Loaded ${empData.employees.length} employees`);
-                    // Update UI with employee data if needed
-                    // This function can be expanded based on what admin panel displays
+                // Fetch all data in parallel
+                const [employeesRes, ordersRes] = await Promise.all([
+                    fetch(`${API_URL}/employees`),
+                    fetch(`${API_URL}/orders`)
+                ]);
+                
+                const employeesData = await employeesRes.json();
+                const ordersData = await ordersRes.json();
+                
+                if (!employeesData.success || !ordersData.success) {
+                    console.error('❌ Failed to load admin data');
+                    return;
                 }
                 
-                // You can add more data loading here like:
-                // - Load all orders
-                // - Load department stats
-                // - Load system metrics
+                const employees = employeesData.employees || [];
+                const orders = ordersData.orders || [];
+                
+                console.log(`✅ Loaded ${employees.length} employees, ${orders.length} orders`);
+                
+                // Calculate statistics
+                const stats = {
+                    totalOrders: orders.length,
+                    totalRevenue: orders.reduce((sum, o) => sum + (o.total || 0), 0),
+                    avgOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + (o.total || 0), 0) / orders.length : 0,
+                    pendingOrders: orders.filter(o => o.status === 'Pending').length,
+                    verifiedOrders: orders.filter(o => o.status === 'Address Verified').length,
+                    dispatchedOrders: orders.filter(o => o.status === 'Dispatched').length,
+                    deliveredOrders: orders.filter(o => o.status === 'Delivered').length,
+                    totalEmployees: employees.length
+                };
+                
+                console.log('📈 Stats calculated:', stats);
+                
+                // Update UI elements if they exist
+                // Try common element IDs/classes that might show stats
+                const updateElement = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.textContent = value;
+                        console.log(`✅ Updated ${id}: ${value}`);
+                    }
+                };
+                
+                const updateElementByQuery = (selector, value) => {
+                    const el = document.querySelector(selector);
+                    if (el) {
+                        el.textContent = value;
+                        console.log(`✅ Updated ${selector}: ${value}`);
+                    }
+                };
+                
+                // Try to update various possible stat elements
+                updateElement('totalOrders', stats.totalOrders);
+                updateElement('totalRevenue', `₹${stats.totalRevenue}`);
+                updateElement('avgOrderValue', `₹${Math.round(stats.avgOrderValue)}`);
+                updateElement('pendingCount', stats.pendingOrders);
+                updateElement('verifiedCount', stats.verifiedOrders);
+                updateElement('dispatchedCount', stats.dispatchedOrders);
+                updateElement('deliveredCount', stats.deliveredOrders);
+                updateElement('totalEmployees', stats.totalEmployees);
+                
+                // Also log to console for manual checking
+                console.log('📊 Admin Panel Stats:');
+                console.log(`  Total Orders: ${stats.totalOrders}`);
+                console.log(`  Total Revenue: ₹${stats.totalRevenue}`);
+                console.log(`  Avg Order Value: ₹${Math.round(stats.avgOrderValue)}`);
+                console.log(`  Pending: ${stats.pendingOrders} | Verified: ${stats.verifiedOrders}`);
+                console.log(`  Dispatched: ${stats.dispatchedOrders} | Delivered: ${stats.deliveredOrders}`);
+                console.log(`  Total Employees: ${stats.totalEmployees}`);
                 
             } catch (error) {
                 console.error('❌ Error loading admin data:', error);

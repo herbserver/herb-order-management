@@ -558,8 +558,8 @@ app.post('/api/orders', apiLimiter, validateOrderCreation, async (req, res) => {
     try {
         const orderData = req.body;
         const config = await dataAccess.getShiprocketConfig();
-        const nextId = config.shiprocketOrderCounter || 7417;
-        const orderId = `HON${nextId.toString().padStart(4, '0')}`;
+        const nextId = config.shiprocketOrderCounter || 1; // Start from 1 for new format
+        const orderId = `Order ID-${nextId.toString().padStart(4, '0')}`; // Simple format!
 
         // Update counter
         await dataAccess.updateShiprocketConfig({ shiprocketOrderCounter: nextId + 1 });
