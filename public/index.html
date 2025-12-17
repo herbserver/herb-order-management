@@ -672,6 +672,21 @@
                     <div id="empProgressTable"></div>
                 </div>
             </div>
+
+            <!-- Cancelled Tab -->
+            <div id="empCancelledTab" class="hidden animate-fadeIn">
+                <div class="flex justify-between items-center mb-6 px-2">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span class="w-2 h-8 bg-red-500 rounded-full block"></span>
+                        ❌ Cancelled Orders
+                    </h2>
+                    <button type="button" onclick="loadMyCancelledOrders()"
+                        class="text-red-600 hover:bg-red-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div id="empCancelledList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+            </div>
         </div>
         <!--====================DEPARTMENT PANEL====================-->
         <div id="departmentPanel" class="hidden max-w-7xl mx-auto animate-fadeIn py-6 px-4">
@@ -744,6 +759,10 @@
                         <button type="button" onclick="switchVerificationTab('history')" id="verificationTabHistory"
                             class="px-6 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-white/60 transition-all flex items-center gap-2 whitespace-nowrap">
                             <span>📋</span> History
+                        </button>
+                        <button type="button" onclick="switchVerificationTab('cancelled')" id="verificationTabCancelled"
+                            class="px-6 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-white/60 transition-all flex items-center gap-2 whitespace-nowrap">
+                            <span>❌</span> Cancelled
                         </button>
                     </div>
                 </div>
@@ -874,7 +893,22 @@
                         </div>
                     </div>
 
-                    <div id="verificationHistoryList" class="space-y-4"></div>
+                    <div id="verificationHistoryList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+                </div>
+
+                <!-- CANCELLED ORDERS -->
+                <div class="mt-8">
+                    <div class="flex justify-between items-center mb-6 px-2">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <span class="w-2 h-8 bg-red-500 rounded-full block"></span>
+                            ❌ Cancelled Orders
+                        </h2>
+                        <button onclick="loadVerificationCancelled()" 
+                            class="px-4 py-2 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-colors">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    <div id="verificationCancelledList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
                 </div>
             </div>
 
@@ -1267,7 +1301,12 @@
                 <span>🎉</span> Delivered
                 <span id="deliveredCount" class="bg-green-500 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
             </button>
-            <button onclick="switchAdminTab('employees')" id="adminTabEmployees"
+            <button onclick="switchAdminTab('cancelled')" id="adminTabCancelled"
+                class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
+                <span>❌</span> Cancelled
+                <span id="cancelledCount" class="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
+            </button>
+            <button onclick="switchAdminTab('employees')\" id="adminTabEmployees"
                 class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
                 <span>👥</span> Employees
             </button>
@@ -1489,6 +1528,20 @@
             </div>
 
             <div id="adminDeliveredList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- CANCELLED TAB -->
+        <div id="adminCancelledTab" class="hidden animate-fadeIn space-y-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-gray-800 flex items-center gap-3">
+                    <span class="text-3xl">❌</span> Cancelled Orders
+                </h2>
+                <button onclick="loadAdminCancelled()" 
+                    class="px-5 py-3 rounded-xl text-sm font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-colors shadow-sm">
+                    🔄 Refresh
+                </button>
+            </div>
+            <div id="adminCancelledList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </div>
 
         <!-- OTHER TABS -->
@@ -2413,20 +2466,41 @@
         function updateAddress() {
             const form = document.getElementById('orderForm');
 
-            let hNo = form.hNo.value.trim();
-            if (hNo && !isNaN(hNo)) hNo = 'House No ' + hNo;
-            else if (hNo) hNo = hNo;
+            // Proper case function (First Letter Capital, Rest Small)
+            const properCase = (str) => {
+                if (!str) return '';
+                return str.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+            };
 
-            const parts = [hNo,
-                form.blockGaliNo.value.trim(),
-                form.villColony.value.trim() ? "Village: " + form.villColony.value.trim() : "",
-                form.landMark.value.trim() ? "Landmark: " + form.landMark.value.trim() : "",
-                form.po.value.trim() ? "PO: " + form.po.value.trim() : "",
-                form.tahTaluka.value.trim(),
-                form.distt.value.trim(),
-                form.state.value.trim(),
+            let hNo = form.hNo.value.trim();
+            let village = form.villColony.value.trim();
+            
+            // Format house number
+            if (hNo && !isNaN(hNo)) {
+                hNo = 'H.No ' + hNo;
+            }
+            
+            // Combine House No + Village together
+            let houseVillage = '';
+            if (hNo && village) {
+                houseVillage = `${hNo}, Village ${properCase(village)}`;
+            } else if (hNo) {
+                houseVillage = hNo;
+            } else if (village) {
+                houseVillage = `Village ${properCase(village)}`;
+            }
+
+            const parts = [
+                houseVillage,
+                form.blockGaliNo.value.trim() ? properCase(form.blockGaliNo.value.trim()) : "",
+                form.landMark.value.trim() ? "Landmark: " + properCase(form.landMark.value.trim()) : "",
+                form.po.value.trim() ? "PO: " + properCase(form.po.value.trim()) : "",
+                properCase(form.tahTaluka.value.trim()),
+                properCase(form.distt.value.trim()),
+                properCase(form.state.value.trim()),
                 form.pin.value.trim() ? "PIN: " + form.pin.value.trim() : ""
             ].filter(v => v);
+            
             form.address.value = parts.join(', ');
         }
 
@@ -3262,7 +3336,7 @@ ${po.Name}</li>`;
                     ` : ''}
 
                     <div class="flex items-center justify-between pt-2 border-t border-gray-100">
-                        <span class="text-xs text-gray-400">📅 ${new Date(order.timestamp).toLocaleDateString()}</span>
+                        <span class="text-xs text-gray-400">📅 ${new Date(order.timestamp).toLocaleDateString()} ⏰ ${new Date(order.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                         ${order.status === 'Dispatched' && !hasRequestedDelivery ?
                             `<button onclick="requestDelivery('${order.orderId}')" class="text-xs bg-pink-50 text-pink-600 px-2 py-1 rounded-lg font-bold hover:bg-pink-100 transition-colors">
                                 ✋ Request Delivery
@@ -3349,7 +3423,7 @@ ${po.Name}</li>`;
                 const res = await fetch(`${API_URL}/orders/employee/${currentUser.id}`);
                 const data = await res.json();
                 let orders = (data.orders || [])
-                    .filter(o => o.status === 'Delivered') // Only DELIVERED orders
+                    // Show ALL orders in history, not just delivered
                     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
                 if (date) {
@@ -3411,6 +3485,70 @@ ${po.Name}</li>`;
                 document.getElementById('myHistoryList').innerHTML = html;
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        // Load My Cancelled Orders
+        async function loadMyCancelledOrders() {
+            try {
+                const res = await fetch(`${API_URL}/orders/employee/${currentUser.id}`);
+                const data = await res.json();
+                const cancelled = (data.orders || [])
+                    .filter(o => o.status === 'Cancelled')
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                const container = document.getElementById('empCancelledList');
+                if (cancelled.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-span-full text-center py-12 bg-white/50 rounded-2xl border-2 border-dashed border-gray-200">
+                            <p class="text-4xl mb-3">❌</p>
+                            <p class="text-gray-500 font-medium">No cancelled orders</p>
+                        </div>`;
+                    return;
+                }
+                
+                container.innerHTML = cancelled.map(order => `
+                    <div class="glass-card p-5 border-l-4 border-red-500 hover:shadow-xl transition-all">
+                        <div class="flex justify-between mb-3">
+                            <span class="font-bold text-gray-800 text-sm">${order.orderId}</span>
+                            <span class="text-red-600 font-bold text-lg">₹${order.total}</span>
+                        </div>
+                        <p class="text-sm text-gray-700 font-medium mb-1">${order.customerName}</p>
+                        <p class="text-xs text-gray-500 mb-2">📞 ${order.telNo}</p>
+                        <p class="text-xs text-gray-400">${order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A'}</p>
+                        
+                        <div class="mt-4 pt-4 border-t border-red-200 bg-red-50 -mx-5 -mb-5 px-5 pb-5">
+                            <p class="text-xs font-bold text-red-700 mb-2 flex items-center gap-1">
+                                ❌ CANCELLATION INFO
+                            </p>
+                            <p class="text-xs text-gray-700"><strong>Reason:</strong> ${order.cancellationInfo?.reason || 'No reason provided'}</p>
+                            <p class="text-xs text-gray-500 mt-1">Cancelled by: ${order.cancellationInfo?.cancelledBy || 'N/A'}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Load cancelled orders error:', e);
+            }
+        }
+
+        // Load Verification Cancelled Orders
+        async function loadVerificationCancelled() {
+            try {
+                const res = await fetch(`${API_URL}/orders`);
+                const data = await res.json();
+                const cancelled = (data.orders || [])
+                    .filter(o => o.status === 'Cancelled')
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                const container = document.getElementById('verificationCancelledList');
+                if (cancelled.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center col-span-full py-8">No cancelled orders</p>';
+                    return;
+                }
+                
+                container.innerHTML = cancelled.map(order => generateOrderCardHTML(order)).join('');
+            } catch (e) {
+                console.error('Load verification cancelled error:', e);
             }
         }
 
@@ -4161,9 +4299,12 @@ ${po.Name}</li>`;
                         </div>
                         <div>
                              <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Delivery Location</p>
-                             <p class="text-sm text-gray-600 leading-snug line-clamp-2" title="${order.address}">
+                             <p class="text-sm text-gray-600 leading-snug line-clamp-4 capitalize" title="${order.address}" style="text-transform: capitalize;">
                                 ${order.address || 'No Address Provided'}
                              </p>
+                             <button onclick="copyAddress('${order.address}')" class="mt-1 text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
+                                📋 Copy Address
+                             </button>
                              <div class="flex gap-2 mt-1.5 flex-wrap">
                                  <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-medium border border-gray-200">
                                     PIN: ${order.pin || 'N/A'}
@@ -4185,7 +4326,7 @@ ${po.Name}</li>`;
                             if (days < 7) return days + ' days ago';
                             if (days < 30) return Math.floor(days/7) + ' weeks ago';
                             return Math.floor(days/30) + ' months ago';
-                        })()} (${order.timestamp ? new Date(order.timestamp).toLocaleDateString() : ''})</span>
+                        })()} (${order.timestamp ? new Date(order.timestamp).toLocaleDateString() : ''}) ⏰ ${order.timestamp ? new Date(order.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                         <span class="text-xs text-gray-300">•</span>
                         <span class="text-xs text-gray-400">By: <span class="font-extrabold text-emerald-700">${order.employee} (${order.employeeId})</span></span>
                     </div>
@@ -4238,19 +4379,63 @@ ${po.Name}</li>`;
                                     ⏸️ HOLD
                                </button>
                            </div>
+                           
+                           <!-- Cancel Button - NEW FEATURE -->
+                           <button type="button" onclick="cancelOrder('${order.orderId}')" 
+                                class="bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition-all mt-2 flex items-center justify-center gap-1">
+                                ❌ CANCEL ORDER
+                           </button>
+                           
+                           <!-- Courier Suggest Section - NEW FEATURE -->
+                           <div class="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-xl space-y-2">
+                                <label class="text-xs font-bold text-purple-700 block">📦 Suggest Courier for Dispatch:</label>
+                                <select id="courierSelect_${order.orderId}" 
+                                    class="w-full border-2 border-purple-300 rounded-lg px-3 py-2 text-xs focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none">
+                                    <option value="">Select Courier</option>
+                                    <option value="Delhivery">Delhivery</option>
+                                    <option value="BlueDart">BlueDart</option>
+                                    <option value="DTDC">DTDC</option>
+                                    <option value="Ecom Express">Ecom Express</option>
+                                    <option value="Shiprocket">Shiprocket</option>
+                                    <option value="India Post">India Post</option>
+                                </select>
+                                <button type="button" onclick="suggestCourier('${order.orderId}')" 
+                                    class="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1">
+                                    📦 Suggest to Dispatch
+                                </button>
+                           </div>
+                           
                            <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
                                 class="w-full text-xs font-medium text-gray-400 hover:text-gray-600 py-1 transition-colors">
                                 Edit Order Details
                            </button>`
-                            : `<div class="grid grid-cols-2 gap-2">
-                                <button type="button" onclick="dispatchWithShiprocket('${order.orderId}')" 
-                                    class="bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-xl text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                                    🚀 via Shiprocket
-                                </button>
-                                <button type="button" onclick="openDispatchModal('${order.orderId}')" 
-                                    class="bg-purple-600 text-white py-3 rounded-xl text-sm font-bold shadow-lg hover:bg-purple-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                                📦 DISPATCH ORDER
-                           </button>`
+                             : `
+                             ${order.courierSuggestion && order.courierSuggestion.suggestedCourier ? `
+                                 <!-- Courier Suggestion Display for Dispatch - NEW FEATURE -->
+                                 <div class="mb-3 p-3 bg-purple-100 border-l-4 border-purple-500 rounded-lg">
+                                     <p class="font-bold text-purple-700 text-sm mb-1">💡 Verification Suggestion:</p>
+                                     <p class="text-lg font-bold text-purple-900">${order.courierSuggestion.suggestedCourier}</p>
+                                     <p class="text-xs text-purple-600 mt-1">
+                                         Suggested by ${order.courierSuggestion.suggestedBy} • 
+                                         ${new Date(order.courierSuggestion.suggestedAt).toLocaleDateString()}
+                                     </p>
+                                     ${order.courierSuggestion.suggestionNote ? `
+                                         <p class="text-xs italic text-purple-700 mt-1 border-t border-purple-200 pt-1">
+                                             Note: ${order.courierSuggestion.suggestionNote}
+                                         </p>
+                                     ` : ''}
+                                 </div>
+                             ` : ''}
+                             
+                             <div class="grid grid-cols-2 gap-2">
+                                 <button type="button" onclick="dispatchWithShiprocket('${order.orderId}')" 
+                                     class="bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-xl text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                                     🚀 via Shiprocket
+                                 </button>
+                                 <button type="button" onclick="openDispatchModal('${order.orderId}')" 
+                                     class="bg-purple-600 text-white py-3 rounded-xl text-sm font-bold shadow-lg hover:bg-purple-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                                 📦 DISPATCH ORDER
+                            </button>`
                         }
                 </div>
                 
@@ -4336,6 +4521,26 @@ ${po.Name}</li>`;
             }
         }
 
+        // Copy Address Function
+        function copyAddress(address) {
+            if (!address || address === 'No Address Provided') {
+                alert('No address to copy!');
+                return;
+            }
+            
+            navigator.clipboard.writeText(address).then(() => {
+                showSuccessPopup(
+                    'Address Copied! 📋',
+                    `Clipboard mein copy ho gaya!\n\n${address}`,
+                    '📋',
+                    '#3b82f6'
+                );
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                alert('Failed to copy address. Please try manually.');
+            });
+        }
+
         async function verifyAddress(orderId) {
             if (!confirm('Address verify karke Dispatch Department ko bhejni hai?')) return;
 
@@ -4368,6 +4573,91 @@ ${po.Name}</li>`;
                 console.error(e);
             }
         }
+
+        // Cancel Order Function - NEW FEATURE
+        async function cancelOrder(orderId) {
+            if (!confirm('Are you sure you want to cancel this order?')) {
+                return;
+            }
+            
+            const reason = prompt('Cancellation reason (required):');
+            if (!reason || reason.trim() === '') {
+                alert('Cancellation reason is required!');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/orders/${orderId}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reason: reason.trim(),
+                        cancelledBy: currentUser.id || 'verification'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccessPopup(
+                        'Order Cancelled! ❌',
+                        `Order ${orderId} cancelled successfully!\\n\\nReason: ${reason}`,
+                        '❌',
+                        '#ef4444'
+                    );
+                    setTimeout(() => loadDeptOrders(), 1000);
+                } else {
+                    alert('Failed to cancel order: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Cancel error:', error);
+                alert('Error cancelling order. Please try again.');
+            }
+        }
+
+        // Suggest Courier Function - NEW FEATURE
+        async function suggestCourier(orderId) {
+            const courierSelect = document.getElementById(`courierSelect_${orderId}`);
+            const courier = courierSelect?.value;
+            
+            if (!courier) {
+                alert('Please select a courier!');
+                return;
+            }
+            
+            const note = prompt('Add a note for dispatch team (optional):');
+            
+            try {
+                const response = await fetch(`${API_URL}/orders/${orderId}/suggest-courier`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        courier: courier,
+                        note: note || '',
+                        suggestedBy: currentUser.id || 'verification'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccessPopup(
+                        'Courier Suggested! 📦',
+                        `Suggested ${courier} for Order ${orderId}!\\n\\nDispatch team will see this recommendation.`,
+                        '📦',
+                        '#9333ea'
+                    );
+                    // Don't reload, just reset the dropdown
+                    courierSelect.value = '';
+                } else {
+                    alert('Failed to suggest courier: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Courier suggest error:', error);
+                alert('Error suggesting courier. Please try again.');
+            }
+        }
+
 
         async function loadDispatchHistory() {
             try {
@@ -4990,6 +5280,7 @@ ${po.Name}</li>`;
             if (tab === 'verified') loadAdminVerified();
             if (tab === 'dispatched') loadAdminDispatched();
             if (tab === 'delivered') loadAdminDelivered();
+            if (tab === 'cancelled') loadAdminCancelled();
 
             updateAdminBadges();
         }
@@ -5859,17 +6150,21 @@ ${po.Name}</li>`;
                 const data = await res.json();
                 const order = data.order;
 
-                const tracking = order.tracking || {}
+                const tracking = order.tracking || {};
 
-                    ;
-
-                let itemsHtml = (order.items || []).map(i => `<tr><td class="p-1">${i.description}
-
-                    </td><td class="p-1 text-right">₹${i.rate}
-
-                    </td><td class="p-1 text-right font-bold">₹${i.amount}
-
-                    </td></tr>`).join('');
+                let itemsHtml = (order.items || []).map(i => {
+                    const name = i.description || i.name || i.product || 'Unknown Item';
+                    const rate = i.rate || i.price || 0;
+                    const qty = i.quantity || i.qty || 0;
+                    const total = i.amount || i.total || (rate * qty) || 0;
+                    
+                    return `<tr>
+                        <td class="p-2">${name}</td>
+                        <td class="p-2 text-right">₹${rate}</td>
+                        <td class="p-2 text-center">${qty}</td>
+                        <td class="p-2 text-right font-bold">₹${total}</td>
+                    </tr>`;
+                }).join('');
 
                 document.getElementById('orderModalContent').innerHTML = ` <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> <div> <h4 class="font-bold text-gray-700 mb-3">👤 Customer Info</h4> <p><strong>Name:</strong> ${order.customerName}
 
@@ -5917,7 +6212,7 @@ ${po.Name}</li>`;
                     </span></p> </div> ` : ''
                     }
 
-                </div> </div> <h4 class="font-bold text-gray-700 mt-6 mb-3">🛒 Items</h4> <div class="overflow-x-auto border rounded-lg"><table class="w-full text-sm"> <thead class="bg-gray-100"><tr><th class="p-2 text-left">Product</th><th class="p-2 text-right">Rate</th><th class="p-2 text-right">Amount</th></tr></thead> <tbody>${itemsHtml}
+                </div> </div> <h4 class="font-bold text-gray-700 mt-6 mb-3">🛒 Items</h4> <div class="overflow-x-auto border rounded-lg"><table class="w-full text-sm"> <thead class="bg-gray-100"><tr><th class="p-2 text-left">ITEM</th><th class="p-2 text-right">RATE</th><th class="p-2 text-center">QTY</th><th class="p-2 text-right">TOTAL</th></tr></thead> <tbody>${itemsHtml}
 
                 </tbody> </table></div> <div class="mt-4 bg-emerald-50 p-4 rounded-lg"> <div class="flex justify-between"><span>Total:</span><span class="font-bold">₹${order.total}
 
@@ -6451,6 +6746,10 @@ ${po.Name}</li>`;
             document.getElementById('verificationTabUnverified').classList.add('bg-white', 'text-gray-600');
             document.getElementById('verificationTabHistory').classList.remove('tab-active');
             document.getElementById('verificationTabHistory').classList.add('bg-white', 'text-gray-600');
+            if (document.getElementById('verificationTabCancelled')) {
+                document.getElementById('verificationTabCancelled').classList.remove('tab-active');
+                document.getElementById('verificationTabCancelled').classList.add('bg-white', 'text-gray-600');
+            }
 
             if (tab === 'pending') {
                 document.getElementById('verificationPendingTab').classList.remove('hidden');
@@ -6467,6 +6766,14 @@ ${po.Name}</li>`;
                 document.getElementById('verificationTabHistory').classList.add('tab-active');
                 document.getElementById('verificationTabHistory').classList.remove('bg-white', 'text-gray-600');
                 loadVerificationHistory();
+            } else if (tab === 'cancelled') {
+                // Cancelled tab doesn't have its own tab div, it's a section in verification history
+                document.getElementById('verificationHistoryTab').classList.remove('hidden');
+                if (document.getElementById('verificationTabCancelled')) {
+                    document.getElementById('verificationTabCancelled').classList.add('tab-active');
+                    document.getElementById('verificationTabCancelled').classList.remove('bg-white', 'text-gray-600');
+                }
+                loadVerificationCancelled();
             }
         }
 

@@ -662,6 +662,77 @@ app.get('/api/orders/delivered', async (req, res) => {
     }
 });
 
+// Cancel Order (Verification Dept) - NEW FEATURE
+app.post('/api/orders/:orderId/cancel', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { reason, cancelledBy } = req.body;
+
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        const updates = {
+            status: 'Cancelled',
+            cancellationInfo: {
+                cancelledAt: new Date(),
+                cancelledBy: cancelledBy || 'verification',
+                cancellationReason: reason || 'Customer cancelled'
+            },
+            updatedAt: new Date().toISOString()
+        };
+
+        const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+        console.log(`❌ Order Cancelled: ${orderId} - Reason: ${reason}`);
+
+        res.json({
+            success: true,
+            message: 'Order cancelled successfully',
+            order: updatedOrder
+        });
+    } catch (error) {
+        console.error('❌ Cancel order error:', error);
+        res.status(500).json({ success: false, message: 'Failed to cancel order' });
+    }
+});
+
+// Suggest Courier (Verification to Dispatch) - NEW FEATURE
+app.post('/api/orders/:orderId/suggest-courier', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { courier, note, suggestedBy } = req.body;
+
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        const updates = {
+            courierSuggestion: {
+                suggestedCourier: courier,
+                suggestedBy: suggestedBy || 'verification',
+                suggestedAt: new Date(),
+                suggestionNote: note || ''
+            },
+            updatedAt: new Date().toISOString()
+        };
+
+        const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+        console.log(`📦 Courier Suggested: ${courier} for ${orderId} by ${suggestedBy}`);
+
+        res.json({
+            success: true,
+            message: `Suggested ${courier} for dispatch`,
+            order: updatedOrder
+        });
+    } catch (error) {
+        console.error('❌ Suggest courier error:', error);
+        res.status(500).json({ success: false, message: 'Failed to suggest courier' });
+    }
+});
+
+
 // Get Employee's Orders
 app.get('/api/orders/employee/:empId', async (req, res) => {
     try {
@@ -670,6 +741,30 @@ app.get('/api/orders/employee/:empId', async (req, res) => {
         res.json({ success: true, orders: empOrders });
     } catch (error) {
         console.error('❌ Get employee orders error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Admin History - Get all orders
+app.get('/api/admin/history', async (req, res) => {
+    try {
+        const { date, employee, status } = req.query;
+        let orders = await dataAccess.getAllOrders();
+
+        // Apply filters if provided
+        if (date) {
+            orders = orders.filter(o => o.timestamp && o.timestamp.startsWith(date));
+        }
+        if (employee) {
+            orders = orders.filter(o => o.employeeId === employee);
+        }
+        if (status) {
+            orders = orders.filter(o => o.status === status);
+        }
+
+        res.json({ success: true, orders });
+    } catch (error) {
+        console.error('❌ Get admin history error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

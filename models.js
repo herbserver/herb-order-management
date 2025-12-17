@@ -117,6 +117,21 @@ const orderSchema = new mongoose.Schema({
         timestamp: String
     }],
 
+    // Cancellation Info
+    cancellationInfo: {
+        cancelledAt: Date,
+        cancelledBy: String,
+        cancellationReason: String
+    },
+
+    // Courier Suggestion (from Verification to Dispatch)
+    courierSuggestion: {
+        suggestedCourier: String,
+        suggestedBy: String,
+        suggestedAt: Date,
+        suggestionNote: String
+    },
+
     // Misc
     updatedAt: String
 }, {
