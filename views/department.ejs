@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/common_head') %>
+
+    <body>
+        <div id="app">
+            <%- include('partials/department_panel') %>
+                <%- include('partials/modals') %>
+        </div>
+
+        <script>
+            const API_URL = '/api';
+            const currentUserType = 'department';
+        </script>
+        <script src="js/common.js"></script>
+        <script src="js/department.js"></script>
+    </body>
+
+</html>

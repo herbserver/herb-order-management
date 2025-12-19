@@ -309,39 +309,52 @@ app.get('/api/employees', async (req, res) => {
 });
 
 // Get Single Employee with Orders (for Admin Profile View)
-app.get('/api/employees/:empId', (req, res) => {
-    const employees = readJSON(EMPLOYEES_FILE, {});
-    const orders = readJSON(ORDERS_FILE, []);
-    const id = req.params.empId.toUpperCase();
+app.get('/api/employees/:empId', async (req, res) => {
+    try {
+        const id = req.params.empId.toUpperCase();
+        const depts = await dataAccess.getAllDepartments();
 
-    if (!employees[id]) {
-        return res.status(404).json({ success: false, message: 'Employee not found!' });
-    }
-
-    const empOrders = orders.filter(o => o.employeeId === id);
-    empOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    res.json({
-        success: true,
-        employee: {
-            id,
-            name: employees[id].name,
-            createdAt: employees[id].createdAt
-        },
-        orders: empOrders,
-        stats: {
-            total: empOrders.length,
-            pending: empOrders.filter(o => o.status === 'Pending').length,
-            verified: empOrders.filter(o => o.status === 'Address Verified').length,
-            dispatched: empOrders.filter(o => o.status === 'Dispatched').length,
-            delivered: empOrders.filter(o => o.status === 'Delivered').length,
-            thisMonth: empOrders.filter(o => {
-                const orderDate = new Date(o.timestamp);
-                const now = new Date();
-                return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-            }).length
+        let foundEmployee = null;
+        for (const dept of depts) {
+            if (dept.employees && dept.employees[id]) {
+                foundEmployee = {
+                    id,
+                    ...dept.employees[id],
+                    department: dept.departmentName
+                };
+                break;
+            }
         }
-    });
+
+        if (!foundEmployee) {
+            return res.status(404).json({ success: false, message: 'Employee not found!' });
+        }
+
+        const orders = await dataAccess.getAllOrders();
+        const empOrders = orders.filter(o => o.employeeId === id);
+        empOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        res.json({
+            success: true,
+            employee: foundEmployee,
+            orders: empOrders,
+            stats: {
+                total: empOrders.length,
+                pending: empOrders.filter(o => o.status === 'Pending').length,
+                verified: empOrders.filter(o => o.status === 'Address Verified').length,
+                dispatched: empOrders.filter(o => o.status === 'Dispatched').length,
+                delivered: empOrders.filter(o => o.status === 'Delivered').length,
+                thisMonth: empOrders.filter(o => {
+                    const orderDate = new Date(o.timestamp);
+                    const now = new Date();
+                    return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+                }).length
+            }
+        });
+    } catch (e) {
+        console.error('Get employee detail error:', e);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // Update Employee (Admin) - Edit Name and ID
@@ -991,6 +1004,32 @@ app.delete('/api/orders/:orderId', (req, res) => {
 
 
 
+// Update Order Details (Generic Edit)
+app.put('/api/orders/:orderId', async (req, res) => {
+    try {
+        const updates = req.body;
+
+        // Protect critical fields
+        delete updates.orderId;
+        delete updates.timestamp;
+        delete updates._id;
+
+        updates.updatedAt = new Date().toISOString();
+
+        const updated = await dataAccess.updateOrder(req.params.orderId, updates);
+
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        console.log(`📝 Order Updated: ${req.params.orderId}`);
+        res.json({ success: true, message: 'Order updated successfully!', order: updated });
+    } catch (error) {
+        console.error('❌ Update order error:', error);
+        res.status(500).json({ success: false, message: 'Server error: ' + error.message });
+    }
+});
+
 // Get Sales Data from JSON
 app.get('/api/orders/export', (req, res) => {
     console.log('📊 Export request received');
@@ -1036,7 +1075,7 @@ app.get('/api/orders/export', (req, res) => {
                     "Payment Method": order.paymentMode || 'COD',
                     "Agent": order.employee || '',
                     "Order Type": order.orderType || 'New',
-                    "Invoice Date": order.timestamp ? new Date(order.timestamp).toLocaleDateString('en-GB') : '',
+                    "Invoice Date": (order.tracking && order.tracking.dispatchedAt) ? new Date(order.tracking.dispatchedAt).toLocaleDateString('en-GB') : (order.dispatchedAt ? new Date(order.dispatchedAt).toLocaleDateString('en-GB') : (order.timestamp ? new Date(order.timestamp).toLocaleDateString('en-GB') : '')),
                     "Delivered by": order.dispatchedBy || '',
                     "AWB Number": order.tracking ? (order.tracking.trackingId || '') : '',
                     "RTO Status": order.rtoStatus || ''
@@ -1121,30 +1160,39 @@ app.get('/api/admin/history', (req, res) => {
 });
 
 // Get Dashboard Stats
-app.get('/api/admin/stats', (req, res) => {
-    const orders = readJSON(ORDERS_FILE, []);
-    const employees = readJSON(EMPLOYEES_FILE, {});
-    const departments = readJSON(DEPARTMENTS_FILE, {});
+app.get('/api/admin/stats', async (req, res) => {
+    try {
+        const orders = await dataAccess.getAllOrders();
+        const departments = await dataAccess.getAllDepartments();
 
-    const now = new Date();
-    const thisMonth = orders.filter(o => {
-        const orderDate = new Date(o.timestamp);
-        return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-    });
+        let totalEmployees = 0;
+        departments.forEach(d => {
+            if (d.employees) totalEmployees += Object.keys(d.employees).length;
+        });
 
-    res.json({
-        success: true,
-        stats: {
-            totalOrders: orders.length,
-            pendingOrders: orders.filter(o => o.status === 'Pending').length,
-            verifiedOrders: orders.filter(o => o.status === 'Address Verified').length,
-            dispatchedOrders: orders.filter(o => o.status === 'Dispatched').length,
-            deliveredOrders: orders.filter(o => o.status === 'Delivered').length,
-            thisMonthOrders: thisMonth.length,
-            totalEmployees: Object.keys(employees).length,
-            totalDepartments: Object.keys(departments).length
-        }
-    });
+        const now = new Date();
+        const thisMonth = orders.filter(o => {
+            const orderDate = new Date(o.timestamp);
+            return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+        });
+
+        res.json({
+            success: true,
+            stats: {
+                totalOrders: orders.length,
+                pendingOrders: orders.filter(o => o.status === 'Pending').length,
+                verifiedOrders: orders.filter(o => o.status === 'Address Verified').length,
+                dispatchedOrders: orders.filter(o => o.status === 'Dispatched').length,
+                deliveredOrders: orders.filter(o => o.status === 'Delivered').length,
+                totalEmployees: totalEmployees,
+                totalDepartments: departments.length,
+                thisMonthOrders: thisMonth.length
+            }
+        });
+    } catch (e) {
+        console.error('Stats error:', e);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // ==================== LOCATION DROPDOWN API ====================
@@ -1632,24 +1680,25 @@ app.get('/api/autocomplete/taluka', (req, res) => {
 });
 
 // Update order tracking status
-app.post('/api/orders/update-tracking', (req, res) => {
+app.post('/api/orders/update-tracking', async (req, res) => {
     try {
         const { orderId, tracking } = req.body;
-        const orders = readJSON(ORDERS_FILE, []);
-        const orderIndex = orders.findIndex(o => o.orderId === orderId);
+        const order = await dataAccess.getOrderById(orderId);
 
-        if (orderIndex === -1) {
+        if (!order) {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
         // Update tracking info
-        orders[orderIndex].tracking = {
-            ...orders[orderIndex].tracking,
-            ...tracking,
-            lastUpdatedAt: new Date().toISOString()
+        const updates = {
+            tracking: {
+                ...(order.tracking || {}),
+                ...tracking,
+                lastUpdatedAt: new Date().toISOString()
+            }
         };
 
-        writeJSON(ORDERS_FILE, orders);
+        await dataAccess.updateOrder(orderId, updates);
         res.json({ success: true });
     } catch (e) {
         console.error('Update tracking error:', e);
@@ -1710,327 +1759,7 @@ app.post('/api/couriers/check', async (req, res) => {
 const SHIPROCKET_CONFIG_FILE = path.join(DATA_DIR, 'shiprocket_config.json');
 const SHIPROCKET_API_BASE = 'https://apiv2.shiprocket.in/v1/external';
 
-function getShiprocketConfig() {
-    return readJSON(SHIPROCKET_CONFIG_FILE, {
-        enabled: false, apiEmail: '', apiPassword: '', authToken: null, tokenExpiry: null,
-        pickupAddress: {}, defaultDimensions: { length: 10, breadth: 10, height: 5, weight: 0.5 }
-    });
-}
 
-function saveShiprocketConfig(config) {
-    return writeJSON(SHIPROCKET_CONFIG_FILE, config);
-}
-
-async function makeShiprocketRequest(endpoint, method = 'GET', body = null, token = null) {
-    const https = require('https');
-    const url = new URL(`${SHIPROCKET_API_BASE}${endpoint}`);
-    const options = {
-        hostname: url.hostname, path: url.pathname + url.search, method: method,
-        headers: { 'Content-Type': 'application/json' }
-    };
-    if (token) options.headers['Authorization'] = `Bearer ${token}`;
-
-    return new Promise((resolve, reject) => {
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', (chunk) => data += chunk);
-            res.on('end', () => {
-                try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
-                catch (e) { reject(new Error('Invalid JSON')); }
-            });
-        });
-        req.on('error', reject);
-        if (body) req.write(JSON.stringify(body));
-        req.end();
-    });
-}
-
-async function authenticateShiprocket() {
-    const config = getShiprocketConfig();
-    if (!config.apiEmail || !config.apiPassword) throw new Error('Shiprocket not configured');
-
-    if (config.authToken && config.tokenExpiry) {
-        const expiry = new Date(config.tokenExpiry).getTime();
-        if (Date.now() < (expiry - 3600000)) return config.authToken;
-    }
-
-    const response = await makeShiprocketRequest('/auth/login', 'POST', {
-        email: config.apiEmail, password: config.apiPassword
-    });
-
-    if (response.status === 200 && response.data.token) {
-        config.authToken = response.data.token;
-        config.tokenExpiry = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString();
-        saveShiprocketConfig(config);
-        console.log('✅ Shiprocket authenticated');
-        return config.authToken;
-    }
-    throw new Error('Authentication failed');
-}
-
-app.get('/api/shiprocket/config', (req, res) => {
-    const config = getShiprocketConfig();
-    res.json({
-        success: true, config: {
-            enabled: config.enabled, apiEmail: config.apiEmail, hasPassword: !!config.apiPassword,
-            hasToken: !!config.authToken, tokenExpiry: config.tokenExpiry,
-            pickupAddress: config.pickupAddress, defaultDimensions: config.defaultDimensions
-        }
-    });
-});
-
-app.post('/api/shiprocket/config', async (req, res) => {
-    try {
-        const { apiEmail, apiPassword, pickupAddress, defaultDimensions } = req.body;
-        const config = getShiprocketConfig();
-        if (apiEmail) config.apiEmail = apiEmail;
-        if (apiPassword) config.apiPassword = apiPassword;
-        if (pickupAddress) config.pickupAddress = pickupAddress;
-        if (defaultDimensions) config.defaultDimensions = defaultDimensions;
-        config.enabled = true;
-        saveShiprocketConfig(config);
-
-        try {
-            await authenticateShiprocket();
-            res.json({ success: true, message: 'Shiprocket configured!' });
-        } catch (e) {
-            res.json({ success: false, message: 'Config saved but auth failed' });
-        }
-    } catch (e) {
-        res.status(500).json({ success: false, message: 'Failed to save config' });
-    }
-});
-
-app.post('/api/shiprocket/test', async (req, res) => {
-    try {
-        const token = await authenticateShiprocket();
-        res.json({ success: true, message: 'Connection successful!', hasToken: !!token });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-app.post('/api/shiprocket/create-order', async (req, res) => {
-    try {
-        const { orderId, dimensions } = req.body;
-        const orders = readJSON(ORDERS_FILE, []);
-        const order = orders.find(o => o.orderId === orderId);
-        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-
-        const token = await authenticateShiprocket();
-        const config = getShiprocketConfig();
-
-        // Use custom dimensions if provided, otherwise use defaults
-        const boxDimensions = dimensions || config.defaultDimensions;
-
-        // Fetch available pickup locations
-        const pickupResponse = await makeShiprocketRequest('/settings/company/pickup', 'GET', null, token);
-        let pickupLocationName = 'PRIMARY'; // Default - matches Shiprocket dashboard
-
-        if (pickupResponse.status === 200 && pickupResponse.data?.data?.shipping_address) {
-            const pickupLocations = pickupResponse.data.data.shipping_address;
-            if (pickupLocations.length > 0) {
-                // Use first available pickup location
-                pickupLocationName = pickupLocations[0].pickup_location;
-                console.log('Using pickup location:', pickupLocationName);
-            }
-        }
-
-        // Normalize PIN code field (can be 'pin' or 'pincode')
-        const pincode = order.pincode || order.pin;
-
-        // Validate required fields
-        if (!order.customerName) return res.json({ success: false, message: 'Customer name missing' });
-        if (!order.address) return res.json({ success: false, message: 'Address missing' });
-        if (!pincode || pincode.length !== 6) return res.json({ success: false, message: 'Valid 6-digit PIN code required' });
-        if (!order.state) return res.json({ success: false, message: 'State missing' });
-        if (!order.telNo && !order.mobile) return res.json({ success: false, message: 'Phone number missing' });
-
-        // Generate unique Shiprocket order ID
-        const shiprocketOrderId = `SR-${config.shiprocketOrderCounter || 7417}`;
-
-        // Increment counter for next order
-        config.shiprocketOrderCounter = (config.shiprocketOrderCounter || 7417) + 1;
-        writeJSON(SHIPROCKET_CONFIG_FILE, config);
-
-        const shiprocketOrder = {
-            order_id: shiprocketOrderId, order_date: order.timestamp,
-            billing_customer_name: order.customerName, billing_last_name: "",
-            billing_address: order.address, billing_city: order.city || order.tahTaluka || order.distt || "City",
-            billing_pincode: pincode, billing_state: order.state, billing_country: "India",
-            billing_email: order.email || "customer@herbonnaturals.com",
-            billing_phone: order.telNo || order.mobile, shipping_is_billing: true,
-            pickup_location: pickupLocationName,
-            order_items: [{ name: order.items?.[0]?.description || "Product", sku: "SKU001", units: 1, selling_price: order.total || 0 }],
-            payment_method: order.paymentMode === "Online" ? "Prepaid" : "COD",
-            sub_total: order.total || 0,
-            length: boxDimensions.length,
-            breadth: boxDimensions.breadth,
-            height: boxDimensions.height,
-            weight: boxDimensions.weight
-        };
-
-        console.log('📦 Creating Shiprocket order:', orderId);
-        console.log('Shiprocket payload:', JSON.stringify(shiprocketOrder, null, 2));
-
-        const createResponse = await makeShiprocketRequest('/orders/create/adhoc', 'POST', shiprocketOrder, token);
-
-        console.log('Shiprocket API Response:', JSON.stringify(createResponse, null, 2));
-
-        if (createResponse.status === 200 && createResponse.data.order_id) {
-            const shipmentId = createResponse.data.shipment_id;
-
-            // Prepare AWB request - use specific courier if provided
-            const awbPayload = { shipment_id: shipmentId };
-            if (req.body.courierId) {
-                awbPayload.courier_id = req.body.courierId;
-            }
-
-            const awbResponse = await makeShiprocketRequest('/courier/assign/awb', 'POST', awbPayload, token);
-
-            if (awbResponse.status === 200 && awbResponse.data.awb_code) {
-                const orderIndex = orders.findIndex(o => o.orderId === orderId);
-                orders[orderIndex].shiprocket = {
-                    orderId: createResponse.data.order_id, shipmentId: shipmentId,
-                    awb: awbResponse.data.awb_code, courierName: awbResponse.data.courier_name,
-                    courierId: awbResponse.data.courier_id
-                };
-                orders[orderIndex].tracking = {
-                    courier: awbResponse.data.courier_name, trackingId: awbResponse.data.awb_code,
-                    dispatchedAt: new Date().toISOString()
-                };
-                orders[orderIndex].status = 'Dispatched';
-                writeJSON(ORDERS_FILE, orders);
-
-                console.log(`📦 Shiprocket: ${orderId} → AWB: ${awbResponse.data.awb_code}`);
-                res.json({ success: true, message: 'AWB generated!', awb: awbResponse.data.awb_code, courier: awbResponse.data.courier_name });
-            } else {
-                console.error('AWB generation failed:', awbResponse);
-                res.json({ success: false, message: 'AWB generation failed: ' + (awbResponse.data?.message || 'Unknown error') });
-            }
-        } else {
-            console.error('Order creation failed:', createResponse);
-            const errorMsg = createResponse.data?.message || createResponse.data?.errors || 'Failed to create order';
-            res.json({ success: false, message: typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : errorMsg });
-        }
-    } catch (e) {
-        console.error('Shiprocket error:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-app.get('/api/shiprocket/track/:awb', async (req, res) => {
-    try {
-        const token = await authenticateShiprocket();
-        const trackResponse = await makeShiprocketRequest(`/courier/track/awb/${req.params.awb}`, 'GET', null, token);
-        if (trackResponse.status === 200) {
-            res.json({ success: true, tracking: trackResponse.data });
-        } else {
-            res.json({ success: false, message: 'Tracking not available' });
-        }
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// Check available couriers for order
-app.post('/api/shiprocket/check-serviceability', async (req, res) => {
-    try {
-        const { orderId, dimensions } = req.body;
-        const orders = readJSON(ORDERS_FILE, []);
-        const order = orders.find(o => o.orderId === orderId);
-        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-
-        const token = await authenticateShiprocket();
-        const config = getShiprocketConfig();
-        const boxDimensions = dimensions || config.defaultDimensions;
-        const pincode = order.pincode || order.pin;
-
-        // Build query parameters for serviceability check
-        const queryParams = new URLSearchParams({
-            pickup_postcode: config.pickupAddress.pincode,
-            delivery_postcode: pincode,
-            cod: order.paymentMode === "COD" ? "1" : "0",
-            weight: boxDimensions.weight.toString()
-        });
-
-        console.log('Checking serviceability:', queryParams.toString());
-
-        const serviceResponse = await makeShiprocketRequest(
-            `/courier/serviceability/?${queryParams.toString()}`,
-            'GET',
-            null,
-            token
-        );
-
-        console.log('Serviceability response:', JSON.stringify(serviceResponse, null, 2));
-
-        if (serviceResponse.status === 200 && serviceResponse.data?.data?.available_courier_companies) {
-            const couriers = serviceResponse.data.data.available_courier_companies;
-
-            console.log(`📦 Total couriers in API response: ${couriers.length}`);
-
-            // Filter only truly serviceable couriers
-            const serviceableCouriers = couriers.filter(c => {
-                // Check Shiprocket serviceability flags
-                const isServiceable = (c.is_surface === 1 || c.is_surface === true) &&
-                    (c.suppression === 0 || c.suppression === false);
-
-                if (!isServiceable) {
-                    console.log(`❌ Filtered: ${c.courier_name} (is_surface: ${c.is_surface}, suppression: ${c.suppression})`);
-                }
-                return isServiceable;
-            });
-
-            console.log(`✅ Serviceable couriers after filtering: ${serviceableCouriers.length}`);
-
-            // Format courier data for frontend
-            const formattedCouriers = serviceableCouriers.map(c => ({
-                id: c.courier_company_id,
-                name: c.courier_name,
-                rate: c.rate || c.freight_charge || 0,
-                cod: c.cod_charges || 0,
-                edd: c.etd || 'N/A',
-                rating: c.rating || 4.0,
-                pickupPerformance: c.pickup_performance || 0,
-                deliveryPerformance: c.delivery_performance || 0,
-                recommended: c.recommendation === 1
-            })).sort((a, b) => {
-                // Sort: recommended first, then by rating
-                if (a.recommended && !b.recommended) return -1;
-                if (!a.recommended && b.recommended) return 1;
-                return b.rating - a.rating;
-            });
-
-            console.log(`📋 Final courier list:`, formattedCouriers.map(c => c.name).join(', '));
-
-            res.json({ success: true, couriers: formattedCouriers });
-        } else {
-            console.error('No couriers found:', serviceResponse);
-            res.json({ success: false, message: 'No couriers available for this location', couriers: [] });
-        }
-    } catch (e) {
-        console.error('Serviceability check error:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-app.post('/api/shiprocket/pickup', async (req, res) => {
-    try {
-        const { shipmentId, pickupDate } = req.body;
-        const token = await authenticateShiprocket();
-        const pickupResponse = await makeShiprocketRequest('/courier/generate/pickup', 'POST', {
-            shipment_id: [shipmentId], pickup_date: pickupDate || new Date().toISOString().split('T')[0]
-        }, token);
-        if (pickupResponse.status === 200) {
-            res.json({ success: true, message: 'Pickup scheduled!' });
-        } else {
-            res.json({ success: false, message: 'Pickup scheduling failed' });
-        }
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
 
 // ==================== START SERVER ====================
 async function startServer() {
@@ -2131,6 +1860,197 @@ app.post('/api/orders/:orderId/update-tracking', async (req, res) => {
     } catch (error) {
         console.error('❌ Update tracking error:', error);
         res.status(500).json({ success: false, message: 'Update failed' });
+    }
+});
+
+// Check Serviceability
+app.post('/api/shiprocket/check-serviceability', async (req, res) => {
+    try {
+        let { orderId, dimensions } = req.body;
+        console.log(`🔍 [Shiprocket] Checking serviceability for order: ${orderId}`);
+
+        let order = await dataAccess.getOrderById(orderId);
+
+        // Flexible ID Lookup: Try with prefix if not found
+        if (!order && !orderId.startsWith('Order ID-')) {
+            const prefixedId = `Order ID-${orderId.padStart(4, '0')}`;
+            console.log(`🔍 [Shiprocket] Order ${orderId} not found, trying prefixed: ${prefixedId}`);
+            order = await dataAccess.getOrderById(prefixedId);
+            if (order) orderId = prefixedId;
+        }
+
+        if (!order) {
+            console.error(`❌ [Shiprocket] Order NOT FOUND: ${orderId}`);
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        const pickupPostcode = process.env.PICKUP_POSTCODE || '110006';
+        let deliveryPostcode = order.pincode || order.pin;
+        const weight = dimensions.weight || 0.5;
+
+        const result = await shiprocket.checkServiceability(pickupPostcode, deliveryPostcode, weight, order.codAmount || 0);
+        res.json(result);
+
+    } catch (error) {
+        console.error('❌ Serviceability Check Error:', error);
+        res.status(500).json({ success: false, message: 'Serviceability check failed' });
+    }
+});
+
+// Create Order in Shiprocket
+app.post('/api/shiprocket/create-order', async (req, res) => {
+    try {
+        let { orderId, dimensions, courierId } = req.body;
+        console.log(`🚀 [Shiprocket] Request to create order: ${orderId}`);
+
+        let order = await dataAccess.getOrderById(orderId);
+
+        // Flexible ID Lookup: Try with prefix if not found
+        if (!order && !orderId.startsWith('Order ID-')) {
+            const prefixedId = `Order ID-${orderId.padStart(4, '0')}`;
+            console.log(`🔍 [Shiprocket] Order ${orderId} not found, trying prefixed: ${prefixedId}`);
+            order = await dataAccess.getOrderById(prefixedId);
+            if (order) orderId = prefixedId;
+        }
+
+        if (!order) {
+            console.error(`❌ [Shiprocket] Order NOT FOUND: ${orderId}`);
+            return res.status(404).json({ success: false, message: 'Order not found in database. Please check if ID is correct.' });
+        }
+
+        const pickupPostcode = process.env.PICKUP_POSTCODE || '110006';
+
+        // Prepare Shiprocket Payload
+        const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+        const payload = {
+            order_id: order.orderId,
+            order_date: currentDate,
+            pickup_location: "Primary", // Must match name in Shiprocket Settings
+            billing_customer_name: order.customerName.split(' ')[0],
+            billing_last_name: order.customerName.split(' ').slice(1).join(' ') || '.',
+            billing_address: order.address,
+            billing_city: order.district || 'City', // Fallback if missing
+            billing_pincode: order.pincode,
+            billing_state: order.state || 'State',
+            billing_country: "India",
+            billing_email: "customer@example.com", // Placeholder if not collected
+            billing_phone: order.telNo,
+            shipping_is_billing: true,
+            order_items: order.items.map(item => ({
+                name: item.description || "Product",
+                sku: (item.description || "Product").substring(0, 10).replace(/ /g, '-'),
+                units: item.quantity || 1,
+                selling_price: order.items.length === 1 ? order.total : 0, // Put total on first item for simplicity
+                discount: 0,
+                tax: 0,
+                hsn: 0
+            })),
+            payment_method: "COD",
+            sub_total: order.total,
+            length: dimensions.length,
+            breadth: dimensions.breadth,
+            height: dimensions.height,
+            weight: dimensions.weight
+        };
+
+        console.log('🚀 Creating Shiprocket Order:', order.orderId);
+
+        const result = await shiprocket.createOrder(payload);
+
+        if (result.success) {
+            const updateData = {
+                status: 'Dispatched',
+                dispatchedAt: new Date().toISOString(),
+                shiprocket: {
+                    orderId: result.orderId,
+                    shipmentId: result.shipmentId,
+                    awb: result.awb
+                }
+            };
+
+            // If AWB not instant, try generating it explicitly
+            // MODIFIED FOR PUSH & SYNC: Do NOT generate AWB automatically here.
+            // The user will handle dispatch on Shiprocket, and we will sync the AWB later.
+
+            console.log('✅ Order pushed to Shiprocket. Status: Processing.');
+
+            await dataAccess.updateOrder(orderId, updateData);
+
+            res.json({
+                success: true,
+                message: 'Order pushed to Shiprocket! Tracking will be updated after you dispatch on Shiprocket panel.',
+                awb: null
+            });
+
+        } else {
+            res.status(400).json(result);
+        }
+
+    } catch (error) {
+        console.error('❌ Create Shiprocket Order Error:', error);
+        res.status(500).json({ success: false, message: 'Server error during dispatch' });
+    }
+});
+
+// Sync Pending AWBs (Fetch AWB from Shiprocket for pushed orders)
+app.post('/api/shiprocket/sync-all', async (req, res) => {
+    try {
+        // Find orders that are 'Dispatched' but have no AWB or status is just 'Dispatched' without tracking
+        // Or we can fetch all recent dispatched orders and check
+
+        // Better: Get orders with Shiprocket Order ID but NO AWB
+        // Since we don't have a direct query for nested fields in JSON file based DB easily without full scan,
+        // we'll fetch dispatched orders and filter.
+
+        const orders = await dataAccess.getOrdersByStatus('Dispatched');
+        const updates = [];
+
+        for (const order of orders) {
+            if (order.shiprocket && order.shiprocket.orderId && !order.shiprocket.awb) {
+                // This is a candidate for sync
+                const shipmentData = await shiprocket.getShipmentByOrderId(order.shiprocket.orderId);
+
+                if (shipmentData && shipmentData.data && shipmentData.data.length > 0) {
+                    // Check if AWB is assigned in any shipment
+                    // Shiprocket returns array of shipments for an order
+                    // We look for one with an AWB
+
+                    const validShipment = shipmentData.data.find(s => s.awb_code && s.awb_code.length > 3);
+
+                    if (validShipment) {
+                        const updatePayload = {
+                            shiprocket: {
+                                ...(order.shiprocket || {}),
+                                awb: validShipment.awb_code,
+                                courierName: validShipment.courier_custom_name || validShipment.courier_name,
+                                shipmentId: validShipment.shipment_id
+                            },
+                            tracking: {
+                                ...(order.tracking || {}),
+                                currentStatus: validShipment.status || 'Shipped',
+                                lastUpdatedAt: new Date().toISOString(),
+                                trackingId: validShipment.awb_code, // Sync AWB to main tracking ID
+                                courier: validShipment.courier_custom_name || validShipment.courier_name // Sync Courier Name
+                            }
+                        };
+
+                        await dataAccess.updateOrder(order.orderId, updatePayload);
+                        updates.push({ orderId: order.orderId, awb: validShipment.awb_code });
+                        console.log(`🔄 Synced AWB for ${order.orderId}: ${validShipment.awb_code}`);
+                    }
+                }
+
+                // Rate limit protection
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+        }
+
+        res.json({ success: true, message: `Synced ${updates.length} orders`, updates });
+
+    } catch (error) {
+        console.error('❌ Sync Error:', error);
+        res.status(500).json({ success: false, message: 'Sync failed' });
     }
 });
 

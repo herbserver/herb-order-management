@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/common_head') %>
+
+    <body class="bg-gray-100">
+        <div id="app">
+            <!-- Auth Screens -->
+            <%- include('partials/login_screen') %>
+                <%- include('partials/register_screen') %>
+                    <%- include('partials/reset_password_screen') %>
+
+                        <!-- Shared Modals (Success/Error Popups) -->
+                        <%- include('partials/modals') %>
+        </div>
+
+        <!-- Scripts -->
+        <script>
+            // Inline quick check or config
+            const API_URL = '/api'; 
+        </script>
+        <script src="js/common.js"></script>
+        <script src="js/login.js"></script>
+    </body>
+
+</html>

@@ -101,6 +101,107 @@ class ShiprocketAPI {
             return null;
         }
     }
+
+    // Check Serviceability
+    async checkServiceability(pickupPostcode, deliveryPostcode, weight, codAmount) {
+        try {
+            const token = await this.getToken();
+            const url = `${this.baseURL}/courier/serviceability/`;
+
+            const params = {
+                pickup_postcode: pickupPostcode || '110001', // Default or Config 
+                delivery_postcode: deliveryPostcode,
+                weight: weight,
+                cod: 1 // 1 for COD, 0 for Prepaid
+            };
+
+            const response = await axios.get(url, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: params
+            });
+
+            if (response.data && response.data.data && response.data.data.available_courier_companies) {
+                return {
+                    success: true,
+                    couriers: response.data.data.available_courier_companies
+                };
+            }
+
+            return { success: false, message: 'No couriers available' };
+
+        } catch (error) {
+            console.error('❌ Shiprocket Serviceability Error:', error.response?.data || error.message);
+            return { success: false, message: error.response?.data?.message || 'Serviceability check failed' };
+        }
+    }
+
+    // Create Order
+    async createOrder(orderData) {
+        try {
+            const token = await this.getToken();
+            const url = `${this.baseURL}/orders/create/adhoc`;
+
+            const response = await axios.post(url, orderData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return {
+                success: true,
+                orderId: response.data.order_id,
+                shipmentId: response.data.shipment_id,
+                awb: response.data.awb_code,
+                response: response.data
+            };
+
+        } catch (error) {
+            console.error('❌ Shiprocket Create Order Error:', error.response?.data || error.message);
+            if (error.response?.data?.errors) {
+                console.error('Validation Errors:', JSON.stringify(error.response.data.errors, null, 2));
+            }
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Order creation failed',
+                details: error.response?.data?.errors
+            };
+        }
+    }
+
+    // Generate AWB (if not returned in create order)
+    async generateAWB(shipmentId, courierId) {
+        try {
+            const token = await this.getToken();
+            const url = `${this.baseURL}/courier/assign/awb`;
+
+            const payload = {
+                shipment_id: shipmentId,
+                courier_id: courierId
+            };
+
+            const response = await axios.post(url, payload, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.data && response.data.awb_assign_status === 1) {
+                return {
+                    success: true,
+                    awb: response.data.response.data.awb_code,
+                    courierName: response.data.response.data.courier_name
+                };
+            }
+
+            return { success: false, message: response.data.message || 'AWB Generation Failed' };
+
+        } catch (error) {
+            console.error('❌ Shiprocket AWB Error:', error.response?.data || error.message);
+            return { success: false, message: error.response?.data?.message || 'AWB generation failed' };
+        }
+    }
 }
 
 // Export singleton instance

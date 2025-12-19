@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📍 Verification Department - Herb On Naturals</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="bg-gray-50">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-md border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-3">
+                    <img src="logo.png" alt="Logo" class="h-10 w-10 object-contain">
+                    <div>
+                        <h1 class="text-lg font-bold text-gray-800">📍 Verification Department</h1>
+                        <p class="text-xs text-gray-500" id="userInfo">Loading...</p>
+                    </div>
+                </div>
+                <button onclick="logout()"
+                    class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition text-sm font-semibold">
+                    🚪 Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-2xl font-bold mb-4">📍 Verification Department</h2>
+            <p class="text-gray-600">Verification panel loading...</p>
+            <p class="text-sm text-gray-500 mt-2">If panel doesn't load, please refresh or <a href="index.html"
+                    class="text-blue-600 underline">go back to login</a></p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Check authentication
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+        if (!currentUser || currentUser.type !== 'verification') {
+            alert('Please login as Verification Department');
+            window.location.href = 'index.html';
+        } else {
+            document.getElementById('userInfo').textContent = `Logged in: ${currentUser.name || currentUser.deptId || 'Verification'}`;
+            // Initialize verification department
+            setTimeout(() => {
+                currentDeptType = 'verification';
+                currentUserType = 'department';
+                if (typeof showDepartmentPanel === 'function') {
+                    showDepartmentPanel();
+                }
+            }, 100);
+        }
+
+        function logout() {
+            if (confirm('Logout karna chahte hain?')) {
+                localStorage.removeItem('currentUser');
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+
+</html>

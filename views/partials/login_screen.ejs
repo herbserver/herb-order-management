@@ -1,0 +1,153 @@
+<div id="loginScreen" class="min-h-screen flex items-center justify-center relative overflow-hidden py-10 px-4">
+            <!-- Decorative Background Elements -->
+            <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+                <div
+                    class="absolute top-[-10%] left-[-10%] w-64 h-64 md:w-96 md:h-96 bg-emerald-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob">
+                </div>
+                <div
+                    class="absolute top-[-10%] right-[-10%] w-64 h-64 md:w-96 md:h-96 bg-teal-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000">
+                </div>
+                <div
+                    class="absolute -bottom-32 left-20 w-64 h-64 md:w-96 md:h-96 bg-cyan-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000">
+                </div>
+            </div>
+
+            <!-- Main Card -->
+            <div class="relative z-10 w-full max-w-md animate-fadeIn">
+                <div class="glass-card p-6 md:p-10 shadow-2xl border border-white/50 backdrop-blur-xl bg-white/40">
+                    <!-- Header -->
+                    <div class="text-center mb-8">
+                        <div class="w-full max-w-sm mx-auto mb-6 mt-6 flex items-center justify-center px-4 relative">
+                            <!-- Animated Gradient Border -->
+                            <div class="absolute inset-0 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-400 rounded-3xl blur-xl opacity-60 animate-pulse"></div>
+                            <div class="relative bg-white rounded-3xl p-6 shadow-2xl logo-float overflow-hidden">
+                                <img src="logo.png" alt="Herb On Naturals" class="w-full h-auto object-contain drop-shadow-2xl relative z-10">
+                                <!-- Gradient Overlay on Logo -->
+                                <div class="absolute inset-0 bg-gradient-to-br from-emerald-400/30 via-teal-500/20 to-cyan-400/30 mix-blend-overlay pointer-events-none z-20"></div>
+                                <!-- Animated Light Sweep -->
+                                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-shimmer pointer-events-none z-30"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="loginMessage" class="hidden mb-6 p-4 rounded-xl text-sm text-center shadow-sm"></div>
+
+                    <!-- Modern Tabs -->
+                    <div class="flex p-1.5 bg-gray-100/80 rounded-2xl mb-8 relative shadow-inner">
+                        <button type="button" onclick="switchLoginTab('employee')" id="loginTabEmployee"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 shadow-sm tab-active z-10">
+                            👤 Emp
+                        </button>
+                        <button type="button" onclick="switchLoginTab('department')" id="loginTabDept"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:text-gray-700 transition-all duration-300 z-10">
+                            🏢 Dept
+                        </button>
+                        <button type="button" onclick="switchLoginTab('admin')" id="loginTabAdmin"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:text-gray-700 transition-all duration-300 z-10">
+                            ⚙️ Admin
+                        </button>
+                    </div>
+
+                    <!-- Employee Login Form -->
+                    <div id="employeeLoginForm" class="space-y-5">
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span
+                                    class="text-gray-400 group-focus-within:text-emerald-500 transition-colors">🆔</span>
+                            </div>
+                            <input type="text" id="empLoginId" placeholder="Employee ID"
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none transition-all placeholder-gray-400 font-medium">
+                        </div>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span
+                                    class="text-gray-400 group-focus-within:text-emerald-500 transition-colors">🔒</span>
+                            </div>
+                            <input type="password" id="empLoginPass" placeholder="Password"
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none transition-all placeholder-gray-400 font-medium">
+                        </div>
+
+                        <button type="button" onclick="employeeLogin()"
+                            class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            Sign In
+                        </button>
+
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" onclick="showRegisterScreen()"
+                                class="flex-1 bg-white border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                                ✨ New Account
+                            </button>
+                            <button type="button" onclick="showResetScreen()"
+                                class="flex-1 bg-white border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                                🔑 Forgot Pass
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Department Login Form -->
+                    <div id="departmentLoginForm" class="hidden space-y-5">
+                        <div class="flex gap-3 mb-2 p-1 bg-gray-50 rounded-xl">
+                            <button type="button" onclick="setDeptType('verification')" id="deptTypeVerify"
+                                class="flex-1 py-2.5 rounded-lg text-sm font-bold bg-white text-blue-600 shadow-sm border border-blue-100 transition-all">
+                                📍 Verify
+                            </button>
+                            <button type="button" onclick="setDeptType('dispatch')" id="deptTypeDispatch"
+                                class="flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 hover:bg-white/50 transition-all">
+                                📦 Dispatch
+                            </button>
+                            <button type="button" onclick="setDeptType('delivery')" id="deptTypeDelivery"
+                                class="flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 hover:bg-white/50 transition-all">
+                                🚚 Delivery
+                            </button>
+                        </div>
+
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🏢</span>
+                            </div>
+                            <input type="text" id="deptLoginId" placeholder="Department ID"
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                        </div>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🔒</span>
+                            </div>
+                            <input type="password" id="deptLoginPass" placeholder="Department Password"
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                        </div>
+
+                        <button type="button" onclick="departmentLogin()"
+                            class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            Login to Panel
+                        </button>
+                    </div>
+
+                    <!-- Admin Login Form -->
+                    <div id="adminLoginForm" class="hidden space-y-5">
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center mb-2">
+                            <span class="text-3xl">🛡️</span>
+                            <p class="text-xs text-gray-500 mt-2 font-medium uppercase tracking-wider">Restricted Access
+                            </p>
+                        </div>
+
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="text-gray-400 group-focus-within:text-gray-800 transition-colors">🔑</span>
+                            </div>
+                            <input type="password" id="adminLoginPass" placeholder="Admin Access Key"
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-600 focus:border-gray-600 outline-none transition-all placeholder-gray-400 font-medium">
+                        </div>
+
+                        <button type="button" onclick="adminLogin()"
+                            class="w-full bg-gradient-to-r from-gray-700 to-gray-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            Authenticate
+                        </button>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="mt-8 text-center">
+                        <p class="text-xs text-gray-400 font-medium">© 2025 Herb On Naturals System</p>
+                    </div>
+                </div>
+            </div>
+        </div>
