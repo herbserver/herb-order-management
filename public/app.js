@@ -1194,44 +1194,99 @@ function calculateCOD() {
     document.querySelector('input[name="codAmount"]').value = Math.max(0, total - advance).toFixed(2);
 }
 
+// Show validation popup for missing fields
+function showValidationPopup(missingFields) {
+    const popup = document.createElement('div');
+
+    // Create list of missing fields
+    const fieldsList = missingFields.map(field =>
+        `<li class="flex items-center gap-2 text-gray-700">
+            <span class="text-red-500 font-bold">❌</span>
+            <span>${field}</span>
+        </li>`
+    ).join('');
+
+    popup.innerHTML = `
+        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s;">
+            <div style="background: white; border-radius: 20px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s;">
+                <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; animation: shake 0.5s;">
+                    <span style="font-size: 40px;">⚠️</span>
+                </div>
+                <h2 style="font-size: 22px; font-weight: bold; color: #1f2937; margin-bottom: 12px; text-align: center;">Form Incomplete!</h2>
+                <p style="font-size: 14px; color: #6b7280; margin-bottom: 16px; text-align: center;">Kripya ye fields bharein:</p>
+                
+                <ul style="list-style: none; padding: 0; margin: 0 0 24px 0; max-height: 200px; overflow-y: auto;">
+                    ${fieldsList}
+                </ul>
+                
+                <button onclick="this.closest('div[style*=fixed]').remove()" 
+                    style="width: 100%; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 14px 24px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(239,68,68,0.3);" 
+                    onmouseover="this.style.transform='scale(1.02)'" 
+                    onmouseout="this.style.transform='scale(1)'">
+                    ठीक है, भर देता हूं
+                </button>
+            </div>
+        </div>
+        <style>
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            @keyframes shake { 
+                0%, 100% { transform: rotate(0deg); }
+                25% { transform: rotate(-5deg); }
+                75% { transform: rotate(5deg); }
+            }
+        </style>
+    `;
+
+    document.body.appendChild(popup);
+
+    // Auto-scroll to first missing field after closing popup
+    popup.querySelector('button').addEventListener('click', () => {
+        const firstEmptyField = document.querySelector('.border-red-500');
+        if (firstEmptyField) {
+            firstEmptyField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => firstEmptyField.focus(), 300);
+        }
+    });
+}
+
 async function saveOrder() {
     const form = document.getElementById('orderForm');
     const customerName = form.customerName.value.trim();
     const telNo = form.telNo.value.trim();
 
-    if (!customerName || !telNo) {
-        return showMessage('Customer Name aur Tel No. required hai!', 'error', 'empMessage');
-    }
-
-    if (telNo.length !== 10) {
-        return showMessage('Mobile Number 10 digit ka hona chahiye!', 'error', 'empMessage');
-    }
-
     // Enhanced Validation: Check ALL required fields
-    let hasError = false;
+    let missingFields = [];
     const inputs = form.querySelectorAll('input[required], select[required]');
 
     inputs.forEach(input => {
         if (!input.value.trim()) {
             input.classList.add('border-red-500', 'bg-red-50');
-            hasError = true;
+
+            // Get field name from placeholder or name attribute
+            const fieldName = input.placeholder || input.name || 'Unknown field';
+            missingFields.push(fieldName);
 
             // Add listener to remove error on type
             input.addEventListener('input', () => {
                 input.classList.remove('border-red-500', 'bg-red-50');
-            });
+            }, { once: true });
         } else {
             input.classList.remove('border-red-500', 'bg-red-50');
         }
     });
 
-    if (hasError) {
-        return showMessage('Kripya sabhi laal (red) fields bharein!', 'error', 'empMessage');
+    if (missingFields.length > 0) {
+        // Show custom popup with list of missing fields
+        showValidationPopup(missingFields);
+        return;
     }
 
-    if (telNo.length !== 10) {
-        document.querySelector('input[name="telNo"]').classList.add('border-red-500');
-        return showMessage('Mobile Number 10 digit ka hona chahiye!', 'error', 'empMessage');
+    // Additional phone number validation
+    if (telNo && telNo.length !== 10) {
+        showValidationPopup(['Tel No. - 10 digits hone chahiye (currently ' + telNo.length + ' digits)']);
+        document.querySelector('input[name="telNo"]').classList.add('border-red-500', 'bg-red-50');
+        return;
     }
 
     const items = [];
@@ -1620,13 +1675,16 @@ async function loadMyOrders() {
                         ${order.status === 'Dispatched' && !hasRequestedDelivery ?
                     `<button onclick="requestDelivery('${order.orderId}')" class="text-xs bg-pink-50 text-pink-600 px-2 py-1 rounded-lg font-bold hover:bg-pink-100 transition-colors">
                                 ✋ Request Delivery
-                            </button>` : ''
+                        </button>` : ''
                 }
                         ${hasRequestedDelivery && order.status === 'Dispatched' ?
                     `<span class="text-[10px] bg-pink-100 text-pink-700 px-2 py-1 rounded-lg font-bold">⏳ Req Pending</span>` : ''
                 }
                     </div>
                 </div>
+
+                 ${/* Show tracking badge for dispatched and delivered orders */
+                ['Dispatched', 'Delivered'].includes(order.status) ? getTrackingStatusBadge(order) : ''}
 
                  <!-- Footer Actions -->
                 <div class="p-3 bg-gray-50/50 border-t border-gray-100 grid grid-cols-1 gap-2">
@@ -1655,6 +1713,71 @@ async function loadMyOrders() {
         document.getElementById('myOrdersList').innerHTML = '<p class="text-center text-red-500 py-8">Server connection failed</p>';
     }
 }
+
+// ==================== TRACKING STATUS BADGE HELPER ====================
+// Generate tracking status badge HTML for an order
+function getTrackingStatusBadge(order) {
+    // Check if order has Shiprocket tracking
+    const hasShiprocket = order.shiprocket && order.shiprocket.awb;
+    // Check if order has manual tracking
+    const hasManualTracking = order.tracking && order.tracking.trackingId;
+
+    if (!hasShiprocket && !hasManualTracking) {
+        // No tracking info available
+        return '';
+    }
+
+    // Get tracking data (prefer Shiprocket over manual)
+    const awb = hasShiprocket ? order.shiprocket.awb : order.tracking.trackingId;
+    const courier = hasShiprocket ?
+        (order.shiprocket.courierName || 'Shiprocket') :
+        (order.tracking.courier || 'Manual');
+    const currentStatus = order.tracking && order.tracking.currentStatus ?
+        order.tracking.currentStatus : 'In Transit';
+
+    // Determine badge color based on status
+    let badgeColor = 'blue';
+    if (currentStatus.includes('Delivered')) badgeColor = 'green';
+    else if (currentStatus.includes('Out for Delivery')) badgeColor = 'purple';
+    else if (currentStatus.includes('Transit')) badgeColor = 'yellow';
+    else if (currentStatus.includes('Pickup')) badgeColor = 'orange';
+
+    return `
+        <div class="mt-3 p-3 bg-gradient-to-r from-${badgeColor}-50 to-white border border-${badgeColor}-200 rounded-xl">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-bold text-${badgeColor}-700 uppercase tracking-wide flex items-center gap-1">
+                    ${hasShiprocket ? '🚀' : '📦'} Tracking Info
+                </p>
+                <span class="bg-${badgeColor}-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                    ${currentStatus}
+                </span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs mb-2">
+                <div>
+                    <p class="text-gray-500 font-medium mb-0.5">AWB Number:</p>
+                    <div class="flex items-center gap-1">
+                        <p class="font-mono font-bold text-gray-800 text-[11px] truncate">${awb}</p>
+                        <button onclick="copyTracking('${awb}')" 
+                            class="text-${badgeColor}-600 hover:text-${badgeColor}-800 transition-colors" 
+                            title="Copy AWB">
+                            📋
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-gray-500 font-medium mb-0.5">Courier:</p>
+                    <p class="font-bold text-${badgeColor}-700 text-[11px]">${courier}</p>
+                </div>
+            </div>
+            ${order.tracking && order.tracking.lastUpdate ? `
+                <div class="text-[10px] text-gray-600 italic border-t border-${badgeColor}-100 pt-2 mt-1">
+                    📍 ${order.tracking.lastUpdate}
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
 function copyTracking(trackingId) {
     navigator.clipboard.writeText(trackingId);
     alert('Tracking ID copied: ' + trackingId);
@@ -3208,20 +3331,8 @@ async function loadDispatchHistory() {
                         </div>
                     </div>
 
-                    ${order.tracking && order.tracking.trackingId ? `
-                    <div class="flex items-start gap-3">
-                         <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
-                             🧾
-                         </div>
-                         <div>
-                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Tracking</p>
-                             <div class="flex items-center gap-2">
-                                <p class="text-sm font-mono font-bold text-blue-700 tracking-wide">${order.tracking.trackingId}</p>
-                                <button onclick="copyTracking('${order.tracking.trackingId}')" class="text-xs text-gray-400 hover:text-blue-600">📋</button>
-                             </div>
-                         </div>
-                    </div>
-                    ` : ''}
+                    ${/* Enhanced tracking badge for dispatched/delivered orders */
+                getTrackingStatusBadge(order) || ''}
 
                     <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
                         <span class="text-xs text-gray-400">

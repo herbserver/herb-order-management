@@ -14,13 +14,13 @@ function initializeAutoTracking() {
         clearInterval(window.trackingInterval);
     }
 
-    console.log('🔔 Auto-tracking initialized - checking every 5 minutes');
+    console.log('🔔 Auto-tracking initialized - checking every 3 minutes');
 
     // Check immediately
     checkForOutForDelivery();
 
-    // Then check every 5 minutes
-    window.trackingInterval = setInterval(checkForOutForDelivery, 5 * 60 * 1000);
+    // Then check every 3 minutes
+    window.trackingInterval = setInterval(checkForOutForDelivery, 3 * 60 * 1000);
 }
 
 // Check all dispatched orders for "Out for Delivery" status
