@@ -154,7 +154,35 @@ async function saveOrder() {
         }
     });
 
-    if (items.length === 0) return alert('Add at least one item');
+    // --- ENHANCED VALIDATION ---
+    const requiredFields = [
+        { field: form.customerName, label: 'Customer Name' },
+        { field: form.telNo, label: 'Mobile Number' },
+        { field: form.villColony, label: 'Village/Colony' },
+        { field: form.distt, label: 'District' },
+        { field: form.state, label: 'State' },
+        { field: form.pin, label: 'Pincode' }
+    ];
+
+    const missingFields = requiredFields
+        .filter(item => !item.field.value.trim())
+        .map(item => item.label);
+
+    if (missingFields.length > 0) {
+        return showWarningPopup(
+            'Zaroori Details Gayab Hain!',
+            `Kripya ye fields bharlein:\n• ${missingFields.join('\n• ')}`
+        );
+    }
+
+    if (form.telNo.value.length !== 10) {
+        return showWarningPopup('Mobile Number Galat Hai', 'Mobile number poore 10 digit ka hona chahiye.');
+    }
+
+    if (items.length === 0) {
+        return showWarningPopup('Item Add Karein', 'Kam se kam ek product select karna zaroori hai.');
+    }
+    // ----------------------------
 
     const orderData = {
         employeeId: currentUser.id,
@@ -194,7 +222,20 @@ async function saveOrder() {
         const data = await res.json();
 
         if (data.success) {
-            showSuccessPopup('Order Saved!', `Order #${data.orderId} created successfully.`, '🎉', '#10b981');
+            const bookedOrder = {
+                orderId: data.orderId,
+                customerName: orderData.customerName,
+                total: orderData.total,
+                telNo: orderData.telNo
+            };
+
+            showSuccessPopup(
+                'Order Saved!',
+                `Order #${data.orderId} created successfully.`,
+                '🎉',
+                '#10b981',
+                { type: 'booked', order: bookedOrder }
+            );
             form.reset();
             initOrderForm(); // Reset date/time/items
             updateAddress(); // Clear preview
@@ -405,7 +446,13 @@ function renderEmpOrderCard(o, isHistory = false) {
         </div>
         <p class="text-xs text-gray-500 mb-3 truncate">📍 ${o.address}</p>
         <div class="flex justify-between items-center border-t border-gray-100 pt-3">
-            <span class="text-xs font-mono text-gray-400">#${o.orderId}</span>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-mono text-gray-400">#${o.orderId}</span>
+                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
+                    class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                    ${WHATSAPP_ICON}
+                </button>
+            </div>
             <div>${actionBtn}</div>
         </div>
     </div>`;

@@ -108,7 +108,13 @@ function renderVerificationCard(o) {
     <div class="bg-white border rounded-xl p-4 hover:shadow-lg transition-all">
         <div class="flex justify-between items-start mb-3">
             <div>
-                <span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">New</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">New</span>
+                    <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
+                        class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                        ${WHATSAPP_ICON}
+                    </button>
+                </div>
                 <h4 class="font-bold text-lg text-gray-800 mt-1">${o.customerName}</h4>
                 <p class="text-xs text-gray-500">${new Date(o.timestamp).toLocaleString()}</p>
             </div>
@@ -184,7 +190,13 @@ function renderDispatchCard(o) {
     return `
     <div class="bg-white border rounded-xl p-4">
         <div class="flex justify-between items-center mb-4">
-           <h4 class="font-bold">${o.customerName}</h4>
+           <div class="flex items-center gap-3">
+               <h4 class="font-bold">${o.customerName}</h4>
+               <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
+                   class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                   ${WHATSAPP_ICON}
+               </button>
+           </div>
            <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Verified</span>
         </div>
         <p class="text-sm text-gray-600 mb-4">${o.address}</p>

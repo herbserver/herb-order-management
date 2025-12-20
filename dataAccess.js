@@ -13,6 +13,10 @@ function setMongoStatus(status) {
     mongoConnected = status;
 }
 
+function getMongoStatus() {
+    return mongoConnected;
+}
+
 // ==================== DEPARTMENTS ====================
 
 async function getDepartment(departmentId) {
@@ -240,6 +244,7 @@ function writeJSONFile(filePath, data) {
 
 module.exports = {
     setMongoStatus,
+    getMongoStatus,
     // Departments
     getDepartment,
     getAllDepartments,

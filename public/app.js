@@ -1,5 +1,25 @@
-// Production: Using Render server
-const API_URL = '/api';
+// API Configuration
+// If API_URL is defined in HTML, use it, else default
+var API_URL = typeof API_URL !== 'undefined' ? API_URL : (window.location.origin + '/api');
+
+// Fallback WhatsApp Templates
+if (typeof whatsappTemplates === 'undefined') {
+    var whatsappTemplates = {
+        booked: (order) => `नमस्ते ${order.customerName}! 🙏
+
+🌿 *Herb On Naturals* में आपका स्वागत है।
+
+✅ आपका Order successfully book हो गया है!
+📦 *Order ID:* ${order.orderId}
+💰 *Total Amount:* ₹${order.total}
+
+हमारा verification department जल्द ही आपसे संपर्क करेगा। 
+
+धन्यवाद!
+Herb On Naturals
+https://herbonnaturals.in/`
+    };
+}
 
 console.log('Connecting to API at:', API_URL);
 const ADMIN_PASS = 'admin123';
@@ -25,6 +45,8 @@ const COURIER_URLS = {
 };
 
 // ==================== SESSION MANAGEMENT ====================
+const WHATSAPP_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" style="width:1.2em; height:1.2em;"><path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.1 0-65.6-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-5.5-2.8-23.2-8.5-44.2-27.1-16.4-14.6-27.4-32.7-30.6-38.1-3.2-5.4-.3-8.3 2.4-11.1 2.4-2.5 5.5-6.4 8.3-9.6 2.8-3.2 3.7-5.5 5.5-9.1 1.9-3.7 1-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 13.2 5.8 23.5 9.2 31.5 11.8 13.3 4.2 25.4 3.6 35 2.2 10.7-1.5 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>`;
+
 function saveSession() {
     const session = {
         user: currentUser,
@@ -73,6 +95,28 @@ function showMessage(msg, type, elementId) {
 
 function closeModal(id) {
     document.getElementById(id).classList.add('hidden');
+}
+
+function copyTracking(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(() => alert('Copied: ' + text))
+            .catch(err => console.error('Copy failed', err));
+    } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            alert('Copied: ' + text);
+        } catch (err) {
+            prompt("Copy manually:", text);
+        }
+        document.body.removeChild(textArea);
+    }
 }
 
 // ==================== LOGIN TAB SWITCHING ====================
@@ -1352,37 +1396,20 @@ async function saveOrder() {
         const data = await res.json();
 
         if (data.success) {
-            // Show beautiful success popup
-            const popup = document.createElement('div');
-            const title = currentEditingOrderId ? 'Order Updated!' : 'Order Saved!';
-            const message = currentEditingOrderId ? 'Order details successfully update ho gaye' : 'Order successfully Verification Department mein chala gaya';
+            const bookedOrder = {
+                orderId: data.order?.orderId || data.orderId || 'Updated',
+                customerName: orderData.customerName,
+                total: orderData.total,
+                telNo: orderData.telNo
+            };
 
-            popup.innerHTML = `
-                        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s;">
-                            <div style="background: white; border-radius: 24px; padding: 40px; max-width: 400px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.4s;">
-                                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; animation: scaleIn 0.5s;">
-                                    <span style="font-size: 48px;">✅</span>
-                                </div>
-                                <h2 style="font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 12px;">${title}</h2>
-                                <p style="font-size: 18px; font-weight: 600; color: #10b981; margin-bottom: 8px;">Order ID: ${data.order?.orderId || data.orderId || 'Updated'}</p>
-                                <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">${message}</p>
-                                <button onclick="this.closest('div[style*=fixed]').remove()" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 12px 32px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                                    Got It! 👍
-                                </button>
-                            </div>
-                        </div>
-                        <style>
-                            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                            @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-                            @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
-                        </style>
-                    `;
-            document.body.appendChild(popup);
-
-            // Auto close after 5 seconds
-            setTimeout(() => {
-                if (popup.parentNode) popup.remove();
-            }, 5000);
+            showSuccessPopup(
+                currentEditingOrderId ? 'Order Updated!' : 'Order Saved!',
+                currentEditingOrderId ? 'Order details successfully update ho gaye' : 'Order successfully Verification Department mein chala gaya',
+                '✅',
+                '#10b981',
+                currentEditingOrderId ? null : { type: 'booked', order: bookedOrder }
+            );
 
             form.reset();
             currentEditingOrderId = null; // Reset edit mode
@@ -1618,10 +1645,14 @@ async function loadMyOrders() {
                                 <span class="bg-${statusColor}-100 text-${statusColor}-700 text-xs font-bold px-2 py-0.5 rounded-md border border-${statusColor}-200 uppercase tracking-wide">
                                     ${order.orderId}
                                 </span>
+                                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                    class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                    ${WHATSAPP_ICON}
+                                </button>
                                 ${order.orderType === 'REORDER' ?
                     '<span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-200">REORDER</span>' : ''}
                             </div>
-                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">
+                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[150px]" title="${order.customerName}">
                                 ${order.customerName}
                             </h3>
                         </div>
@@ -1945,8 +1976,12 @@ async function loadMyHistory() {
                 <div class="p-4 border-b border-${statusColor}-50 bg-gradient-to-r from-${statusColor}-50/50 to-white relative">
                     <div class="flex justify-between items-start relative z-10">
                         <div>
-                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-2">
                                 Order #${order.orderId}
+                                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                    class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                    ${WHATSAPP_ICON}
+                                </button>
                              </p>
                             <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[200px]" title="${order.customerName}">
                                 ${order.customerName}
@@ -2496,24 +2531,46 @@ async function loadDeliveryPerformance() {
     try {
         const res = await fetch(`${API_URL}/orders/delivered`);
         const data = await res.json();
-        const orders = data.orders || [];
+        let orders = data.orders || [];
 
+        const startInput = document.getElementById('deliveryPerformanceStartDate');
+        const endInput = document.getElementById('deliveryPerformanceEndDate');
+        const start = startInput ? startInput.value : '';
+        const end = endInput ? endInput.value : '';
+
+        // CALCULATE STATS (Before filtering the list display, but after fetching all)
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
         const lastWeek = new Date(today);
         lastWeek.setDate(lastWeek.getDate() - 7);
 
-        const todayStr = today.toISOString().split('T')[0];
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const countToday = orders.filter(o => {
+            const d = new Date(o.deliveredAt || o.timestamp);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime() === today.getTime();
+        }).length;
 
-        const todayCount = orders.filter(o => o.deliveredAt && o.deliveredAt.split('T')[0] === todayStr).length;
-        const yesterdayCount = orders.filter(o => o.deliveredAt && o.deliveredAt.split('T')[0] === yesterdayStr).length;
-        const weekCount = orders.filter(o => o.deliveredAt && new Date(o.deliveredAt) >= lastWeek).length;
+        const countYesterday = orders.filter(o => {
+            const d = new Date(o.deliveredAt || o.timestamp);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime() === yesterday.getTime();
+        }).length;
 
-        document.getElementById('statsDeliveryToday').textContent = todayCount;
-        document.getElementById('statsDeliveryYesterday').textContent = yesterdayCount;
-        document.getElementById('statsDeliveryWeek').textContent = weekCount;
+        const countWeek = orders.filter(o => new Date(o.deliveredAt || o.timestamp) >= lastWeek).length;
+
+        if (document.getElementById('statsDeliveryToday')) document.getElementById('statsDeliveryToday').textContent = countToday;
+        if (document.getElementById('statsDeliveryYesterday')) document.getElementById('statsDeliveryYesterday').textContent = countYesterday;
+        if (document.getElementById('statsDeliveryWeek')) document.getElementById('statsDeliveryWeek').textContent = countWeek;
+
+        // Apply filters for the list display
+        if (start) {
+            orders = orders.filter(o => (o.deliveredAt || o.timestamp).split('T')[0] >= start);
+        }
+        if (end) {
+            orders = orders.filter(o => (o.deliveredAt || o.timestamp).split('T')[0] <= end);
+        }
 
         document.getElementById('deliveryPerformanceData').innerHTML = `
                     <div class="glass-card p-6">
@@ -2779,199 +2836,129 @@ function toTitleCase(str) {
 
 // Generate order card HTML
 function generateOrderCardHTML(order) {
+    const isVerification = currentDeptType === 'verification';
+    const statusColor = isVerification ? 'blue' : 'emerald';
+
+    // Icon SVGs
+    const phoneIcon = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h2.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>`;
+    const locationIcon = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
+
     return `
-            <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-gray-100 flex flex-col h-full">
-                <!-- Card Header -->
-                <div class="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white relative">
-                    <div class="absolute top-0 right-0 w-24 h-24 bg-blue-400 rounded-bl-full opacity-5 pointer-events-none"></div>
-                    <div class="flex justify-between items-start relative z-10">
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-md border border-blue-200 uppercase tracking-wide">
-                                    ${order.orderId}
-                                </span>
-                                ${order.orderType === 'REORDER' ?
-            '<span class="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-md border border-purple-200">REORDER</span>'
-            : ''}
-                            </div>
-                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">
-                                ${order.customerName}
-                            </h3>
-                        </div>
-                        <div class="text-right">
-                             <p class="text-xl font-black text-gray-800 tracking-tight">₹${order.total}</p>
-                             <p class="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-1">
-                                COD: ₹${order.codAmount || 0}
-                            </p>
-                        </div>
-                    </div>
-                </div>
+    <div class="glass-card p-0 overflow-hidden hover:shadow-2xl transition-all duration-300 bg-white rounded-xl border border-gray-100 flex flex-col h-full shadow-sm">
+        <!-- Compact Header -->
+        <div class="px-4 py-2.5 border-b border-gray-50 bg-gray-50/70 flex justify-between items-center text-[11px] font-black">
+            <div class="flex items-center gap-1.5 uppercase tracking-wider text-${statusColor}-700">
+                <span class="bg-${statusColor}-100 px-2 py-0.5 rounded border border-${statusColor}-200 shadow-sm">${order.orderId}</span>
+                ${order.orderType === 'REORDER' ? `<span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200">REORDER</span>` : ''}
+            </div>
+            <div class="text-gray-900">₹${order.total} <span class="text-emerald-500 ml-1.5">COD: ₹${order.codAmount || 0}</span></div>
+        </div>
 
-                <!-- Card Body -->
-                <div class="p-5 space-y-4 flex-grow bg-white/60">
-                    
-                    <!-- Contact Info -->
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0">
-                            📞
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Contact</p>
-                            <p class="text-sm font-semibold text-gray-700 font-mono">${order.telNo}</p>
-                            ${order.altNo ? `<p class="text-xs text-gray-500 font-mono mt-0.5">Alt: ${order.altNo}</p>` : ''}
-                        </div>
-                    </div>
-
-                    <!-- Address Info -->
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 flex-shrink-0">
-                            📍
-                        </div>
-                        <div>
-                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Delivery Location</p>
-                             <p class="text-sm text-gray-600 leading-snug line-clamp-4 capitalize" title="${order.address}">
-                                ${toTitleCase(order.address) || 'No Address Provided'}
-                             </p>
-                             <button onclick="copyAddress('${order.address ? order.address.replace(/'/g, "\\'") : ""}')" class="mt-1 text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
-                                📋 Copy Address
-                             </button>
-                             <div class="flex gap-2 mt-1.5 flex-wrap">
-                                 <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-medium border border-gray-200">
-                                    PIN: ${order.pin || 'N/A'}
-                                 </span>
-                                 <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-medium border border-gray-200">
-                                    ${order.state || 'N/A'}
-                                 </span>
-                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Meta Info -->
-                     <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
-                        <span class="text-xs text-gray-400">📅 ${(() => {
+        <!-- Body Section -->
+        <div class="p-4 space-y-3 flex-grow">
+            <!-- Name & Meta -->
+            <div class="flex justify-between items-start gap-4">
+                <h3 class="font-black text-gray-800 text-lg leading-tight truncate flex-grow" title="${order.customerName}">${order.customerName}</h3>
+                <div class="flex items-center gap-1 text-[10px] text-gray-400 font-bold shrink-0 bg-gray-100/50 px-2 py-1 rounded-full uppercase tracking-tighter">
+                   📅 ${(() => {
             if (!order.timestamp) return 'N/A';
             const days = Math.floor((Date.now() - new Date(order.timestamp)) / 86400000);
-            if (days === 0) return 'Today';
-            if (days === 1) return 'Yesterday';
-            if (days < 7) return days + ' days ago';
-            if (days < 30) return Math.floor(days / 7) + ' weeks ago';
-            return Math.floor(days / 30) + ' months ago';
-        })()} (${order.timestamp ? new Date(order.timestamp).toLocaleDateString() : ''}) ⏰ ${order.timestamp ? new Date(order.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                        <span class="text-xs text-gray-300">•</span>
-                        <span class="text-xs text-gray-400">By: <span class="font-extrabold text-emerald-700">${order.employee} (${order.employeeId})</span></span>
-                    </div>
-
+            return days === 0 ? 'Today' : days === 1 ? 'Yest.' : days + 'd ago';
+        })()}
                 </div>
+            </div>
+            
+            <!-- Contact Row -->
+            <div class="flex items-center gap-2 text-blue-600 bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100/50">
+                <span class="opacity-70">${phoneIcon}</span>
+                <span class="text-sm font-black font-mono tracking-wider">${order.telNo}</span>
+                ${order.altNo ? `<span class="text-[10px] text-gray-400 font-bold ml-auto">ALT: ${order.altNo}</span>` : ''}
+            </div>
 
-                ${currentDeptType === 'verification' ? `
-                <!-- Verification Remark Section -->
-                <div class="border-t border-yellow-200 bg-yellow-50/50 p-3 space-y-2">
-                    ${order.verificationRemark ? `
-                    <div class="bg-yellow-100 border border-yellow-300 rounded-lg p-2">
-                        <p class="text-xs font-bold text-yellow-700 mb-1">📝 Saved Remark:</p>
-                        <p class="text-xs text-gray-700 leading-relaxed">${order.verificationRemark.text}</p>
-                        <p class="text-xs text-yellow-600 mt-1">
-                            Added ${new Date(order.verificationRemark.addedAt).toLocaleString()}
-                        </p>
-                    </div>
-                    ` : ''}
-                    <textarea id="remark-${order.orderId}" placeholder="Add remark/note about this order..."
-                        class="w-full text-xs border-2 border-yellow-300 rounded-lg px-3 py-2 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 outline-none resize-none font-medium"
-                        rows="2">${order.verificationRemark?.text || ''}</textarea>
-                    <button type="button" onclick="saveOrderRemark('${order.orderId}')"
-                        class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg text-xs font-bold transition-colors shadow-sm">
-                        💾 Save Remark
-                    </button>
+            <!-- Address Section -->
+            <div class="space-y-1.5">
+                <div class="flex items-center gap-1.5 text-indigo-500 font-black text-[10px] uppercase tracking-widest opacity-60">
+                    ${locationIcon} Address Details
                 </div>
+                <p class="text-xs text-gray-700 font-bold leading-snug line-clamp-3 pl-5 capitalize">
+                    ${toTitleCase(order.address) || 'No Address Provided'}
+                </p>
+                <div class="flex gap-2 items-center pl-5 pt-0.5">
+                    <span class="bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded text-[10px] font-black text-indigo-600 tracking-tight">PIN: ${order.pin || 'N/A'}</span>
+                    <span class="bg-gray-50 border border-gray-100 px-2 py-0.5 rounded text-[10px] font-black text-gray-500 tracking-tight capitalize">${order.state || 'N/A'}</span>
+                    <button onclick="copyAddress('${order.address ? order.address.replace(/'/g, "\\'") : ""}')" 
+                        class="text-[10px] text-blue-500 hover:text-blue-700 font-black ml-auto flex items-center gap-1">📋 COPY</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Remarks Section -->
+        ${isVerification ? `
+        <div class="px-4 py-2.5 bg-amber-50/50 border-t border-amber-100 flex items-center gap-2">
+            <input type="text" id="remark-${order.orderId}" placeholder="Add remark..."
+                class="flex-grow text-xs border border-amber-200 rounded-lg px-3 py-2 focus:border-amber-400 outline-none bg-white font-bold text-gray-600 shadow-inner"
+                value="${order.verificationRemark?.text || ''}">
+            <button type="button" onclick="saveOrderRemark('${order.orderId}')"
+                class="bg-amber-500 text-white p-2 rounded-lg hover:bg-amber-600 transition-all shadow-sm active:scale-90 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            </button>
+        </div>
+        ` : ''}
+
+        <!-- Actions Footer -->
+        <div class="px-4 py-3.5 bg-gray-50/70 border-t border-gray-100 space-y-2.5">
+            <!-- Utility Buttons -->
+            <div class="grid grid-cols-4 gap-2">
+                <button type="button" onclick="showMap('${order.orderId}', '${(order.address || '').replace(/'/g, "\\'") + ' ' + (order.pin || '')}')" 
+                    class="bg-white border text-gray-600 h-9 rounded-lg text-xs font-bold hover:shadow-md hover:border-blue-300 transition-all flex items-center justify-center" title="Map">🛰️</button>
+                <button type="button" onclick="viewOrder('${order.orderId}')" 
+                    class="bg-white border text-gray-600 h-9 rounded-lg text-xs font-bold hover:shadow-md hover:border-indigo-300 transition-all flex items-center justify-center" title="Details">👁️</button>
+                ${isVerification ? `
+                    <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
+                        class="bg-white border text-gray-600 h-9 rounded-lg text-xs font-bold hover:shadow-md hover:border-amber-300 transition-all flex items-center justify-center" title="Edit">✏️</button>
+                    <button type="button" onclick="cancelOrder('${order.orderId}')" 
+                        class="bg-red-50 text-red-500 h-9 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Cancel">❌</button>
                 ` : ''}
+            </div>
 
-                <!-- Footer Actions -->
-                <div class="p-4 bg-gray-50 border-t border-gray-100 grid gap-2">
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" onclick="showMap('${order.orderId}', '${(order.address || '').replace(/'/g, "\\'") + ' ' + (order.pin || '')}')" 
-                            class="bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1">
-                            📍 Locate
-                        </button>
-                        <button type="button" onclick="viewOrder('${order.orderId}')" 
-                            class="bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1">
-                            👁️ Details
-                        </button>
-                    </div>
-
-                    ${currentDeptType === 'verification'
-            ? `<div class="grid grid-cols-2 gap-2 mt-1">
-                               <button type="button" onclick="verifyAddress('${order.orderId}')" 
-                                    class="bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-emerald-600 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-1">
-                                    ✅ VERIFY
-                               </button>
-                               <button type="button" onclick="markAsUnverified('${order.orderId}')" 
-                                    class="bg-amber-100 text-amber-700 border border-amber-200 py-2.5 rounded-xl text-xs font-bold hover:bg-amber-200 transition-colors flex items-center justify-center gap-1">
-                                    ⏸️ HOLD
-                               </button>
-                           </div>
-                           
-                           <!-- Cancel Button - NEW FEATURE -->
-                           <button type="button" onclick="cancelOrder('${order.orderId}')" 
-                                class="bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition-all mt-2 flex items-center justify-center gap-1">
-                                ❌ CANCEL ORDER
-                           </button>
-                           
-                           <!-- Courier Suggest Section - NEW FEATURE -->
-                           <div class="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-xl space-y-2">
-                                <label class="text-xs font-bold text-purple-700 block">📦 Suggest Courier for Dispatch:</label>
-                                <select id="courierSelect_${order.orderId}" 
-                                    class="w-full border-2 border-purple-300 rounded-lg px-3 py-2 text-xs focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none">
-                                    <option value="">Select Courier</option>
-                                    <option value="Delhivery">Delhivery</option>
-                                    <option value="BlueDart">BlueDart</option>
-                                    <option value="DTDC">DTDC</option>
-                                    <option value="Ecom Express">Ecom Express</option>
-                                    <option value="Shiprocket">Shiprocket</option>
-                                    <option value="India Post">India Post</option>
-                                </select>
-                                <button type="button" onclick="suggestCourier('${order.orderId}')" 
-                                    class="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1">
-                                    📦 Suggest to Dispatch
-                                </button>
-                           </div>
-                           
-                           <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
-                                class="w-full text-xs font-medium text-gray-400 hover:text-gray-600 py-1 transition-colors">
-                                Edit Order Details
-                           </button>`
-            : `
-                             ${order.courierSuggestion && order.courierSuggestion.suggestedCourier ? `
-                                 <!-- Courier Suggestion Display for Dispatch - NEW FEATURE -->
-                                 <div class="mb-3 p-3 bg-purple-100 border-l-4 border-purple-500 rounded-lg">
-                                     <p class="font-bold text-purple-700 text-sm mb-1">💡 Verification Suggestion:</p>
-                                     <p class="text-lg font-bold text-purple-900">${order.courierSuggestion.suggestedCourier}</p>
-                                     <p class="text-xs text-purple-600 mt-1">
-                                         Suggested by ${order.courierSuggestion.suggestedBy} • 
-                                         ${new Date(order.courierSuggestion.suggestedAt).toLocaleDateString()}
-                                     </p>
-                                     ${order.courierSuggestion.suggestionNote ? `
-                                         <p class="text-xs italic text-purple-700 mt-1 border-t border-purple-200 pt-1">
-                                             Note: ${order.courierSuggestion.suggestionNote}
-                                         </p>
-                                     ` : ''}
-                                 </div>
-                             ` : ''}
-                             
-                             <div class="grid grid-cols-2 gap-2">
-                                 <button type="button" onclick="dispatchWithShiprocket('${order.orderId}')" 
-                                     class="bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-xl text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                                     🚀 via Shiprocket
-                                 </button>
-                                 <button type="button" onclick="openDispatchModal('${order.orderId}')" 
-                                     class="bg-purple-600 text-white py-3 rounded-xl text-sm font-bold shadow-lg hover:bg-purple-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                                 📦 DISPATCH ORDER
-                            </button>`
-        }
+            ${isVerification ? `
+                <!-- Primary Actions -->
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <button type="button" onclick="verifyAddress('${order.orderId}')" 
+                        class="bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-emerald-200/50 active:scale-95 transition-all uppercase tracking-widest">VERIFY</button>
+                    <button type="button" onclick="markAsUnverified('${order.orderId}')" 
+                        class="bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-amber-200/50 active:scale-95 transition-all uppercase tracking-widest">HOLD</button>
                 </div>
-                
-                <!-- Embedded Map Container -->
-                <div id="map-${order.orderId}" class="hidden h-64 w-full bg-gray-100 border-t border-gray-200 relative animate-fadeIn"></div>
-            </div>`;
+
+                <!-- Courier Dropdown -->
+                <div class="flex gap-2 pt-1">
+                    <select id="courierSelect_${order.orderId}" 
+                        class="flex-grow border border-purple-200 rounded-lg px-3 py-2 text-[11px] bg-white font-black text-gray-700 outline-none focus:border-purple-500 shadow-sm">
+                        <option value="">Ship via...</option>
+                        <option value="Delhivery">Delhivery</option>
+                        <option value="BlueDart">BlueDart</option>
+                        <option value="DTDC">DTDC</option>
+                        <option value="Ecom Express">Ecom Express</option>
+                        <option value="Shiprocket">Shiprocket</option>
+                        <option value="India Post">India Post</option>
+                    </select>
+                    <button type="button" onclick="suggestCourier('${order.orderId}')" 
+                        class="bg-purple-500 text-white px-4 rounded-lg text-xs font-bold shadow-md shadow-purple-200 active:scale-90 transition-all">📦</button>
+                </div>
+            ` : `
+                <!-- Dispatch Actions -->
+                <div class="space-y-2 pt-1">
+                    <button type="button" onclick="dispatchWithShiprocket('${order.orderId}')" 
+                        class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-lg text-xs font-black shadow-xl shadow-orange-200/50 hover:scale-[1.02] active:scale-95 transition-all">🚀 SHIPROCKET</button>
+                    <button type="button" onclick="openDispatchModal('${order.orderId}')" 
+                        class="w-full bg-purple-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-purple-200/50 hover:bg-purple-700 active:scale-95 transition-all">📦 MANUAL DISPATCH</button>
+                </div>
+            `}
+        </div>
+        
+        <!-- Map Placeholder -->
+        <div id="map-${order.orderId}" class="hidden h-64 w-full bg-gray-100 border-t border-gray-200 relative animate-fadeIn"></div>
+    </div>`;
 }
 
 async function loadDeliveryRequests() {
@@ -3760,6 +3747,7 @@ async function filterAdminOrders(mobile) {
         let html = '<div class="space-y-3">';
 
         orders.forEach(order => {
+            const hasRequestedDelivery = order.status === 'Delivery Requested';
             html += ` <div class="glass-card p-4 border-l-4 ${order.status === 'Pending' ? 'border-red-500' : order.status === 'Address Verified' ? 'border-blue-500' : order.status === 'Dispatched' ? 'border-purple-500' : 'border-green-500'}"> 
                         <div class="flex justify-between items-start"> 
                             <div> 
@@ -3772,12 +3760,21 @@ async function filterAdminOrders(mobile) {
                                 <span class="px-2 py-1 rounded-full text-xs font-semibold ${order.status === 'Pending' ? 'bg-red-100 text-red-700' : order.status === 'Address Verified' ? 'bg-blue-100 text-blue-700' : order.status === 'Dispatched' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}">${order.status}</span> 
                             </div> 
                         </div> 
-                        <div class="mt-3 flex gap-2 flex-wrap"> 
-                            <button type="button" onclick="viewOrder('${order.orderId}')" class="bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-600">👁️ View</button> 
-                            <button type="button" onclick="openEditOrderModal('${order.orderId}')" class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-orange-600">✏️ Edit</button> 
-                            ${order.status === 'Address Verified' ? `<button type="button" onclick="openDispatchModal('${order.orderId}')" class="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-purple-600">📦 Dispatch</button>` : ''}
-                            <button type="button" onclick="deleteOrder('${order.orderId}')" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-red-600">🗑️ Delete</button> 
-                        </div> 
+                        <div class="p-3 bg-gray-50 flex justify-between items-center border-t">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-mono text-gray-400">#${order.orderId}</span>
+                                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                    class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                    ${WHATSAPP_ICON}
+                                </button>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="viewOrder('${order.orderId}')" class="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-50">View</button>
+                                ${!hasRequestedDelivery && order.status === 'Address Verified' ? `
+                                    <button type="button" onclick="requestDelivery('${order.orderId}')" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-700">Request Delivery</button>
+                                ` : ''}
+                            </div>
+                        </div>
                     </div>`;
         });
         html += '</div>';
@@ -3857,23 +3854,28 @@ async function updateAdminBadges() {
 
 function calculateAndRenderStats(orders, todayId, yesterdayId, weekId, dateField) {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+
     const lastWeek = new Date(today);
     lastWeek.setDate(lastWeek.getDate() - 7);
 
     const countToday = orders.filter(o => {
-        const d = o[dateField] ? new Date(o[dateField]) : new Date(o.timestamp);
-        return d.toDateString() === today.toDateString();
+        const d = new Date(o[dateField] || o.timestamp);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === today.getTime();
     }).length;
 
     const countYesterday = orders.filter(o => {
-        const d = o[dateField] ? new Date(o[dateField]) : new Date(o.timestamp);
-        return d.toDateString() === yesterday.toDateString();
+        const d = new Date(o[dateField] || o.timestamp);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === yesterday.getTime();
     }).length;
 
     const countWeek = orders.filter(o => {
-        const d = o[dateField] ? new Date(o[dateField]) : new Date(o.timestamp);
+        const d = new Date(o[dateField] || o.timestamp);
         return d >= lastWeek;
     }).length;
 
@@ -3883,6 +3885,54 @@ function calculateAndRenderStats(orders, todayId, yesterdayId, weekId, dateField
     if (yEl) yEl.textContent = countYesterday;
     const wEl = document.getElementById(weekId);
     if (wEl) wEl.textContent = countWeek;
+}
+
+function applyQuickDateFilter(prefix, range) {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+
+    const startInput = document.getElementById(prefix + 'StartDate');
+    const endInput = document.getElementById(prefix + 'EndDate');
+    const searchInput = document.getElementById(prefix + 'Search');
+
+    if (!startInput || !endInput) return;
+
+    // Clear search when applying date filter for clarity
+    if (searchInput) searchInput.value = '';
+
+    if (range === 'today') {
+        startInput.value = todayStr;
+        endInput.value = todayStr;
+    } else if (range === 'yesterday') {
+        startInput.value = yesterdayStr;
+        endInput.value = yesterdayStr;
+    } else if (range === 'week') {
+        startInput.value = weekAgoStr;
+        endInput.value = todayStr;
+    }
+
+    // Trigger specific load function
+    if (prefix === 'adminPending') loadAdminPending();
+    else if (prefix === 'adminVerified') loadAdminVerified();
+    else if (prefix === 'adminDispatched') loadAdminDispatched();
+    else if (prefix === 'adminDelivered') loadAdminDelivered();
+    else if (prefix === 'verificationHistory') loadVerificationHistory();
+    else if (prefix === 'deliveryPerformance') loadDeliveryPerformance();
+
+    // Scroll to the list for better focus
+    const listId = prefix.replace('admin', 'admin') + 'List';
+    const listEl = document.getElementById(listId) || document.getElementById(prefix + 'List');
+    if (listEl) {
+        listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 // GENERIC LOAD FUNCTION FOR ADMIN TABS
@@ -3945,17 +3995,39 @@ async function loadAdminStatusTab(status, listId, searchId, startId, endId, stat
                         <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                             <p class="text-4xl mb-3">📭</p>
                             <p class="text-gray-500 font-medium">No ${status} orders found</p>
-                        </div>`;
+        </div>`;
             return;
         }
 
+        let html = '';
+        let lastDate = '';
+
         let themeColor = 'blue';
         if (status === 'Pending') themeColor = 'red';
+        if (status === 'Address Verified') themeColor = 'blue'; // Default for verified
         if (status === 'Dispatched') themeColor = 'purple';
         if (status === 'Delivered') themeColor = 'green';
 
-        let html = '';
         orders.forEach(order => {
+            // Determine date for grouping
+            const orderDateStr = order[dateField] ? order[dateField].split('T')[0] : (order.timestamp ? order.timestamp.split('T')[0] : 'N/A');
+
+            if (orderDateStr !== lastDate) {
+                const displayDate = new Date(orderDateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                const isTodayStr = new Date().toISOString().split('T')[0] === orderDateStr;
+
+                html += `
+                <div class="col-span-full mt-6 mb-2">
+                    <div class="flex items-center gap-4">
+                        <span class="bg-${isTodayStr ? 'blue' : 'gray'}-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm">
+                            ${isTodayStr ? 'Today' : displayDate}
+                        </span>
+                        <div class="h-[2px] flex-grow bg-gradient-to-r from-${isTodayStr ? 'blue' : 'gray'}-200 to-transparent rounded-full"></div>
+                    </div>
+                </div>`;
+                lastDate = orderDateStr;
+            }
+
             const tracking = order.tracking || {};
             const dateDisplay = order[dateField] ? new Date(order[dateField]).toLocaleDateString() : (order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A');
 
@@ -3970,6 +4042,10 @@ async function loadAdminStatusTab(status, listId, searchId, startId, endId, stat
                                 <span class="bg-${themeColor}-100 text-${themeColor}-700 text-xs font-bold px-2 py-0.5 rounded-md border border-${themeColor}-200 uppercase tracking-wide">
                                     ${order.orderId}
                                 </span>
+                                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                    class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                    ${WHATSAPP_ICON}
+                                </button>
                             </div>
                             <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">
                                 ${order.customerName}
@@ -4087,6 +4163,13 @@ function resetAdminFilters(type) {
     else if (type === 'verified') loadAdminVerified();
     else if (type === 'dispatched') loadAdminDispatched();
     else if (type === 'delivered') loadAdminDelivered();
+
+    // Scroll to the list after reset
+    const listId = `admin${capType}List`;
+    const listEl = document.getElementById(listId);
+    if (listEl) {
+        listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 async function loadEmployees() {
@@ -4516,10 +4599,16 @@ function renderAdminHistoryTable(orders) {
                         ${o.timestamp ? new Date(o.timestamp).toLocaleDateString() : ''}
                     </td>
                     <td class="px-6 py-4 text-center">
-                        <button type="button" onclick="viewOrder('${o.orderId}')" 
-                        class="text-indigo-600 hover:text-indigo-800 font-bold text-xs hover:underline">
-                        View
-                        </button>
+                        <div class="flex items-center justify-center gap-2">
+                            <button type="button" onclick="viewOrder('${o.orderId}')" 
+                                class="text-indigo-600 hover:text-indigo-800 font-bold text-xs hover:underline">
+                                View
+                            </button>
+                            <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
+                                class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                ${WHATSAPP_ICON}
+                            </button>
+                        </div>
                     </td>
                 </tr>`;
     });
@@ -4803,6 +4892,7 @@ function showRegisterDeptModal() {
     document.getElementById('newDeptName').value = '';
     document.getElementById('newDeptId').value = '';
     document.getElementById('newDeptPass').value = '';
+    document.getElementById('newDeptType').value = '';
     document.getElementById('registerDeptModal').classList.remove('hidden');
 }
 
@@ -5153,156 +5243,195 @@ async function viewOrder(orderId) {
         const fullAddress = `${order.address || ''}, ${order.distt || ''}, ${order.state || ''} - ${order.pin || ''}`;
 
         document.getElementById('orderDetailContent').innerHTML = `
-                <div class="flex flex-col h-full bg-gray-50">
-                    <!-- Full Bleed Header with Gradient -->
-                    <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white relative flex-shrink-0 rounded-t-2xl">
+                <div class="flex flex-col h-full bg-gray-50/50">
+                    <!-- Premium Header -->
+                    <div class="bg-gradient-to-r from-blue-700 via-indigo-700 to-violet-700 p-8 text-white relative flex-shrink-0 rounded-t-2xl shadow-lg border-b border-white/10">
                         <!-- Close Button -->
-                        <button onclick="closeModal('orderDetailModal')" class="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full p-2 transition-all z-20">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <button onclick="closeModal('orderDetailModal')" class="absolute top-5 right-5 text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2.5 transition-all z-20 backdrop-blur-sm">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
 
-                        <div class="absolute top-0 right-0 opacity-10 transform translate-x-4 -translate-y-4 pointer-events-none">
-                            <svg class="w-40 h-40" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" /><path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
-                        </div>
-                        
-                        <div class="flex justify-between items-start relative z-10 pr-10">
-                            <div>
-                                <h4 class="text-3xl font-bold mb-2 font-mono tracking-wide shadow-black drop-shadow-md">${order.orderId}</h4>
-                                <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${order.status === 'Delivered' ? 'bg-white text-emerald-700' :
-                order.status === 'Dispatched' ? 'bg-white text-purple-700' :
-                    order.status === 'Address Verified' ? 'bg-white text-blue-700' :
-                        'bg-white text-yellow-700'
-            }">${order.status}</span>
+                        <div class="flex justify-between items-end relative z-10">
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-3">
+                                    <h4 class="text-4xl font-black font-mono tracking-tighter drop-shadow-lg">${order.orderId}</h4>
+                                    <span class="px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl bg-white/20 backdrop-blur-md border border-white/30">
+                                        ${order.status}
+                                    </span>
+                                </div>
+                                <p class="text-sm font-bold text-white/70 flex items-center gap-2">
+                                    📅 ${order.timestamp ? new Date(order.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}
+                                </p>
                             </div>
                             <div class="text-right">
-                                <p class="text-4xl font-bold drop-shadow-md">₹${order.total || 0}</p>
-                                <p class="text-sm opacity-90 font-medium">${order.timestamp ? new Date(order.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</p>
+                                <p class="text-5xl font-black drop-shadow-2xl tracking-tighter">₹${order.total || 0}</p>
+                                <p class="text-xs font-black text-white/60 uppercase tracking-widest mt-1">Total Order Value</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Scrollable Body Content -->
-                    <div class="p-4 sm:p-6 space-y-6 overflow-y-auto">
+                    <!-- Layout Grid -->
+                    <div class="p-6 space-y-8 overflow-y-auto">
                         
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <!-- Customer Details Card -->
-                            <div class="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow relative group">
-                                <div class="absolute top-0 right-0 bg-blue-50 text-blue-600 px-3 py-1 rounded-bl-xl rounded-tr-xl text-xs font-bold">CUSTOMER</div>
-                                <div class="flex items-center gap-3 mb-3">
-                                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-lg shadow-sm group-hover:scale-110 transition-transform">👤</div>
+                            <div class="bg-white border-2 border-gray-50 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-blue-600 text-white px-5 py-1.5 rounded-bl-3xl text-[10px] font-black uppercase tracking-widest shadow-md">CUSTOMER</div>
+                                <div class="flex items-center gap-5 mb-6">
+                                    <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 text-3xl shadow-inner group-hover:scale-110 transition-transform cursor-pointer">👤</div>
                                     <div>
-                                        <h5 class="text-base font-bold text-gray-800">${order.customerName}</h5>
-                                        <p class="text-xs text-gray-500 font-mono">ID: ${order.customerName.substring(0, 2).toUpperCase()}${Math.floor(Math.random() * 1000)}</p>
+                                        <div class="flex items-center gap-3">
+                                            <h5 class="text-2xl font-black text-gray-900 leading-tight">${order.customerName}</h5>
+                                            <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                                class="w-7 h-7 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                                ${WHATSAPP_ICON}
+                                            </button>
+                                        </div>
+                                        <p class="text-xs text-blue-500 font-black uppercase tracking-widest mt-0.5">Verified Client</p>
                                     </div>
                                 </div>
-                                <div class="space-y-1.5 text-sm">
-                                    <p class="flex items-center gap-2"><span class="w-16 text-gray-500 font-medium text-xs">Phone:</span> <span class="text-gray-900 font-mono font-bold">${order.telNo}</span></p>
-                                    ${order.altNo ? `<p class="flex items-center gap-2"><span class="w-16 text-gray-500 font-medium text-xs">Alt Phone:</span> <span class="text-gray-900 font-mono">${order.altNo}</span></p>` : ''}
-                                    <p class="flex items-center gap-2"><span class="w-16 text-gray-500 font-medium text-xs">Type:</span> <span class="px-2 py-0.5 bg-gray-100 rounded text-xs font-semibold text-gray-700">${order.orderType || 'NEW'}</span></p>
+                                <div class="space-y-4">
+                                   <div class="flex flex-col">
+                                       <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Mobile Contact</span>
+                                       <span class="text-xl font-black text-gray-800 font-mono tracking-wide">${order.telNo}</span>
+                                   </div>
+                                   ${order.altNo ? `
+                                   <div class="flex flex-col">
+                                       <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Alternative Number</span>
+                                       <span class="text-lg font-bold text-gray-700 font-mono">${order.altNo}</span>
+                                   </div>` : ''}
+                                   <div class="pt-2">
+                                       <span class="px-4 py-2 bg-gray-100 rounded-xl text-xs font-black text-gray-600 border border-gray-200 uppercase tracking-wider">${order.orderType || 'Standard Order'}</span>
+                                   </div>
                                 </div>
                             </div>
 
                             <!-- Delivery Address Card -->
-                            <div class="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow relative group">
-                                <div class="absolute top-0 right-0 bg-orange-50 text-orange-600 px-3 py-1 rounded-bl-xl rounded-tr-xl text-xs font-bold">DELIVERY</div>
-                                <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 text-lg shadow-sm group-hover:scale-110 transition-transform">📍</div>
-                                        <h5 class="text-base font-bold text-gray-800">Address</h5>
+                            <div class="bg-white border-2 border-gray-50 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-orange-500 text-white px-5 py-1.5 rounded-bl-3xl text-[10px] font-black uppercase tracking-widest shadow-md">DELIVERY</div>
+                                <div class="flex items-center justify-between mb-6">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 text-2xl shadow-inner">📍</div>
+                                        <h5 class="text-xl font-black text-gray-900 leading-none">Shipping Address</h5>
                                     </div>
-                                    <button type="button" onclick="copyTracking(this.getAttribute('data-addr'))" data-addr="${fullAddress.replace(/"/g, '&quot;')}" class="text-blue-600 hover:text-blue-800 text-xs font-bold bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors hover:bg-blue-100">
-                                        <span>📋</span> COPY
+                                    <button type="button" onclick="copyTracking(this.getAttribute('data-addr'))" data-addr="${fullAddress.replace(/"/g, '&quot;')}" 
+                                        class="bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white px-4 py-2 rounded-2xl text-[10px] font-black transition-all border border-blue-100 flex items-center gap-2 shadow-sm uppercase tracking-widest">
+                                        📋 Copy
                                     </button>
                                 </div>
-                                <p class="text-gray-700 text-sm leading-relaxed border-l-4 border-orange-200 pl-3 py-1 line-clamp-3 hover:line-clamp-none">
-                                    ${fullAddress}
-                                </p>
-                                ${order.landMark ? `<div class="mt-2 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-1.5 rounded-lg"><span class="text-orange-500">🚩</span> <strong>Landmark:</strong> ${order.landMark}</div>` : ''}
+                                <div class="bg-orange-50/50 p-5 rounded-2xl border border-orange-100 flex flex-col gap-3">
+                                    <p class="text-gray-900 font-bold text-lg leading-relaxed capitalize">
+                                        ${fullAddress}
+                                    </p>
+                                    ${order.landMark ? `
+                                    <div class="pt-2 border-t border-orange-200/50 flex items-start gap-3 text-sm text-gray-600">
+                                        <span class="text-orange-500 font-black">🚩</span>
+                                        <div class="flex flex-col">
+                                            <span class="text-[10px] font-black text-orange-400 uppercase tracking-widest">Landmark</span>
+                                            <span class="font-bold">${order.landMark}</span>
+                                        </div>
+                                    </div>` : ''}
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Items List (Invoice Style) -->
-                        <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-                            <div class="bg-white px-5 py-3 border-b border-gray-100 flex justify-between items-center">
-                                <h5 class="font-bold text-gray-700 flex items-center gap-2">🛒 <span class="text-sm">ORDER ITEMS</span></h5>
-                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full border border-gray-200">${order.items ? order.items.length : 0} Items</span>
+                        <!-- Order Items Section -->
+                        <div class="bg-white border-2 border-gray-50 rounded-[40px] shadow-sm overflow-hidden">
+                            <div class="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
+                                <h5 class="text-xl font-black text-gray-900 flex items-center gap-3">📦 <span class="uppercase tracking-tighter">Order Line Items</span></h5>
+                                <span class="text-[10px] bg-white text-gray-700 px-4 py-2 rounded-2xl border-2 border-gray-50 font-black uppercase tracking-widest shadow-sm">
+                                    ${order.items ? order.items.length : 0} Unique Products
+                                </span>
                             </div>
-                            <div class="p-0 overflow-x-auto">
+                            <div class="px-2 pb-2">
                                 ${order.items && order.items.length > 0 ?
-                `<table class="w-full text-sm">
-                                        <thead class="bg-gray-50/50 text-gray-500 text-xs uppercase text-left">
+                `<div class="overflow-x-auto rounded-[30px] border border-gray-50">
+                                    <table class="w-full text-base">
+                                        <thead class="bg-gray-100/50 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] text-left">
                                             <tr>
-                                                <th class="px-5 py-3 font-medium">Item</th>
-                                                <th class="px-5 py-3 text-right font-medium">Rate</th>
-                                                <th class="px-5 py-3 text-right font-medium">Qty</th>
-                                                <th class="px-5 py-3 text-right font-medium">Total</th>
+                                                <th class="px-8 py-5">Product Description</th>
+                                                <th class="px-8 py-5 text-right">Rate</th>
+                                                <th class="px-8 py-5 text-center w-32">Qty</th>
+                                                <th class="px-8 py-5 text-right">Subtotal</th>
                                             </tr>
                                         </thead>
-                                        <tbody class="divide-y divide-gray-100">
-                                            ${order.items.map(item => `
-                                                <tr class="hover:bg-gray-50 transition-colors">
-                                                    <td class="px-5 py-3 font-medium text-gray-800">${item.description}</td>
-                                                    <td class="px-5 py-3 text-right text-gray-500">₹${item.price}</td>
-                                                    <td class="px-5 py-3 text-right text-gray-500">x${item.quantity}</td>
-                                                    <td class="px-5 py-3 text-right font-bold text-gray-800">₹${item.quantity * item.price}</td>
+                                        <tbody class="divide-y divide-gray-50">
+                                            ${order.items.map(item => {
+                    const rate = item.rate || item.price || 0;
+                    const qty = item.quantity || item.qty || 1;
+                    const subtotal = item.amount || (rate * qty);
+                    return `
+                                                <tr class="hover:bg-blue-50/30 transition-all">
+                                                    <td class="px-8 py-5 font-black text-gray-800">${item.description || 'Unnamed Product'}</td>
+                                                    <td class="px-8 py-5 text-right font-bold text-gray-500">₹${rate}</td>
+                                                    <td class="px-8 py-5 text-center">
+                                                        <span class="bg-gray-100 px-3 py-1 rounded-lg text-sm font-black text-gray-700">x${qty}</span>
+                                                    </td>
+                                                    <td class="px-8 py-5 text-right font-black text-gray-900 text-lg">₹${subtotal}</td>
                                                 </tr>
-                                            `).join('')}
+                                            `}).join('')}
                                         </tbody>
-                                    </table>`
-                : '<div class="p-8 text-center text-gray-400">No items found</div>'
+                                    </table>
+                                </div>`
+                : '<div class="p-16 text-center text-gray-300 font-black uppercase tracking-widest">No Items in this Order</div>'
             }
                             </div>
                             
-                            <!-- Detailed Totals -->
-                            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                                <div class="flex flex-col gap-1 ml-auto w-full md:w-1/2">
-                                    <div class="flex justify-between text-sm text-gray-600">
-                                        <span>Subtotal</span>
-                                        <span class="font-medium">₹${order.total || 0}</span>
+                            <!-- Detailed Totals Summary -->
+                            <div class="bg-gray-900 mx-4 mb-4 mt-2 p-8 rounded-[30px] shadow-2xl relative overflow-hidden">
+                                <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 pointer-events-none"></div>
+                                <div class="flex flex-col gap-4 ml-auto w-full md:w-1/2 relative z-10">
+                                    <div class="flex justify-between text-white/50 text-xs font-black uppercase tracking-widest">
+                                        <span>Order Total (MRP)</span>
+                                        <span class="text-white font-bold">₹${order.total || 0}</span>
                                     </div>
-                                    <div class="flex justify-between text-sm text-gray-600">
-                                        <span>Advance Paid</span>
-                                        <span class="font-medium text-green-600">- ₹${order.advance || 0}</span>
+                                    <div class="flex justify-between text-white/50 text-xs font-black uppercase tracking-widest">
+                                        <span>Advance Payment</span>
+                                        <span class="text-emerald-400 font-bold">- ₹${order.advance || 0}</span>
                                     </div>
-                                    <div class="border-t border-gray-300 my-2"></div>
-                                    <div class="flex justify-between text-lg font-bold text-gray-900">
-                                        <span>COD Payable</span>
-                                        <span class="text-red-600">₹${order.codAmount || 0}</span>
+                                    <div class="h-px bg-white/10 my-1"></div>
+                                    <div class="flex justify-between items-end">
+                                        <div class="flex flex-col">
+                                            <span class="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mb-1">Total Balance Due</span>
+                                            <span class="text-3xl font-black text-white tracking-tighter">COD Payable</span>
+                                        </div>
+                                        <span class="text-4xl font-black text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">₹${order.codAmount || 0}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Tracking Info (Purple) -->
-                        ${order.tracking && order.tracking.courier ? `
-                        <div class="bg-purple-50 border border-purple-100 p-5 rounded-2xl shadow-sm flex items-center justify-between">
+                        <!-- Map Integration -->
+                        <div class="bg-white border-2 border-gray-50 p-2 rounded-[40px] shadow-sm overflow-hidden">
+                            <div id="orderDetailMap" class="w-full h-80 rounded-[35px] bg-gray-100 overflow-hidden relative shadow-inner">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
+                                    <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                    <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Calibrating Satellite Imagery...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Professional Footer Meta -->
+                        <div class="bg-gray-800 p-8 rounded-[40px] border border-gray-700 shadow-xl flex flex-col md:flex-row gap-6 items-center justify-between text-white">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 text-xl">🚚</div>
-                                <div>
-                                    <p class="text-xs text-purple-600 font-bold uppercase mb-1">Via ${order.tracking.courier}</p>
-                                    <p class="text-xl font-bold text-gray-800 font-mono tracking-wide">${order.tracking.trackingId || 'N/A'}</p>
-                                </div>
+                               <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-xl backdrop-blur-sm">👨‍💻</div>
+                               <div class="flex flex-col">
+                                   <span class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Created By</span>
+                                   <span class="font-black text-lg text-emerald-400 capitalize">${order.employee} <span class="text-gray-500 font-mono text-sm">(${order.employeeId})</span></span>
+                               </div>
                             </div>
-                            <button onclick="copyTracking('${order.tracking.trackingId}')" class="bg-white border border-purple-200 text-purple-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:shadow-md transition-all">
-                                Track ↗
-                            </button>
-                        </div>
-                        ` : ''}
-
-                        <!-- Map Section -->
-                        <div class="bg-white border border-gray-200 p-1 rounded-2xl shadow-sm">
-                            <div id="orderDetailMap" class="w-full h-64 rounded-xl bg-gray-100 overflow-hidden relative">
-                                <div class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-                                    <span class="animate-pulse">Loading Map...</span>
-                                </div>
+                            <div class="flex gap-4">
+                                ${order.verifiedBy ? `
+                                <div class="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 flex flex-col">
+                                    <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Verified</span>
+                                    <span class="text-sm font-black text-blue-400">${order.verifiedBy}</span>
+                                </div>` : ''}
+                                ${order.dispatchedBy ? `
+                                <div class="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 flex flex-col">
+                                    <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Dispatched</span>
+                                    <span class="text-sm font-black text-purple-400">${order.dispatchedBy}</span>
+                                </div>` : ''}
                             </div>
-                        </div>
-
-                        <!-- Footer Meta -->
-                        <div class="flex flex-wrap gap-4 text-xs text-gray-500 bg-gray-50 p-4 rounded-xl border border-gray-200 justify-center">
-                            <span class="flex items-center gap-1">👨‍💻 Created: <strong class="text-emerald-700">${order.employee}</strong> (${order.employeeId})</span>
-                            ${order.verifiedBy ? `<span class="hidden md:inline">|</span> <span class="flex items-center gap-1">✅ Verified: <strong>${order.verifiedBy}</strong></span>` : ''}
-                            ${order.dispatchedBy ? `<span class="hidden md:inline">|</span> <span class="flex items-center gap-1">📦 Dispatched: <strong>${order.dispatchedBy}</strong></span>` : ''}
                         </div>
                     </div>
                 </div>`;
@@ -5866,16 +5995,39 @@ async function loadVerificationHistory() {
         }
 
         let html = '';
+        let lastDate = '';
 
         orders.forEach(order => {
+            const dateStr = order.verifiedAt ? order.verifiedAt.split('T')[0] : (order.timestamp ? order.timestamp.split('T')[0] : 'N/A');
+
+            if (dateStr !== lastDate) {
+                const displayDate = new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                const isTodayStr = new Date().toISOString().split('T')[0] === dateStr;
+
+                html += `
+                <div class="col-span-full mt-6 mb-2">
+                    <div class="flex items-center gap-4">
+                        <span class="bg-${isTodayStr ? 'emerald' : 'gray'}-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm">
+                            ${isTodayStr ? 'Today' : displayDate}
+                        </span>
+                        <div class="h-[2px] flex-grow bg-gradient-to-r from-${isTodayStr ? 'emerald' : 'gray'}-200 to-transparent rounded-full"></div>
+                    </div>
+                </div>`;
+                lastDate = dateStr;
+            }
+
             html += `
             <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-purple-100 flex flex-col h-full bg-slate-50">
                 <!-- Card Header -->
                 <div class="p-4 border-b border-purple-50 bg-gradient-to-r from-purple-50/50 to-white relative">
                     <div class="flex justify-between items-start relative z-10">
                         <div>
-                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-2">
                                 Order #${order.orderId}
+                                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                    class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                    ${WHATSAPP_ICON}
+                                </button>
                              </p>
                             <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[200px]" title="${order.customerName}">
                                 ${order.customerName}
@@ -5972,7 +6124,13 @@ async function filterVerificationOrders(mobile) {
                             <div class="p-4 border-b border-purple-50 bg-gradient-to-r from-purple-50/50 to-white relative">
                                 <div class="flex justify-between items-start relative z-10">
                                     <div>
-                                         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Order #${order.orderId}</p>
+                                         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-2">
+                                            Order #${order.orderId}
+                                            <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                                class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                                ${WHATSAPP_ICON}
+                                            </button>
+                                         </p>
                                         <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[200px]" title="${order.customerName}">${order.customerName}</h3>
                                         <p class="text-xs text-gray-500 font-mono mt-0.5">${order.telNo}</p>
                                     </div>
@@ -5996,6 +6154,10 @@ async function filterVerificationOrders(mobile) {
                                     <div>
                                         <div class="flex items-center gap-2 mb-1">
                                             <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-md border border-blue-200 uppercase tracking-wide">${order.orderId}</span>
+                                            <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                                class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                                ${WHATSAPP_ICON}
+                                            </button>
                                         </div>
                                         <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">${order.customerName}</h3>
                                     </div>
@@ -6423,33 +6585,64 @@ setInterval(function () {
 }, 3000);
 
 // ==================== UNIVERSAL SUCCESS POPUP ====================
-function showSuccessPopup(title, message, icon = '✅', color = '#10b981') {
-    const popup = document.createElement('div');
-    popup.innerHTML = `
-                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s;">
-                    <div style="background: white; border-radius: 24px; padding: 40px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.4s;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, ${color}, ${color}dd); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; animation: scaleIn 0.5s;">
-                            <span style="font-size: 48px;">${icon}</span>
-                        </div>
-                        <h2 style="font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 12px;">${title}</h2>
-                        <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px; line-height: 1.5;">${message}</p>
-                        <button onclick="this.closest('div[style*=fixed]').remove()" style="background: linear-gradient(135deg, ${color}, ${color}dd); color: white; border: none; padding: 12px 32px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                            Got It! 👍
-                        </button>
-                    </div>
-                </div>
-                <style>
-                    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                    @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-                    @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
-                </style>
-            `;
-    document.body.appendChild(popup);
+function showSuccessPopup(title, msg, icon = '✅', color = '#10b981', whatsappData = null) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn';
 
-    // Auto close after 4 seconds
-    setTimeout(() => {
-        if (popup.parentNode) popup.remove();
-    }, 4000);
+    let whatsappBtn = '';
+    if (whatsappData) {
+        whatsappBtn = `
+            <button onclick="sendWhatsAppDirect('${whatsappData.type}', ${JSON.stringify(whatsappData.order).replace(/"/g, '&quot;')}); this.closest('.fixed').remove()" 
+                class="w-full py-3.5 rounded-xl font-bold text-white shadow-lg bg-green-500 hover:bg-green-600 hover:scale-105 transition-all flex items-center justify-center gap-2 mb-3">
+                ${WHATSAPP_ICON} Send WhatsApp Confirmation
+            </button>
+        `;
+    }
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl transform transition-all scale-100">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-lg" style="background:${color}20; color:${color}">
+                ${icon}
+            </div>
+            <h3 class="text-2xl font-black text-gray-800 mb-3">${title}</h3>
+            <p class="text-gray-500 font-medium mb-8 leading-relaxed">${msg.replace(/\n/g, '<br>')}</p>
+            ${whatsappBtn}
+            <button onclick="this.closest('.fixed').remove()" class="w-full py-3.5 rounded-xl font-bold text-white shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-105 transition-all" style="background:${color}">
+                Continue
+            </button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Helper for direct WhatsApp redirect
+function sendWhatsAppDirect(type, order) {
+    if (typeof whatsappTemplates !== 'undefined' && whatsappTemplates[type]) {
+        const msg = whatsappTemplates[type](order);
+        const url = `https://wa.me/91${order.telNo}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+    } else {
+        alert('WhatsApp template not found - Opening generic chat');
+        window.open(`https://wa.me/91${order.telNo}`, '_blank');
+    }
+}
+
+function showWarningPopup(title, msg) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn';
+    modal.innerHTML = `
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl transform transition-all scale-100 border-4 border-amber-400">
+            <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner text-amber-600">
+                ⚠️
+            </div>
+            <h3 class="text-2xl font-black text-gray-800 mb-3">${title}</h3>
+            <p class="text-gray-500 font-medium mb-8 leading-relaxed">${msg.replace(/\n/g, '<br>')}</p>
+            <button onclick="this.closest('.fixed').remove()" class="w-full bg-amber-500 py-3.5 rounded-xl font-bold text-white shadow-lg shadow-amber-200 hover:bg-amber-600 hover:scale-105 transition-all">
+                Theek Hai
+            </button>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 // ==================== SAVE ORDER REMARK (VERIFICATION) ====================

@@ -7,6 +7,19 @@ if (!window.whatsappQueue) {
 
 // Message Templates
 const whatsappTemplates = {
+    booked: (order) => `नमस्ते ${order.customerName}! 🙏
+
+🌿 *Herb On Naturals* में आपका स्वागत है।
+
+✅ आपका Order successfully book हो गया है!
+📦 *Order ID:* ${order.orderId}
+💰 *Total Amount:* ₹${order.total}
+
+हमारा verification department जल्द ही आपसे संपर्क करेगा। 
+
+धन्यवाद!
+${getCompanyName()}`,
+
     verified: (order) => `नमस्ते ${order.customerName}! 🙏
 
 ✅ आपका Order *${order.orderId}* verify हो गया है।

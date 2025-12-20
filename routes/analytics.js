@@ -1,27 +1,37 @@
+const express = require('express');
+const router = express.Router();
+const dataAccess = require('../dataAccess');
+
 // ==================== ANALYTICS DASHBOARD API ====================
 
 // Get comprehensive dashboard analytics
-router.get('/api/analytics/dashboard', async (req, res) => {
+router.get('/dashboard', async (req, res) => {
     try {
         const { startDate, endDate, employeeId } = req.query;
 
-        // Get all orders
-        let orders = await Order.find().sort({ timestamp: -1 });
+        // Get all orders using dataAccess (Hybrid)
+        let orders = await dataAccess.getAllOrders();
+        orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-        // Apply date filter if provided
+        // Apply date filter if provided (Fixed logic)
         if (startDate && endDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+
             orders = orders.filter(o => {
                 const orderDate = new Date(o.timestamp);
-                return orderDate >= new Date(startDate) && orderDate <= new Date(endDate);
+                return orderDate >= start && orderDate <= end;
             });
         }
 
         // Apply employee filter if provided
         if (employeeId) {
-            orders = orders.filter(o => o.employeeId === employeeId);
+            orders = orders.filter(o => o.employeeId === employeeId.toUpperCase());
         }
 
-        // Calculate today's stats
+        // Today's stats
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayOrders = orders.filter(o => new Date(o.timestamp) >= today);
@@ -31,165 +41,147 @@ router.get('/api/analytics/dashboard', async (req, res) => {
             totalRevenue: todayOrders.reduce((sum, o) => sum + (o.total || 0), 0),
             pendingVerification: todayOrders.filter(o => o.status === 'Pending').length,
             dispatched: todayOrders.filter(o => o.status === 'Dispatched').length,
-            delivered: todayOrders.filter(o => o.status === 'Delivered').length,
-            successRate: todayOrders.length > 0
-                ? ((todayOrders.filter(o => o.status === 'Delivered').length / todayOrders.length) * 100).toFixed(1)
-                : 0
+            delivered: todayOrders.filter(o => o.status === 'Delivered').length
         };
 
-        // Orders timeline (last 7 days)
+        // 7-Day Timeline Data
         const last7Days = [];
         for (let i = 6; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            date.setHours(0, 0, 0, 0);
-
-            const nextDay = new Date(date);
-            nextDay.setDate(nextDay.getDate() + 1);
-
-            const dayOrders = orders.filter(o => {
-                const orderDate = new Date(o.timestamp);
-                return orderDate >= date && orderDate < nextDay;
-            });
-
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const dayOrders = orders.filter(o => o.timestamp && o.timestamp.startsWith(dateStr));
             last7Days.push({
-                date: date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+                date: dateStr,
                 total: dayOrders.length,
-                pending: dayOrders.filter(o => o.status === 'Pending').length,
-                verified: dayOrders.filter(o => o.status === 'Address Verified').length,
-                dispatched: dayOrders.filter(o => o.status === 'Dispatched').length,
                 delivered: dayOrders.filter(o => o.status === 'Delivered').length,
                 cancelled: dayOrders.filter(o => o.status === 'Cancelled').length
             });
         }
 
-        // Revenue breakdown
-        const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-        const totalCOD = orders.reduce((sum, o) => sum + (o.codAmount || 0), 0);
-        const totalAdvance = orders.reduce((sum, o) => sum + (o.advance || 0), 0);
-
-        // Employee performance
-        const employeeStats = {};
-        orders.forEach(order => {
-            if (!order.employeeId) return;
-
-            if (!employeeStats[order.employeeId]) {
-                employeeStats[order.employeeId] = {
-                    id: order.employeeId,
-                    name: order.employee || order.employeeId,
-                    totalOrders: 0,
-                    delivered: 0,
-                    cancelled: 0,
-                    revenue: 0
-                };
+        // Top 5 Employees
+        const empPerformance = {};
+        orders.forEach(o => {
+            if (o.employeeId) {
+                if (!empPerformance[o.employeeId]) {
+                    empPerformance[o.employeeId] = { name: o.employee || o.employeeId, totalOrders: 0, revenue: 0 };
+                }
+                empPerformance[o.employeeId].totalOrders++;
+                empPerformance[o.employeeId].revenue += (o.total || 0);
             }
-
-            employeeStats[order.employeeId].totalOrders++;
-            employeeStats[order.employeeId].revenue += order.total || 0;
-
-            if (order.status === 'Delivered') employeeStats[order.employeeId].delivered++;
-            if (order.status === 'Cancelled') employeeStats[order.employeeId].cancelled++;
         });
-
-        const employeePerformance = Object.values(employeeStats)
+        const topEmployees = Object.values(empPerformance)
             .sort((a, b) => b.totalOrders - a.totalOrders)
-            .slice(0, 10)
-            .map(emp => ({
-                ...emp,
-                successRate: emp.totalOrders > 0
-                    ? ((emp.delivered / emp.totalOrders) * 100).toFixed(1)
-                    : 0
-            }));
-
-        // Status distribution
-        const statusDistribution = {
-            pending: orders.filter(o => o.status === 'Pending').length,
-            verified: orders.filter(o => o.status === 'Address Verified').length,
-            dispatched: orders.filter(o => o.status === 'Dispatched').length,
-            delivered: orders.filter(o => o.status === 'Delivered').length,
-            cancelled: orders.filter(o => o.status === 'Cancelled').length,
-            onHold: orders.filter(o => o.status === 'On Hold').length
-        };
+            .slice(0, 5);
 
         // Quick stats
-        const avgOrderValue = orders.length > 0
-            ? (totalRevenue / orders.length).toFixed(2)
-            : 0;
-
-        const uniqueCustomers = new Set(orders.map(o => o.telNo)).size;
-
-        const deliveryRate = orders.length > 0
-            ? ((statusDistribution.delivered / orders.length) * 100).toFixed(1)
-            : 0;
-
-        // Calculate average delivery time
-        const deliveredOrders = orders.filter(o =>
-            o.status === 'Delivered' && o.dispatchedAt && o.deliveredAt
-        );
-
-        let avgDeliveryTime = 0;
-        if (deliveredOrders.length > 0) {
-            const totalTime = deliveredOrders.reduce((sum, o) => {
-                const dispatchDate = new Date(o.dispatchedAt);
-                const deliveredDate = new Date(o.deliveredAt);
-                return sum + (deliveredDate - dispatchDate);
-            }, 0);
-            avgDeliveryTime = Math.round(totalTime / deliveredOrders.length / (1000 * 60 * 60 * 24)); // in days
-        }
-
-        // Top products (from items array)
-        const productCount = {};
-        orders.forEach(order => {
-            if (order.items && Array.isArray(order.items)) {
-                order.items.forEach(item => {
-                    const desc = item.description || 'Unknown';
-                    productCount[desc] = (productCount[desc] || 0) + (item.quantity || 1);
-                });
-            }
-        });
-
-        const topProducts = Object.entries(productCount)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([name, count]) => ({ name, count }));
-
-        // Peak order hours
-        const hourlyDistribution = new Array(24).fill(0);
-        orders.forEach(order => {
-            if (order.timestamp) {
-                const hour = new Date(order.timestamp).getHours();
-                hourlyDistribution[hour]++;
-            }
-        });
-
-        const peakHour = hourlyDistribution.indexOf(Math.max(...hourlyDistribution));
+        const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+        const uniqueCustomers = new Set(orders.map(o => o.mobileNumber || o.telNo)).size;
 
         res.json({
             success: true,
             today: todayStats,
             charts: {
+                statusDistribution,
                 ordersTimeline: last7Days,
-                revenueBreakdown: {
-                    total: totalRevenue,
-                    cod: totalCOD,
-                    advance: totalAdvance
-                },
-                employeePerformance,
-                statusDistribution
+                employeePerformance: topEmployees
             },
             quickStats: {
-                avgOrderValue,
+                totalOrders: orders.length,
+                totalRevenue,
                 totalCustomers: uniqueCustomers,
-                deliverySuccessRate: deliveryRate,
-                avgDeliveryTime: `${avgDeliveryTime} days`,
-                topProducts,
-                peakOrderHour: `${peakHour}:00 - ${peakHour + 1}:00`
+                deliverySuccessRate: orders.length > 0 ? ((statusDistribution.delivered / orders.length) * 100).toFixed(1) : 0
             }
         });
 
     } catch (error) {
         console.error('Dashboard analytics error:', error);
         res.status(500).json({ success: false, message: 'Error fetching analytics' });
+    }
+});
+
+// Missing/Stuck Orders Alert (>48 hours in same status)
+router.get('/missing-orders', async (req, res) => {
+    try {
+        const allOrders = await dataAccess.getAllOrders();
+        const orders = allOrders.filter(o =>
+            !['Delivered', 'Cancelled'].includes(o.status)
+        );
+
+        const threshold = 48 * 60 * 60 * 1000; // 48 hours
+        const now = new Date();
+
+        const stuckOrders = orders.filter(o => {
+            const lastUpdate = new Date(o.updatedAt || o.timestamp);
+            return (now - lastUpdate) > threshold;
+        }).map(o => {
+            const lastUpdate = new Date(o.updatedAt || o.timestamp);
+            const hoursStuck = Math.floor((now - lastUpdate) / (1000 * 60 * 60));
+            return {
+                ...o,
+                hoursStuck
+            };
+        });
+
+        const byStatus = {};
+        stuckOrders.forEach(o => {
+            if (!byStatus[o.status]) byStatus[o.status] = [];
+            byStatus[o.status].push({
+                orderId: o.orderId,
+                customerName: o.customerName,
+                total: o.total,
+                lastUpdate: o.updatedAt || o.timestamp,
+                hoursStuck: o.hoursStuck
+            });
+        });
+
+        res.json({
+            success: true,
+            totalStuck: stuckOrders.length,
+            byStatus,
+            alert: stuckOrders.length > 0
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error' });
+    }
+});
+
+// Range Filter API (matching frontend applyAnalyticsFilters)
+router.get('/range', async (req, res) => {
+    try {
+        const { startDate, endDate, employeeId } = req.query;
+        let orders = await dataAccess.getAllOrders();
+
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            orders = orders.filter(o => {
+                const d = new Date(o.timestamp);
+                return d >= start && d <= end;
+            });
+        }
+
+        if (employeeId && employeeId !== 'all') {
+            orders = orders.filter(o => o.employeeId === employeeId.toUpperCase());
+        }
+
+        const stats = {
+            totalOrders: orders.length,
+            totalRevenue: orders.reduce((sum, o) => sum + (o.total || 0), 0),
+            statusBreakdown: {
+                pending: orders.filter(o => o.status === 'Pending').length,
+                verified: orders.filter(o => o.status === 'Address Verified').length,
+                dispatched: orders.filter(o => o.status === 'Dispatched').length,
+                delivered: orders.filter(o => o.status === 'Delivered').length,
+                cancelled: orders.filter(o => o.status === 'Cancelled').length
+            }
+        };
+
+        res.json({ success: true, stats });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
