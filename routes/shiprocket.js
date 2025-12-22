@@ -131,4 +131,115 @@ router.post('/create-order', async (req, res) => {
     }
 });
 
+// Sync AWB for a specific order
+router.post('/sync-order/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const order = await dataAccess.getOrderById(orderId);
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        if (!order.shiprocket?.shipmentId) {
+            return res.json({ success: false, message: 'No Shiprocket shipment ID found' });
+        }
+
+        console.log(`🔄 Syncing AWB for ${orderId}...`);
+
+        const shipmentData = await shiprocket.getShipmentDetails(order.shiprocket.shipmentId);
+
+        if (shipmentData && shipmentData.awb) {
+            await dataAccess.updateOrder(orderId, {
+                'shiprocket.awb': shipmentData.awb,
+                'tracking.trackingId': shipmentData.awb,
+                'tracking.courier': shipmentData.courier_name || 'Shiprocket'
+            });
+
+            console.log(`✅ Synced AWB for ${orderId}: ${shipmentData.awb}`);
+
+            res.json({
+                success: true,
+                message: 'AWB synced successfully',
+                awb: shipmentData.awb,
+                courier: shipmentData.courier_name
+            });
+        } else {
+            res.json({
+                success: false,
+                message: 'AWB not yet generated'
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ Sync order error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Sync failed',
+            error: error.message
+        });
+    }
+});
+
+// Sync AWB for all dispatched orders
+router.post('/sync-all', async (req, res) => {
+    try {
+        console.log('🔄 Syncing Shiprocket AWBs...');
+
+        const orders = await dataAccess.getAllOrders();
+        const dispatchedOrders = orders.filter(o =>
+            o.status === 'Dispatched' &&
+            o.shiprocket?.shipmentId &&
+            !o.shiprocket?.awb
+        );
+
+        if (dispatchedOrders.length === 0) {
+            return res.json({
+                success: true,
+                message: 'No orders pending AWB sync',
+                synced: 0
+            });
+        }
+
+        console.log(`📦 Found ${dispatchedOrders.length} orders to sync`);
+
+        let synced = 0;
+
+        for (const order of dispatchedOrders) {
+            try {
+                // Get shipment details from Shiprocket
+                const shipmentData = await shiprocket.getShipmentDetails(order.shiprocket.shipmentId);
+
+                if (shipmentData && shipmentData.awb) {
+                    await dataAccess.updateOrder(order.orderId, {
+                        'shiprocket.awb': shipmentData.awb,
+                        'tracking.trackingId': shipmentData.awb,
+                        'tracking.courier': shipmentData.courier_name || 'Shiprocket'
+                    });
+
+                    console.log(`✅ Synced AWB for ${order.orderId}: ${shipmentData.awb}`);
+                    synced++;
+                }
+            } catch (err) {
+                console.error(`❌ Failed to sync ${order.orderId}:`, err.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Synced ${synced} out of ${dispatchedOrders.length} orders`,
+            synced,
+            total: dispatchedOrders.length
+        });
+
+    } catch (error) {
+        console.error('❌ Sync error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Sync failed',
+            error: error.message
+        });
+    }
+});
+
 module.exports = router;

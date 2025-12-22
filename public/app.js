@@ -3805,6 +3805,25 @@ function editDispatchOrder(orderId, order) {
                             </div>
                         </div>
 
+                        <!-- Tracking Details (for Dispatched orders) -->
+                        ${order.status === 'Dispatched' ? `
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="font-weight: bold; color: #f97316; margin-bottom: 10px; font-size: 14px;">📦 Tracking Details</h4>
+                            <div style="display: grid; gap: 12px;">
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">AWB / Tracking Number</label>
+                                    <input type="text" id="edit_awb" value="${order.shiprocket?.awb || order.tracking?.trackingId || ''}" 
+                                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" placeholder="Enter AWB number">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Courier Name</label>
+                                    <input type="text" id="edit_courier" value="${order.tracking?.courier || 'Shiprocket'}" 
+                                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" placeholder="e.g., Delhivery, BlueDart">
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
                         <!-- Action Buttons -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 25px;">
                             <button type="button" onclick="document.getElementById('editOrderModal').remove()" 
@@ -3836,6 +3855,27 @@ function editDispatchOrder(orderId, order) {
             advance: parseFloat(document.getElementById('edit_advance').value) || 0,
             codAmount: parseFloat(document.getElementById('edit_codAmount').value) || 0
         };
+
+        // Add tracking info if order is dispatched
+        if (order.status === 'Dispatched') {
+            const awb = document.getElementById('edit_awb')?.value.trim();
+            const courier = document.getElementById('edit_courier')?.value.trim();
+
+            if (awb) {
+                updates.tracking = {
+                    trackingId: awb,
+                    courier: courier || 'Shiprocket'
+                };
+
+                // Also update shiprocket.awb if exists
+                if (order.shiprocket) {
+                    updates.shiprocket = {
+                        ...order.shiprocket,
+                        awb: awb
+                    };
+                }
+            }
+        }
 
         try {
             const res = await fetch(`${API_URL}/orders/${orderId}`, {
@@ -7408,7 +7448,7 @@ window.selectCourierAndDispatch = async function (orderId, boxSize, dimensions, 
 
             showSuccessPopup(
                 'Order Pushed to Shiprocket! 🚀',
-                `\nOrder has been created on Shiprocket.\nPlease allow some time for AWB generation and then click "Sync Status".`,
+                `\nOrder has been created on Shiprocket.\nAWB will be auto-synced in a few moments...`,
                 '📦',
                 '#3b82f6',
                 whatsappData
@@ -7420,6 +7460,10 @@ window.selectCourierAndDispatch = async function (orderId, boxSize, dimensions, 
                 loadDeptOrders();
                 loadDispatchHistory();
             }, 1500);
+
+            // AUTO-SYNC AWB: Poll Shiprocket for AWB after 10 seconds
+            console.log('⏰ Auto-sync scheduled for', orderId);
+            setTimeout(() => autoSyncAWB(orderId), 10000); // Wait 10 seconds
         } else {
             alert('❌ Push Error: ' + (data.message || 'Failed to push order'));
         }
@@ -7429,6 +7473,42 @@ window.selectCourierAndDispatch = async function (orderId, boxSize, dimensions, 
         alert('❌ Error: ' + e.message);
     }
 };
+
+// Auto-sync AWB for a specific order
+async function autoSyncAWB(orderId, retryCount = 0) {
+    const maxRetries = 3;
+
+    try {
+        console.log(`🔄 Auto-syncing AWB for ${orderId} (attempt ${retryCount + 1}/${maxRetries + 1})`);
+
+        const res = await fetch(`${API_URL}/shiprocket/sync-order/${orderId}`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success && data.awb) {
+            console.log(`✅ AWB synced for ${orderId}: ${data.awb}`);
+
+            // Refresh orders to show updated AWB
+            loadDeptOrders();
+            loadDispatchHistory();
+
+            // Show subtle notification
+            showSuccessPopup(
+                'AWB Updated! 📦',
+                `Order ${orderId}\nAWB: ${data.awb}`,
+                '✅',
+                '#10b981'
+            );
+        } else if (retryCount < maxRetries) {
+            // Retry after 15 seconds
+            console.log(`⏰ AWB not ready yet, retrying in 15 seconds...`);
+            setTimeout(() => autoSyncAWB(orderId, retryCount + 1), 15000);
+        } else {
+            console.log(`⚠️ AWB not available after ${maxRetries + 1} attempts. Use manual sync.`);
+        }
+    } catch (error) {
+        console.error('Auto-sync error:', error);
+    }
+}
 
 // Sync Shiprocket Status
 async function syncShiprocketStatus() {

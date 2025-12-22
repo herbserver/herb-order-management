@@ -206,6 +206,37 @@ class ShiprocketAPI {
             return { success: false, message: error.response?.data?.message || 'AWB generation failed' };
         }
     }
+
+    // Get shipment details by shipment ID
+    async getShipmentDetails(shipmentId) {
+        try {
+            const token = await this.getToken();
+
+            const response = await axios.get(`${this.baseURL}/shipments/show/${shipmentId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const shipment = response.data?.data;
+
+            if (shipment && shipment.awb_code) {
+                return {
+                    awb: shipment.awb_code,
+                    courier_name: shipment.courier_name,
+                    status: shipment.status,
+                    shipment_id: shipment.id
+                };
+            }
+
+            return null;
+
+        } catch (error) {
+            console.error(`❌ Shiprocket Get Shipment Error (${shipmentId}):`, error.response?.data || error.message);
+            return null;
+        }
+    }
 }
 
 // Export singleton instance
