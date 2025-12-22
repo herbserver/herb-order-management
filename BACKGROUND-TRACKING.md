@@ -1,60 +1,28 @@
 # Background Tracking Service - 24/7 Running
 
-## Local Testing
-
-**Start service:**
-```bash
-node background-tracking.js
-```
-
-**Output:**
-- Every 5 minutes checks Shiprocket
-- Logs "OUT FOR DELIVERY" alerts to console
-- Updates order status in database
-
-**Keep running:**
-- Open new terminal/PowerShell
-- Run: `node background-tracking.js`
-- Minimize terminal (don't close!)
-
-## Production Deployment (Render.com)
-
-### Option A: Separate Worker Service (Recommended)
-
-1. **Render Dashboard** → Create New → **Background Worker**
-2. Set start command: `node background-tracking.js`
-3. Deploy from same GitHub repo
-4. Always running 24/7 ✅
-
-### Option B: Add to main server.js
-
-Add at end of `server.js`:
-```javascript
-// Start background tracking
-require('./background-tracking');
-```
-
-Server restart = tracking stops temporarily
+The background tracking service is now **automatically integrated** into the main server. When you run `start.bat` or `node server.js`, the tracking service starts automatically after the database connects.
 
 ## Features
 
-✅ **24/7 Monitoring** - Browser closed = still running
-✅ **Auto Status Update** - Database me save
-✅ **Console Alerts** - Server logs me dikhe ga
-✅ **Employee Filter** - Sab orders check
+✅ **Auto Status Sync** - Automatically marks orders as **Delivered** in the database when they are delivered in Shiprocket.
+✅ **Cancellation Sync** - Updates orders to **Cancelled** if the tracking status shows RTO or Cancelled.
+✅ **Out for Delivery Alerts** - Logs and tracks "Out for Delivery" events.
+✅ **Hold Reminders** - Reminds about hold orders scheduled for dispatch today.
+✅ **24/7 Tracking** - Runs as long as the server is running.
 
-## Future Enhancements
+## Local Execution
 
-Add in `background-tracking.js`:
-- SMS notifications (Twilio)
-- WhatsApp alerts (WhatsApp Business API)
-- Email notifications (Nodemailer)
-- Push notifications (Firebase)
+Just run your normal start script:
+```bash
+start.bat
+```
+The server will log tracking updates directly to the console.
 
-## Best Practice
+## Configuration
 
-**Production:**
-- Use Render Background Worker
-- Add SMS/Email notifications
-- Use Redis for notified orders tracking
-- Add error monitoring (Sentry)
+- **Sync Interval**: Every 5 minutes (Real-time tracking for all active orders).
+- **Reminders**: Every 1 hour.
+
+## Production (Render.com)
+
+Since it is integrated into `server.js`, your main Web Service will handle tracking. No separate worker is required unless you have a very high volume of orders.

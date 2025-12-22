@@ -50,14 +50,18 @@ class ShiprocketAPI {
             if (trackingData && trackingData.tracking_data) {
                 const shipmentTrack = trackingData.tracking_data.shipment_track || [];
                 const latestStatus = shipmentTrack.length > 0 ? shipmentTrack[0] : null;
+                const shipmentStatus = trackingData.tracking_data.shipment_status;
+
+                let currentStatus = latestStatus?.current_status || 'In Transit';
+                let delivered = (shipmentStatus === 7 || shipmentStatus === '7' || currentStatus.toLowerCase().includes('delivered'));
 
                 return {
                     success: true,
                     awb: awbNumber,
-                    currentStatus: latestStatus?.current_status || 'In Transit',
-                    lastUpdate: latestStatus ? `${latestStatus.date} - ${latestStatus.activity}` : 'No updates',
+                    currentStatus: delivered ? 'Delivered' : currentStatus,
+                    lastUpdate: latestStatus ? `${latestStatus.date || ''} - ${latestStatus.activity || ''}`.trim() : 'No updates',
                     location: latestStatus?.location || 'N/A',
-                    delivered: trackingData.tracking_data.shipment_status === 7, // 7 = Delivered
+                    delivered: delivered,
                     allScans: shipmentTrack.map(scan => ({
                         date: scan.date,
                         activity: scan.activity,

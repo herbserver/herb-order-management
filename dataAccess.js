@@ -162,11 +162,20 @@ async function updateOrder(orderId, updates) {
 
 async function deleteOrder(orderId) {
     if (mongoConnected) {
-        return await Order.findOneAndDelete({ orderId });
+        // Try exact match first
+        let result = await Order.findOneAndDelete({ orderId });
+        if (!result) {
+            // Try with decoded or trimmed version if exact match fails
+            const decodedId = decodeURIComponent(orderId).trim();
+            result = await Order.findOneAndDelete({
+                $or: [{ orderId: decodedId }, { orderId: orderId.trim() }]
+            });
+        }
+        return result;
     }
     // Fallback to JSON
     const orders = readJSONFile(path.join(__dirname, 'data', 'orders.json'), []);
-    const index = orders.findIndex(o => o.orderId === orderId);
+    const index = orders.findIndex(o => o.orderId === orderId || o.orderId === decodeURIComponent(orderId).trim());
     if (index !== -1) {
         orders.splice(index, 1);
         writeJSONFile(path.join(__dirname, 'data', 'orders.json'), orders);

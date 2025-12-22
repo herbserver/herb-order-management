@@ -475,11 +475,11 @@
                     alert('✅ Order deleted successfully!');
                     loadOrders(); // Reload list
                 } else {
-                    alert('❌ ' + (data.message || 'Delete failed'));
+                    alert('❌ Delete failed: ' + (data.message || 'Unknown error'));
                 }
             } catch (error) {
                 console.error('Error deleting order:', error);
-                alert('Error: ' + error.message);
+                alert('❌ Error: ' + error.message);
             }
         }
 

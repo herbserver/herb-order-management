@@ -1,164 +1,181 @@
 // Background Tracking Service - Runs on Server 24/7
 require('dotenv').config();
 const shiprocket = require('./shiprocket');
+const { connectDatabase } = require('./database');
 const { Order } = require('./models');
 
-// Store notified orders in memory (production me Redis/DB use karo)
+// Store notified orders in memory to avoid redundant alerts
 const notifiedOrders = new Set();
 
-// Check for Out for Delivery orders
-async function checkOutForDelivery() {
+/**
+ * Main function to sync tracking statuses for all active shipments
+ */
+async function syncAllTrackingStatuses() {
     try {
-        console.log('🔔 [Background] Checking for Out for Delivery orders...');
+        console.log(`\n🔍 [${new Date().toLocaleTimeString()}] Checking Shiprocket for updates...`);
 
-        // Get all dispatched orders with AWB
+        // Get all orders with AWB that are not yet Delivered or Cancelled
         const orders = await Order.find({
-            status: 'Dispatched',
-            'shiprocket.awb': { $exists: true, $ne: '' }
+            'shiprocket.awb': { $exists: true, $ne: '' },
+            status: { $nin: ['Delivered', 'Cancelled'] }
         });
 
-        console.log(`📦 Found ${orders.length} dispatched orders to track`);
+        if (orders.length === 0) {
+            console.log('ℹ️ No active shipments to track.');
+            return;
+        }
+
+        console.log(`📦 Found ${orders.length} orders to synchronize.`);
 
         for (const order of orders) {
-            const awb = order.shiprocket.awb;
+            try {
+                const awb = order.shiprocket.awb;
+                const tracking = await shiprocket.trackShipment(awb);
 
-            // Skip if already notified
-            if (notifiedOrders.has(order.orderId)) {
-                continue;
-            }
+                if (!tracking.success) {
+                    console.warn(`⚠️ Tracking failed for Order ${order.orderId}: ${tracking.message}`);
+                    continue;
+                }
 
-            // Get tracking from Shiprocket
-            const tracking = await shiprocket.trackShipment(awb);
+                const currentStatus = tracking.currentStatus || '';
+                const isDelivered = tracking.delivered;
 
-            if (tracking.success) {
-                const status = tracking.currentStatus || '';
+                // 1. Handle Delivered Status
+                if (isDelivered || currentStatus.toLowerCase().includes('delivered')) {
+                    console.log(`✅ DELIVERED: ${order.orderId} - Updating database...`);
 
-                // Check if Out for Delivery
-                if (status.toLowerCase().includes('out for delivery')) {
-                    console.log(`🚚 OUT FOR DELIVERY: ${order.orderId} - ${order.customerName} (${order.telNo})`);
-
-                    // Mark as notified
-                    notifiedOrders.add(order.orderId);
-
-                    // Update order in database
                     await Order.findOneAndUpdate(
                         { orderId: order.orderId },
                         {
-                            'tracking.currentStatus': tracking.currentStatus,
+                            status: 'Delivered',
+                            deliveredAt: new Date().toISOString(),
+                            deliveredBy: 'Shiprocket Auto-Sync',
+                            'tracking.currentStatus': 'Delivered',
                             'tracking.lastUpdate': tracking.lastUpdate,
                             'tracking.lastUpdatedAt': new Date().toISOString()
                         }
                     );
-
-                    // LOG ALERT (production me SMS/Email/Push notification bhej sakte ho)
-                    console.log('═'.repeat(60));
-                    console.log('🔔 OUT FOR DELIVERY ALERT!');
-                    console.log('Order ID:', order.orderId);
-                    console.log('Customer:', order.customerName);
-                    console.log('Phone:', order.telNo);
-                    console.log('Employee:', order.employee, `(${order.employeeId})`);
-                    console.log('Location:', tracking.location);
-                    console.log('Status:', tracking.currentStatus);
-                    console.log('═'.repeat(60));
-
-                    // TODO: Send notification
-                    // - SMS to employee
-                    // - WhatsApp message
-                    // - Push notification
-                    // - Email alert
+                    continue; // Move to next order
                 }
 
-                // Small delay to avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // 2. Handle RTO / Cancelled
+                if (currentStatus.toLowerCase().includes('rto') || currentStatus.toLowerCase().includes('cancelled')) {
+                    console.log(`❌ RTO/CANCELLED: ${order.orderId} (${currentStatus})`);
+                    await Order.findOneAndUpdate(
+                        { orderId: order.orderId },
+                        {
+                            status: 'Cancelled',
+                            'tracking.currentStatus': currentStatus,
+                            'tracking.lastUpdate': tracking.lastUpdate,
+                            'tracking.lastUpdatedAt': new Date().toISOString(),
+                            'cancellationInfo.cancelledAt': new Date(),
+                            'cancellationInfo.cancelledBy': 'Shiprocket Auto-Sync',
+                            'cancellationInfo.cancellationReason': `Shiprocket Status: ${currentStatus}`
+                        }
+                    );
+                    continue;
+                }
+
+                // 3. Handle "Out for Delivery" Alert
+                if (currentStatus.toLowerCase().includes('out for delivery') && !notifiedOrders.has(order.orderId)) {
+                    console.log(`🚚 OUT FOR DELIVERY ALERT: ${order.orderId}`);
+                    notifiedOrders.add(order.orderId);
+                    // We don't change overall status to a new state here, just update tracking info
+                }
+
+                // Generic Tracking Info Update (keeps it fresh)
+                await Order.findOneAndUpdate(
+                    { orderId: order.orderId },
+                    {
+                        'tracking.currentStatus': currentStatus,
+                        'tracking.lastUpdate': tracking.lastUpdate,
+                        'tracking.lastUpdatedAt': new Date().toISOString()
+                    }
+                );
+
+                // Small delay to avoid Shiprocket rate limiting
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+            } catch (orderError) {
+                console.error(`❌ Error processing Order ${order.orderId}:`, orderError.message);
             }
         }
 
-        console.log('✅ [Background] Check complete\n');
+        console.log('✅ Status synchronization complete.');
 
     } catch (error) {
-        console.error('❌ [Background] Error:', error.message);
+        console.error('❌ [Sync Status] Fatal error:', error.message);
     }
 }
 
-// Check for Hold Order Dispatch Reminders
+/**
+ * Check for Hold Order Dispatch Reminders
+ */
 async function checkHoldOrderReminders() {
     try {
-        // Check current time - only alert between 9 AM to 6 PM
         const now = new Date();
         const hour = now.getHours();
 
-        if (hour < 9 || hour >= 18) {
-            // Outside working hours, skip
-            return;
-        }
+        // Alert only during working hours (9 AM - 7 PM)
+        if (hour < 9 || hour >= 19) return;
 
-        console.log('📅 [Background] Checking for Hold Order Dispatch Reminders...');
+        console.log('📅 Checking for hold order reminders...');
 
-        // Get today's date (start of day)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // Find hold orders with expected dispatch date = today
         const holdOrders = await Order.find({
             'holdDetails.isOnHold': true,
-            'holdDetails.expectedDispatchDate': {
-                $gte: today,
-                $lt: tomorrow
-            },
+            'holdDetails.expectedDispatchDate': { $gte: today, $lt: tomorrow },
             status: 'On Hold'
         });
 
-        if (holdOrders.length === 0) {
-            console.log('   No hold orders scheduled for today');
-            return;
+        if (holdOrders.length > 0) {
+            console.log(`🔔 REMINDER: ${holdOrders.length} hold orders due today!`);
         }
-
-        console.log(`🔔 Found ${holdOrders.length} hold order(s) scheduled for dispatch today!`);
-
-        for (const order of holdOrders) {
-            console.log('═'.repeat(60));
-            console.log('⏰ HOLD ORDER DISPATCH REMINDER!');
-            console.log('Order ID:', order.orderId);
-            console.log('Customer:', order.customerName);
-            console.log('Phone:', order.telNo);
-            console.log('Employee:', order.employee, `(${order.employeeId})`);
-            console.log('Expected Dispatch:', order.holdDetails.expectedDispatchDate.toLocaleDateString());
-            console.log('Hold Reason:', order.holdDetails.holdReason || 'N/A');
-            console.log('Current Time:', now.toLocaleTimeString());
-            console.log('═'.repeat(60));
-
-            // Frontend will show alerts via auto-tracking.js
-        }
-
-        console.log('✅ [Background] Hold reminder check complete\n');
 
     } catch (error) {
-        console.error('❌ [Background] Hold reminder error:', error.message);
+        console.error('❌ [Hold Reminders] Error:', error.message);
     }
 }
 
-// Run check every 15 minutes (for hold order reminders)
-const INTERVAL = 15 * 60 * 1000; // 15 minutes
+/**
+ * Start the background service
+ * @param {boolean} alreadyConnected - Whether the DB is already connected
+ */
+async function startTracking(alreadyConnected = false) {
+    console.log('🚀 Starting Background tracking & Alert Service...');
 
-console.log('🚀 Starting Background Tracking Service...');
-console.log(`⏰ Check interval: ${INTERVAL / 1000 / 60} minutes`);
-console.log('📦 Monitoring: Out for Delivery + Hold Order Reminders\n');
+    if (!alreadyConnected) {
+        const connected = await connectDatabase();
+        if (!connected) {
+            console.error('❌ Could not connect to MongoDB. Tracking service NOT started.');
+            return;
+        }
+    }
 
-// Initial checks
-checkOutForDelivery();
-checkHoldOrderReminders();
-
-// Schedule recurring checks (both functions every 15 min)
-setInterval(() => {
-    checkOutForDelivery();
+    // Run initial checks
+    syncAllTrackingStatuses();
     checkHoldOrderReminders();
-}, INTERVAL);
 
-// Keep process alive
+    // Schedule intervals
+    setInterval(syncAllTrackingStatuses, 5 * 60 * 1000); // 5 min
+    setInterval(checkHoldOrderReminders, 60 * 60 * 1000); // 1 hour
+
+    console.log('⏰ Tracking Service active (5m sync, 1h reminders)');
+}
+
+// Support running as standalone script
+if (require.main === module) {
+    startTracking();
+}
+
+// Graceful shutdown
 process.on('SIGINT', () => {
-    console.log('\n👋 Stopping Background Tracking Service...');
+    console.log('\n👋 Stopping Background Service...');
     process.exit(0);
 });
+
+module.exports = { startTracking };

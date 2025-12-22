@@ -17,6 +17,30 @@ if (typeof whatsappTemplates === 'undefined') {
 
 धन्यवाद!
 Herb On Naturals
+https://herbonnaturals.in/`,
+
+        verified: (order) => `नमस्ते ${order.customerName}! 🙏
+
+✅ आपका address successfully *Verify* हो गया है!
+📦 *Order ID:* ${order.orderId}
+
+आपका पार्सल अब dispatch के लिए तैयार है। जल्द ही आपको tracking details मिल जायेंगी।
+
+धन्यवाद!
+Herb On Naturals
+https://herbonnaturals.in/`,
+
+        dispatched: (order) => `नमस्ते ${order.customerName}! 🙏
+
+🚀 आपका Order *Dispatch* हो गया है!
+📦 *Order ID:* ${order.orderId}
+🚚 *Courier:* ${order.tracking?.courier || 'Standard'}
+📑 *Tracking ID:* ${order.tracking?.trackingId || 'Wait for updates'}
+
+आप अपना पार्सल ट्रैक कर सकते हैं। Herb On Naturals पर भरोसा करने के लिए धन्यवाद!
+
+धन्यवाद!
+Herb On Naturals
 https://herbonnaturals.in/`
     };
 }
@@ -29,6 +53,7 @@ let currentUser = null;
 let currentUserType = null;
 let currentDeptType = 'verification';
 let currentEditingOrderId = null; // Track order being edited
+let currentDispatchOrder = null; // Track order being dispatched
 
 // Courier tracking URLs
 const COURIER_URLS = {
@@ -232,6 +257,7 @@ function showDepartmentPanel() {
         document.getElementById('deptPanelTitle').textContent = '📍 Verification Department';
         document.getElementById('verificationDeptContent').classList.remove('hidden');
         if (exportBtn) exportBtn.classList.add('hidden');
+        loadVerificationHistory();
     } else if (currentDeptType === 'dispatch') {
         document.getElementById('deptPanelTitle').textContent = '📦 Dispatch Department';
         document.getElementById('dispatchDeptContent').classList.remove('hidden');
@@ -241,6 +267,7 @@ function showDepartmentPanel() {
             dateFilter.valueAsDate = new Date(); // Default to today
         }
         loadDeliveryRequests();
+        loadDispatchHistory();
     } else if (currentDeptType === 'delivery') {
         document.getElementById('deptPanelTitle').textContent = '🚚 Delivery Department';
         if (document.getElementById('deliveryDeptContent')) {
@@ -466,7 +493,7 @@ async function registerEmployee() {
 
             ,
             body: JSON.stringify({
-                name, employeeId: id, password: pass
+                name: toTitleCase(name), employeeId: id, password: pass
             })
         });
         const data = await res.json();
@@ -622,12 +649,6 @@ function initOrderForm() {
 function updateAddress() {
     const form = document.getElementById('orderForm');
 
-    // Proper case function (First Letter Capital, Rest Small)
-    const properCase = (str) => {
-        if (!str) return '';
-        return str.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-    };
-
     let hNo = form.hNo.value.trim();
     let village = form.villColony.value.trim();
 
@@ -639,21 +660,21 @@ function updateAddress() {
     // Combine House No + Village together
     let houseVillage = '';
     if (hNo && village) {
-        houseVillage = `${hNo}, Village ${properCase(village)}`;
+        houseVillage = `${hNo}, Village ${toTitleCase(village)}`;
     } else if (hNo) {
         houseVillage = hNo;
     } else if (village) {
-        houseVillage = `Village ${properCase(village)}`;
+        houseVillage = `Village ${toTitleCase(village)}`;
     }
 
     const parts = [
         houseVillage,
-        form.blockGaliNo.value.trim() ? properCase(form.blockGaliNo.value.trim()) : "",
-        form.landMark.value.trim() ? "Landmark: " + properCase(form.landMark.value.trim()) : "",
-        form.po.value.trim() ? "PO: " + properCase(form.po.value.trim()) : "",
-        properCase(form.tahTaluka.value.trim()),
-        properCase(form.distt.value.trim()),
-        properCase(form.state.value.trim()),
+        form.blockGaliNo.value.trim() ? toTitleCase(form.blockGaliNo.value.trim()) : "",
+        form.landMark.value.trim() ? "Landmark: " + toTitleCase(form.landMark.value.trim()) : "",
+        form.po.value.trim() ? "PO: " + toTitleCase(form.po.value.trim()) : "",
+        toTitleCase(form.tahTaluka.value.trim()),
+        toTitleCase(form.distt.value.trim()),
+        toTitleCase(form.state.value.trim()),
         form.pin.value.trim() ? "PIN: " + form.pin.value.trim() : ""
     ].filter(v => v);
 
@@ -1353,17 +1374,17 @@ async function saveOrder() {
     const orderData = {
         employeeId: currentUser.id,
         employee: currentUser.name,
-        customerName,
+        customerName: toTitleCase(customerName),
         address: form.address.value,
-        hNo: form.hNo.value,
-        blockGaliNo: form.blockGaliNo.value,
-        villColony: form.villColony.value,
-        po: form.po.value,
-        tahTaluka: form.tahTaluka.value,
-        distt: form.distt.value,
-        state: form.state.value,
-        pin: form.pin.value,
-        landMark: form.landMark.value,
+        hNo: form.hNo.value.trim(),
+        blockGaliNo: toTitleCase(form.blockGaliNo.value.trim()),
+        villColony: toTitleCase(form.villColony.value.trim()),
+        po: toTitleCase(form.po.value.trim()),
+        tahTaluka: toTitleCase(form.tahTaluka.value.trim()),
+        distt: toTitleCase(form.distt.value.trim()),
+        state: toTitleCase(form.state.value.trim()),
+        pin: form.pin.value.trim(),
+        landMark: toTitleCase(form.landMark.value.trim()),
         treatment: form.treatment.value, // Added treatment field
         date: form.date.value,
         time: form.time.value,
@@ -2666,7 +2687,7 @@ function renderOrderCard(order, borderColor = 'gray') {
 
                     <!-- Meta Info -->
                      <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
-                        <span class="text-xs text-gray-400">📅 ${order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A'}</span>
+                        <span class="text-xs text-gray-400">📅 ${order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A'} ⏰ ${order.timestamp ? new Date(order.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                         <span class="text-xs text-gray-300">•</span>
                         <span class="text-xs text-gray-400">By: <span class="font-extrabold text-emerald-700">${order.employee} (${order.employeeId})</span></span>
                     </div>
@@ -2690,6 +2711,11 @@ async function loadDeptOrders() {
         const res = await fetch(`${API_URL}${endpoint}`);
         const data = await res.json();
         let orders = data.orders || [];
+
+        // Load dashboard stats in background
+        if (currentDeptType === 'verification') {
+            loadVerificationDashboardStats();
+        }
 
         // Apply Date Filter if in Verification Pending tab
         const containerId = currentDeptType === 'verification' ? 'pendingVerificationList' : 'readyDispatchList';
@@ -2849,6 +2875,10 @@ function generateOrderCardHTML(order) {
         <div class="px-4 py-2.5 border-b border-gray-50 bg-gray-50/70 flex justify-between items-center text-[11px] font-black">
             <div class="flex items-center gap-1.5 uppercase tracking-wider text-${statusColor}-700">
                 <span class="bg-${statusColor}-100 px-2 py-0.5 rounded border border-${statusColor}-200 shadow-sm">${order.orderId}</span>
+                <button onclick="sendWhatsAppDirect('${isVerification ? 'booked' : 'dispatched'}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                    class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                    ${WHATSAPP_ICON}
+                </button>
                 ${order.orderType === 'REORDER' ? `<span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200">REORDER</span>` : ''}
             </div>
             <div class="text-gray-900">₹${order.total} <span class="text-emerald-500 ml-1.5">COD: ₹${order.codAmount || 0}</span></div>
@@ -2862,8 +2892,11 @@ function generateOrderCardHTML(order) {
                 <div class="flex items-center gap-1 text-[10px] text-gray-400 font-bold shrink-0 bg-gray-100/50 px-2 py-1 rounded-full uppercase tracking-tighter">
                    📅 ${(() => {
             if (!order.timestamp) return 'N/A';
-            const days = Math.floor((Date.now() - new Date(order.timestamp)) / 86400000);
-            return days === 0 ? 'Today' : days === 1 ? 'Yest.' : days + 'd ago';
+            const dateObj = new Date(order.timestamp);
+            const days = Math.floor((Date.now() - dateObj) / 86400000);
+            const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            const dayLabel = days === 0 ? 'Today' : days === 1 ? 'Yest.' : days + 'd ago';
+            return `${dayLabel} ${timeStr}`;
         })()}
                 </div>
             </div>
@@ -2918,13 +2951,15 @@ function generateOrderCardHTML(order) {
                         class="bg-white border text-gray-600 h-9 rounded-lg text-xs font-bold hover:shadow-md hover:border-amber-300 transition-all flex items-center justify-center" title="Edit">✏️</button>
                     <button type="button" onclick="cancelOrder('${order.orderId}')" 
                         class="bg-red-50 text-red-500 h-9 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Cancel">❌</button>
-                ` : ''}
+                ` : `
+                    <button type="button" onclick="cancelOrder('${order.orderId}')" 
+                        class="bg-red-50 text-red-500 h-9 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Cancel">❌</button>
+                `}
             </div>
-
             ${isVerification ? `
                 <!-- Primary Actions -->
                 <div class="grid grid-cols-2 gap-2 mt-1">
-                    <button type="button" onclick="verifyAddress('${order.orderId}')" 
+                    <button type="button" onclick="verifyAddress('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                         class="bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-emerald-200/50 active:scale-95 transition-all uppercase tracking-widest">VERIFY</button>
                     <button type="button" onclick="markAsUnverified('${order.orderId}')" 
                         class="bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-amber-200/50 active:scale-95 transition-all uppercase tracking-widest">HOLD</button>
@@ -2945,15 +2980,31 @@ function generateOrderCardHTML(order) {
                     <button type="button" onclick="suggestCourier('${order.orderId}')" 
                         class="bg-purple-500 text-white px-4 rounded-lg text-xs font-bold shadow-md shadow-purple-200 active:scale-90 transition-all">📦</button>
                 </div>
+            ` : (order.status === 'Dispatched' ? `
+                <!-- Already Dispatched Actions -->
+                <div class="space-y-2 pt-1">
+                    <button type="button" onclick="approveDelivery('${order.orderId}')" 
+                        class="w-full bg-emerald-500 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-emerald-200/50 hover:bg-emerald-600 active:scale-95 transition-all uppercase tracking-widest">✅ MARK DELIVERED</button>
+                    ${order.tracking?.trackingId ? `
+                    <div class="bg-indigo-50 border border-indigo-100 p-2 rounded-lg flex justify-between items-center">
+                        <span class="text-[10px] font-black text-indigo-700 uppercase">${order.tracking.courier}</span>
+                        <span class="text-[11px] font-mono font-bold text-gray-600">${order.tracking.trackingId}</span>
+                    </div>
+                    ` : ''}
+                </div>
             ` : `
                 <!-- Dispatch Actions -->
                 <div class="space-y-2 pt-1">
-                    <button type="button" onclick="dispatchWithShiprocket('${order.orderId}')" 
+                    <button type="button" onclick="dispatchWithShiprocket('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                         class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-lg text-xs font-black shadow-xl shadow-orange-200/50 hover:scale-[1.02] active:scale-95 transition-all">🚀 SHIPROCKET</button>
-                    <button type="button" onclick="openDispatchModal('${order.orderId}')" 
-                        class="w-full bg-purple-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-purple-200/50 hover:bg-purple-700 active:scale-95 transition-all">📦 MANUAL DISPATCH</button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                            class="bg-purple-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-purple-200/50 hover:bg-purple-700 active:scale-95 transition-all">📦 MANUAL</button>
+                        <button type="button" onclick="cancelOrder('${order.orderId}')" 
+                            class="bg-red-500 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-red-200/50 hover:bg-red-600 active:scale-95 transition-all">❌ CANCEL</button>
+                    </div>
                 </div>
-            `}
+            `)}
         </div>
         
         <!-- Map Placeholder -->
@@ -3000,41 +3051,72 @@ async function loadDispatchedOrders() {
     try {
         const res = await fetch(`${API_URL}/orders/dispatched`);
         const data = await res.json();
-        const orders = data.orders || [];
+        let orders = data.orders || [];
+
+        // Apply Search Filter
+        const search = document.getElementById('dispatchedSearch')?.value.toLowerCase();
+        if (search) {
+            orders = orders.filter(o =>
+                (o.customerName && o.customerName.toLowerCase().includes(search)) ||
+                (o.telNo && o.telNo.includes(search)) ||
+                (o.orderId && o.orderId.toLowerCase().includes(search))
+            );
+        }
+
+        // Apply Date Filter
+        const dateFilter = document.getElementById('dispatchedDateFilter')?.value;
+        if (dateFilter) {
+            orders = orders.filter(o => {
+                const dateStr = o.dispatchedAt ? o.dispatchedAt.split('T')[0] : (o.timestamp ? o.timestamp.split('T')[0] : null);
+                return dateStr === dateFilter;
+            });
+        }
 
         if (orders.length === 0) {
-            document.getElementById('dispatchedOrdersList').innerHTML = '<p class="text-center text-gray-500 py-8">Koi dispatched orders nahi hain</p>';
+            document.getElementById('dispatchedOrdersList').innerHTML = `
+                <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                    <p class="text-4xl mb-3">🚚</p>
+                    <p class="text-gray-500 font-medium">No dispatched orders found matching filters</p>
+                </div>`;
             return;
         }
 
+        // Sort by Dispatched Date (newest first)
+        orders.sort((a, b) => {
+            const dateA = new Date(a.dispatchedAt || a.timestamp);
+            const dateB = new Date(b.dispatchedAt || b.timestamp);
+            return dateB - dateA;
+        });
+
         let html = '';
+        let lastDate = '';
 
         orders.forEach(order => {
-            const tracking = order.tracking || {}
+            const dateStr = order.dispatchedAt ? order.dispatchedAt.split('T')[0] : (order.timestamp ? order.timestamp.split('T')[0] : 'N/A');
 
-                ;
+            if (dateStr !== lastDate) {
+                const displayDate = new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                const isTodayStr = new Date().toISOString().split('T')[0] === dateStr;
 
-            html += ` <div class="order-card bg-white border rounded-xl p-4"> <div class="flex justify-between items-start"> <div> <p class="font-bold text-blue-600">${order.orderId}
+                html += `
+                <div class="col-span-full mt-6 mb-2">
+                    <div class="flex items-center gap-4">
+                        <span class="bg-${isTodayStr ? 'indigo' : 'gray'}-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm">
+                            ${isTodayStr ? 'Today' : displayDate}
+                        </span>
+                        <div class="h-[2px] flex-grow bg-gradient-to-r from-${isTodayStr ? 'indigo' : 'gray'}-200 to-transparent rounded-full"></div>
+                    </div>
+                </div>`;
+                lastDate = dateStr;
+            }
 
-                        </p> <p class="text-gray-800">${order.customerName}
-
-                        </p> <p class="text-sm text-gray-500">📞 ${order.telNo}
-
-                        </p> </div> <div class="text-right"> <p class="text-lg font-bold text-red-600">₹${order.total}
-
-                        </p> <p class="text-sm text-purple-600">🚚 ${tracking.courier || 'N/A'
-                }
-
-                        </p> <p class="text-xs font-mono bg-gray-100 px-2 py-1 rounded mt-1">${tracking.trackingId || 'N/A'
-                }
-
-                        </p> </div> </div> <div class="mt-3 flex gap-2"> <button type="button" onclick="viewOrder('${order.orderId}')" class="bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs">👁️ View</button> <button type="button" onclick="approveDelivery('${order.orderId}')" class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs">✅ Mark Delivered</button> </div> </div> `;
+            html += generateOrderCardHTML(order, false); // false = dispatch style
         });
-        document.getElementById('dispatchedOrdersList').innerHTML = html;
-    }
 
-    catch (e) {
-        console.error(e);
+        document.getElementById('dispatchedOrdersList').innerHTML = html;
+    } catch (e) {
+        console.error('Load Dispatched Orders Error:', e);
+        document.getElementById('dispatchedOrdersList').innerHTML = '<p class="text-red-500 text-center py-8">Orders load karne mein error aaya.</p>';
     }
 }
 
@@ -3059,7 +3141,7 @@ function copyAddress(address) {
     });
 }
 
-async function verifyAddress(orderId) {
+async function verifyAddress(orderId, order = null) {
     if (!confirm('Address verify karke Dispatch Department ko bhejni hai?')) return;
 
     try {
@@ -3067,9 +3149,7 @@ async function verifyAddress(orderId) {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
-            }
-
-            ,
+            },
             body: JSON.stringify({
                 verifiedBy: currentUser.id
             })
@@ -3077,13 +3157,18 @@ async function verifyAddress(orderId) {
         const data = await res.json();
 
         if (data.success) {
+            const whatsappData = order ? { type: 'verified', order: order } : null;
             showSuccessPopup(
                 'Address Verified! ✅',
                 `Order ${orderId} successfully verified!\n\nAb yeh Dispatch Department mein chala gaya hai.`,
                 '✅',
-                '#10b981'
+                '#10b981',
+                whatsappData
             );
-            setTimeout(() => loadDeptOrders(), 1000);
+            setTimeout(() => {
+                loadDeptOrders();
+                loadVerificationHistory();
+            }, 1000);
         }
     }
 
@@ -3214,6 +3299,51 @@ async function loadDispatchDashboardStats() {
     }
 }
 
+async function loadVerificationDashboardStats() {
+    try {
+        const res = await fetch(`${API_URL}/orders`);
+        const data = await res.json();
+        const orders = data.orders || [];
+
+        const today = new Date().toDateString();
+        const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toDateString();
+        const lastWeek = new Date(new Date().setDate(new Date().getDate() - 7));
+
+        const verifiedOrders = orders.filter(o => ['Address Verified', 'Dispatched', 'Delivered'].includes(o.status));
+
+        const countToday = verifiedOrders.filter(o => {
+            const d = o.verifiedAt ? new Date(o.verifiedAt) : new Date(o.timestamp);
+            return d.toDateString() === today;
+        }).length;
+
+        const countYesterday = verifiedOrders.filter(o => {
+            const d = o.verifiedAt ? new Date(o.verifiedAt) : new Date(o.timestamp);
+            return d.toDateString() === yesterday;
+        }).length;
+
+        const countWeek = verifiedOrders.filter(o => {
+            const d = o.verifiedAt ? new Date(o.verifiedAt) : new Date(o.timestamp);
+            return d >= lastWeek;
+        }).length;
+
+        if (document.getElementById('miniStatVerifyToday')) {
+            document.getElementById('miniStatVerifyToday').textContent = countToday;
+            document.getElementById('miniStatVerifyYesterday').textContent = countYesterday;
+            document.getElementById('miniStatVerifyWeek').textContent = countWeek;
+        }
+
+        // Also update actual stats on History tab if present
+        if (document.getElementById('statsVerifyToday')) {
+            document.getElementById('statsVerifyToday').textContent = countToday;
+            document.getElementById('statsVerifyYesterday').textContent = countYesterday;
+            document.getElementById('statsVerifyWeek').textContent = countWeek;
+        }
+
+    } catch (e) {
+        console.error('Verify Stats Error:', e);
+    }
+}
+
 async function loadDispatchHistory() {
     try {
         const res = await fetch(`${API_URL}/orders`);
@@ -3230,13 +3360,31 @@ async function loadDispatchHistory() {
         const lastWeek = new Date(today);
         lastWeek.setDate(lastWeek.getDate() - 7);
 
-        const countToday = orders.filter(o => new Date(o.dispatchedAt || o.timestamp).toDateString() === today.toDateString()).length;
-        const countYesterday = orders.filter(o => new Date(o.dispatchedAt || o.timestamp).toDateString() === yesterday.toDateString()).length;
-        const countWeek = orders.filter(o => new Date(o.dispatchedAt || o.timestamp) >= lastWeek).length;
+        const countToday = orders.filter(o => {
+            const dateStr = o.dispatchedAt ? o.dispatchedAt.split('T')[0] : (o.timestamp ? o.timestamp.split('T')[0] : null);
+            return dateStr === today.toISOString().split('T')[0];
+        }).length;
+
+        const countYesterday = orders.filter(o => {
+            const dateStr = o.dispatchedAt ? o.dispatchedAt.split('T')[0] : (o.timestamp ? o.timestamp.split('T')[0] : null);
+            return dateStr === yesterday.toISOString().split('T')[0];
+        }).length;
+
+        const countWeek = orders.filter(o => {
+            const date = o.dispatchedAt ? new Date(o.dispatchedAt) : new Date(o.timestamp);
+            return date >= lastWeek;
+        }).length;
 
         document.getElementById('statsDispatchToday').textContent = countToday;
         document.getElementById('statsDispatchYesterday').textContent = countYesterday;
         document.getElementById('statsDispatchWeek').textContent = countWeek;
+
+        // Update mini stats in Ready tab too if they exist
+        if (document.getElementById('miniStatDispatchToday')) {
+            document.getElementById('miniStatDispatchToday').textContent = countToday;
+            document.getElementById('miniStatDispatchYesterday').textContent = countYesterday;
+            document.getElementById('miniStatDispatchWeek').textContent = countWeek;
+        }
 
         // FILTERS
         const search = document.getElementById('dispatchHistorySearch').value.toLowerCase();
@@ -3245,110 +3393,78 @@ async function loadDispatchHistory() {
 
         if (search) {
             orders = orders.filter(o =>
-                o.customerName.toLowerCase().includes(search) ||
-                o.telNo.includes(search) ||
-                o.orderId.toLowerCase().includes(search)
+                (o.customerName && o.customerName.toLowerCase().includes(search)) ||
+                (o.telNo && o.telNo.includes(search)) ||
+                (o.orderId && o.orderId.toLowerCase().includes(search))
             );
         }
 
         if (startDate) {
-            orders = orders.filter(o => new Date(o.dispatchedAt || o.timestamp) >= new Date(startDate));
+            orders = orders.filter(o => {
+                const dateStr = o.dispatchedAt ? o.dispatchedAt.split('T')[0] : o.timestamp.split('T')[0];
+                return dateStr >= startDate;
+            });
         }
         if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59);
-            orders = orders.filter(o => new Date(o.dispatchedAt || o.timestamp) <= end);
+            orders = orders.filter(o => {
+                const dateStr = o.dispatchedAt ? o.dispatchedAt.split('T')[0] : o.timestamp.split('T')[0];
+                return dateStr <= endDate;
+            });
         }
 
-        // Sort by Dispatched Date
-        orders.sort((a, b) => new Date(b.dispatchedAt || b.timestamp) - new Date(a.dispatchedAt || a.timestamp));
-
-        const list = document.getElementById('dispatchHistoryList');
-
         if (orders.length === 0) {
-            list.innerHTML = `
-                        <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                            <p class="text-4xl mb-3">🔍</p>
-                            <p class="text-gray-500 font-medium">No results found</p>
-                            <button onclick="resetDispatchHistoryFilters()" class="text-blue-500 font-bold mt-2 hover:underline">Clear Filters</button>
-                        </div>`;
+            document.getElementById('dispatchHistoryList').innerHTML = `
+                <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                    <p class="text-4xl mb-3">📭</p>
+                    <p class="text-gray-500 font-medium">No dispatch history found matching filters</p>
+                </div>`;
             return;
         }
 
-        let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
-        orders.forEach(order => {
-            const isDelivered = order.status === 'Delivered';
-            const statusColor = isDelivered ? 'green' : 'purple';
-            const statusIcon = isDelivered ? '✅' : '🚚';
-
-            html += `
-            <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-${statusColor}-100 flex flex-col h-full bg-white">
-                <!-- Card Header -->
-                <div class="p-5 border-b border-${statusColor}-50 bg-gradient-to-r from-${statusColor}-50/50 to-white relative">
-                     <div class="absolute top-0 right-0 w-24 h-24 bg-${statusColor}-400 rounded-bl-full opacity-5 pointer-events-none"></div>
-                    <div class="flex justify-between items-start relative z-10">
-                        <div>
-                             <div class="flex items-center gap-2 mb-1">
-                                <span class="bg-${statusColor}-100 text-${statusColor}-700 text-xs font-bold px-2 py-0.5 rounded-md border border-${statusColor}-200 uppercase tracking-wide">
-                                    ${order.orderId}
-                                </span>
-                            </div>
-                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">
-                                ${order.customerName}
-                            </h3>
-                        </div>
-                        <div class="text-right">
-                             <p class="text-xl font-black text-gray-800 tracking-tight">₹${order.total}</p>
-                             <span class="bg-${statusColor}-100 text-${statusColor}-700 px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 mt-1">
-                                ${statusIcon} ${order.status}
-                             </span>
-                        </div>
-                    </div>
-                </div>
-
-                 <!-- Card Body -->
-                <div class="p-5 space-y-4 flex-grow bg-white/60">
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-${statusColor}-50 flex items-center justify-center text-${statusColor}-600 flex-shrink-0">
-                            📞
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Contact</p>
-                            <p class="text-sm font-semibold text-gray-700 font-mono">${order.telNo}</p>
-                        </div>
-                    </div>
-
-                    ${/* Enhanced tracking badge for dispatched/delivered orders */
-                getTrackingStatusBadge(order) || ''}
-
-                    <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
-                        <span class="text-xs text-gray-400">
-                            <span class="block text-gray-300 text-[10px] uppercase font-bold">Dispatched On</span>
-                            ${order.dispatchedAt ? new Date(order.dispatchedAt).toLocaleDateString() : 'N/A'}
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Footer Actions -->
-                <div class="p-4 bg-${statusColor}-50/30 border-t border-${statusColor}-100 flex justify-between items-center">
-                    <button type="button" onclick="viewOrder('${order.orderId}')" 
-                        class="bg-white border border-${statusColor}-200 text-${statusColor}-700 hover:bg-${statusColor}-50 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center gap-2">
-                        👁️ View Details
-                    </button>
-                    ${order.tracking && order.tracking.trackingId ? `
-                     <button onclick="trackOrder('${order.orderId}')" class="text-xs text-blue-600 font-bold hover:underline">
-                        Track Shipment ➝
-                     </button>
-                    ` : ''}
-                </div>
-            </div>`;
+        // Sort by Dispatched Date (newest first)
+        orders.sort((a, b) => {
+            const dateA = new Date(a.dispatchedAt || a.timestamp);
+            const dateB = new Date(b.dispatchedAt || b.timestamp);
+            return dateB - dateA;
         });
-        html += '</div>'; // Close Grid
-        list.innerHTML = html;
+
+        let html = '';
+        let lastDate = '';
+
+        orders.forEach(order => {
+            const dateStr = order.dispatchedAt ? order.dispatchedAt.split('T')[0] : (order.timestamp ? order.timestamp.split('T')[0] : 'N/A');
+
+            if (dateStr !== lastDate) {
+                const displayDate = new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                const isTodayStr = new Date().toISOString().split('T')[0] === dateStr;
+
+                html += `
+                <div class="col-span-full mt-6 mb-2">
+                    <div class="flex items-center gap-4">
+                        <span class="bg-${isTodayStr ? 'indigo' : 'gray'}-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm">
+                            ${isTodayStr ? 'Today' : displayDate}
+                        </span>
+                        <div class="h-[2px] flex-grow bg-gradient-to-r from-${isTodayStr ? 'indigo' : 'gray'}-200 to-transparent rounded-full"></div>
+                    </div>
+                </div>`;
+                lastDate = dateStr;
+            }
+
+            html += generateOrderCardHTML(order, false); // false = dispatch style
+        });
+        document.getElementById('dispatchHistoryList').innerHTML = html;
 
     } catch (e) {
-        console.error(e);
+        console.error('Dispatch History Error:', e);
+        document.getElementById('dispatchHistoryList').innerHTML = '<p class="text-red-500">History load karne mein error aaya.</p>';
     }
+}
+
+function resetDispatchHistoryFilters() {
+    document.getElementById('dispatchHistorySearch').value = '';
+    document.getElementById('dispatchHistoryStart').value = '';
+    document.getElementById('dispatchHistoryEnd').value = '';
+    loadDispatchHistory();
 }
 
 function resetDispatchHistoryFilters() {
@@ -3473,11 +3589,19 @@ async function filterDispatchOrders(mobile) {
                         class="bg-blue-500 text-white flex-1 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-blue-600 transition-colors">
                         📦 Dispatch
                     </button>
+                    <button type="button" onclick="cancelOrder('${order.orderId}')" 
+                        class="bg-red-500 text-white flex-1 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-red-600 transition-colors">
+                        ❌ Cancel
+                    </button>
                     ` : ''}
                      ${activeTab === 'requests' ? `
                     <button type="button" onclick="openDispatchModal('${order.orderId}')" 
                         class="bg-pink-500 text-white flex-1 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-pink-600 transition-colors">
                         📦 Dispatch
+                    </button>
+                    <button type="button" onclick="cancelOrder('${order.orderId}')" 
+                        class="bg-red-500 text-white flex-1 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-red-600 transition-colors">
+                        ❌ Cancel
                     </button>
                     ` : ''}
                 </div>
@@ -3492,7 +3616,8 @@ async function filterDispatchOrders(mobile) {
 }
 
 
-function openDispatchModal(orderId) {
+function openDispatchModal(orderId, order = null) {
+    currentDispatchOrder = order;
     document.getElementById('dispatchOrderId').value = orderId;
     document.getElementById('dispatchCourier').value = '';
     document.getElementById('dispatchTrackingId').value = '';
@@ -3523,8 +3648,22 @@ async function confirmDispatch() {
 
         if (data.success) {
             closeModal('dispatchModal');
-            showMessage('✅ Order dispatched with tracking!', 'success', 'deptMessage');
-            loadDeptOrders();
+
+            const whatsappData = currentDispatchOrder ? { type: 'dispatched', order: { ...currentDispatchOrder, tracking: { courier, trackingId } } } : null;
+
+            showSuccessPopup(
+                'Order Dispatched! 🚀',
+                `Order ${orderId} successfully dispatched!\n\nCourier: ${courier}\nTracking: ${trackingId}`,
+                '🚀',
+                '#9333ea',
+                whatsappData
+            );
+
+            currentDispatchOrder = null;
+            setTimeout(() => {
+                loadDeptOrders();
+                loadDispatchHistory();
+            }, 1000);
         }
     }
 
@@ -3560,6 +3699,7 @@ async function approveDelivery(orderId) {
             setTimeout(() => {
                 loadDeliveryRequests();
                 loadDispatchedOrders();
+                loadDispatchHistory();
             }, 1000);
         }
     }
@@ -3657,19 +3797,19 @@ async function saveEditOrder() {
     document.getElementById('editPin').value].filter(v => v.trim());
 
     const updateData = {
-        customerName: document.getElementById('editCustomerName').value.trim(),
+        customerName: toTitleCase(document.getElementById('editCustomerName').value.trim()),
         telNo: document.getElementById('editTelNo').value.trim(),
         altNo: document.getElementById('editAltNo').value.trim(),
-        hNo: document.getElementById('editHNo').value,
-        blockGaliNo: document.getElementById('editBlockGaliNo').value,
-        villColony: document.getElementById('editVillColony').value,
-        po: document.getElementById('editPo').value,
-        tahTaluka: document.getElementById('editTahTaluka').value,
-        distt: document.getElementById('editDistt').value,
-        state: document.getElementById('editState').value,
-        pin: document.getElementById('editPin').value,
-        landMark: document.getElementById('editLandMark').value,
-        address: addressParts.join(', '),
+        hNo: document.getElementById('editHNo').value.trim(),
+        blockGaliNo: toTitleCase(document.getElementById('editBlockGaliNo').value.trim()),
+        villColony: toTitleCase(document.getElementById('editVillColony').value.trim()),
+        po: toTitleCase(document.getElementById('editPo').value.trim()),
+        tahTaluka: toTitleCase(document.getElementById('editTahTaluka').value.trim()),
+        distt: toTitleCase(document.getElementById('editDistt').value.trim()),
+        state: toTitleCase(document.getElementById('editState').value.trim()),
+        pin: document.getElementById('editPin').value.trim(),
+        landMark: toTitleCase(document.getElementById('editLandMark').value.trim()),
+        address: addressParts.map(p => toTitleCase(p.trim())).join(', '),
         items,
         total,
         advance: parseFloat(document.getElementById('editAdvance').value) || 0,
@@ -4042,7 +4182,7 @@ async function loadAdminStatusTab(status, listId, searchId, startId, endId, stat
                                 <span class="bg-${themeColor}-100 text-${themeColor}-700 text-xs font-bold px-2 py-0.5 rounded-md border border-${themeColor}-200 uppercase tracking-wide">
                                     ${order.orderId}
                                 </span>
-                                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                <button onclick="sendWhatsAppDirect('${status === 'Pending' ? 'booked' : status === 'Address Verified' ? 'verified' : 'dispatched'}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                                     class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
                                     ${WHATSAPP_ICON}
                                 </button>
@@ -4091,8 +4231,8 @@ async function loadAdminStatusTab(status, listId, searchId, startId, endId, stat
 
                     <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
                         <span class="text-xs text-gray-400">
-                            <span class="block text-gray-300 text-[10px] uppercase font-bold">Date</span>
-                            ${dateDisplay}
+                            <span class="block text-gray-300 text-[10px] uppercase font-bold">Date & Time</span>
+                            ${dateDisplay} ${order.timestamp ? new Date(order.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
                         ${order.employee ? `
                         <span class="text-gray-300">•</span>
@@ -4111,7 +4251,7 @@ async function loadAdminStatusTab(status, listId, searchId, startId, endId, stat
                     </button>
                     
                     ${status === 'Address Verified' ? `
-                    <button type="button" onclick="openDispatchModal('${order.orderId}')" 
+                    <button type="button" onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                         class="bg-purple-600 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:bg-purple-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
                         <span>📦</span> Dispatch
                     </button>
@@ -4596,7 +4736,7 @@ function renderAdminHistoryTable(orders) {
                         <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${statusClass}">${o.status}</span>
                     </td>
                     <td class="px-6 py-4 text-right text-xs text-gray-400 font-mono">
-                        ${o.timestamp ? new Date(o.timestamp).toLocaleDateString() : ''}
+                        ${o.timestamp ? new Date(o.timestamp).toLocaleDateString() + ' ' + new Date(o.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
                     </td>
                     <td class="px-6 py-4 text-center">
                         <div class="flex items-center justify-center gap-2">
@@ -4873,18 +5013,33 @@ async function viewOrder(orderId) {
 }
 
 async function deleteOrder(orderId) {
-    if (!confirm('Order delete karna hai? Ye action undo nahi hoga!')) return;
+    if (!confirm(`Are you sure you want to delete order ${orderId}?`)) return;
 
     try {
-        await fetch(`${API_URL}/orders/${orderId}`, {
+        const res = await fetch(`${API_URL}/orders/${orderId}`, {
             method: 'DELETE'
         });
-        showMessage('Order deleted!', 'success', 'adminMessage');
-        loadAdminData();
-    }
+        const data = await res.json();
 
-    catch (e) {
-        console.error(e);
+        if (data.success) {
+            showMessage('Order deleted successfully! ✅', 'success', 'adminMessage');
+            loadAdminData(); // Refresh stats
+
+            // Refresh current active tab
+            const activeTabButton = document.querySelector('#adminPanel .tab-active');
+            if (activeTabButton) {
+                const tabId = activeTabButton.id;
+                if (tabId === 'adminTabPending') loadAdminPending();
+                else if (tabId === 'adminTabVerified') loadAdminVerified();
+                else if (tabId === 'adminTabDispatched') loadAdminDispatched();
+                else if (tabId === 'adminTabDelivered') loadAdminDelivered();
+            }
+        } else {
+            alert('❌ Delete failed: ' + (data.message || 'Unknown error'));
+        }
+    } catch (e) {
+        console.error('Delete error:', e);
+        alert('❌ Error: Server se contact nahi ho paya!');
     }
 }
 
@@ -4913,7 +5068,7 @@ async function registerDepartment() {
 
             ,
             body: JSON.stringify({
-                name, deptId: id, password: pass, deptType: type
+                name: toTitleCase(name), deptId: id, password: pass, deptType: type
             })
         });
         const data = await res.json();
@@ -5113,13 +5268,16 @@ async function exportDispatchedOrders() {
             if (dateInput) dateInput.valueAsDate = new Date(); // Visually set it
         }
 
-        // Filter: STRICTLY 'Dispatched' AND matches Date
+        // Filter: 'Dispatched' OR 'Delivered' AND matches Date
         const orders = data.orders.filter(o => {
-            // 1. Status Check (Must be DISPATCHED only, NO Delivered)
-            if (o.status !== 'Dispatched') return false;
+            // 1. Status Check (Include both Dispatched and Delivered)
+            if (o.status !== 'Dispatched' && o.status !== 'Delivered') return false;
 
-            // 2. Date Check (Prefer dispatchedAt, fallback to timestamp)
-            const orderDate = o.dispatchedAt ? new Date(o.dispatchedAt) : new Date(o.timestamp);
+            // 2. Date Check (Prefer root dispatchedAt, then tracking, then timestamp)
+            const dAt = o.dispatchedAt || o.tracking?.dispatchedAt || o.timestamp;
+            if (!dAt) return false;
+
+            const orderDate = new Date(dAt);
             return orderDate.toDateString() === targetDate;
         });
 
@@ -5206,11 +5364,144 @@ async function exportDispatchedOrders() {
         btn.disabled = false;
 
     } catch (e) {
-        console.error(e);
+        console.error('Export Error:', e);
         alert('Export failed! ' + e.message);
-        if (event && event.target) {
-            event.target.closest('button').innerHTML = '📥 Export CSV';
-            event.target.closest('button').disabled = false;
+        const btn = document.getElementById('deptExportBtn') || event?.target?.closest('button');
+        if (btn) {
+            btn.innerHTML = '📥 Export CSV';
+            btn.disabled = false;
+        }
+    }
+}
+
+async function exportDispatchedOrdersFiltered(event) {
+    try {
+        // Show loading
+        const btn = event?.target?.closest('button') || document.querySelector('button[onclick*="exportDispatchedOrdersFiltered"]');
+        if (!btn) {
+            alert('Button not found!');
+            return;
+        }
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ Generating...';
+        btn.disabled = true;
+
+        // Fetch all raw data from server
+        const res = await fetch(`${API_URL}/orders`);
+        const data = await res.json();
+
+        if (!data.success || !data.orders) throw new Error('Failed to fetch orders');
+
+        // Read filters from Dispatched tab
+        const dateFilter = document.getElementById('dispatchedDateFilter')?.value;
+        const searchFilter = document.getElementById('dispatchedSearch')?.value.toLowerCase();
+
+        // Filter: 'Dispatched' OR 'Delivered'
+        let orders = data.orders.filter(o => o.status === 'Dispatched' || o.status === 'Delivered');
+
+        // Apply Date Filter
+        if (dateFilter) {
+            orders = orders.filter(o => {
+                const dateStr = o.dispatchedAt ? o.dispatchedAt.split('T')[0] : (o.timestamp ? o.timestamp.split('T')[0] : null);
+                return dateStr === dateFilter;
+            });
+        }
+
+        // Apply Search Filter
+        if (searchFilter) {
+            orders = orders.filter(o =>
+                (o.customerName && o.customerName.toLowerCase().includes(searchFilter)) ||
+                (o.telNo && o.telNo.includes(searchFilter)) ||
+                (o.orderId && o.orderId.toLowerCase().includes(searchFilter))
+            );
+        }
+
+        if (orders.length === 0) {
+            alert('No dispatched orders found matching the current filters!');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        const fileNameLabel = dateFilter || 'All_Dispatched';
+
+        // Map to Schema (MATCHING ADMIN EXPORT EXACTLY)
+        const exportData = orders.map((order, index) => {
+            let address = order.address || '';
+            let landmark = '';
+
+            if (typeof address === 'object' && address !== null) {
+                landmark = address.landmark || order.landmark || order.landMark || '';
+                address = `${address.houseNo || ''}, ${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''}`;
+            } else {
+                landmark = order.landmark || order.landMark || '';
+            }
+
+            const fullAddress = landmark ? `${address} {${landmark}}` : address;
+
+            let productNames = '';
+            if (Array.isArray(order.items)) {
+                productNames = order.items.map(i => i && i.description ? i.description : '').join(', ');
+            } else if (typeof order.items === 'string') {
+                productNames = order.items;
+            }
+
+            const formatDate = (dateStr) => {
+                if (!dateStr) return '';
+                try {
+                    return new Date(dateStr).toLocaleDateString('en-GB');
+                } catch (e) { return dateStr; }
+            };
+
+            return {
+                "S.No": index + 1,
+                "Customer Name": order.customerName || '',
+                "Mobile Number": order.telNo || '',
+                "Address": toTitleCase(fullAddress),
+                "Add1": "",
+                "Add2": "",
+                "Add3": "",
+                "Order Date": formatDate(order.timestamp),
+                "Delivered Date": order.status === 'Delivered' ? formatDate(order.deliveryDate) : '',
+                "Product Name": productNames,
+                "Delivery Status": order.status === 'Delivered' ? 'Delivered' : 'On Way',
+                "Amount Rs.": order.total || 0,
+                "Advance Payment": order.advance || 0,
+                "Payment Method": order.paymentMode || 'COD',
+                "Agent": order.employee || '',
+                "Order Type": order.orderType || 'New',
+                "Invoice Date": formatDate(order.dispatchedAt || order.tracking?.dispatchedAt || order.timestamp),
+                "Delivered by": (order.shiprocket && order.shiprocket.courierName)
+                    ? order.shiprocket.courierName
+                    : (order.tracking && order.tracking.courier ? order.tracking.courier
+                        : (order['shiprocket.courierName'] || order.courier || order.dispatchedBy || '')),
+                "AWB Number": (order.shiprocket && order.shiprocket.awb)
+                    ? order.shiprocket.awb
+                    : (order['shiprocket.awb'] || (order.tracking ? (order.tracking.trackingId || '') : '')),
+                "RTO Status": order.rtoStatus || ''
+            };
+        });
+
+        // Convert to Sheet
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Dispatched_Orders");
+
+        // Download
+        XLSX.writeFile(wb, `Dispatched_Orders_${fileNameLabel}_${new Date().getTime()}.xlsx`);
+
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+
+        showSuccessPopup('Export Successful! 📥', `${orders.length} orders exported to Excel`, '✅', '#10b981');
+
+    } catch (e) {
+        console.error('Export Error:', e);
+        alert('Export failed! ' + e.message);
+        const btn = event?.target?.closest('button') || document.querySelector('button[onclick*="exportDispatchedOrdersFiltered"]');
+        if (btn) {
+            btn.innerHTML = '📥 Export Excel';
+            btn.disabled = false;
         }
     }
 }
@@ -5927,7 +6218,6 @@ async function loadVerificationHistory() {
         let orders = data.orders || [];
 
         // Filter for Verified orders (including those that moved to Dispatch/Delivered)
-        // This ensures the verification team sees their history even after the order moves forward
         orders = orders.filter(o => ['Address Verified', 'Dispatched', 'Delivered'].includes(o.status));
 
         // CALCULATE STATS
@@ -5937,15 +6227,14 @@ async function loadVerificationHistory() {
         const lastWeek = new Date(today);
         lastWeek.setDate(lastWeek.getDate() - 7);
 
-        // Note: using verifiedAt if available, otherwise fallback to timestamp
         const countToday = orders.filter(o => {
-            const date = o.verifiedAt ? new Date(o.verifiedAt) : new Date(o.timestamp);
-            return date.toDateString() === today.toDateString();
+            const dateStr = o.verifiedAt ? o.verifiedAt.split('T')[0] : (o.timestamp ? o.timestamp.split('T')[0] : null);
+            return dateStr === today.toISOString().split('T')[0];
         }).length;
 
         const countYesterday = orders.filter(o => {
-            const date = o.verifiedAt ? new Date(o.verifiedAt) : new Date(o.timestamp);
-            return date.toDateString() === yesterday.toDateString();
+            const dateStr = o.verifiedAt ? o.verifiedAt.split('T')[0] : (o.timestamp ? o.timestamp.split('T')[0] : null);
+            return dateStr === yesterday.toISOString().split('T')[0];
         }).length;
 
         const countWeek = orders.filter(o => {
@@ -5983,7 +6272,12 @@ async function loadVerificationHistory() {
             });
         }
 
-        orders.sort((a, b) => new Date(b.verifiedAt || b.timestamp) - new Date(a.verifiedAt || a.timestamp));
+        // Sort by verified date (newest first)
+        orders.sort((a, b) => {
+            const dateA = new Date(a.verifiedAt || a.timestamp);
+            const dateB = new Date(b.verifiedAt || b.timestamp);
+            return dateB - dateA;
+        });
 
         if (orders.length === 0) {
             document.getElementById('verificationHistoryList').innerHTML = `
@@ -6047,7 +6341,7 @@ async function loadVerificationHistory() {
                 <div class="p-4 flex gap-2 items-center justify-between border-t border-purple-100">
                     <div class="text-xs text-gray-500">
                         <span class="block text-gray-400 text-[10px] uppercase font-bold">Verified On</span>
-                        ${order.verifiedAt ? new Date(order.verifiedAt).toLocaleDateString() : 'N/A'}
+                        ${order.verifiedAt ? new Date(order.verifiedAt).toLocaleDateString() + ' ' + new Date(order.verifiedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A')}
                     </div>
                     <button type="button" onclick="viewOrder('${order.orderId}')" 
                         class="bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">
@@ -6816,8 +7110,9 @@ async function trackShiprocket() {
 }
 
 // ==================== DISPATCH WITH SHIPROCKET ====================
-async function dispatchWithShiprocket(orderId) {
+async function dispatchWithShiprocket(orderId, order = null) {
     if (!orderId) return alert('Order ID missing!');
+    currentDispatchOrder = order;
 
     // STEP 1: Box Size Selection
     showBoxSizeSelection(orderId);
@@ -6904,18 +7199,21 @@ window.selectCourierAndDispatch = async function (orderId, boxSize, dimensions, 
         loadingPopup.remove();
 
         if (data.success) {
+            const whatsappData = currentDispatchOrder ? { type: 'dispatched', order: { ...currentDispatchOrder, tracking: { courier: 'Shiprocket', trackingId: 'Generating...' } } } : null;
+
             showSuccessPopup(
                 'Order Pushed to Shiprocket! 🚀',
                 `\nOrder has been created on Shiprocket.\nPlease allow some time for AWB generation and then click "Sync Status".`,
-                '☁️Sync Pending',
-                '#3b82f6'
+                '📦',
+                '#3b82f6',
+                whatsappData
             );
 
+            currentDispatchOrder = null;
+
             setTimeout(() => {
-                // if (typeof loadDeptOrders === 'function') loadDeptOrders(); 
-                // Don't reload immediately, maybe just close modal
-                // Or reload to show status update if we changed status to "Processing"
-                // But we kept it "With no AWB"
+                loadDeptOrders();
+                loadDispatchHistory();
             }, 1500);
         } else {
             alert('❌ Push Error: ' + (data.message || 'Failed to push order'));
@@ -6942,6 +7240,7 @@ async function syncShiprocketStatus() {
         if (data.success) {
             alert(`Sync Complete! ${data.message}`);
             loadDeptOrders(); // Refresh list to show updated AWBs
+            loadDispatchHistory(); // Update stats
         } else {
             alert('Sync Failed: ' + data.message);
         }

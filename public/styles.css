@@ -1,3 +1,29 @@
+/* Eye-Friendly Color Palette */
+:root {
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #f1f3f5;
+    --bg-card: #ffffff;
+    --text-primary: #2d3748;
+    --text-secondary: #718096;
+    --text-muted: #a0aec0;
+
+    /* Soft Accent Colors */
+    --accent-blue: #5a9fd4;
+    --accent-blue-light: #7bb3e0;
+    --accent-green: #5fb878;
+    --accent-orange: #f0ad4e;
+    --accent-red: #e57373;
+    --accent-teal: #4db6ac;
+    --accent-purple: #9575cd;
+
+    /* Border & Shadow */
+    --border-light: #e2e8f0;
+    --border-medium: #cbd5e0;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
 /* High Performance Animations */
 * {
     font-family: 'Poppins', sans-serif;
@@ -5,7 +31,7 @@
 }
 
 body {
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 50%, #dfe4ea 100%);
+    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 50%, #e9ecef 100%);
     min-height: 100vh;
     overflow-x: hidden;
     scroll-behavior: smooth;
@@ -42,12 +68,12 @@ select {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-blue-light) 100%);
 }
 
 .btn-primary:hover {
     transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 12px 24px rgba(90, 159, 212, 0.25);
 }
 
 .btn-primary:active {
@@ -90,9 +116,9 @@ button:active {
 }
 
 .tab-active {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-blue-light) 100%);
     color: white;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 3px 10px rgba(90, 159, 212, 0.25);
     transform: scale(1.05);
     /* Pop effect */
 }
@@ -103,7 +129,7 @@ button:active {
 
 .order-card:hover {
     transform: translateX(4px) scale(1.01);
-    border-left-color: #10b981;
+    border-left-color: var(--accent-blue);
     background: rgba(255, 255, 255, 0.95);
 }
 
@@ -171,9 +197,12 @@ button:active {
 
 /* Logo Floating Animation */
 @keyframes logoFloat {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translateY(0px);
     }
+
     50% {
         transform: translateY(-10px);
     }
@@ -194,6 +223,7 @@ button:active {
     0% {
         transform: translateX(-100%);
     }
+
     100% {
         transform: translateX(200%);
     }

@@ -9,6 +9,7 @@ require('dotenv').config();
 const { connectDatabase, initializeDefaultData } = require('./database');
 const dataAccess = require('./dataAccess');
 const { authenticateToken } = require('./auth');
+const { startTracking } = require('./background-tracking');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -101,6 +102,8 @@ async function startServer() {
     if (dbConnected) {
         await initializeDefaultData();
         console.log('✅ Database initialized!');
+        // Start background tracking service
+        startTracking(true);
     } else {
         console.warn('⚠️ Running without MongoDB - Data will not persist!');
     }

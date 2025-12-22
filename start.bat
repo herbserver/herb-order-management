@@ -1,28 +1,35 @@
 @echo off
-cd /d "c:\Users\Abcom\Desktop\Chandan\New folder"
+setlocal enabledelayedexpansion
+cd /d "%~dp0"
 title Herb On Naturals Server
 color 0A
 
-
-echo.
 echo ========================================
 echo   HERB ON NATURALS SERVER STARTING...
 echo ========================================
 echo.
-echo Folder: %~dp0
-echo Server: http://localhost:3000
-echo Custom: http://herbonnaturals:3000 (needs hosts file setup)
+echo Current Dir: %cd%
+echo Server:      http://localhost:3000
 echo.
-echo IMPORTANT: Running on Port 3000
-echo This window must run as ADMINISTRATOR!
-echo.
-echo DO NOT CLOSE THIS WINDOW!
-echo Press Ctrl+C to stop server.
+
+:: Check if node_modules exists
+if not exist "node_modules\" (
+    echo [!] node_modules folder not found.
+    echo [!] Running npm install...
+    call npm install
+)
+
+echo [!] Starting Node.js server...
+echo [!] DO NOT CLOSE THIS WINDOW!
+echo [!] Press Ctrl+C to stop the server.
 echo.
 echo ----------------------------------------
 echo.
 
+:: Automatically open browser
 start http://localhost:3000
+
+:: Start server
 node server.js
 
 pause

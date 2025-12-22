@@ -236,6 +236,7 @@ router.put('/:orderId/dispatch', async (req, res) => {
                 trackingId: trackingId || '',
                 dispatchedAt: new Date().toISOString()
             },
+            dispatchedAt: new Date().toISOString(),
             dispatchedBy: dispatchedBy || 'Dispatch Dept'
         };
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
@@ -301,6 +302,49 @@ router.post('/:orderId/suggest-courier', async (req, res) => {
     }
 });
 
+// Put Order On Hold
+router.put('/:orderId/hold', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { holdReason, expectedDispatchDate, holdBy } = req.body;
+
+        console.log(`\n⏸️ [HOLD REQUEST] Order: ${orderId}`);
+
+        const updates = {
+            status: 'On Hold',
+            holdDetails: {
+                isOnHold: true,
+                holdReason: holdReason || 'On hold',
+                expectedDispatchDate: new Date(expectedDispatchDate),
+                holdBy: holdBy || 'Verification System',
+                holdAt: new Date().toISOString()
+            },
+            // Also add to remarks for history
+            $push: {
+                remarks: {
+                    text: `Order put on hold. Reason: ${holdReason || 'N/A'}. Expected Dispatch: ${expectedDispatchDate}`,
+                    addedBy: holdBy || 'Verification Dept',
+                    addedAt: new Date().toISOString(),
+                    timestamp: new Date().toISOString()
+                }
+            },
+            updatedAt: new Date().toISOString()
+        };
+
+        const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+
+        if (updatedOrder) {
+            console.log(`✅ Success: Order ${orderId} is now on hold.`);
+            res.json({ success: true, message: 'Order put on hold successfully', order: updatedOrder });
+        } else {
+            res.status(404).json({ success: false, message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error('❌ Hold order error:', error.message);
+        res.status(500).json({ success: false, message: 'Failed to put order on hold' });
+    }
+});
+
 // Excel Export
 router.get('/export', (req, res) => {
     try {
@@ -341,6 +385,27 @@ router.get('/export', (req, res) => {
     } catch (e) {
         console.error('❌ Export Error:', e);
         res.status(500).json({ success: false, message: 'Export failed' });
+    }
+});
+
+// Delete Order
+router.delete('/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        console.log(`\n🗑️ [DELETE REQUEST] Received for Order ID: "${orderId}"`);
+
+        const result = await dataAccess.deleteOrder(orderId);
+
+        if (result) {
+            console.log(`✅ Success: Order "${orderId}" deleted.`);
+            res.json({ success: true, message: 'Order deleted successfully' });
+        } else {
+            console.warn(`⚠️ Warning: Order "${orderId}" not found for deletion.`);
+            res.status(404).json({ success: false, message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error('❌ Delete order error:', error.message);
+        res.status(500).json({ success: false, message: 'Failed to delete order' });
     }
 });
 
