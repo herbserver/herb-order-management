@@ -60,17 +60,17 @@ router.post('/create-order', async (req, res) => {
             billing_country: "India",
             billing_phone: order.telNo,
             shipping_is_billing: true,
-            order_items: order.items.map(item => ({
+            order_items: [{
                 name: "Medicine",
                 sku: "MEDICINE",
-                units: item.quantity || 1,
-                selling_price: item.amount || Math.round(order.total / order.items.length),
+                units: order.items.reduce((sum, item) => sum + (item.quantity || 1), 0), // Total quantity
+                selling_price: order.total, // Total amount
                 discount: 0,
                 tax: 0,
                 hsn: 0
-            })),
+            }],
             payment_method: "COD",
-            sub_total: order.total,
+            sub_total: order.codAmount || order.total, // COD amount (after advance payment)
             length: dimensions.length,
             breadth: dimensions.breadth,
             height: dimensions.height,
@@ -152,8 +152,10 @@ router.post('/sync-order/:orderId', async (req, res) => {
         if (shipmentData && shipmentData.awb) {
             await dataAccess.updateOrder(orderId, {
                 'shiprocket.awb': shipmentData.awb,
-                'tracking.trackingId': shipmentData.awb,
-                'tracking.courier': shipmentData.courier_name || 'Shiprocket'
+                tracking: {
+                    trackingId: shipmentData.awb,
+                    courier: shipmentData.courier_name || 'Shiprocket'
+                }
             });
 
             console.log(`✅ Synced AWB for ${orderId}: ${shipmentData.awb}`);
@@ -213,8 +215,10 @@ router.post('/sync-all', async (req, res) => {
                 if (shipmentData && shipmentData.awb) {
                     await dataAccess.updateOrder(order.orderId, {
                         'shiprocket.awb': shipmentData.awb,
-                        'tracking.trackingId': shipmentData.awb,
-                        'tracking.courier': shipmentData.courier_name || 'Shiprocket'
+                        tracking: {
+                            trackingId: shipmentData.awb,
+                            courier: shipmentData.courier_name || 'Shiprocket'
+                        }
                     });
 
                     console.log(`✅ Synced AWB for ${order.orderId}: ${shipmentData.awb}`);
