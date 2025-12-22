@@ -2998,7 +2998,13 @@ function generateOrderCardHTML(order) {
                 <!-- Already Dispatched Actions -->
                 <div class="space-y-2 pt-1">
                     <button type="button" onclick="approveDelivery('${order.orderId}')" 
-                        class="w-full bg-emerald-500 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-emerald-200/50 hover:bg-emerald-600 active:scale-95 transition-all uppercase tracking-widest">✅ MARK DELIVERED</button>
+                        class="w-full bg-blue-500 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-blue-200/50 hover:bg-blue-600 active:scale-95 transition-all uppercase tracking-widest">✅ MARK DELIVERED</button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="editDispatchedOrder('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                            class="bg-amber-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-amber-200/50 hover:bg-amber-600 active:scale-95 transition-all">✏️ EDIT</button>
+                        <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
+                            class="bg-gray-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-gray-200/50 hover:bg-gray-600 active:scale-95 transition-all">👁️ VIEW</button>
+                    </div>
                     ${order.tracking?.trackingId ? `
                     <div class="bg-indigo-50 border border-indigo-100 p-2 rounded-lg flex justify-between items-center">
                         <span class="text-[10px] font-black text-indigo-700 uppercase">${order.tracking.courier}</span>
@@ -3704,6 +3710,26 @@ async function confirmDispatch() {
     catch (e) {
         console.error(e);
     }
+}
+
+
+// Edit Dispatched Order
+function editDispatchedOrder(orderId, order) {
+    // Open edit modal with order details
+    alert(`Edit functionality for Order ${orderId}\n\nFeature coming soon!\n\nYou can edit:\n- Customer details\n- Address\n- Tracking info\n- AWB number`);
+
+    // TODO: Implement full edit modal
+    // For now, just show alert
+    console.log('Edit order:', order);
+}
+
+// View Order Details
+function viewOrderDetails(orderId) {
+    // Open order details modal
+    alert(`View Order Details: ${orderId}\n\nOpening detailed view...`);
+
+    // TODO: Implement detailed view modal
+    console.log('View order:', orderId);
 }
 
 async function approveDelivery(orderId) {

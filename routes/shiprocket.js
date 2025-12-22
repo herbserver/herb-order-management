@@ -68,17 +68,26 @@ router.post('/create-order', async (req, res) => {
             weight: dimensions.weight
         };
 
+        console.log('📦 Shiprocket Payload:', JSON.stringify(payload, null, 2));
+
         const result = await shiprocket.createOrder(payload);
+
+        console.log('📡 Shiprocket Response:', JSON.stringify(result, null, 2));
+
         if (result.success) {
             await dataAccess.updateOrder(orderId, {
                 status: 'Dispatched',
                 dispatchedAt: new Date().toISOString(),
                 shiprocket: { orderId: result.orderId, shipmentId: result.shipmentId, awb: result.awb }
             });
-            res.json({ success: true, message: 'Order pushed to Shiprocket!' });
-        } else res.status(400).json(result);
+            res.json({ success: true, message: 'Order pushed to Shiprocket!', data: result });
+        } else {
+            console.error('❌ Shiprocket Error:', result.message, result.details);
+            res.status(400).json(result);
+        }
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Dispatch failed' });
+        console.error('❌ Shiprocket Route Error:', error);
+        res.status(500).json({ success: false, message: 'Dispatch failed', error: error.message });
     }
 });
 

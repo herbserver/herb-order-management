@@ -410,4 +410,35 @@ router.delete('/:orderId', async (req, res) => {
     }
 });
 
+// Request Delivery (Employee → Dispatch)
+router.post('/:orderId/request-delivery', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { employeeId, employeeName } = req.body;
+
+        // Get order
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        // Update order status to "Delivery Requested"
+        const updated = await dataAccess.updateOrder(orderId, {
+            status: 'Delivery Requested',
+            deliveryRequestedAt: new Date().toISOString(),
+            deliveryRequestedBy: employeeId
+        });
+
+        if (updated) {
+            console.log(`🚚 Delivery Request: ${orderId} by ${employeeName}`);
+            res.json({ success: true, message: 'Delivery request sent successfully!' });
+        } else {
+            res.status(500).json({ success: false, message: 'Failed to update order' });
+        }
+    } catch (error) {
+        console.error('❌ Request delivery error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 module.exports = router;
