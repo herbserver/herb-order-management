@@ -12,12 +12,20 @@ const whatsappTemplates = {
 🌿 *Herb On Naturals* में आपका स्वागत है।
 
 ✅ आपका Order successfully book हो गया है!
-📦 *Order ID:* ${order.orderId}
-💰 *Total Amount:* ₹${order.total}
 
-हमारा verification department जल्द ही आपसे संपर्क करेगा। 
+📦 *Order Details:*
+- Order ID: ${order.orderId}
+- Total Amount: ₹${order.total}
+- Advance Payment: ₹${order.advance || 0}
+- COD Amount: ₹${order.codAmount || 0}
 
-धन्यवाद!
+हमारी verification team जल्द ही आपसे contact करेगी।
+
+⚠️ *Important Notice:*
+🚫 Delivery boy को delivery से पहले कोई भी OTP न दें!
+✅ Product मिलने के बाद ही OTP share करें।
+
+Thank you!
 ${getCompanyName()}`,
 
     verified: (order) => `नमस्ते ${order.customerName}! 🙏
@@ -26,12 +34,17 @@ ${getCompanyName()}`,
 
 📦 *Order Details:*
 - Total Amount: ₹${order.total}
+- Advance Payment: ₹${order.advance || 0}
 - COD Amount: ₹${order.codAmount || 0}
 - Address: ${order.distt}, ${order.state}
 
 जल्द ही आपका order dispatch किया जाएगा।
 
-धन्यवाद!
+⚠️ *Important Notice:*
+🚫 Delivery boy को delivery से पहले कोई भी OTP न दें!
+✅ Product मिलने के बाद ही OTP share करें।
+
+Thank you!
 ${getCompanyName()}`,
 
     dispatched: (order) => `नमस्ते ${order.customerName}! 🙏
@@ -39,26 +52,34 @@ ${getCompanyName()}`,
 🚚 आपका Order *${order.orderId}* dispatch हो गया है!
 
 📦 *Tracking Details:*
-- AWB: ${order.shiprocket?.awb || order.tracking?.trackingId || 'N/A'}
-- Courier: ${order.shiprocket?.courierName || order.tracking?.courier || 'N/A'}
+- AWB Number: ${order.shiprocket?.awb || order.tracking?.trackingId || 'Coming Soon'}
+- Courier: ${order.shiprocket?.courierName || order.tracking?.courier || 'Coming Soon'}
 
 ${getTrackingLink(order)}
 
 जल्द ही delivery होगी। कृपया phone available रखें।
 
-धन्यवाद!
+⚠️ *Important Notice:*
+🚫 Delivery boy को delivery से पहले कोई भी OTP न दें!
+✅ Product मिलने के बाद ही OTP share करें।
+
+Thank you!
 ${getCompanyName()}`,
 
     out_for_delivery: (order) => `नमस्ते ${order.customerName}! 🙏
 
 🏃 आपका Order *${order.orderId}* आज delivery के लिए निकल चुका है!
 
-📦 AWB: ${order.shiprocket?.awb || order.tracking?.trackingId}
+📦 AWB Number: ${order.shiprocket?.awb || order.tracking?.trackingId}
 🚚 Courier: ${order.shiprocket?.courierName || order.tracking?.courier}
 
 📞 *कृपया phone available रखें*
 
-धन्यवाद!
+⚠️ *Important Notice:*
+🚫 Delivery boy को delivery से पहले कोई भी OTP न दें!
+✅ Product मिलने के बाद ही OTP share करें।
+
+Thank you!
 ${getCompanyName()}`,
 
     delivered: (order) => `नमस्ते ${order.customerName}! 🙏
@@ -67,9 +88,11 @@ ${getCompanyName()}`,
 
 Thank you for your order! 
 
+🌿 हमारे products कैसे लगे? कृपया अपना feedback share करें।
+
 अगली बार फिर से order करें।
 
-धन्यवाद!
+Thank you!
 ${getCompanyName()}`
 };
 

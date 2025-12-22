@@ -46,7 +46,7 @@ router.post('/create-order', async (req, res) => {
             billing_last_name: order.customerName.split(' ').slice(1).join(' ') || '.',
             billing_address: order.address,
             billing_city: order.district || 'City',
-            billing_pincode: order.pincode,
+            billing_pincode: order.pin || order.pincode,
             billing_state: order.state || 'State',
             billing_country: "India",
             billing_phone: order.telNo,

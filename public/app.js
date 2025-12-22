@@ -1361,7 +1361,10 @@ async function saveOrder() {
         const qty = parseFloat(div.querySelector('.item-qty').value) || 0;
 
         if (desc) items.push({
-            description: desc, quantity: qty, amount: 0, rate: 0
+            description: desc,
+            quantity: qty,
+            amount: 0,  // Will calculate below
+            rate: 0     // Will calculate below
         });
     });
 
@@ -1370,6 +1373,18 @@ async function saveOrder() {
     }
 
     const total = parseFloat(document.getElementById('totalAmountInput').value) || 0;
+
+    // Calculate total quantity
+    const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
+
+    // Distribute total amount proportionally based on quantity
+    if (totalQty > 0) {
+        items.forEach(item => {
+            const proportion = item.quantity / totalQty;
+            item.amount = Math.round(total * proportion);
+            item.rate = item.quantity > 0 ? Math.round(item.amount / item.quantity) : 0;
+        });
+    }
 
     const orderData = {
         employeeId: currentUser.id,
@@ -2960,25 +2975,24 @@ function generateOrderCardHTML(order) {
                 <!-- Primary Actions -->
                 <div class="grid grid-cols-2 gap-2 mt-1">
                     <button type="button" onclick="verifyAddress('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                        class="bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-emerald-200/50 active:scale-95 transition-all uppercase tracking-widest">VERIFY</button>
+                        class="bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-blue-200/50 active:scale-95 transition-all uppercase tracking-widest">VERIFY</button>
                     <button type="button" onclick="markAsUnverified('${order.orderId}')" 
                         class="bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-amber-200/50 active:scale-95 transition-all uppercase tracking-widest">HOLD</button>
                 </div>
 
-                <!-- Courier Dropdown -->
-                <div class="flex gap-2 pt-1">
+                <!-- Courier Suggestion -->
+                <div class="mt-2 pt-2 border-t border-gray-100">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">💡 Suggest Courier for Dispatch</label>
                     <select id="courierSelect_${order.orderId}" 
-                        class="flex-grow border border-purple-200 rounded-lg px-3 py-2 text-[11px] bg-white font-black text-gray-700 outline-none focus:border-purple-500 shadow-sm">
-                        <option value="">Ship via...</option>
-                        <option value="Delhivery">Delhivery</option>
-                        <option value="BlueDart">BlueDart</option>
-                        <option value="DTDC">DTDC</option>
-                        <option value="Ecom Express">Ecom Express</option>
-                        <option value="Shiprocket">Shiprocket</option>
-                        <option value="India Post">India Post</option>
+                        class="w-full border border-purple-200 rounded-lg px-3 py-2 text-xs bg-white font-bold text-gray-700 outline-none focus:border-purple-500 shadow-sm">
+                        <option value="">Optional - Select if known...</option>
+                        <option value="Delhivery">📦 Delhivery</option>
+                        <option value="BlueDart">📦 BlueDart</option>
+                        <option value="DTDC">📦 DTDC</option>
+                        <option value="Ecom Express">📦 Ecom Express</option>
+                        <option value="Shiprocket">🚀 Shiprocket</option>
+                        <option value="India Post">📮 India Post</option>
                     </select>
-                    <button type="button" onclick="suggestCourier('${order.orderId}')" 
-                        class="bg-purple-500 text-white px-4 rounded-lg text-xs font-bold shadow-md shadow-purple-200 active:scale-90 transition-all">📦</button>
                 </div>
             ` : (order.status === 'Dispatched' ? `
                 <!-- Already Dispatched Actions -->
@@ -2990,9 +3004,23 @@ function generateOrderCardHTML(order) {
                         <span class="text-[10px] font-black text-indigo-700 uppercase">${order.tracking.courier}</span>
                         <span class="text-[11px] font-mono font-bold text-gray-600">${order.tracking.trackingId}</span>
                     </div>
-                    ` : ''}
+                    ` : ''}\r
                 </div>
             ` : `
+                <!-- Suggested Courier Badge -->
+                ${order.suggestedCourier ? `
+                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-3 rounded-xl mb-3 shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">💡</span>
+                        <div class="flex-grow">
+                            <div class="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Verification Suggested</div>
+                            <div class="text-sm font-black text-purple-800">${order.suggestedCourier}</div>
+                        </div>
+                        <span class="bg-purple-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">RECOMMENDED</span>
+                    </div>
+                </div>
+                ` : ''}
+                
                 <!-- Dispatch Actions -->
                 <div class="space-y-2 pt-1">
                     <button type="button" onclick="dispatchWithShiprocket('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
@@ -3145,22 +3173,28 @@ async function verifyAddress(orderId, order = null) {
     if (!confirm('Address verify karke Dispatch Department ko bhejni hai?')) return;
 
     try {
+        // Get selected courier suggestion
+        const courierSelect = document.getElementById(`courierSelect_${orderId}`);
+        const suggestedCourier = courierSelect?.value || null;
+
         const res = await fetch(`${API_URL}/orders/${orderId}/verify`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                verifiedBy: currentUser.id
+                verifiedBy: currentUser.id,
+                suggestedCourier: suggestedCourier
             })
         });
         const data = await res.json();
 
         if (data.success) {
             const whatsappData = order ? { type: 'verified', order: order } : null;
+            const courierMsg = suggestedCourier ? `\n\n💡 Suggested Courier: ${suggestedCourier}` : '';
             showSuccessPopup(
                 'Address Verified! ✅',
-                `Order ${orderId} successfully verified!\n\nAb yeh Dispatch Department mein chala gaya hai.`,
+                `Order ${orderId} successfully verified!${courierMsg}\n\nAb yeh Dispatch Department mein chala gaya hai.`,
                 '✅',
                 '#10b981',
                 whatsappData

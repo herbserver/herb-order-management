@@ -192,11 +192,12 @@ router.put('/:orderId/verify', async (req, res) => {
         const updates = {
             status: 'Address Verified',
             verifiedAt: new Date().toISOString(),
-            verifiedBy: req.body.verifiedBy || 'Address Dept'
+            verifiedBy: req.body.verifiedBy || 'Address Dept',
+            suggestedCourier: req.body.suggestedCourier || null
         };
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
         if (!updated) return res.status(404).json({ success: false, message: 'Order not found!' });
-        console.log(`✅ Address Verified: ${req.params.orderId}`);
+        console.log(`✅ Address Verified: ${req.params.orderId}${updates.suggestedCourier ? ` | Suggested: ${updates.suggestedCourier}` : ''}`);
         res.json({ success: true, message: 'Address verified!', order: updated });
     } catch (error) {
         console.error('❌ Verify error:', error);

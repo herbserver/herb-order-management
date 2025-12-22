@@ -77,16 +77,14 @@
                     <div id="employeeLoginForm" class="space-y-5">
                         <div class="relative group">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <span
-                                    class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🆔</span>
+                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🆔</span>
                             </div>
                             <input type="text" id="empLoginId" placeholder="Employee ID"
                                 class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
                         </div>
                         <div class="relative group">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <span
-                                    class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🔒</span>
+                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🔒</span>
                             </div>
                             <input type="password" id="empLoginPass" placeholder="Password"
                                 class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
@@ -282,6 +280,7 @@
                         <div class="space-y-4">
                             <div><label class="block text-sm font-medium mb-1">Customer Name
                                     *</label><input type="text" name="customerName" required
+                                    style="text-transform: capitalize;" oninput="this.value = toTitleCase(this.value)"
                                     class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none">
                             </div>
                             <div><label class="block text-sm font-medium mb-1">Address
