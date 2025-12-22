@@ -50,9 +50,13 @@ async function syncAllTrackingStatuses() {
                             status: 'Delivered',
                             deliveredAt: new Date().toISOString(),
                             deliveredBy: 'Shiprocket Auto-Sync',
-                            'tracking.currentStatus': 'Delivered',
-                            'tracking.lastUpdate': tracking.lastUpdate,
-                            'tracking.lastUpdatedAt': new Date().toISOString()
+                            tracking: {
+                                trackingId: order.tracking?.trackingId || awb,
+                                courier: order.tracking?.courier || 'Shiprocket',
+                                currentStatus: 'Delivered',
+                                lastUpdate: tracking.lastUpdate,
+                                lastUpdatedAt: new Date().toISOString()
+                            }
                         }
                     );
                     continue; // Move to next order
@@ -65,9 +69,13 @@ async function syncAllTrackingStatuses() {
                         { orderId: order.orderId },
                         {
                             status: 'Cancelled',
-                            'tracking.currentStatus': currentStatus,
-                            'tracking.lastUpdate': tracking.lastUpdate,
-                            'tracking.lastUpdatedAt': new Date().toISOString(),
+                            tracking: {
+                                trackingId: order.tracking?.trackingId || awb,
+                                courier: order.tracking?.courier || 'Shiprocket',
+                                currentStatus: currentStatus,
+                                lastUpdate: tracking.lastUpdate,
+                                lastUpdatedAt: new Date().toISOString()
+                            },
                             'cancellationInfo.cancelledAt': new Date(),
                             'cancellationInfo.cancelledBy': 'Shiprocket Auto-Sync',
                             'cancellationInfo.cancellationReason': `Shiprocket Status: ${currentStatus}`
@@ -87,9 +95,13 @@ async function syncAllTrackingStatuses() {
                 await Order.findOneAndUpdate(
                     { orderId: order.orderId },
                     {
-                        'tracking.currentStatus': currentStatus,
-                        'tracking.lastUpdate': tracking.lastUpdate,
-                        'tracking.lastUpdatedAt': new Date().toISOString()
+                        tracking: {
+                            trackingId: order.tracking?.trackingId || awb,
+                            courier: order.tracking?.courier || 'Shiprocket',
+                            currentStatus: currentStatus,
+                            lastUpdate: tracking.lastUpdate,
+                            lastUpdatedAt: new Date().toISOString()
+                        }
                     }
                 );
 

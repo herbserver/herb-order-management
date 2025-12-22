@@ -2955,22 +2955,6 @@ function generateOrderCardHTML(order) {
 
         <!-- Actions Footer -->
         <div class="px-4 py-3.5 bg-gray-50/70 border-t border-gray-100 space-y-2.5">
-            <!-- Utility Buttons -->
-            <div class="grid grid-cols-4 gap-2">
-                <button type="button" onclick="showMap('${order.orderId}', '${(order.address || '').replace(/'/g, "\\'") + ' ' + (order.pin || '')}')" 
-                    class="bg-white border text-gray-600 h-9 rounded-lg text-xs font-bold hover:shadow-md hover:border-blue-300 transition-all flex items-center justify-center" title="Map">🛰️</button>
-                <button type="button" onclick="viewOrder('${order.orderId}')" 
-                    class="bg-white border text-gray-600 h-9 rounded-lg text-xs font-bold hover:shadow-md hover:border-indigo-300 transition-all flex items-center justify-center" title="Details">👁️</button>
-                ${isVerification ? `
-                    <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
-                        class="bg-white border text-gray-600 h-9 rounded-lg text-xs font-bold hover:shadow-md hover:border-amber-300 transition-all flex items-center justify-center" title="Edit">✏️</button>
-                    <button type="button" onclick="cancelOrder('${order.orderId}')" 
-                        class="bg-red-50 text-red-500 h-9 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Cancel">❌</button>
-                ` : `
-                    <button type="button" onclick="cancelOrder('${order.orderId}')" 
-                        class="bg-red-50 text-red-500 h-9 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Cancel">❌</button>
-                `}
-            </div>
             ${isVerification ? `
                 <!-- Primary Actions -->
                 <div class="grid grid-cols-2 gap-2 mt-1">
@@ -3005,10 +2989,19 @@ function generateOrderCardHTML(order) {
                         <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
                             class="bg-gray-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-gray-200/50 hover:bg-gray-600 active:scale-95 transition-all">👁️ VIEW</button>
                     </div>
-                    ${order.tracking?.trackingId ? `
-                    <div class="bg-indigo-50 border border-indigo-100 p-2 rounded-lg flex justify-between items-center">
-                        <span class="text-[10px] font-black text-indigo-700 uppercase">${order.tracking.courier}</span>
-                        <span class="text-[11px] font-mono font-bold text-gray-600">${order.tracking.trackingId}</span>
+                    ${(order.tracking?.trackingId || order.shiprocket?.awb) ? `
+                    <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-black text-indigo-700 uppercase">${order.tracking?.courier || 'Shiprocket'}</span>
+                            <span class="text-[11px] font-mono font-bold text-gray-600">${order.tracking?.trackingId || order.shiprocket?.awb}</span>
+                        </div>
+                        ${order.tracking?.currentStatus ? `
+                        <div class="pt-2 border-t border-indigo-200">
+                            <div class="text-[10px] font-bold text-gray-500 uppercase mb-1">Status</div>
+                            <div class="text-xs font-black text-indigo-800">${order.tracking.currentStatus}</div>
+                            ${order.tracking.lastUpdate ? `<div class="text-[10px] text-gray-600 mt-1">${order.tracking.lastUpdate}</div>` : ''}
+                        </div>
+                        ` : ''}
                     </div>
                     ` : ''}\r
                 </div>
@@ -3031,20 +3024,21 @@ function generateOrderCardHTML(order) {
                 <div class="space-y-2 pt-1">
                     <button type="button" onclick="dispatchWithShiprocket('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                         class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-lg text-xs font-black shadow-xl shadow-orange-200/50 hover:scale-[1.02] active:scale-95 transition-all">🚀 SHIPROCKET</button>
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-2 gap-2">
                         <button type="button" onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                             class="bg-purple-600 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-purple-200/50 hover:bg-purple-700 active:scale-95 transition-all">📦 MANUAL</button>
                         <button type="button" onclick="editDispatchOrder('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                             class="bg-amber-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-amber-200/50 hover:bg-amber-600 active:scale-95 transition-all">✏️ EDIT</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
                         <button type="button" onclick="cancelOrder('${order.orderId}')" 
                             class="bg-red-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-red-200/50 hover:bg-red-600 active:scale-95 transition-all">❌ CANCEL</button>
+                        <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
+                            class="bg-gray-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-gray-200/50 hover:bg-gray-600 active:scale-95 transition-all">👁️ VIEW</button>
                     </div>
                 </div>
             `)}
         </div>
-        
-        <!-- Map Placeholder -->
-        <div id="map-${order.orderId}" class="hidden h-64 w-full bg-gray-100 border-t border-gray-200 relative animate-fadeIn"></div>
     </div>`;
 }
 
@@ -3394,6 +3388,17 @@ async function loadDispatchHistory() {
 
         // Filter for Dispatched/Delivered only for this view
         orders = orders.filter(o => o.status === 'Dispatched' || o.status === 'Delivered');
+
+        // DEBUG: Check AWB data
+        console.log('📦 Dispatched Orders AWB Check:');
+        orders.slice(0, 3).forEach(o => {
+            console.log(`${o.orderId}:`, {
+                'tracking.trackingId': o.tracking?.trackingId,
+                'shiprocket.awb': o.shiprocket?.awb,
+                'tracking': o.tracking,
+                'shiprocket': o.shiprocket
+            });
+        });
 
         // CALCULATE STATS
         const today = new Date();
@@ -3909,12 +3914,110 @@ function editDispatchedOrder(orderId, order) {
 }
 
 // View Order Details
-function viewOrderDetails(orderId) {
-    // Open order details modal
-    alert(`View Order Details: ${orderId}\n\nOpening detailed view...`);
+async function viewOrderDetails(orderId) {
+    try {
+        // Fetch order details
+        const res = await fetch(`${API_URL}/orders/${orderId}`);
+        const data = await res.json();
 
-    // TODO: Implement detailed view modal
-    console.log('View order:', orderId);
+        if (!data.success || !data.order) {
+            alert('Order not found!');
+            return;
+        }
+
+        const order = data.order;
+
+        // Create view modal
+        const modal = document.createElement('div');
+        modal.id = 'viewOrderModal';
+        modal.innerHTML = `
+            <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
+                <div style="background: white; border-radius: 20px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <div style="background: linear-gradient(135deg, #3b82f6, #60a5fa); padding: 20px; border-radius: 20px 20px 0 0;">
+                        <h3 style="font-size: 24px; font-weight: bold; color: white; margin: 0;">📋 Order Details</h3>
+                        <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 5px;">${order.orderId}</p>
+                    </div>
+                    
+                    <div style="padding: 25px;">
+                        <!-- Customer Info -->
+                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
+                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">👤 Customer Information</h4>
+                            <div style="display: grid; gap: 8px; font-size: 14px;">
+                                <div><strong>Name:</strong> ${order.customerName}</div>
+                                <div><strong>Phone:</strong> ${order.telNo}</div>
+                                ${order.altNo ? `<div><strong>Alt Phone:</strong> ${order.altNo}</div>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Address -->
+                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
+                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">📍 Delivery Address</h4>
+                            <div style="font-size: 14px; line-height: 1.6;">
+                                ${order.address}<br>
+                                ${order.distt || order.district || ''}, ${order.state || ''} - ${order.pin || order.pincode || ''}
+                            </div>
+                        </div>
+
+                        <!-- Order Items -->
+                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
+                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">🛒 Items</h4>
+                            ${order.items && order.items.length > 0 ? order.items.map(item => `
+                                <div style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-size: 14px;">
+                                    <div style="display: flex; justify-between;">
+                                        <span>${item.description || 'Product'}</span>
+                                        <span>Qty: ${item.quantity || 1}</span>
+                                    </div>
+                                </div>
+                            `).join('') : '<p style="font-size: 14px; color: #666;">No items</p>'}
+                        </div>
+
+                        <!-- Payment Details -->
+                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
+                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">💰 Payment Details</h4>
+                            <div style="display: grid; gap: 8px; font-size: 14px;">
+                                <div style="display: flex; justify-between;"><span>Total Amount:</span><strong>₹${order.total || 0}</strong></div>
+                                <div style="display: flex; justify-between;"><span>Advance Paid:</span><span>₹${order.advance || 0}</span></div>
+                                <div style="display: flex; justify-between; padding-top: 8px; border-top: 2px solid #3b82f6;"><span><strong>COD Amount:</strong></span><strong style="color: #ef4444;">₹${order.codAmount || 0}</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- Tracking Info (if dispatched) -->
+                        ${order.status === 'Dispatched' && order.tracking ? `
+                        <div style="margin-bottom: 20px; padding: 15px; background: #ecfdf5; border: 2px solid #10b981; border-radius: 12px;">
+                            <h4 style="font-weight: bold; color: #10b981; margin-bottom: 10px; font-size: 14px;">📦 Tracking Information</h4>
+                            <div style="display: grid; gap: 8px; font-size: 14px;">
+                                <div><strong>Courier:</strong> ${order.tracking.courier || 'N/A'}</div>
+                                <div><strong>AWB/Tracking ID:</strong> <span style="font-family: monospace; background: white; padding: 4px 8px; border-radius: 4px;">${order.tracking.trackingId || order.shiprocket?.awb || 'Pending'}</span></div>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- Status & Timestamps -->
+                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
+                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">📊 Status</h4>
+                            <div style="display: grid; gap: 8px; font-size: 14px;">
+                                <div><strong>Current Status:</strong> <span style="background: #3b82f6; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${order.status}</span></div>
+                                <div><strong>Order Date:</strong> ${new Date(order.timestamp).toLocaleString('en-IN')}</div>
+                                ${order.dispatchedAt ? `<div><strong>Dispatched:</strong> ${new Date(order.dispatchedAt).toLocaleString('en-IN')}</div>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Close Button -->
+                        <button onclick="document.getElementById('viewOrderModal').remove()" 
+                            style="width: 100%; padding: 14px; background: linear-gradient(135deg, #3b82f6, #60a5fa); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; box-shadow: 0 4px 12px rgba(59,130,246,0.3);">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+    } catch (error) {
+        console.error('View order error:', error);
+        alert('Failed to load order details');
+    }
 }
 
 async function approveDelivery(orderId) {
@@ -7461,9 +7564,9 @@ window.selectCourierAndDispatch = async function (orderId, boxSize, dimensions, 
                 loadDispatchHistory();
             }, 1500);
 
-            // AUTO-SYNC AWB: Poll Shiprocket for AWB after 10 seconds
+            // AUTO-SYNC AWB: Poll Shiprocket for AWB after 1 minute
             console.log('⏰ Auto-sync scheduled for', orderId);
-            setTimeout(() => autoSyncAWB(orderId), 10000); // Wait 10 seconds
+            setTimeout(() => autoSyncAWB(orderId), 60000); // Wait 1 minute
         } else {
             alert('❌ Push Error: ' + (data.message || 'Failed to push order'));
         }
@@ -7498,6 +7601,10 @@ async function autoSyncAWB(orderId, retryCount = 0) {
                 '✅',
                 '#10b981'
             );
+
+            // AUTO-TRACK: Track shipment after 30 minutes (pickup completion time)
+            console.log(`⏰ Auto-track scheduled for ${orderId} in 30 minutes`);
+            setTimeout(() => trackSingleOrder(orderId), 30 * 60 * 1000); // 30 minutes
         } else if (retryCount < maxRetries) {
             // Retry after 15 seconds
             console.log(`⏰ AWB not ready yet, retrying in 15 seconds...`);
@@ -7507,6 +7614,43 @@ async function autoSyncAWB(orderId, retryCount = 0) {
         }
     } catch (error) {
         console.error('Auto-sync error:', error);
+    }
+}
+
+// Track single order shipment
+async function trackSingleOrder(orderId) {
+    try {
+        console.log(`🔍 Tracking order ${orderId}...`);
+
+        const res = await fetch(`${API_URL}/shiprocket/track-order/${orderId}`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success && data.currentStatus) {
+            console.log(`📍 Tracking updated for ${orderId}: ${data.currentStatus}`);
+
+            // Refresh orders to show updated tracking
+            loadDeptOrders();
+            loadDispatchHistory();
+
+            // Show notification if status is significant
+            if (data.currentStatus.toLowerCase().includes('out for delivery')) {
+                showSuccessPopup(
+                    'Out for Delivery! 🚚',
+                    `Order ${orderId}\n${data.currentStatus}`,
+                    '📦',
+                    '#f59e0b'
+                );
+            } else if (data.delivered) {
+                showSuccessPopup(
+                    'Delivered! ✅',
+                    `Order ${orderId}\nSuccessfully delivered`,
+                    '🎉',
+                    '#10b981'
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Track order error:', error);
     }
 }
 

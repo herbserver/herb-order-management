@@ -183,6 +183,69 @@ router.post('/sync-order/:orderId', async (req, res) => {
     }
 });
 
+// Track specific order shipment
+router.post('/track-order/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const order = await dataAccess.getOrderById(orderId);
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        const awb = order.shiprocket?.awb || order.tracking?.trackingId;
+
+        if (!awb) {
+            return res.json({ success: false, message: 'No AWB found for tracking' });
+        }
+
+        console.log(`🔍 Tracking order ${orderId} with AWB: ${awb}`);
+
+        const trackingData = await shiprocket.trackShipment(awb);
+
+        if (trackingData && trackingData.success) {
+            const updates = {
+                tracking: {
+                    trackingId: awb,
+                    courier: order.tracking?.courier || 'Shiprocket',
+                    currentStatus: trackingData.currentStatus,
+                    lastUpdate: trackingData.lastUpdate,
+                    location: trackingData.location
+                }
+            };
+
+            // If delivered, update order status
+            if (trackingData.delivered && order.status !== 'Delivered') {
+                updates.status = 'Delivered';
+                updates.deliveredAt = new Date().toISOString();
+                console.log(`✅ Order ${orderId} marked as DELIVERED`);
+            }
+
+            await dataAccess.updateOrder(orderId, updates);
+
+            res.json({
+                success: true,
+                currentStatus: trackingData.currentStatus,
+                lastUpdate: trackingData.lastUpdate,
+                delivered: trackingData.delivered
+            });
+        } else {
+            res.json({
+                success: false,
+                message: 'Tracking data not available'
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ Track order error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Tracking failed',
+            error: error.message
+        });
+    }
+});
+
 // Sync AWB for all dispatched orders
 router.post('/sync-all', async (req, res) => {
     try {
@@ -241,6 +304,80 @@ router.post('/sync-all', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Sync failed',
+            error: error.message
+        });
+    }
+});
+
+// Auto-track all dispatched orders
+router.post('/auto-track', async (req, res) => {
+    try {
+        console.log('🔍 Auto-tracking dispatched orders...');
+
+        const orders = await dataAccess.getAllOrders();
+        const dispatchedOrders = orders.filter(o =>
+            o.status === 'Dispatched' &&
+            (o.shiprocket?.awb || o.tracking?.trackingId)
+        );
+
+        if (dispatchedOrders.length === 0) {
+            return res.json({
+                success: true,
+                message: 'No orders to track',
+                tracked: 0
+            });
+        }
+
+        console.log(`📦 Tracking ${dispatchedOrders.length} orders`);
+
+        let tracked = 0;
+        let delivered = 0;
+
+        for (const order of dispatchedOrders) {
+            try {
+                const awb = order.shiprocket?.awb || order.tracking?.trackingId;
+
+                // Get tracking status from Shiprocket
+                const trackingData = await shiprocket.trackShipment(awb);
+
+                if (trackingData && trackingData.success) {
+                    const updates = {
+                        'tracking.currentStatus': trackingData.currentStatus,
+                        'tracking.lastUpdate': trackingData.lastUpdate,
+                        'tracking.location': trackingData.location
+                    };
+
+                    // If delivered, update order status
+                    if (trackingData.delivered && order.status !== 'Delivered') {
+                        updates.status = 'Delivered';
+                        updates.deliveredAt = new Date().toISOString();
+                        delivered++;
+                        console.log(`✅ Order ${order.orderId} marked as DELIVERED`);
+                    }
+
+                    await dataAccess.updateOrder(order.orderId, updates);
+                    tracked++;
+
+                    console.log(`📍 Tracked ${order.orderId}: ${trackingData.currentStatus}`);
+                }
+            } catch (err) {
+                console.error(`❌ Failed to track ${order.orderId}:`, err.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Tracked ${tracked} orders, ${delivered} delivered`,
+            tracked,
+            delivered,
+            total: dispatchedOrders.length
+        });
+
+    } catch (error) {
+        console.error('❌ Auto-track error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Auto-track failed',
             error: error.message
         });
     }
