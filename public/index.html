@@ -863,6 +863,10 @@
                                 class="w-full md:w-40 border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-indigo-500 outline-none">
                             <input type="date" id="dispatchedDateFilter" onchange="loadDispatchedOrders()"
                                 class="w-full md:w-auto border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-indigo-500 outline-none">
+                            <button type="button" onclick="syncAllAWB()"
+                                class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-md">
+                                🔄 Sync AWB
+                            </button>
                             <button type="button" onclick="exportDispatchedOrdersFiltered()"
                                 class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-md">
                                 📥 Export Excel

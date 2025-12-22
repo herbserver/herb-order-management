@@ -237,6 +237,43 @@ class ShiprocketAPI {
             return null;
         }
     }
+
+    // Get order details by our order ID (channel_order_id in Shiprocket)
+    async getOrderByChannelId(channelOrderId) {
+        try {
+            const token = await this.getToken();
+
+            // Search for order using channel_order_id filter
+            const response = await axios.get(`${this.baseURL}/orders`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                params: {
+                    channel_order_id: channelOrderId
+                }
+            });
+
+            const orders = response.data?.data;
+
+            if (orders && orders.length > 0) {
+                const order = orders[0]; // Get first match
+                return {
+                    orderId: order.id,
+                    awb: order.awb_code || order.shipments?.[0]?.awb,
+                    shipmentId: order.shipments?.[0]?.id,
+                    courier_name: order.shipments?.[0]?.courier_name,
+                    status: order.status
+                };
+            }
+
+            return null;
+
+        } catch (error) {
+            console.error(`❌ Shiprocket Get Order Error (${channelOrderId}):`, error.response?.data || error.message);
+            return null;
+        }
+    }
 }
 
 // Export singleton instance

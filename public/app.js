@@ -7654,6 +7654,51 @@ async function trackSingleOrder(orderId) {
     }
 }
 
+// Sync All AWB Numbers
+async function syncAllAWB() {
+    if (!confirm('📦 Sync AWB numbers from Shiprocket for all dispatched orders?')) {
+        return;
+    }
+
+    try {
+        // Show loading popup
+        const loadingPopup = document.createElement('div');
+        loadingPopup.innerHTML = `
+            <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 30px; border-radius: 20px; text-align: center;">
+                    <p style="font-size: 24px; margin-bottom: 10px;">🔄</p>
+                    <p style="font-weight: bold; color: #f97316;">Syncing AWB Numbers...</p>
+                    <p style="font-size: 12px; color: #999; margin-top: 5px;">Please wait</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(loadingPopup);
+
+        const res = await fetch(`${API_URL}/shiprocket/sync-all`, { method: 'POST' });
+        const data = await res.json();
+
+        loadingPopup.remove();
+
+        if (data.success) {
+            showSuccessPopup(
+                'AWB Sync Complete! ✅',
+                `Synced: ${data.synced || 0}\nTotal Orders: ${data.total || 0}`,
+                '📦',
+                '#10b981'
+            );
+
+            // Refresh orders
+            loadDispatchedOrders();
+            loadDispatchHistory();
+        } else {
+            alert('❌ Sync Failed: ' + (data.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Sync AWB error:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
 // Sync Shiprocket Status
 async function syncShiprocketStatus() {
     const btn = document.getElementById('btnSyncShiprocket');

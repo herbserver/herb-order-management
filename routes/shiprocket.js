@@ -253,40 +253,45 @@ router.post('/sync-all', async (req, res) => {
 
         const orders = await dataAccess.getAllOrders();
         const dispatchedOrders = orders.filter(o =>
-            o.status === 'Dispatched' &&
-            o.shiprocket?.shipmentId &&
-            !o.shiprocket?.awb
+            o.status === 'Dispatched'  // All dispatched orders
         );
 
         if (dispatchedOrders.length === 0) {
             return res.json({
                 success: true,
-                message: 'No orders pending AWB sync',
-                synced: 0
+                message: 'No dispatched orders found',
+                synced: 0,
+                total: 0
             });
         }
 
-        console.log(`📦 Found ${dispatchedOrders.length} orders to sync`);
+        console.log(`📦 Found ${dispatchedOrders.length} Shiprocket orders to sync`);
 
         let synced = 0;
 
         for (const order of dispatchedOrders) {
             try {
-                // Get shipment details from Shiprocket
-                const shipmentData = await shiprocket.getShipmentDetails(order.shiprocket.shipmentId);
+                // Get order details from Shiprocket using our order ID
+                const shiprocketData = await shiprocket.getOrderByChannelId(order.orderId);
 
-                if (shipmentData && shipmentData.awb) {
+                if (shiprocketData && shiprocketData.awb) {
                     await dataAccess.updateOrder(order.orderId, {
-                        'shiprocket.awb': shipmentData.awb,
+                        'shiprocket.awb': shiprocketData.awb,
+                        'shiprocket.shipmentId': shiprocketData.shipmentId,
                         tracking: {
-                            trackingId: shipmentData.awb,
-                            courier: shipmentData.courier_name || 'Shiprocket'
+                            trackingId: shiprocketData.awb,
+                            courier: shiprocketData.courier_name || 'Shiprocket'
                         }
                     });
 
-                    console.log(`✅ Synced AWB for ${order.orderId}: ${shipmentData.awb}`);
+                    console.log(`✅ Synced AWB for ${order.orderId}: ${shiprocketData.awb}`);
                     synced++;
+                } else {
+                    console.log(`⚠️ No AWB yet for ${order.orderId}`);
                 }
+
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 300));
             } catch (err) {
                 console.error(`❌ Failed to sync ${order.orderId}:`, err.message);
             }
