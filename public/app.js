@@ -3031,11 +3031,13 @@ function generateOrderCardHTML(order) {
                 <div class="space-y-2 pt-1">
                     <button type="button" onclick="dispatchWithShiprocket('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                         class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-lg text-xs font-black shadow-xl shadow-orange-200/50 hover:scale-[1.02] active:scale-95 transition-all">🚀 SHIPROCKET</button>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-3 gap-2">
                         <button type="button" onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                            class="bg-purple-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-purple-200/50 hover:bg-purple-700 active:scale-95 transition-all">📦 MANUAL</button>
+                            class="bg-purple-600 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-purple-200/50 hover:bg-purple-700 active:scale-95 transition-all">📦 MANUAL</button>
+                        <button type="button" onclick="editDispatchOrder('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                            class="bg-amber-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-amber-200/50 hover:bg-amber-600 active:scale-95 transition-all">✏️ EDIT</button>
                         <button type="button" onclick="cancelOrder('${order.orderId}')" 
-                            class="bg-red-500 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-red-200/50 hover:bg-red-600 active:scale-95 transition-all">❌ CANCEL</button>
+                            class="bg-red-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-red-200/50 hover:bg-red-600 active:scale-95 transition-all">❌ CANCEL</button>
                     </div>
                 </div>
             `)}
@@ -3713,14 +3715,157 @@ async function confirmDispatch() {
 }
 
 
-// Edit Dispatched Order
-function editDispatchedOrder(orderId, order) {
-    // Open edit modal with order details
-    alert(`Edit functionality for Order ${orderId}\n\nFeature coming soon!\n\nYou can edit:\n- Customer details\n- Address\n- Tracking info\n- AWB number`);
+// Edit Dispatch Order (Ready to Dispatch or Dispatched)
+function editDispatchOrder(orderId, order) {
+    // Create edit modal
+    const modal = document.createElement('div');
+    modal.id = 'editOrderModal';
+    modal.innerHTML = `
+        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
+            <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                <div style="background: linear-gradient(135deg, #f97316, #fb923c); padding: 20px; border-radius: 20px 20px 0 0;">
+                    <h3 style="font-size: 24px; font-weight: bold; color: white; margin: 0;">✏️ Edit Order</h3>
+                    <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 5px;">${orderId}</p>
+                </div>
+                
+                <div style="padding: 25px;">
+                    <form id="editOrderForm">
+                        <!-- Customer Details -->
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="font-weight: bold; color: #f97316; margin-bottom: 10px; font-size: 14px;">👤 Customer Details</h4>
+                            <div style="display: grid; gap: 12px;">
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Customer Name</label>
+                                    <input type="text" id="edit_customerName" value="${order.customerName || ''}" 
+                                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" required>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Phone</label>
+                                        <input type="tel" id="edit_telNo" value="${order.telNo || ''}" 
+                                            style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" required>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Alt Phone</label>
+                                        <input type="tel" id="edit_altNo" value="${order.altNo || ''}" 
+                                            style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-    // TODO: Implement full edit modal
-    // For now, just show alert
-    console.log('Edit order:', order);
+                        <!-- Address -->
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="font-weight: bold; color: #f97316; margin-bottom: 10px; font-size: 14px;">📍 Address</h4>
+                            <div style="display: grid; gap: 12px;">
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Full Address</label>
+                                    <textarea id="edit_address" rows="2" 
+                                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" required>${order.address || ''}</textarea>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">District</label>
+                                        <input type="text" id="edit_distt" value="${order.distt || ''}" 
+                                            style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" required>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">State</label>
+                                        <input type="text" id="edit_state" value="${order.state || ''}" 
+                                            style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" required>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Pincode</label>
+                                    <input type="text" id="edit_pin" value="${order.pin || order.pincode || ''}" 
+                                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Order Details -->
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="font-weight: bold; color: #f97316; margin-bottom: 10px; font-size: 14px;">💰 Order Details</h4>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Total</label>
+                                    <input type="number" id="edit_total" value="${order.total || 0}" 
+                                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" required>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Advance</label>
+                                    <input type="number" id="edit_advance" value="${order.advance || 0}" 
+                                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">COD</label>
+                                    <input type="number" id="edit_codAmount" value="${order.codAmount || 0}" 
+                                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 25px;">
+                            <button type="button" onclick="document.getElementById('editOrderModal').remove()" 
+                                style="padding: 12px; background: #e5e7eb; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px;">Cancel</button>
+                            <button type="submit" 
+                                style="padding: 12px; background: linear-gradient(135deg, #f97316, #fb923c); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(249,115,22,0.3);">💾 Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Handle form submission
+    document.getElementById('editOrderForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const updates = {
+            customerName: document.getElementById('edit_customerName').value.trim(),
+            telNo: document.getElementById('edit_telNo').value.trim(),
+            altNo: document.getElementById('edit_altNo').value.trim(),
+            address: document.getElementById('edit_address').value.trim(),
+            distt: document.getElementById('edit_distt').value.trim(),
+            state: document.getElementById('edit_state').value.trim(),
+            pin: document.getElementById('edit_pin').value.trim(),
+            total: parseFloat(document.getElementById('edit_total').value) || 0,
+            advance: parseFloat(document.getElementById('edit_advance').value) || 0,
+            codAmount: parseFloat(document.getElementById('edit_codAmount').value) || 0
+        };
+
+        try {
+            const res = await fetch(`${API_URL}/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                modal.remove();
+                showSuccessPopup('Order Updated!', 'Order details successfully update ho gaye', '✅', '#10b981');
+                setTimeout(() => {
+                    loadDeptOrders();
+                    loadDispatchHistory();
+                }, 1000);
+            } else {
+                alert('❌ Error: ' + (data.message || 'Failed to update order'));
+            }
+        } catch (error) {
+            console.error('Edit order error:', error);
+            alert('❌ Error: ' + error.message);
+        }
+    });
+}
+
+// Edit Dispatched Order (alias for consistency)
+function editDispatchedOrder(orderId, order) {
+    editDispatchOrder(orderId, order);
 }
 
 // View Order Details
