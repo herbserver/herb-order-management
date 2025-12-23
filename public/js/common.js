@@ -7,26 +7,26 @@ if (typeof API_URL === 'undefined') {
     var API_URL = '/api';
 }
 
-// Fallback WhatsApp Templates
+// Fallback WhatsApp Templates - Hinglish Version
 if (typeof whatsappTemplates === 'undefined') {
     var whatsappTemplates = {
         booked: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
-Hello *${order.customerName}*! 🙏
+Namaste *${order.customerName}* ji! 🙏
 
-✅ Your order is confirmed!
+✅ Aapka order confirm ho gaya hai!
 
 📦 *ORDER DETAILS*
 ▸ Order No: *${order.orderId}*
-▸ Amount: *Rs. ${order.total}*
-▸ Advance: Rs. ${order.advance || 0}
-▸ COD: *Rs. ${order.codAmount || 0}*
+▸ Total Amount: *Rs. ${order.total}*
+▸ Advance Paid: Rs. ${order.advance || 0}
+▸ COD Amount: *Rs. ${order.codAmount || 0}*
 
-📞 Our team will call you shortly for address verification.
+📞 Hamari team jaldi hi aapko call karegi address verify karne ke liye.
 
 ⚠️ *IMPORTANT*
-🚫 Do NOT share OTP before receiving product!
+🚫 Product milne se pehle OTP share NA karein!
 
 _Team Herb On Naturals_ 💚
 🌐 herbonnaturals.in`,
@@ -34,48 +34,48 @@ _Team Herb On Naturals_ 💚
         verified: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
-Hello *${order.customerName}*! 🙏
+Namaste *${order.customerName}* ji! 🙏
 
-✅ Your order is *VERIFIED*!
+✅ Aapka order *VERIFY* ho gaya hai!
 
 📦 *ORDER: ${order.orderId}*
 
-💰 *PAYMENT*
+💰 *PAYMENT INFO*
 ▸ Total: Rs. ${order.total}
 ▸ Paid: Rs. ${order.advance || 0}
 ▸ COD: *Rs. ${order.codAmount || 0}*
 
-📦 Packing in progress. Tracking details coming soon!
+📦 Order packing ho raha hai. Tracking details jaldi milenge!
 
-🔐 *SECURITY*
-🚫 Never share OTP before checking product!
+🔐 *YAAD RAKHEIN*
+🚫 Product check kiye bina OTP share NA karein!
 
 _Team Herb On Naturals_ 💚`,
 
         dispatched: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
-Hello *${order.customerName}*! 🙏
+Namaste *${order.customerName}* ji! 🙏
 
-🚚 Your order is *SHIPPED*!
+🚚 Aapka order *DISPATCH* ho gaya hai!
 
 📦 *ORDER: ${order.orderId}*
 
-📍 *TRACKING*
-▸ AWB: *${order.shiprocket?.awb || order.tracking?.trackingId || 'Processing'}*
+📍 *TRACKING INFO*
+▸ AWB No: *${order.shiprocket?.awb || order.tracking?.trackingId || 'Processing'}*
 ▸ Courier: *${order.shiprocket?.courierName || order.tracking?.courier || 'Processing'}*
 
 💰 *PAYMENT*
 ▸ Total: Rs. ${order.total}
 ▸ COD: *Rs. ${order.codAmount || 0}*
 
-🔗 Track: shiprocket.co/tracking
+🔗 Track karein: shiprocket.co/tracking
 
-📋 *INSTRUCTIONS*
-📱 Keep phone ON
-💵 Keep COD ready
-👀 Check product FIRST
-🔐 Then give OTP
+📋 *ZARURI BAATEIN*
+📱 Phone ON rakhein
+💵 COD amount ready rakhein
+👀 Pehle product check karein
+🔐 Phir OTP dein
 
 _Happy Shopping!_ 🛍️
 _Team Herb On Naturals_ 💚`,
@@ -83,34 +83,34 @@ _Team Herb On Naturals_ 💚`,
         out_for_delivery: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
-Hello *${order.customerName}*! 🙏
+Namaste *${order.customerName}* ji! 🙏
 
-🏃 *OUT FOR DELIVERY!*
+🏃 *AJ DELIVERY HOGI!*
 
 📦 Order: *${order.orderId}*
 💵 COD: *Rs. ${order.codAmount || 0}*
 
-🏠 Please be available to receive your parcel today.
+🏠 Aaj aapka parcel aane wala hai, please available rahein.
 
-⚠️ *REMEMBER*
-👀 Check product first, then share OTP!
+⚠️ *YAAD RAKHEIN*
+👀 Pehle product check karein, phir OTP dein!
 
 _Team Herb On Naturals_ 💚`,
 
         delivered: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
-Hello *${order.customerName}*! 🙏
+Namaste *${order.customerName}* ji! 🙏
 
-🎉 *ORDER DELIVERED!*
+🎉 *ORDER DELIVER HO GAYA!*
 
 📦 Order: ${order.orderId}
 
-🙏 Thank you for shopping with us!
+🙏 Hamare saath shopping karne ke liye dhanyavaad!
 
-⭐ We hope you love your products. Share your feedback - it means a lot to us!
+⭐ Hume umeed hai ki aapko products pasand aayenge. Apna feedback zarur share karein - yeh hamare liye bahut important hai!
 
-🛒 Shop again: herbonnaturals.in
+🛒 Dobara shopping karein: herbonnaturals.in
 
 _Warm regards,_ 💚
 _Team Herb On Naturals_`
