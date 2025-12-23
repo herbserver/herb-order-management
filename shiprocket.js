@@ -10,7 +10,6 @@ class ShiprocketAPI {
 
     // Get authentication token
     async getToken() {
-        // Check if existing token is still valid
         if (this.token && this.tokenExpiry && new Date() < this.tokenExpiry) {
             return this.token;
         }
@@ -22,10 +21,7 @@ class ShiprocketAPI {
             });
 
             this.token = response.data.token;
-            // Token valid for 10 days, but we'll refresh after 9 days
             this.tokenExpiry = new Date(Date.now() + 9 * 24 * 60 * 60 * 1000);
-
-            console.log('✅ Shiprocket: Token obtained successfully');
             return this.token;
         } catch (error) {
             console.error('❌ Shiprocket Auth Error:', error.response?.data || error.message);
@@ -37,16 +33,11 @@ class ShiprocketAPI {
     async trackShipment(awbNumber) {
         try {
             const token = await this.getToken();
-
             const response = await axios.get(`${this.baseURL}/courier/track/awb/${awbNumber}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
             });
 
             const trackingData = response.data;
-
             if (trackingData && trackingData.tracking_data) {
                 const shipmentTrack = trackingData.tracking_data.shipment_track || [];
                 const latestStatus = shipmentTrack.length > 0 ? shipmentTrack[0] : null;
@@ -70,212 +61,143 @@ class ShiprocketAPI {
                     }))
                 };
             }
-
-            return {
-                success: false,
-                message: 'No tracking data found'
-            };
-
+            return { success: false, message: 'No tracking data found' };
         } catch (error) {
             console.error('❌ Shiprocket Tracking Error:', error.response?.data || error.message);
-            return {
-                success: false,
-                message: error.response?.data?.message || 'Tracking failed'
-            };
+            return { success: false, message: 'Tracking failed' };
         }
     }
 
-    // Get shipment details by order ID
-    async getShipmentByOrderId(orderId) {
-        try {
-            const token = await this.getToken();
-
-            const response = await axios.get(`${this.baseURL}/orders`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                params: {
-                    channel_order_id: orderId
-                }
-            });
-
-            return response.data;
-        } catch (error) {
-            console.error('❌ Shiprocket Order Error:', error.response?.data || error.message);
-            return null;
-        }
-    }
-
-    // Check Serviceability
-    async checkServiceability(pickupPostcode, deliveryPostcode, weight, codAmount) {
-        try {
-            const token = await this.getToken();
-            const url = `${this.baseURL}/courier/serviceability/`;
-
-            const params = {
-                pickup_postcode: pickupPostcode || '110001', // Default or Config 
-                delivery_postcode: deliveryPostcode,
-                weight: weight,
-                cod: 1 // 1 for COD, 0 for Prepaid
-            };
-
-            const response = await axios.get(url, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: params
-            });
-
-            if (response.data && response.data.data && response.data.data.available_courier_companies) {
-                return {
-                    success: true,
-                    couriers: response.data.data.available_courier_companies
-                };
-            }
-
-            return { success: false, message: 'No couriers available' };
-
-        } catch (error) {
-            console.error('❌ Shiprocket Serviceability Error:', error.response?.data || error.message);
-            return { success: false, message: error.response?.data?.message || 'Serviceability check failed' };
-        }
-    }
-
-    // Create Order
-    async createOrder(orderData) {
-        try {
-            const token = await this.getToken();
-            const url = `${this.baseURL}/orders/create/adhoc`;
-
-            const response = await axios.post(url, orderData, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            return {
-                success: true,
-                orderId: response.data.order_id,
-                shipmentId: response.data.shipment_id,
-                awb: response.data.awb_code,
-                response: response.data
-            };
-
-        } catch (error) {
-            console.error('❌ Shiprocket Create Order Error:', error.response?.data || error.message);
-            if (error.response?.data?.errors) {
-                console.error('Validation Errors:', JSON.stringify(error.response.data.errors, null, 2));
-            }
-            return {
-                success: false,
-                message: error.response?.data?.message || 'Order creation failed',
-                details: error.response?.data?.errors
-            };
-        }
-    }
-
-    // Generate AWB (if not returned in create order)
-    async generateAWB(shipmentId, courierId) {
-        try {
-            const token = await this.getToken();
-            const url = `${this.baseURL}/courier/assign/awb`;
-
-            const payload = {
-                shipment_id: shipmentId,
-                courier_id: courierId
-            };
-
-            const response = await axios.post(url, payload, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.data && response.data.awb_assign_status === 1) {
-                return {
-                    success: true,
-                    awb: response.data.response.data.awb_code,
-                    courierName: response.data.response.data.courier_name
-                };
-            }
-
-            return { success: false, message: response.data.message || 'AWB Generation Failed' };
-
-        } catch (error) {
-            console.error('❌ Shiprocket AWB Error:', error.response?.data || error.message);
-            return { success: false, message: error.response?.data?.message || 'AWB generation failed' };
-        }
-    }
-
-    // Get shipment details by shipment ID
     async getShipmentDetails(shipmentId) {
         try {
             const token = await this.getToken();
-
             const response = await axios.get(`${this.baseURL}/shipments/show/${shipmentId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
             });
 
             const shipment = response.data?.data;
-
             if (shipment && shipment.awb_code) {
                 return {
+                    success: true,
                     awb: shipment.awb_code,
-                    courier_name: shipment.courier_name,
-                    status: shipment.status,
-                    shipment_id: shipment.id
+                    shipmentId: shipment.id,
+                    courierName: shipment.courier || shipment.sr_courier_name || shipment.courier_name,
+                    status: shipment.status
                 };
             }
-
             return null;
-
         } catch (error) {
             console.error(`❌ Shiprocket Get Shipment Error (${shipmentId}):`, error.response?.data || error.message);
             return null;
         }
     }
 
-    // Get order details by our order ID (channel_order_id in Shiprocket)
-    async getOrderByChannelId(channelOrderId) {
+    // Deep Scanning Search (Up to 500 orders)
+    async getOrderByChannelId(channelOrderId, customerMobile = null, customerName = null, location = {}) {
         try {
             const token = await this.getToken();
+            const targetId = String(channelOrderId || '').trim().toUpperCase();
+            const targetMobile = customerMobile ? String(customerMobile).replace(/\D/g, '').slice(-10) : null;
+            const targetName = customerName ? String(customerName).trim().toLowerCase() : null;
+            const targetCity = location.city ? String(location.city).trim().toLowerCase() : null;
+            const targetPin = location.pincode ? String(location.pincode).replace(/\D/g, '') : null;
 
-            // Search for order using channel_order_id filter
-            const response = await axios.get(`${this.baseURL}/orders`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                params: {
-                    channel_order_id: channelOrderId
-                }
+            console.log(`📡 Deep Sync: Searching ${targetId} | Mobile: ${targetMobile || 'N/A'}`);
+
+            const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+            // 1. Precise Filter Search (Page 1)
+            const resFilter = await axios.get(`${this.baseURL}/orders`, {
+                headers,
+                params: { channel_order_id: channelOrderId, per_page: 50 }
             });
+            let match = this._findMatch(resFilter.data?.data || [], targetId, targetMobile, targetName, targetCity, targetPin);
+            if (match) return this._formatMatch(match);
 
-            const orders = response.data?.data;
+            // 2. Wide Deep Scan (Pages 1-5)
+            for (let page = 1; page <= 5; page++) {
+                console.log(`🔍 [Page ${page}/5] Deep Scanning 100 orders...`);
+                const resPage = await axios.get(`${this.baseURL}/orders`, {
+                    headers,
+                    params: { per_page: 100, page: page }
+                });
+                match = this._findMatch(resPage.data?.data || [], targetId, targetMobile, targetName, targetCity, targetPin);
+                if (match) return this._formatMatch(match);
 
-            if (orders && orders.length > 0) {
-                const order = orders[0]; // Get first match
-                return {
-                    orderId: order.id,
-                    awb: order.awb_code || order.shipments?.[0]?.awb,
-                    shipmentId: order.shipments?.[0]?.id,
-                    courier_name: order.shipments?.[0]?.courier_name,
-                    status: order.status
-                };
+                // If the page has fewer than 100 orders, we've reached the end
+                if ((resPage.data?.data || []).length < 100) break;
             }
 
             return null;
-
         } catch (error) {
-            console.error(`❌ Shiprocket Get Order Error (${channelOrderId}):`, error.response?.data || error.message);
+            console.error(`❌ Deep Sync Error (${channelOrderId}):`, error.response?.data || error.message);
             return null;
         }
     }
+
+    _formatMatch(matchedOrder) {
+        const shipment = matchedOrder.shipments?.[0] || {};
+        const courier = shipment.courier || shipment.sr_courier_name || shipment.courier_name || matchedOrder.courier_name;
+        console.log(`✅ [MATCH] SR ID: ${matchedOrder.id} | AWB: ${matchedOrder.awb_code || shipment.awb} | Courier: ${courier}`);
+        return {
+            success: true,
+            orderId: matchedOrder.id,
+            awb: matchedOrder.awb_code || shipment.awb,
+            shipmentId: shipment.id,
+            courierName: courier,
+            status: matchedOrder.status
+        };
+    }
+
+    _findMatch(orders, targetId, targetMobile, targetName, targetCity, targetPin) {
+        if (!orders || orders.length === 0) return null;
+
+        const normalize = (val) => String(val || '').replace(/ORDER\s*ID\s*-/gi, '').trim().toUpperCase();
+        const normTargetId = normalize(targetId);
+
+        for (const o of orders) {
+            const cId = normalize(o.channel_order_id);
+            const cMobFull = String(o.customer_phone || o.billing_phone || '').replace(/\D/g, '');
+            const cMob10 = cMobFull.slice(-10);
+            const cName = String(o.customer_name || o.billing_name || '').trim().toLowerCase();
+            const cCity = String(o.customer_city || o.billing_city || '').trim().toLowerCase();
+            const cPin = String(o.customer_pincode || o.billing_pincode || '').replace(/\D/g, '');
+
+            // --- VITAL: ANTI-GALAT LOGIC (MOBILE COLLISION) ---
+            // If phone numbers are available and different, it MUST be a different person.
+            if (targetMobile && cMob10 && targetMobile !== cMob10) {
+                // console.log(`⏩ [Skip] Mobile collision: ${cId} (${cMob10}) vs Target (${targetMobile})`);
+                continue;
+            }
+
+            // --- MATCH CRITERIA ---
+            const isIdMatch = (normTargetId.length > 1 && cId === normTargetId);
+            const isMobileMatch = (targetMobile && cMob10 === targetMobile);
+            const isNameMatch = (targetName && (cName === targetName || cName.includes(targetName)));
+            const isCityMatch = (targetCity && (cCity === targetCity || cCity.includes(targetCity)));
+
+            // Accept if:
+            // 1. ID Matches perfectly
+            if (isIdMatch) {
+                console.log(`✅ [ID MATCH] ${cId} for Target ${normTargetId}`);
+                return o;
+            }
+
+            // 2. Mobile Matches perfectly (highest non-ID confidence)
+            if (isMobileMatch) {
+                console.log(`✅ [MOBILE MATCH] ${cMob10} for Order ${cId}`);
+                return o;
+            }
+
+            // 3. Name matches AND City matches (prevents common name crossover)
+            if (isNameMatch && isCityMatch && targetCity) {
+                console.log(`✅ [NAME/CITY MATCH] ${cName}/${cCity} for Order ${cId}`);
+                return o;
+            }
+        }
+        return null;
+    }
 }
 
-// Export singleton instance
 const shiprocketAPI = new ShiprocketAPI();
 module.exports = shiprocketAPI;

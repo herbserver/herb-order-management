@@ -129,7 +129,22 @@ function renderVerificationCard(o) {
         </div>
         
         <div class="mb-3">
-            <textarea id="remark-${o.orderId}" placeholder="Add remark..." class="w-full text-sm p-2 border rounded-lg h-20">${o.remark || ''}</textarea>
+            <textarea id="remark-${o.orderId}" placeholder="Add remark..." class="w-full text-sm p-2 border rounded-lg h-16">${o.remark || ''}</textarea>
+        </div>
+        
+        <!-- Courier Suggestion Dropdown -->
+        <div class="mb-3">
+            <label class="text-sm font-bold text-gray-600 block mb-1">🚚 Suggest Courier:</label>
+            <select id="courier-${o.orderId}" class="w-full p-2 border rounded-lg text-sm">
+                <option value="">-- No Suggestion --</option>
+                <option value="Delhivery">Delhivery</option>
+                <option value="Delhivery Air">Delhivery Air</option>
+                <option value="Blue Dart Air">Blue Dart Air</option>
+                <option value="DTDC Air 500gm">DTDC Air 500gm</option>
+                <option value="Xpressbees">Xpressbees</option>
+                <option value="Ekart">Ekart</option>
+                <option value="Shiprocket Auto">Shiprocket Auto (Let Shiprocket Decide)</option>
+            </select>
         </div>
         
         <div class="grid grid-cols-2 gap-2">
@@ -145,11 +160,39 @@ function renderVerificationCard(o) {
 
 async function verifyAddress(orderId) {
     if (!confirm('Mark this order as Verified?')) return;
+
+    // Get suggested courier from dropdown
+    const courierSelect = document.getElementById(`courier-${orderId}`);
+    const suggestedCourier = courierSelect ? courierSelect.value : '';
+
+    // Get remark
+    const remarkEl = document.getElementById(`remark-${orderId}`);
+    const remark = remarkEl ? remarkEl.value : '';
+
     try {
-        const res = await fetch(`${API_URL}/orders/${orderId}/verify`, { method: 'POST' }); // Assume endpoint exists
+        const res = await fetch(`${API_URL}/orders/${orderId}/verify`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                verifiedBy: currentUser?.id || 'Verification',
+                suggestedCourier: suggestedCourier
+            })
+        });
         const data = await res.json();
         if (data.success) {
-            showSuccessPopup('Verified', 'Order marked as Verified', '✅', '#10b981');
+            // Also save courier suggestion separately if selected
+            if (suggestedCourier) {
+                await fetch(`${API_URL}/orders/${orderId}/suggest-courier`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        courier: suggestedCourier,
+                        note: remark,
+                        suggestedBy: currentUser?.name || 'Verification Dept'
+                    })
+                });
+            }
+            showSuccessPopup('Verified', `Order verified${suggestedCourier ? ' | Courier: ' + suggestedCourier : ''}`, '✅', '#10b981');
             loadDeptOrders();
         } else alert(data.message);
     } catch (e) { alert(e.message); }
@@ -187,9 +230,18 @@ async function saveOrderRemark(orderId) {
 
 // ==================== DISPATCH FUNCTIONS ====================
 function renderDispatchCard(o) {
+    // Courier suggestion from verification
+    const suggestion = o.courierSuggestion || {};
+    const suggestedCourier = suggestion.suggestedCourier || o.suggestedCourier || '';
+    const suggestionNote = suggestion.suggestionNote || '';
+    const suggestedBy = suggestion.suggestedBy || '';
+
+    // Remark from verification
+    const remark = o.verificationRemark?.text || o.remark || '';
+
     return `
     <div class="bg-white border rounded-xl p-4">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center mb-3">
            <div class="flex items-center gap-3">
                <h4 class="font-bold">${o.customerName}</h4>
                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
@@ -199,7 +251,28 @@ function renderDispatchCard(o) {
            </div>
            <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Verified</span>
         </div>
-        <p class="text-sm text-gray-600 mb-4">${o.address}</p>
+        
+        <p class="text-sm text-gray-600 mb-2">📍 ${o.address}</p>
+        <p class="text-sm text-gray-600 mb-2">📞 ${o.telNo || o.mobile || ''}</p>
+        <p class="text-sm font-bold text-gray-800 mb-3">💰 ₹${o.codAmount || o.total || 0} COD</p>
+        
+        ${suggestedCourier ? `
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="text-lg">🚚</span>
+                <span class="font-bold text-blue-800">Suggested Courier: ${suggestedCourier}</span>
+            </div>
+            ${suggestionNote ? `<p class="text-sm text-blue-600 ml-6">📝 ${suggestionNote}</p>` : ''}
+            ${suggestedBy ? `<p class="text-xs text-blue-500 ml-6">By: ${suggestedBy}</p>` : ''}
+        </div>
+        ` : ''}
+        
+        ${remark ? `
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-3 text-sm text-yellow-800">
+            📝 <b>Remark:</b> ${remark}
+        </div>
+        ` : ''}
+        
         <button onclick="dispatchWithShiprocket('${o.orderId}')" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-200">
             🚀 Dispatch via Shiprocket
         </button>

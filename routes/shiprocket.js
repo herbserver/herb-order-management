@@ -141,20 +141,30 @@ router.post('/sync-order/:orderId', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
-        if (!order.shiprocket?.shipmentId) {
-            return res.json({ success: false, message: 'No Shiprocket shipment ID found' });
+        let shipmentData = null;
+
+        // 1. Try with Shipment ID if we have it
+        if (order.shiprocket?.shipmentId) {
+            shipmentData = await shiprocket.getShipmentDetails(order.shiprocket.shipmentId);
         }
 
-        console.log(`🔄 Syncing AWB for ${orderId}...`);
-
-        const shipmentData = await shiprocket.getShipmentDetails(order.shiprocket.shipmentId);
+        // 2. Fallback to Order ID search + Mobile + Name + Location
+        if (!shipmentData || !shipmentData.awb) {
+            shipmentData = await shiprocket.getOrderByChannelId(
+                orderId,
+                order.telNo || order.mobile,
+                order.customerName,
+                { city: order.city, pincode: order.pin || order.pincode }
+            );
+        }
 
         if (shipmentData && shipmentData.awb) {
             await dataAccess.updateOrder(orderId, {
                 'shiprocket.awb': shipmentData.awb,
+                'shiprocket.shipmentId': shipmentData.shipmentId || order.shiprocket?.shipmentId,
                 tracking: {
                     trackingId: shipmentData.awb,
-                    courier: shipmentData.courier_name || 'Shiprocket'
+                    courier: shipmentData.courierName || 'Shiprocket'
                 }
             });
 
@@ -164,12 +174,12 @@ router.post('/sync-order/:orderId', async (req, res) => {
                 success: true,
                 message: 'AWB synced successfully',
                 awb: shipmentData.awb,
-                courier: shipmentData.courier_name
+                courier: shipmentData.courierName
             });
         } else {
             res.json({
                 success: false,
-                message: 'AWB not yet generated'
+                message: 'AWB not yet generated or order not found in Shiprocket'
             });
         }
 
@@ -253,7 +263,9 @@ router.post('/sync-all', async (req, res) => {
 
         const orders = await dataAccess.getAllOrders();
         const dispatchedOrders = orders.filter(o =>
-            o.status === 'Dispatched'  // All dispatched orders
+            // Broaden sync to include verified orders that might have been shipped manually
+            (o.status === 'Dispatched' || o.status === 'Verified' || o.status === 'Address Verified' || o.status === 'Ready for Dispatch') &&
+            (!o.shiprocket?.awb) // Only sync if AWB is missing
         );
 
         if (dispatchedOrders.length === 0) {
@@ -271,20 +283,36 @@ router.post('/sync-all', async (req, res) => {
 
         for (const order of dispatchedOrders) {
             try {
-                // Get order details from Shiprocket using our order ID
-                const shiprocketData = await shiprocket.getOrderByChannelId(order.orderId);
+                let shiprocketData = null;
+
+                // 1. Try with Shipment ID if we have it (Most reliable)
+                if (order.shiprocket?.shipmentId) {
+                    console.log(`🔍 Fetching details for ${order.orderId} using Shipment ID: ${order.shiprocket.shipmentId}`);
+                    shiprocketData = await shiprocket.getShipmentDetails(order.shiprocket.shipmentId);
+                }
+
+                // 2. Fallback to searching by our Order ID + Mobile + Name + Location
+                if (!shiprocketData || !shiprocketData.awb) {
+                    console.log(`🔍 Searching for ${order.orderId} with location verification...`);
+                    shiprocketData = await shiprocket.getOrderByChannelId(
+                        order.orderId,
+                        order.telNo || order.mobile,
+                        order.customerName,
+                        { city: order.city, pincode: order.pin || order.pincode }
+                    );
+                }
 
                 if (shiprocketData && shiprocketData.awb) {
                     await dataAccess.updateOrder(order.orderId, {
                         'shiprocket.awb': shiprocketData.awb,
-                        'shiprocket.shipmentId': shiprocketData.shipmentId,
+                        'shiprocket.shipmentId': shiprocketData.shipmentId || order.shiprocket?.shipmentId,
                         tracking: {
                             trackingId: shiprocketData.awb,
-                            courier: shiprocketData.courier_name || 'Shiprocket'
+                            courier: shiprocketData.courierName || 'Shiprocket'
                         }
                     });
 
-                    console.log(`✅ Synced AWB for ${order.orderId}: ${shiprocketData.awb}`);
+                    console.log(`✅ Synced AWB for ${order.orderId}: ${shiprocketData.awb} (${shiprocketData.courierName || 'Shiprocket'})`);
                     synced++;
                 } else {
                     console.log(`⚠️ No AWB yet for ${order.orderId}`);

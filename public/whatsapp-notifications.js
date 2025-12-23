@@ -19,9 +19,9 @@ const whatsappTemplates = {
 - Advance Payment: ₹${order.advance || 0}
 - COD Amount: ₹${order.codAmount || 0}
 
-हमारी verification team जल्द ही आपसे contact करेगी।
+Verification के लिए हमारी team जल्द ही आपसे contact करेगी।
 
-⚠️ *Important Notice:*
+⚠️ *तैयार रहें:*
 🚫 Delivery boy को delivery से पहले कोई भी OTP न दें!
 ✅ Product मिलने के बाद ही OTP share करें।
 
@@ -30,69 +30,71 @@ ${getCompanyName()}`,
 
     verified: (order) => `नमस्ते ${order.customerName}! 🙏
 
-✅ आपका Order *${order.orderId}* verify हो गया है।
+✅ आपका Order *${order.orderId}* verify हो गया है और packing के लिए भेज दिया गया है।
 
-📦 *Order Details:*
-- Total Amount: ₹${order.total}
-- Advance Payment: ₹${order.advance || 0}
-- COD Amount: ₹${order.codAmount || 0}
-- Address: ${order.distt}, ${order.state}
+📦 *Payment Summary:*
+- Total Order Amount: ₹${order.total}
+- Advance Paid: ₹${order.advance || 0}
+- COD Amount to Pay: ₹${order.codAmount || 0}
+📍 Address: ${order.distt || ''}, ${order.state || ''}
 
 जल्द ही आपका order dispatch किया जाएगा।
 
-⚠️ *Important Notice:*
-🚫 Delivery boy को delivery से पहले कोई भी OTP न दें!
-✅ Product मिलने के बाद ही OTP share करें।
+⚠️ *Security Alert:*
+🚫 Parcel मिलने से पहले delivery person को कोई OTP या payment न दें।
+✅ Product हाथ में आने पर ही OTP share करें।
 
-Thank you!
+Thank you for choosing Herb On Naturals!
 ${getCompanyName()}`,
 
     dispatched: (order) => `नमस्ते ${order.customerName}! 🙏
 
-🚚 आपका Order *${order.orderId}* dispatch हो गया है!
+🚚 Khushkhabri! Aapka Order *${order.orderId}* dispatch ho gaya hai!
 
 📦 *Tracking Details:*
-- AWB Number: ${order.shiprocket?.awb || order.tracking?.trackingId || 'Coming Soon'}
-- Courier: ${order.shiprocket?.courierName || order.tracking?.courier || 'Coming Soon'}
+- AWB Number: ${order.shiprocket?.awb || order.tracking?.trackingId || 'In process'}
+- Courier: ${order.shiprocket?.courierName || order.tracking?.courier || 'In process'}
 
 ${getTrackingLink(order)}
 
-जल्द ही delivery होगी। कृपया phone available रखें।
+💰 *Payment Details:*
+- Total: ₹${order.total}
+- COD Balance: ₹${order.codAmount || 0}
 
-⚠️ *Important Notice:*
-🚫 Delivery boy को delivery से पहले कोई भी OTP न दें!
-✅ Product मिलने के बाद ही OTP share करें।
+⚠️ *Important:*
+🚫 Delivery person ko delivery se pehle OTP share na karein!
+✅ Product check karne ke baad hi OTP de.
 
 Thank you!
 ${getCompanyName()}`,
 
     out_for_delivery: (order) => `नमस्ते ${order.customerName}! 🙏
 
-🏃 आपका Order *${order.orderId}* आज delivery के लिए निकल चुका है!
+🏃 Alert! Aapka Order *${order.orderId}* aaj deliver hone wala hai!
 
-📦 AWB Number: ${order.shiprocket?.awb || order.tracking?.trackingId}
-🚚 Courier: ${order.shiprocket?.courierName || order.tracking?.courier}
+Hamara delivery partner jald hi aapke address par pahunchega. 
 
-📞 *कृपया phone available रखें*
+💰 *Payable COD Amount: ₹${order.codAmount || 0}*
 
-⚠️ *Important Notice:*
-🚫 Delivery boy को delivery से पहले कोई भी OTP न दें!
-✅ Product मिलने के बाद ही OTP share करें।
+⚠️ *Warning:*
+🚫 Delivery person ko product milne se pehle OTP bilkul na den.
+✅ Jab parcel aapke hath mein aa jaye, tabhi OTP share karein.
 
+Kripya apna phone active rakhein.
 Thank you!
 ${getCompanyName()}`,
 
     delivered: (order) => `नमस्ते ${order.customerName}! 🙏
 
-🎉 आपका Order *${order.orderId}* successfully deliver हो गया है!
+🎉 Mubarak ho! Aapka Order *${order.orderId}* सफलतापूर्वक deliver हो गया है।
 
-Thank you for your order! 
+Hume umeed hai ki aapko hamare products pasand aayenge. 🌿
 
-🌿 हमारे products कैसे लगे? कृपया अपना feedback share करें।
+⭐ *Feedback:* Hume apna feedback zaroor share karein. Aapki rai hamare liye bohot keemti hai.
 
-अगली बार फिर से order करें।
+Agli baar fir se order karne ke liye humari website visit karein.
 
-Thank you!
+Thank you for being a part of Herb On Naturals family!
 ${getCompanyName()}`
 };
 

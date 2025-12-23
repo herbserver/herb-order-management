@@ -11,6 +11,7 @@ const { connectDatabase, initializeDefaultData } = require('./database');
 const dataAccess = require('./dataAccess');
 const { authenticateToken } = require('./auth');
 const { startTracking } = require('./background-tracking');
+const { startAutoSync } = require('./auto-awb-sync');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -64,6 +65,7 @@ const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payment');
 const leaderboardRoutes = require('./routes/leaderboard');
 const searchRoutes = require('./routes/search');
+const fetchAwbRoutes = require('./routes/fetchAwb');
 
 // Mount Routes
 app.use('/api/auth', authRoutes); // /api/auth/login, etc.
@@ -78,6 +80,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/fetch-awb', fetchAwbRoutes);
 
 // Compatibility Mounts (Legacy URLs)
 app.use('/api', authRoutes);
@@ -108,9 +111,9 @@ async function startServer() {
     if (dbConnected) {
         await initializeDefaultData();
         console.log('✅ Database initialized!');
-        // Background tracking DISABLED - Using webhook for real-time updates
-        // startTracking(true);
-        console.log('📡 Tracking via Shiprocket webhook only (no polling)');
+        // Start Auto AWB Sync (har 5 minute me Shiprocket se AWB sync karega)
+        startAutoSync(5);
+        console.log('🔄 Auto AWB Sync enabled (every 5 minutes)');
     } else {
         console.warn('⚠️ Running without MongoDB - Data will not persist!');
     }
