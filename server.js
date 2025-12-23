@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -15,6 +16,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ==================== MIDDLEWARE ====================
+// Enable compression for all responses (70% size reduction)
+app.use(compression());
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -104,8 +108,9 @@ async function startServer() {
     if (dbConnected) {
         await initializeDefaultData();
         console.log('✅ Database initialized!');
-        // Start background tracking service
-        startTracking(true);
+        // Background tracking DISABLED - Using webhook for real-time updates
+        // startTracking(true);
+        console.log('📡 Tracking via Shiprocket webhook only (no polling)');
     } else {
         console.warn('⚠️ Running without MongoDB - Data will not persist!');
     }

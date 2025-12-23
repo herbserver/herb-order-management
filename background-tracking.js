@@ -18,16 +18,22 @@ async function syncAllTrackingStatuses() {
         const orders = await Order.find({
             'shiprocket.awb': { $exists: true, $ne: '' },
             status: { $nin: ['Delivered', 'Cancelled'] }
-        });
+        }).limit(20); // Limit to 20 orders per batch
 
         if (orders.length === 0) {
             console.log('ℹ️ No active shipments to track.');
             return;
         }
 
-        console.log(`📦 Found ${orders.length} orders to synchronize.`);
+        console.log(`📦 Found ${orders.length} orders to synchronize (max 20 per batch).`);
 
+        let processedCount = 0;
         for (const order of orders) {
+            // Stop if we hit rate limit
+            if (processedCount >= 15) {
+                console.log('⏸️ Batch limit reached (15 requests). Stopping to avoid rate limit.');
+                break;
+            }
             try {
                 const awb = order.shiprocket.awb;
                 const tracking = await shiprocket.trackShipment(awb);
@@ -105,8 +111,9 @@ async function syncAllTrackingStatuses() {
                     }
                 );
 
-                // Small delay to avoid Shiprocket rate limiting
-                await new Promise(resolve => setTimeout(resolve, 300));
+                // Longer delay to avoid Shiprocket rate limiting (5 seconds)
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                processedCount++;
 
             } catch (orderError) {
                 console.error(`❌ Error processing Order ${order.orderId}:`, orderError.message);
@@ -172,11 +179,12 @@ async function startTracking(alreadyConnected = false) {
     syncAllTrackingStatuses();
     checkHoldOrderReminders();
 
-    // Schedule intervals
-    setInterval(syncAllTrackingStatuses, 5 * 60 * 1000); // 5 min
+    // Schedule intervals - Reduced frequency to avoid rate limiting
+    setInterval(syncAllTrackingStatuses, 30 * 60 * 1000); // 30 min (webhook is primary)
     setInterval(checkHoldOrderReminders, 60 * 60 * 1000); // 1 hour
 
-    console.log('⏰ Tracking Service active (5m sync, 1h reminders)');
+    console.log('⏰ Tracking Service active (30m sync backup, 1h reminders)');
+    console.log('📡 Primary tracking via Shiprocket webhook');
 }
 
 // Support running as standalone script
