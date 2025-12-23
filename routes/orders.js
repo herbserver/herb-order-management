@@ -128,11 +128,18 @@ router.get('/verified', async (req, res) => {
 // Get Dispatched Orders
 router.get('/dispatched', async (req, res) => {
     try {
+        console.log('📦 [DISPATCHED] Fetching dispatched orders...');
         const orders = await dataAccess.getAllOrders();
+        console.log(`📦 [DISPATCHED] Total orders: ${orders.length}`);
+
         const dispatched = orders.filter(o => o.status === 'Dispatched');
+        console.log(`📦 [DISPATCHED] Dispatched orders: ${dispatched.length}`);
+
         res.json({ success: true, orders: dispatched });
     } catch (e) {
-        res.status(500).json({ success: false, message: 'Server error' });
+        console.error('❌ [DISPATCHED] Error:', e.message);
+        console.error('❌ [DISPATCHED] Stack:', e.stack);
+        res.status(500).json({ success: false, message: 'Server error', error: e.message });
     }
 });
 
@@ -144,6 +151,34 @@ router.get('/delivered', async (req, res) => {
         res.json({ success: true, orders: delivered });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Mark Order as Delivered
+router.post('/deliver', async (req, res) => {
+    try {
+        const { orderId, deliveredBy } = req.body;
+        console.log(`\n📦 [DELIVERY REQUEST] Order: ${orderId}`);
+
+        const updates = {
+            status: 'Delivered',
+            deliveredAt: new Date().toISOString(),
+            deliveredBy: deliveredBy || 'Delivery Dept',
+            updatedAt: new Date().toISOString()
+        };
+
+        const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+
+        if (updatedOrder) {
+            console.log(`✅ Success: Order ${orderId} is now marked as Delivered.`);
+            res.json({ success: true, message: 'Order marked as delivered successfully', order: updatedOrder });
+        } else {
+            console.warn(`⚠️ Warning: Order ${orderId} not found for delivery update.`);
+            res.status(404).json({ success: false, message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error('❌ Deliver order error:', error.message);
+        res.status(500).json({ success: false, message: 'Failed to mark order as delivered' });
     }
 });
 

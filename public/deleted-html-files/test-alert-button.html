@@ -1,0 +1,27 @@
+<!-- TEST ALERT BUTTON - Remove before production -->
+<button onclick="testOutForDeliveryAlert()"
+    style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 16px 24px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+    🧪 Test Alert
+</button>
+
+<script>
+    function testOutForDeliveryAlert() {
+        if (typeof showOutForDeliveryAlert === 'function') {
+            console.log('🧪 Testing Out for Delivery Alert...');
+            showOutForDeliveryAlert(
+                {
+                    orderId: 'TEST123',
+                    customerName: 'Test Customer',
+                    telNo: '9876543210'
+                },
+                {
+                    currentStatus: 'Out for Delivery',
+                    location: 'Delhi Hub'
+                }
+            );
+            console.log('✅ Alert triggered!');
+        } else {
+            alert('❌ Alert function not found!');
+        }
+    }
+</script>

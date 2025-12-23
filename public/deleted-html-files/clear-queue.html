@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear WhatsApp Queue</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full">
+        <h1 class="text-2xl font-bold mb-4 text-center">🗑️ Clear WhatsApp Queue</h1>
+        <p class="text-gray-600 mb-6 text-center">Purane messages delete karne ke liye button dabao</p>
+
+        <button onclick="clearQueue()"
+            class="w-full bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition">
+            Clear All Messages
+        </button>
+
+        <div id="status" class="mt-4 text-center font-bold"></div>
+    </div>
+
+    <script>
+        function clearQueue() {
+            localStorage.removeItem('whatsappQueue');
+            document.getElementById('status').innerHTML = '✅ Queue cleared! Ab refresh karo.';
+            document.getElementById('status').className = 'mt-4 text-center font-bold text-green-600';
+        }
+    </script>
+</body>
+
+</html>

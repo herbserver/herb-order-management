@@ -10,6 +10,7 @@
         rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -20,13 +21,13 @@
             <!-- Decorative Background Elements -->
             <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
                 <div
-                    class="absolute top-[-10%] left-[-10%] w-64 h-64 md:w-96 md:h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-blob">
+                    class="absolute top-[-10%] left-[-10%] w-64 h-64 md:w-96 md:h-96 bg-emerald-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob">
                 </div>
                 <div
-                    class="absolute top-[-10%] right-[-10%] w-64 h-64 md:w-96 md:h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-blob animation-delay-2000">
+                    class="absolute top-[-10%] right-[-10%] w-64 h-64 md:w-96 md:h-96 bg-teal-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000">
                 </div>
                 <div
-                    class="absolute -bottom-32 left-20 w-64 h-64 md:w-96 md:h-96 bg-sky-300 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-blob animation-delay-4000">
+                    class="absolute -bottom-32 left-20 w-64 h-64 md:w-96 md:h-96 bg-cyan-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000">
                 </div>
             </div>
 
@@ -38,14 +39,14 @@
                         <div class="w-full max-w-sm mx-auto mb-6 mt-6 flex items-center justify-center px-4 relative">
                             <!-- Animated Gradient Border -->
                             <div
-                                class="absolute inset-0 bg-gradient-to-r from-blue-300 via-indigo-300 to-sky-300 rounded-3xl blur-xl opacity-50 animate-pulse">
+                                class="absolute inset-0 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-400 rounded-3xl blur-xl opacity-60 animate-pulse">
                             </div>
                             <div class="relative bg-white rounded-3xl p-6 shadow-2xl logo-float overflow-hidden">
                                 <img src="logo.png" alt="Herb On Naturals"
                                     class="w-full h-auto object-contain drop-shadow-2xl relative z-10">
                                 <!-- Gradient Overlay on Logo -->
                                 <div
-                                    class="absolute inset-0 bg-gradient-to-br from-blue-300/20 via-indigo-300/15 to-sky-300/20 mix-blend-overlay pointer-events-none z-20">
+                                    class="absolute inset-0 bg-gradient-to-br from-emerald-400/30 via-teal-500/20 to-cyan-400/30 mix-blend-overlay pointer-events-none z-20">
                                 </div>
                                 <!-- Animated Light Sweep -->
                                 <div
@@ -77,17 +78,19 @@
                     <div id="employeeLoginForm" class="space-y-5">
                         <div class="relative group">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🆔</span>
+                                <span
+                                    class="text-gray-400 group-focus-within:text-emerald-500 transition-colors">🆔</span>
                             </div>
                             <input type="text" id="empLoginId" placeholder="Employee ID"
-                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none transition-all placeholder-gray-400 font-medium">
                         </div>
                         <div class="relative group">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🔒</span>
+                                <span
+                                    class="text-gray-400 group-focus-within:text-emerald-500 transition-colors">🔒</span>
                             </div>
                             <input type="password" id="empLoginPass" placeholder="Password"
-                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none transition-all placeholder-gray-400 font-medium">
                         </div>
 
                         <button type="button" onclick="employeeLogin()"
@@ -191,7 +194,7 @@
         </div>
         <!--====================RESET PASSWORD SCREEN====================-->
         <div id="resetScreen" class="hidden max-w-md mx-auto mt-10 glass-card p-8 animate-fadeIn">
-            <h2 class="text-xl font-bold text-center mb-6 text-red-500">🔑 Reset Password</h2>
+            <h2 class="text-xl font-bold text-center mb-6 text-red-600">🔑 Reset Password</h2>
             <div id="resetMessage" class="hidden mb-4 p-3 rounded-xl text-sm"></div>
             <div class="space-y-4"><input type="text" id="resetId" placeholder="Employee ID"
                     class="w-full border-2 rounded-xl px-4 py-3"><input type="password" id="resetNewPass"
@@ -221,7 +224,7 @@
                         <div>
                             <h1 class="text-2xl font-bold text-gray-800">Employee Panel</h1>
                             <p class="text-sm text-gray-500 font-medium">Welcome, <span id="empNameDisplay"
-                                    class="font-extrabold text-blue-700 text-lg"></span></p>
+                                    class="font-extrabold text-emerald-700 text-lg"></span></p>
                         </div>
                     </div>
                 </div>
@@ -235,22 +238,16 @@
             <!-- Modern Pill Tabs -->
             <div class="flex md:justify-center justify-start px-4 mb-8 scrollable-tabs pb-2">
                 <div
-                    class="bg-white/50 p-1.5 rounded-2xl shadow-sm border border-white/50 inline-flex gap-2 backdrop-blur-sm">
-                    <button type="button" onclick="switchEmpTab('order')" id="empTabOrder"
-                        class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 tab-active shadow-sm whitespace-nowrap">
-                        <span>📝</span> New Order
+                    class="inline-flex gap-2 bg-white/50 backdrop-blur-lg p-2 rounded-2xl shadow-sm border border-white/20">
+                    <button onclick="switchEmployeeTab('orders')" id="empTabOrders"
+                        class="tab-btn px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600">
+                        <span>📦</span> Orders
                     </button>
-                    <button type="button" onclick="switchEmpTab('tracking')" id="empTabTracking"
-                        class="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-white/60 transition-all flex items-center gap-2 whitespace-nowrap">
-                        <span>📦</span> My Orders
-                    </button>
-                    <button type="button" onclick="switchEmpTab('history')" id="empTabHistory"
-                        class="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-white/60 transition-all flex items-center gap-2 whitespace-nowrap">
+                    <button onclick="switchEmployeeTab('history')" id="empTabHistory"
+                        class="tab-btn px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50">
                         <span>📋</span> History
                     </button>
-                    <button type="button" onclick="switchEmpTab('progress')" id="empTabProgress"
-                        class="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-white/60 transition-all flex items-center gap-2 whitespace-nowrap">
-                        <span>📊</span> Progress
+                    <span>📊</span> Progress
                     </button>
                     <button type="button" onclick="switchEmpTab('cancelled')" id="empTabCancelled"
                         class="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-white/60 transition-all flex items-center gap-2 whitespace-nowrap">
@@ -259,12 +256,12 @@
                 </div>
             </div>
 
-            <div id="empMessage" class="hidden mb-6 p-4 rounded-2xl text-sm glass-card border-l-4 border-blue-500">
+            <div id="empMessage" class="hidden mb-6 p-4 rounded-2xl text-sm glass-card border-l-4 border-emerald-500">
             </div>
 
             <!-- Order Form Tab -->
             <div id="empOrderTab" class="animate-fadeIn">
-                <div class="glass-card p-6 lg:p-8 border-t-4 border-blue-500 relative">
+                <div class="glass-card p-6 lg:p-8 border-t-4 border-emerald-500 relative">
                     <div class="flex items-center gap-3 mb-8 pb-4 border-b border-dashed border-gray-200">
                         <span
                             class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-xl">📝</span>
@@ -280,8 +277,7 @@
                         <div class="space-y-4">
                             <div><label class="block text-sm font-medium mb-1">Customer Name
                                     *</label><input type="text" name="customerName" required
-                                    style="text-transform: capitalize;" oninput="this.value = toTitleCase(this.value)"
-                                    class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none">
+                                    class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-emerald-500 outline-none">
                             </div>
                             <div><label class="block text-sm font-medium mb-1">Address
                                     (Auto-filled)</label><textarea name="address" readonly rows="2"
@@ -370,22 +366,22 @@
                                             class="mr-2">REORDER</label></div>
                             </div>
                             <!-- Items -->
-                            <div class="bg-emerald-50 p-4 rounded-xl border border-blue-200">
+                            <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
                                 <div class="flex justify-between items-center mb-3">
-                                    <label class="font-bold text-blue-700">🛒
+                                    <label class="font-bold text-emerald-700">🛒
                                         ITEMS</label><button type="button" onclick="addItem()"
                                         class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-emerald-700">+Add</button>
                                 </div>
                                 <div id="itemsContainer" class="space-y-2 max-h-40 overflow-y-auto">
                                 </div>
                                 <div
-                                    class="mt-3 pt-3 border-t border-blue-300 flex justify-between items-center font-bold text-lg">
+                                    class="mt-3 pt-3 border-t border-emerald-300 flex justify-between items-center font-bold text-lg">
                                     <span>Total:</span>
                                     <div class="flex flex-col items-end">
                                         <input type="number" id="totalAmountInput" value="0" oninput="calculateCOD()"
-                                            class="w-32 bg-white border-2 border-red-200 rounded-lg px-2 py-1 text-red-500 text-right outline-none focus:border-red-500 transition-colors">
+                                            class="w-32 bg-white border-2 border-red-200 rounded-lg px-2 py-1 text-red-600 text-right outline-none focus:border-red-500 transition-colors">
                                         <span id="comboBadge"
-                                            class="hidden text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded-full mt-1 animate-bounce">🎁
+                                            class="hidden text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full mt-1 animate-bounce">🎁
                                             COMBO OFFER</span>
                                     </div>
                                 </div>
@@ -434,15 +430,15 @@
             <div id="empHistoryTab" class="hidden animate-fadeIn">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-4 px-2 gap-4">
                     <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <span class="w-2 h-8 bg-blue-500 rounded-full block"></span>
+                        <span class="w-2 h-8 bg-emerald-500 rounded-full block"></span>
                         Order History
                     </h2>
                     <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
                         <input type="text" id="historySearch" placeholder="🔍 Search by Mobile..."
                             oninput="filterMyHistory(this.value)"
-                            class="w-full md:w-auto border-2 rounded-xl px-4 py-2 text-sm font-medium focus:border-blue-500 outline-none">
+                            class="w-full md:w-auto border-2 rounded-xl px-4 py-2 text-sm font-medium focus:border-emerald-500 outline-none">
                         <input type="date" id="empHistoryDate" onchange="loadMyHistory()"
-                            class="w-full md:w-auto border-2 rounded-xl px-4 py-2 text-sm font-medium focus:border-blue-500 outline-none">
+                            class="w-full md:w-auto border-2 rounded-xl px-4 py-2 text-sm font-medium focus:border-emerald-500 outline-none">
                     </div>
                 </div>
                 <!-- Changed from space-y-3 to grid for Cards -->
@@ -476,7 +472,7 @@
             <div id="empCancelledTab" class="hidden animate-fadeIn">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-4 px-2 gap-4">
                     <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <span class="w-2 h-8 bg-red-400 rounded-full block"></span>
+                        <span class="w-2 h-8 bg-red-500 rounded-full block"></span>
                         ❌ Cancelled Orders
                     </h2>
                     <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
@@ -486,7 +482,7 @@
                         <input type="date" id="myCancelledOrdersDate" onchange="loadMyCancelledOrders()"
                             class="w-full md:w-auto border-2 rounded-xl px-4 py-2 text-sm font-medium focus:border-red-500 outline-none">
                         <button type="button" onclick="loadMyCancelledOrders()"
-                            class="w-full md:w-auto text-red-500 hover:bg-red-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                            class="w-full md:w-auto text-red-600 hover:bg-red-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
                             <span>🔄</span> Refresh
                         </button>
                     </div>
@@ -512,15 +508,36 @@
                         <div>
                             <h1 id="deptPanelTitle" class="text-2xl font-bold text-gray-800">Verification Dept</h1>
                             <p class="text-sm text-gray-500 font-medium">Logged in as: <span id="deptIdDisplay"
-                                    class="font-bold text-blue-600 font-mono"></span></p>
+                                    class="font-bold text-emerald-600 font-mono"></span></p>
                         </div>
                     </div>
                 </div>
 
-
                 <div class="flex gap-3 relative z-10 items-center">
+                    <!-- WhatsApp Notification Center Button -->
+                    <button type="button" onclick="openWhatsAppCenter()"
+                        class="bg-green-50 border border-green-200 text-green-600 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-green-100 transition-all shadow-sm flex items-center gap-2 relative">
+                        <span>📱</span> WhatsApp
+                        <span id="whatsappBadge"
+                            class="hidden absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-bounce">0</span>
+                    </button>
+
+                    <!-- Load Historical Orders Button -->
+                    <button type="button" onclick="loadHistoricalOrders()"
+                        class="bg-blue-50 border border-blue-200 text-blue-600 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all shadow-sm flex items-center gap-2">
+                        <span>📥</span> Load Old Orders
+                    </button>
+
+                    <!-- Date Filter (Hidden by default, shown for Dispatch) -->
+                    <input type="date" id="headerDateFilter"
+                        class="hidden bg-white/80 border border-indigo-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700 font-bold shadow-sm">
+
+                    <button type="button" id="deptExportBtn" onclick="handleDepartmentExport()"
+                        class="hidden bg-white border border-blue-200 text-blue-600 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-50 transition-all shadow-sm flex items-center gap-2">
+                        <span>📥</span> Export Data
+                    </button>
                     <button type="button" onclick="logout()"
-                        class="bg-red-50 border border-red-100 text-red-500 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-red-100 transition-all shadow-sm flex items-center gap-2">
+                        class="bg-red-50 border border-red-100 text-red-600 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-red-100 transition-all shadow-sm flex items-center gap-2">
                         <span>🚪</span> Logout
                     </button>
                 </div>
@@ -579,25 +596,6 @@
                             Pending Verification
                         </h2>
                         <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                            <!-- Dashboard Stats (Mini) -->
-                            <div class="flex gap-2 mr-4">
-                                <div
-                                    class="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg border border-blue-200 flex flex-col items-center">
-                                    <span class="text-[10px] font-bold uppercase">Today</span>
-                                    <span class="text-lg font-black leading-none" id="miniStatVerifyToday">0</span>
-                                </div>
-                                <div
-                                    class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-200 flex flex-col items-center">
-                                    <span class="text-[10px] font-bold uppercase">Yest</span>
-                                    <span class="text-lg font-black leading-none" id="miniStatVerifyYesterday">0</span>
-                                </div>
-                                <div
-                                    class="bg-purple-100 text-purple-700 px-3 py-1 rounded-lg border border-purple-200 flex flex-col items-center">
-                                    <span class="text-[10px] font-bold uppercase">7 Days</span>
-                                    <span class="text-lg font-black leading-none" id="miniStatVerifyWeek">0</span>
-                                </div>
-                            </div>
-
                             <input type="text" id="verificationPendingSearch" placeholder="🔍 Search Mobile/Name..."
                                 oninput="filterVerificationOrders(this.value)"
                                 class="w-full md:flex-1 border-2 rounded-xl px-4 py-2 text-sm font-medium focus:border-blue-500 outline-none">
@@ -658,8 +656,8 @@
                     <!-- Modern Stats Cards -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <!-- Today -->
-                        <div onclick="applyQuickDateFilter('verificationHistory', 'today')"
-                            class="glass-card p-6 border-b-4 border-blue-500 relative overflow-hidden group hover:shadow-lg transition-all cursor-pointer">
+                        <div
+                            class="glass-card p-6 border-b-4 border-blue-500 relative overflow-hidden group hover:shadow-lg transition-all">
                             <div
                                 class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110">
                                 <span class="text-6xl">📅</span>
@@ -669,8 +667,8 @@
                         </div>
 
                         <!-- Yesterday -->
-                        <div onclick="applyQuickDateFilter('verificationHistory', 'yesterday')"
-                            class="glass-card p-6 border-b-4 border-indigo-500 relative overflow-hidden group hover:shadow-lg transition-all cursor-pointer">
+                        <div
+                            class="glass-card p-6 border-b-4 border-indigo-500 relative overflow-hidden group hover:shadow-lg transition-all">
                             <div
                                 class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110">
                                 <span class="text-6xl">⏮️</span>
@@ -680,8 +678,8 @@
                         </div>
 
                         <!-- Weekly -->
-                        <div onclick="applyQuickDateFilter('verificationHistory', 'week')"
-                            class="glass-card p-6 border-b-4 border-purple-500 relative overflow-hidden group hover:shadow-lg transition-all cursor-pointer">
+                        <div
+                            class="glass-card p-6 border-b-4 border-purple-500 relative overflow-hidden group hover:shadow-lg transition-all">
                             <div
                                 class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110">
                                 <span class="text-6xl">📊</span>
@@ -728,15 +726,15 @@
                     </div>
                 </div>
 
-                <!-- CANCELLED TAB -->
-                <div id="verificationCancelledTab" class="hidden animate-fadeIn">
+                <!-- CANCELLED ORDERS -->
+                <div class="mt-8">
                     <div class="flex justify-between items-center mb-6 px-2">
                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <span class="w-2 h-8 bg-red-400 rounded-full block"></span>
+                            <span class="w-2 h-8 bg-red-500 rounded-full block"></span>
                             ❌ Cancelled Orders
                         </h2>
                         <button onclick="loadVerificationCancelled()"
-                            class="px-4 py-2 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-colors">
+                            class="px-4 py-2 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-colors">
                             🔄 Refresh
                         </button>
                     </div>
@@ -857,25 +855,10 @@
                             <span class="w-2 h-8 bg-indigo-500 rounded-full block"></span>
                             Dispatched Orders
                         </h2>
-                        <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                            <input type="text" id="dispatchedSearch" placeholder="🔍 Search..."
-                                oninput="loadDispatchedOrders()"
-                                class="w-full md:w-40 border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-indigo-500 outline-none">
-                            <input type="date" id="dispatchedDateFilter" onchange="loadDispatchedOrders()"
-                                class="w-full md:w-auto border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-indigo-500 outline-none">
-                            <button type="button" onclick="syncAllAWB()"
-                                class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-md">
-                                🔄 Sync AWB
-                            </button>
-                            <button type="button" onclick="exportDispatchedOrdersFiltered()"
-                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-md">
-                                📥 Export Excel
-                            </button>
-                            <button type="button" onclick="loadDispatchedOrders()"
-                                class="text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
-                                🔄 Refresh
-                            </button>
-                        </div>
+                        <button type="button" onclick="loadDispatchedOrders()"
+                            class="text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
+                            🔄 Refresh
+                        </button>
                     </div>
                     <div id="dispatchedOrdersList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     </div>
@@ -921,7 +904,7 @@
 
                         <!-- Weekly -->
                         <div
-                            class="glass-card p-6 border-b-4 border-blue-500 relative overflow-hidden group hover:shadow-lg transition-all">
+                            class="glass-card p-6 border-b-4 border-emerald-500 relative overflow-hidden group hover:shadow-lg transition-all">
                             <div
                                 class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110">
                                 <span class="text-6xl">📊</span>
@@ -1014,11 +997,11 @@
                 <div id="deliveryOutForDeliveryTab" class="animate-fadeIn">
                     <div class="flex justify-between items-center mb-6 px-2">
                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <span class="w-2 h-8 bg-orange-400 rounded-full block"></span>
+                            <span class="w-2 h-8 bg-orange-500 rounded-full block"></span>
                             Out for Delivery
                         </h2>
                         <button type="button" onclick="loadDeliveryOrders()"
-                            class="text-orange-500 hover:bg-orange-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
+                            class="text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
                             🔄 Refresh
                         </button>
                     </div>
@@ -1030,7 +1013,7 @@
                 <div id="deliveryDeliveredTab" class="hidden animate-fadeIn">
                     <div class="flex justify-between items-center mb-6 px-2">
                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <span class="w-2 h-8 bg-teal-500 rounded-full block"></span>
+                            <span class="w-2 h-8 bg-green-500 rounded-full block"></span>
                             Successfully Delivered
                         </h2>
                         <button type="button" onclick="loadDeliveredOrders()"
@@ -1046,11 +1029,11 @@
                 <div id="deliveryFailedTab" class="hidden animate-fadeIn">
                     <div class="flex justify-between items-center mb-6 px-2">
                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <span class="w-2 h-8 bg-red-400 rounded-full block"></span>
+                            <span class="w-2 h-8 bg-red-500 rounded-full block"></span>
                             Failed Deliveries
                         </h2>
                         <button type="button" onclick="loadFailedDeliveries()"
-                            class="text-red-500 hover:bg-red-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
+                            class="text-red-600 hover:bg-red-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
                             🔄 Refresh
                         </button>
                     </div>
@@ -1065,23 +1048,17 @@
                             <span class="w-2 h-8 bg-purple-500 rounded-full block"></span>
                             Delivery Performance
                         </h2>
-                        <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                            <input type="date" id="deliveryPerformanceStartDate" onchange="loadDeliveryPerformance()"
-                                class="border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-purple-500 outline-none">
-                            <input type="date" id="deliveryPerformanceEndDate" onchange="loadDeliveryPerformance()"
-                                class="border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-purple-500 outline-none">
-                            <button type="button" onclick="loadDeliveryPerformance()"
-                                class="text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors whitespace-nowrap">
-                                🔄 Refresh Data
-                            </button>
-                        </div>
+                        <button type="button" onclick="loadDeliveryPerformance()"
+                            class="text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors">
+                            🔄 Refresh Data
+                        </button>
                     </div>
 
                     <!-- Modern Stats Cards -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <!-- Today -->
-                        <div onclick="applyQuickDateFilter('deliveryPerformance', 'today')"
-                            class="glass-card p-6 border-b-4 border-orange-500 relative overflow-hidden group hover:shadow-lg transition-all cursor-pointer">
+                        <div
+                            class="glass-card p-6 border-b-4 border-orange-500 relative overflow-hidden group hover:shadow-lg transition-all">
                             <div
                                 class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110">
                                 <span class="text-6xl">🚚</span>
@@ -1092,8 +1069,8 @@
                         </div>
 
                         <!-- Yesterday -->
-                        <div onclick="applyQuickDateFilter('deliveryPerformance', 'yesterday')"
-                            class="glass-card p-6 border-b-4 border-green-500 relative overflow-hidden group hover:shadow-lg transition-all cursor-pointer">
+                        <div
+                            class="glass-card p-6 border-b-4 border-green-500 relative overflow-hidden group hover:shadow-lg transition-all">
                             <div
                                 class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110">
                                 <span class="text-6xl">⏮️</span>
@@ -1103,8 +1080,8 @@
                         </div>
 
                         <!-- Weekly -->
-                        <div onclick="applyQuickDateFilter('deliveryPerformance', 'week')"
-                            class="glass-card p-6 border-b-4 border-purple-500 relative overflow-hidden group hover:shadow-lg transition-all cursor-pointer">
+                        <div
+                            class="glass-card p-6 border-b-4 border-purple-500 relative overflow-hidden group hover:shadow-lg transition-all">
                             <div
                                 class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110">
                                 <span class="text-6xl">📊</span>
@@ -1143,7 +1120,7 @@
                         <span>➕</span> Register Dept
                     </button>
                     <button type="button" onclick="showShiprocketModal()"
-                        class="bg-orange-400 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-orange-200 hover:bg-orange-500 hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                        class="bg-orange-500 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 hover:-translate-y-0.5 transition-all flex items-center gap-2">
                         <span>🚀</span> Shiprocket
                     </button>
                     <button type="button" onclick="exportAllOrders()"
@@ -1151,11 +1128,14 @@
                         <span>📥</span> Export CSV
                     </button>
                     <button type="button" onclick="logout()"
-                        class="bg-red-50 text-red-500 border border-red-100 px-5 py-3 rounded-xl text-sm font-bold hover:bg-red-100 transition-all flex items-center gap-2">
+                        class="bg-red-50 text-red-600 border border-red-100 px-5 py-3 rounded-xl text-sm font-bold hover:bg-red-100 transition-all flex items-center gap-2">
                         <span>🚪</span> Logout
                     </button>
                 </div>
             </div>
+
+            <!-- TODAY'S DEPARTMENT ACTIVITY -->
+            <div id="adminDailyActivity" class="max-w-7xl mx-auto px-4 mb-6"></div>
 
             <!-- Mobile Search -->
             <div class="glass-card p-4 mb-8 flex items-center gap-3">
@@ -1170,7 +1150,7 @@
                 <button onclick="switchAdminTab('pending')" id="adminTabPending"
                     class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
                     <span>📍</span> Pending
-                    <span id="pendingCount" class="bg-red-400 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
+                    <span id="pendingCount" class="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
                 </button>
                 <button onclick="switchAdminTab('verified')" id="adminTabVerified"
                     class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
@@ -1188,13 +1168,13 @@
                     class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
                     <span>🎉</span> Delivered
                     <span id="deliveredCount"
-                        class="bg-teal-500 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        class="bg-green-500 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
                 </button>
                 <button onclick="switchAdminTab('cancelled')" id="adminTabCancelled"
                     class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
                     <span>❌</span> Cancelled
                     <span id="cancelledCount"
-                        class="bg-red-400 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        class="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
                 </button>
                 <button onclick="switchAdminTab('employees')" id="adminTabEmployees"
                     class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
@@ -1203,6 +1183,10 @@
                 <button onclick="switchAdminTab('departments')" id="adminTabDepartments"
                     class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
                     <span>🏢</span> Departments
+                </button>
+                <button onclick="switchAdminTab('analytics')" id="adminTabAnalytics"
+                    class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 flex-shrink-0">
+                    <span>📊</span> Analytics
                 </button>
                 <button onclick="switchAdminTab('history')" id="adminTabHistory"
                     class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
@@ -1220,18 +1204,15 @@
             <div id="adminPendingTab" class="hidden animate-fadeIn space-y-8">
                 <!-- Stats -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div onclick="applyQuickDateFilter('adminPending', 'today')"
-                        class="glass-card p-6 border-b-4 border-red-500 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-red-500">
                         <p class="text-xs font-bold text-red-500 uppercase tracking-wider mb-1">Total Pending</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminPendingToday">0</h3>
                     </div>
-                    <div onclick="applyQuickDateFilter('adminPending', 'yesterday')"
-                        class="glass-card p-6 border-b-4 border-red-400 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-red-400">
                         <p class="text-xs font-bold text-red-400 uppercase tracking-wider mb-1">Yesterday</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminPendingYesterday">0</h3>
                     </div>
-                    <div onclick="applyQuickDateFilter('adminPending', 'week')"
-                        class="glass-card p-6 border-b-4 border-red-300 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-red-300">
                         <p class="text-xs font-bold text-red-300 uppercase tracking-wider mb-1">This Week</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminPendingWeek">0</h3>
                     </div>
@@ -1274,18 +1255,15 @@
             <div id="adminVerifiedTab" class="hidden animate-fadeIn space-y-8">
                 <!-- Stats -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div onclick="applyQuickDateFilter('adminVerified', 'today')"
-                        class="glass-card p-6 border-b-4 border-blue-500 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-blue-500">
                         <p class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-1">Total Verified</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminVerifiedToday">0</h3>
                     </div>
-                    <div onclick="applyQuickDateFilter('adminVerified', 'yesterday')"
-                        class="glass-card p-6 border-b-4 border-blue-400 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-blue-400">
                         <p class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Yesterday</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminVerifiedYesterday">0</h3>
                     </div>
-                    <div onclick="applyQuickDateFilter('adminVerified', 'week')"
-                        class="glass-card p-6 border-b-4 border-blue-300 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-blue-300">
                         <p class="text-xs font-bold text-blue-300 uppercase tracking-wider mb-1">This Week</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminVerifiedWeek">0</h3>
                     </div>
@@ -1328,18 +1306,15 @@
             <div id="adminDispatchedTab" class="hidden animate-fadeIn space-y-8">
                 <!-- Stats -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div onclick="applyQuickDateFilter('adminDispatched', 'today')"
-                        class="glass-card p-6 border-b-4 border-purple-500 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-purple-500">
                         <p class="text-xs font-bold text-purple-500 uppercase tracking-wider mb-1">Total Dispatched</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminDispatchedToday">0</h3>
                     </div>
-                    <div onclick="applyQuickDateFilter('adminDispatched', 'yesterday')"
-                        class="glass-card p-6 border-b-4 border-purple-400 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-purple-400">
                         <p class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-1">Yesterday</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminDispatchedYesterday">0</h3>
                     </div>
-                    <div onclick="applyQuickDateFilter('adminDispatched', 'week')"
-                        class="glass-card p-6 border-b-4 border-purple-300 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-purple-300">
                         <p class="text-xs font-bold text-purple-300 uppercase tracking-wider mb-1">This Week</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminDispatchedWeek">0</h3>
                     </div>
@@ -1382,18 +1357,15 @@
             <div id="adminDeliveredTab" class="hidden animate-fadeIn space-y-8">
                 <!-- Stats -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div onclick="applyQuickDateFilter('adminDelivered', 'today')"
-                        class="glass-card p-6 border-b-4 border-green-500 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-green-500">
                         <p class="text-xs font-bold text-green-500 uppercase tracking-wider mb-1">Total Delivered</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminDeliveredToday">0</h3>
                     </div>
-                    <div onclick="applyQuickDateFilter('adminDelivered', 'yesterday')"
-                        class="glass-card p-6 border-b-4 border-green-400 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-green-400">
                         <p class="text-xs font-bold text-green-400 uppercase tracking-wider mb-1">Yesterday</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminDeliveredYesterday">0</h3>
                     </div>
-                    <div onclick="applyQuickDateFilter('adminDelivered', 'week')"
-                        class="glass-card p-6 border-b-4 border-green-300 cursor-pointer hover:shadow-lg transition-all">
+                    <div class="glass-card p-6 border-b-4 border-green-300">
                         <p class="text-xs font-bold text-green-300 uppercase tracking-wider mb-1">This Week</p>
                         <h3 class="text-3xl font-black text-gray-800" id="statsAdminDeliveredWeek">0</h3>
                     </div>
@@ -1439,7 +1411,7 @@
                         <span class="text-3xl">❌</span> Cancelled Orders
                     </h2>
                     <button onclick="loadAdminCancelled()"
-                        class="px-5 py-3 rounded-xl text-sm font-bold bg-red-50 text-red-500 hover:bg-red-100 transition-colors shadow-sm">
+                        class="px-5 py-3 rounded-xl text-sm font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-colors shadow-sm">
                         🔄 Refresh
                     </button>
                 </div>
@@ -1450,6 +1422,16 @@
             <div id="adminEmployeesTab" class="hidden animate-fadeIn space-y-6"></div>
             <div id="adminDepartmentsTab" class="hidden animate-fadeIn space-y-6"></div>
             <div id="adminHistoryTab" class="hidden animate-fadeIn space-y-6"></div>
+
+            <!-- ANALYTICS DASHBOARD TAB -->
+            <div id="adminAnalyticsTab" class="hidden animate-fadeIn space-y-6">
+                <div id="dashboardStats"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div id="ordersChart"></div>
+                    <div id="statusChart"></div>
+                </div>
+                <div id="employeeChart"></div>
+            </div>
 
             <!-- PROGRESS TAB -->
             <div id="adminProgressTab" class="hidden animate-fadeIn space-y-8">
@@ -1480,7 +1462,7 @@
                         </div>
                         <div>
                             <button onclick="loadAdminProgress()"
-                                class="w-full bg-blue-500 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-blue-600 shadow-lg shadow-blue-200 transition-all">
+                                class="w-full bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-all">
                                 🔍 Generate Report
                             </button>
                         </div>
@@ -1624,7 +1606,7 @@
                     <div class="flex gap-3 pt-2"><button type="button" onclick="closeModal('editDeptModal')"
                             class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button><button
                             type="button" onclick="deleteDepartment()"
-                            class="bg-red-400 text-white px-4 py-3 rounded-xl font-medium hover:bg-red-500">🗑️</button><button
+                            class="bg-red-500 text-white px-4 py-3 rounded-xl font-medium hover:bg-red-600">🗑️</button><button
                             type="button" onclick="updateDepartmentFull()"
                             class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-medium hover:bg-orange-700">💾
                             Save All</button></div>
@@ -1676,11 +1658,11 @@
                 <!-- Test Connection -->
                 <div class="space-y-3">
                     <h4 class="font-bold text-gray-800 flex items-center gap-2">
-                        <span class="w-2 h-6 bg-orange-400 rounded-full"></span>
+                        <span class="w-2 h-6 bg-orange-500 rounded-full"></span>
                         Connection Test
                     </h4>
                     <button type="button" onclick="testShiprocket()"
-                        class="w-full bg-orange-400 text-white py-3 rounded-xl font-bold hover:bg-orange-500 transition flex items-center justify-center gap-2">
+                        class="w-full bg-orange-500 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2">
                         <span>🔌</span> Test Shiprocket Connection
                     </button>
                 </div>
@@ -1804,9 +1786,21 @@
         </div>
     </div>
 
-    <script src="app.js?v=20251233"></script>
-    <script src="whatsapp-notifications.js?v=2025123"></script>
-    <script src="auto-tracking.js?v=2025123"></script>
+    <script src="app.js"></script>
+
+
+
+    <!-- Auto Tracking Script -->
+    <script src="auto-tracking.js"></script>
+
+    <!-- Employee Performance Stats -->
+    <script src="employee-performance.js"></script>
+
+    <!-- WhatsApp Notification Center -->
+    <script src="whatsapp-notifications.js"></script>
+
+    <!-- Analytics Dashboard -->
+    <script src="analytics-dashboard.js"></script>
 
 </body>
 

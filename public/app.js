@@ -3107,6 +3107,23 @@ async function loadDeliveryRequests() {
 async function loadDispatchedOrders() {
     try {
         const res = await fetch(`${API_URL}/orders/dispatched`);
+
+        // Check if response is OK and content-type is JSON
+        if (!res.ok) {
+            console.error('API Error:', res.status, res.statusText);
+            const text = await res.text();
+            console.error('Response:', text);
+            throw new Error(`Server error: ${res.status}`);
+        }
+
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await res.text();
+            console.error('Expected JSON but got:', contentType);
+            console.error('Response:', text);
+            throw new Error('Server returned non-JSON response');
+        }
+
         const data = await res.json();
         let orders = data.orders || [];
 
@@ -4917,10 +4934,25 @@ async function loadDepartments() {
         let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
 
         departments.forEach(dept => {
-            const isVerification = dept.type === 'verification';
-            const themeColor = isVerification ? 'blue' : 'purple';
-            const icon = isVerification ? '📍' : '📦';
-            const label = isVerification ? 'Verification Dept' : 'Dispatch Dept';
+            // Determine type-specific styling
+            let themeColor, icon, label;
+            if (dept.type === 'verification') {
+                themeColor = 'blue';
+                icon = '📍';
+                label = 'Verification Dept';
+            } else if (dept.type === 'dispatch') {
+                themeColor = 'purple';
+                icon = '📦';
+                label = 'Dispatch Dept';
+            } else if (dept.type === 'delivery') {
+                themeColor = 'orange';
+                icon = '🚚';
+                label = 'Delivery Dept';
+            } else {
+                themeColor = 'gray';
+                icon = '🏢';
+                label = 'Department';
+            }
 
             html += `
             <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-${themeColor}-100 bg-white">
