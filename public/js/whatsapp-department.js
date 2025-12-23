@@ -4,131 +4,154 @@
 const whatsappDepartmentTemplates = {
     // Verification Department Messages
     verification: {
-        addressConfirm: (order) => `नमस्ते ${order.customerName}! 🙏
+        addressConfirm: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+_____________________
 
-आपका Order *${order.orderId}* receive हो गया है।
+Hello *${order.customerName}*! 🙏
 
-📦 *Order Details:*
-- Amount: ₹${order.total}
-- Payment: ${order.paymentMode}
-${order.paymentMode === 'COD' ? `- COD Amount: ₹${order.codAmount || order.total}` : ''}
+📦 Your Order is received!
 
-📍 *Delivery Address:*
+*ORDER: ${order.orderId}*
+▸ Amount: Rs. ${order.total}
+▸ Payment: ${order.paymentMode}
+${order.paymentMode === 'COD' ? `▸ COD: *Rs. ${order.codAmount || order.total}*` : ''}
+
+📍 *DELIVERY ADDRESS*
 ${order.address}
 ${order.city ? order.city : order.distt}, ${order.state} - ${order.pin || order.pincode}
 
-कृपया address verify करें और confirm करें कि यह सही है।
+Please verify your address:
+✅ Reply "YES" if correct
+❌ Reply "CHANGE" to modify
 
-Reply करें: 
-✅ "हाँ सही है" - Address correct है
-❌ "बदलें" - Address change करना है
+_Team Herb On Naturals_ 💚`,
 
-धन्यवाद!
-*Herb On Naturals*`,
+        addressVerified: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+_____________________
 
-        addressVerified: (order) => `नमस्ते ${order.customerName}! ✅
+Hello *${order.customerName}*! 🙏
 
-आपका order *${order.orderId}* का address verify हो गया है।
+✅ Your address is *VERIFIED*!
 
-📦 *Verified Address:*
+📦 *ORDER: ${order.orderId}*
+
+📍 *CONFIRMED ADDRESS*
 ${order.address}
 ${order.city ? order.city : order.distt}, ${order.state} - ${order.pin || order.pincode}
 
-जल्द ही आपका order dispatch किया जाएगा। Dispatch होते ही tracking details आपको SMS/WhatsApp पर भेजी जाएंगी।
+🚚 Your order will be dispatched soon. Tracking details will be sent via WhatsApp.
 
-धन्यवाद!
-*Herb On Naturals*
-📞 Customer Care: [Your Number]`,
+_Team Herb On Naturals_ 💚`,
 
-        orderCancelled: (order, reason) => `नमस्ते ${order.customerName}!
+        orderCancelled: (order, reason) => `🌿 *_HERB ON NATURALS_* 🌿
+_____________________
 
-आपका order *${order.orderId}* cancel किया गया है।
+Hello *${order.customerName}*! 🙏
 
-❌ *Cancellation Reason:*
-${reason || 'Customer request'}
+❌ *ORDER CANCELLED*
 
-अगर आपको कोई query है तो हमें contact करें।
+📦 Order: ${order.orderId}
 
-धन्यवाद!
-*Herb On Naturals*
-📞 Customer Care: [Your Number]`,
+📋 *Reason:* ${reason || 'Customer request'}
 
-        addressIssue: (order) => `नमस्ते ${order.customerName}! ⚠️
+For any queries, please contact us.
 
-आपके order *${order.orderId}* के address में कुछ issue है।
+_Team Herb On Naturals_ 💚`,
 
-कृपया सही address भेजें:
-- House/Flat Number
-- Area/Locality
-- Landmark
-- Pin Code
+        addressIssue: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+_____________________
 
-जल्दी reply करें ताकि delivery में delay न हो।
+Hello *${order.customerName}*! 🙏
 
-धन्यवाद!
-*Herb On Naturals*`
+⚠️ *ADDRESS ISSUE*
+
+📦 Order: ${order.orderId}
+
+Please send correct address:
+▸ House/Flat Number
+▸ Area/Locality
+▸ Landmark
+▸ Pin Code
+
+Reply soon to avoid delivery delay!
+
+_Team Herb On Naturals_ 💚`
     },
 
     // Dispatch Department Messages
     dispatch: {
-        readyToDispatch: (order) => `नमस्ते ${order.customerName}! 📦
+        readyToDispatch: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+_____________________
 
-आपका order *${order.orderId}* dispatch के लिए ready है।
+Hello *${order.customerName}*! 🙏
 
-*Order Details:*
-- Total Items: ${order.items?.length || 1}
-- Amount: ₹${order.total}
-- Payment: ${order.paymentMode}
+📦 Your order is *READY TO SHIP*!
 
-आज/कल dispatch किया जाएगा। Dispatch होते ही tracking number भेजा जाएगा।
+*ORDER: ${order.orderId}*
+▸ Items: ${order.items?.length || 1}
+▸ Amount: Rs. ${order.total}
+▸ Payment: ${order.paymentMode}
 
-कृपया phone available रखें।
+Will be dispatched today/tomorrow. Tracking details coming soon!
 
-धन्यवाद!
-*Herb On Naturals*`,
+📱 Keep your phone reachable.
 
-        dispatched: (order) => `नमस्ते ${order.customerName}! 🚚
+_Team Herb On Naturals_ 💚`,
 
-आपका order *${order.orderId}* dispatch हो गया है!
+        dispatched: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+_____________________
 
-📦 *Tracking Details:*
-- AWB: *${order.shiprocket?.awb || order.tracking?.trackingId || 'Updating soon...'}*
-- Courier: *${order.shiprocket?.courierName || order.tracking?.courier || 'India Post'}*
-- Dispatched: ${new Date().toLocaleDateString('hi-IN')}
+Hello *${order.customerName}*! 🙏
 
-${getTrackingLink(order)}
+🚚 Your order is *SHIPPED*!
 
-*अनुमानित Delivery:* ${getEstimatedDelivery(order)}
+📦 *ORDER: ${order.orderId}*
 
-📞 Courier से contact होने पर phone available रखें।
+📍 *TRACKING*
+▸ AWB: *${order.shiprocket?.awb || order.tracking?.trackingId || 'Processing'}*
+▸ Courier: *${order.shiprocket?.courierName || order.tracking?.courier || 'Processing'}*
+▸ Date: ${new Date().toLocaleDateString('en-IN')}
 
-धन्यवाद!
-*Herb On Naturals*`,
+🔗 Track: shiprocket.co/tracking
 
-        outForDelivery: (order) => `नमस्ते ${order.customerName}! 🏃
+📋 *INSTRUCTIONS*
+📱 Keep phone ON
+💵 Keep COD ready
+👀 Check product FIRST
+🔐 Then give OTP
 
-आपका order *${order.orderId}* आज delivery के लिए निकल चुका है!
+_Happy Shopping!_ 🛍️
+_Team Herb On Naturals_ 💚`,
 
-📦 AWB: ${order.shiprocket?.awb || order.tracking?.trackingId}
+        outForDelivery: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+_____________________
+
+Hello *${order.customerName}*! 🙏
+
+🏃 *OUT FOR DELIVERY!*
+
+📦 Order: *${order.orderId}*
+📍 AWB: ${order.shiprocket?.awb || order.tracking?.trackingId}
 🚚 Courier: ${order.shiprocket?.courierName || order.tracking?.courier}
 
-*🔔 Important:*
-- आज delivery होगी
-- कृपया phone available रखें
-- COD amount ready रखें: ₹${order.codAmount || 0}
+💵 *COD: Rs. ${order.codAmount || 0}*
 
-धन्यवाद!
-*Herb On Naturals*`,
+📱 Keep phone reachable
+👀 Check product first, then give OTP
 
-        customMessage: (order, message) => `नमस्ते ${order.customerName}!
+_Team Herb On Naturals_ 💚`,
 
-*Order ID:* ${order.orderId}
+        customMessage: (order, message) => `🌿 *_HERB ON NATURALS_* 🌿
+_____________________
+
+Hello *${order.customerName}*! 🙏
+
+📦 *ORDER: ${order.orderId}*
 
 ${message}
 
-धन्यवाद!
-*Herb On Naturals*
-📞 Customer Care: [Your Number]`
+_Team Herb On Naturals_ 💚
+🌐 herbonnaturals.in`
     }
 };
 

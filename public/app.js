@@ -2,46 +2,142 @@
 // If API_URL is defined in HTML, use it, else default
 var API_URL = typeof API_URL !== 'undefined' ? API_URL : (window.location.origin + '/api');
 
+// Emoji constants for WhatsApp compatibility
+const E = {
+    leaf: String.fromCodePoint(0x1F33F),
+    pray: String.fromCodePoint(0x1F64F),
+    check: String.fromCodePoint(0x2705),
+    box: String.fromCodePoint(0x1F4E6),
+    phone: String.fromCodePoint(0x1F4DE),
+    warn: String.fromCodePoint(0x26A0),
+    no: String.fromCodePoint(0x1F6AB),
+    heart: String.fromCodePoint(0x1F49A),
+    globe: String.fromCodePoint(0x1F310),
+    money: String.fromCodePoint(0x1F4B0),
+    lock: String.fromCodePoint(0x1F510),
+    truck: String.fromCodePoint(0x1F69A),
+    pin: String.fromCodePoint(0x1F4CD),
+    link: String.fromCodePoint(0x1F517),
+    list: String.fromCodePoint(0x1F4CB),
+    mobile: String.fromCodePoint(0x1F4F1),
+    cash: String.fromCodePoint(0x1F4B5),
+    eyes: String.fromCodePoint(0x1F440),
+    bag: String.fromCodePoint(0x1F6CD),
+    run: String.fromCodePoint(0x1F3C3),
+    home: String.fromCodePoint(0x1F3E0),
+    party: String.fromCodePoint(0x1F389),
+    star: String.fromCodePoint(0x2B50),
+    cart: String.fromCodePoint(0x1F6D2),
+    arr: String.fromCodePoint(0x25B8)
+};
+
 // Fallback WhatsApp Templates
 if (typeof whatsappTemplates === 'undefined') {
     var whatsappTemplates = {
-        booked: (order) => `नमस्ते ${order.customerName}! 🙏
+        booked: (order) => `${E.leaf} *_HERB ON NATURALS_* ${E.leaf}
+_____________________
 
-🌿 *Herb On Naturals* में आपका स्वागत है।
+Hello *${order.customerName}*! ${E.pray}
 
-✅ आपका Order successfully book हो गया है!
-📦 *Order ID:* ${order.orderId}
-💰 *Total Amount:* ₹${order.total}
+${E.check} Your order is confirmed!
 
-हमारा verification department जल्द ही आपसे संपर्क करेगा। 
+${E.box} *ORDER DETAILS*
+${E.arr} Order No: *${order.orderId}*
+${E.arr} Amount: *Rs. ${order.total}*
+${E.arr} Advance: Rs. ${order.advance || 0}
+${E.arr} COD: *Rs. ${order.codAmount || 0}*
 
-धन्यवाद!
-Herb On Naturals
-https://herbonnaturals.in/`,
+${E.phone} Our team will call you shortly for address verification.
 
-        verified: (order) => `नमस्ते ${order.customerName}! 🙏
+${E.warn} *IMPORTANT*
+${E.no} Do NOT share OTP before receiving product!
 
-✅ आपका address successfully *Verify* हो गया है!
-📦 *Order ID:* ${order.orderId}
+_Team Herb On Naturals_ ${E.heart}
+${E.globe} herbonnaturals.in`,
 
-आपका पार्सल अब dispatch के लिए तैयार है। जल्द ही आपको tracking details मिल जायेंगी।
+        verified: (order) => `${E.leaf} *_HERB ON NATURALS_* ${E.leaf}
+_____________________
 
-धन्यवाद!
-Herb On Naturals
-https://herbonnaturals.in/`,
+Hello *${order.customerName}*! ${E.pray}
 
-        dispatched: (order) => `नमस्ते ${order.customerName}! 🙏
+${E.check} Your order is *VERIFIED*!
 
-🚀 आपका Order *Dispatch* हो गया है!
-📦 *Order ID:* ${order.orderId}
-🚚 *Courier:* ${order.tracking?.courier || 'Standard'}
-📑 *Tracking ID:* ${order.tracking?.trackingId || 'Wait for updates'}
+${E.box} *ORDER: ${order.orderId}*
 
-आप अपना पार्सल ट्रैक कर सकते हैं। Herb On Naturals पर भरोसा करने के लिए धन्यवाद!
+${E.money} *PAYMENT*
+${E.arr} Total: Rs. ${order.total}
+${E.arr} Paid: Rs. ${order.advance || 0}
+${E.arr} COD: *Rs. ${order.codAmount || 0}*
 
-धन्यवाद!
-Herb On Naturals
-https://herbonnaturals.in/`
+${E.box} Packing in progress. Tracking details coming soon!
+
+${E.lock} *SECURITY*
+${E.no} Never share OTP before checking product!
+
+_Team Herb On Naturals_ ${E.heart}`,
+
+        dispatched: (order) => `${E.leaf} *_HERB ON NATURALS_* ${E.leaf}
+_____________________
+
+Hello *${order.customerName}*! ${E.pray}
+
+${E.truck} Your order is *SHIPPED*!
+
+${E.box} *ORDER: ${order.orderId}*
+
+${E.pin} *TRACKING*
+${E.arr} AWB: *${order.shiprocket?.awb || order.tracking?.trackingId || 'Processing'}*
+${E.arr} Courier: *${order.shiprocket?.courierName || order.tracking?.courier || 'Processing'}*
+
+${E.money} *PAYMENT*
+${E.arr} Total: Rs. ${order.total}
+${E.arr} COD: *Rs. ${order.codAmount || 0}*
+
+${E.link} Track: shiprocket.co/tracking
+
+${E.list} *INSTRUCTIONS*
+${E.mobile} Keep phone ON
+${E.cash} Keep COD ready
+${E.eyes} Check product FIRST
+${E.lock} Then give OTP
+
+_Happy Shopping!_ ${E.bag}
+_Team Herb On Naturals_ ${E.heart}`,
+
+        out_for_delivery: (order) => `${E.leaf} *_HERB ON NATURALS_* ${E.leaf}
+_____________________
+
+Hello *${order.customerName}*! ${E.pray}
+
+${E.run} *OUT FOR DELIVERY!*
+
+${E.box} Order: *${order.orderId}*
+${E.cash} COD: *Rs. ${order.codAmount || 0}*
+
+${E.home} Please be available to receive your parcel today.
+
+${E.warn} *REMEMBER*
+${E.eyes} Check product first, then share OTP!
+
+_Team Herb On Naturals_ ${E.heart}`,
+
+        delivered: (order) => `${E.leaf} *_HERB ON NATURALS_* ${E.leaf}
+_____________________
+
+Hello *${order.customerName}*! ${E.pray}
+
+${E.party} *ORDER DELIVERED!*
+
+${E.box} Order: ${order.orderId}
+
+${E.pray} Thank you for shopping with us!
+
+${E.star} We hope you love your products. Share your feedback - it means a lot to us!
+
+${E.cart} Shop again: herbonnaturals.in
+
+_Warm regards,_ ${E.heart}
+_Team Herb On Naturals_`
     };
 }
 
