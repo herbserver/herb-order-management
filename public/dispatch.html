@@ -35,12 +35,23 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-2xl font-bold mb-4">📦 Dispatch Department</h2>
-            <p class="text-gray-600">Dispatch panel loading...</p>
-            <p class="text-sm text-gray-500 mt-2">If panel doesn't load, please refresh or <a href="index.html"
-                    class="text-blue-600 underline">go back to login</a></p>
+            <div id="deptOrdersList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <p class="text-gray-600">Loading orders...</p>
+            </div>
         </div>
     </div>
 
+    <!-- Order Detail Modal -->
+    <div id="orderDetailModal"
+        class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl">
+            <div id="orderDetailContent" class="overflow-y-auto max-h-[90vh]">
+                <!-- Content will be dynamically loaded -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
     <script src="app.js"></script>
     <script>
         // Check authentication
@@ -50,14 +61,60 @@
             window.location.href = 'index.html';
         } else {
             document.getElementById('userInfo').textContent = `Logged in: ${currentUser.name || currentUser.deptId || 'Dispatch'}`;
-            // Initialize dispatch department
-            setTimeout(() => {
-                currentDeptType = 'dispatch';
-                currentUserType = 'department';
-                if (typeof showDepartmentPanel === 'function') {
-                    showDepartmentPanel();
+
+            // Set global variables
+            window.currentDeptType = 'dispatch';
+            window.currentUserType = 'department';
+
+            // Load dispatch orders
+            async function loadDispatchOrders() {
+                try {
+                    const res = await fetch(`${API_URL}/orders`);
+                    const data = await res.json();
+
+                    let orders = data.orders || [];
+                    const container = document.getElementById('deptOrdersList');
+
+                    // Filter for verified orders (ready for dispatch)
+                    orders = orders.filter(o => o.status === 'Verified');
+                    orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                    if (orders.length === 0) {
+                        container.innerHTML = '<p class="text-gray-500 text-center col-span-full py-8">No orders ready for dispatch</p>';
+                        return;
+                    }
+
+                    // Render dispatch cards
+                    container.innerHTML = orders.map(o => `
+                        <div class="bg-white border rounded-xl p-4 hover:shadow-lg transition-all">
+                            <div class="flex justify-between items-center mb-4">
+                                <div class="flex items-center gap-3">
+                                    <h4 class="font-bold">${o.customerName}</h4>
+                                    <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
+                                        class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                        ${WHATSAPP_ICON}
+                                    </button>
+                                </div>
+                                <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Verified</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-2">📍 ${o.address}</p>
+                            <p class="text-sm text-gray-600 mb-4">📞 ${o.telNo}</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="viewOrder('${o.orderId}')" class="bg-blue-50 text-blue-600 font-bold py-2 rounded-lg hover:bg-blue-100">View Details</button>
+                                <button onclick="alert('Shiprocket dispatch coming soon!')" class="w-full bg-orange-500 text-white font-bold py-2 rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-200">
+                                    🚀 Dispatch
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } catch (e) {
+                    console.error('Error loading orders:', e);
+                    document.getElementById('deptOrdersList').innerHTML = '<p class="text-red-500 col-span-full">Error loading orders. Please refresh.</p>';
                 }
-            }, 100);
+            }
+
+            // Load orders on page load
+            loadDispatchOrders();
         }
 
         function logout() {

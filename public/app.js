@@ -2885,26 +2885,27 @@ function generateOrderCardHTML(order) {
     const locationIcon = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
 
     return `
-    <div class="glass-card p-0 overflow-hidden hover:shadow-2xl transition-all duration-300 bg-white rounded-xl border border-gray-100 flex flex-col h-full shadow-sm">
-        <!-- Compact Header -->
-        <div class="px-4 py-2.5 border-b border-gray-50 bg-gray-50/70 flex justify-between items-center text-[11px] font-black">
-            <div class="flex items-center gap-1.5 uppercase tracking-wider text-${statusColor}-700">
-                <span class="bg-${statusColor}-100 px-2 py-0.5 rounded border border-${statusColor}-200 shadow-sm">${order.orderId}</span>
+    <div class="relative overflow-hidden hover:scale-[1.02] transition-all duration-300 bg-gradient-to-br from-white to-gray-50/50 rounded-2xl border border-gray-200/60 flex flex-col h-full shadow-lg hover:shadow-2xl" style="backdrop-filter: blur(10px);">
+        <!-- Premium Header with Gradient -->
+        <div class="px-4 py-3 border-b border-${statusColor}-100 bg-gradient-to-r from-${statusColor}-50 via-${statusColor}-100/50 to-${statusColor}-50 flex justify-between items-center relative overflow-hidden">
+            <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: radial-gradient(circle, rgba(255,255,255,0.3), transparent); border-radius: 50%;"></div>
+            <div class="flex items-center gap-2 z-10">
+                <span class="bg-gradient-to-r from-${statusColor}-500 to-${statusColor}-600 text-white px-3 py-1 rounded-lg font-black text-xs shadow-lg shadow-${statusColor}-200/50 tracking-wide">${order.orderId}</span>
                 <button onclick="sendWhatsAppDirect('${isVerification ? 'booked' : 'dispatched'}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                    class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                    class="w-7 h-7 bg-gradient-to-br from-green-400 to-green-600 text-white rounded-full flex items-center justify-center hover:scale-110 shadow-lg shadow-green-200/50 transition-all" title="Send WhatsApp">
                     ${WHATSAPP_ICON}
                 </button>
-                ${order.orderType === 'REORDER' ? `<span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200">REORDER</span>` : ''}
+                ${order.orderType === 'REORDER' ? `<span class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-2 py-1 rounded-lg text-xs font-bold shadow-md">REORDER</span>` : ''}
             </div>
-            <div class="text-gray-900">₹${order.total} <span class="text-emerald-500 ml-1.5">COD: ₹${order.codAmount || 0}</span></div>
+            <div class="text-gray-900 font-black text-sm z-10">₹${order.total} <span class="text-emerald-600 ml-1 font-extrabold">COD: ₹${order.codAmount || 0}</span></div>
         </div>
 
-        <!-- Body Section -->
+        <!-- Body Section with Modern Layout -->
         <div class="p-4 space-y-3 flex-grow">
-            <!-- Name & Meta -->
-            <div class="flex justify-between items-start gap-4">
-                <h3 class="font-black text-gray-800 text-lg leading-tight truncate flex-grow" title="${order.customerName}">${order.customerName}</h3>
-                <div class="flex items-center gap-1 text-[10px] text-gray-400 font-bold shrink-0 bg-gray-100/50 px-2 py-1 rounded-full uppercase tracking-tighter">
+            <!-- Name & Timestamp -->
+            <div class="flex justify-between items-start gap-3">
+                <h3 class="font-black text-gray-900 text-lg leading-tight truncate flex-grow bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text" title="${order.customerName}">${order.customerName}</h3>
+                <div class="flex items-center gap-1 text-[10px] text-gray-500 font-bold shrink-0 bg-gradient-to-r from-gray-100 to-gray-50 px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
                    📅 ${(() => {
             if (!order.timestamp) return 'N/A';
             const dateObj = new Date(order.timestamp);
@@ -2916,26 +2917,26 @@ function generateOrderCardHTML(order) {
                 </div>
             </div>
             
-            <!-- Contact Row -->
-            <div class="flex items-center gap-2 text-blue-600 bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100/50">
-                <span class="opacity-70">${phoneIcon}</span>
-                <span class="text-sm font-black font-mono tracking-wider">${order.telNo}</span>
-                ${order.altNo ? `<span class="text-[10px] text-gray-400 font-bold ml-auto">ALT: ${order.altNo}</span>` : ''}
+            <!-- Contact Card -->
+            <div class="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-cyan-50 px-3 py-2 rounded-xl border border-blue-200/50 shadow-sm">
+                <span class="text-blue-500">${phoneIcon}</span>
+                <span class="text-sm font-black font-mono tracking-wide text-blue-900">${order.telNo}</span>
+                ${order.altNo ? `<span class="text-[10px] text-gray-500 font-bold ml-auto bg-white px-2 py-0.5 rounded-full">ALT: ${order.altNo}</span>` : ''}
             </div>
 
-            <!-- Address Section -->
-            <div class="space-y-1.5">
-                <div class="flex items-center gap-1.5 text-indigo-500 font-black text-[10px] uppercase tracking-widest opacity-60">
-                    ${locationIcon} Address Details
+            <!-- Address Card -->
+            <div class="space-y-2 bg-gradient-to-br from-amber-50/50 to-orange-50/30 p-3 rounded-xl border border-amber-200/40">
+                <div class="flex items-center gap-1.5 text-amber-600 font-black text-[10px] uppercase tracking-wider">
+                    ${locationIcon} <span class="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">Address Details</span>
                 </div>
-                <p class="text-xs text-gray-700 font-bold leading-snug line-clamp-3 pl-5 capitalize">
+                <p class="text-xs text-gray-800 font-semibold leading-relaxed line-clamp-3 capitalize">
                     ${toTitleCase(order.address) || 'No Address Provided'}
                 </p>
-                <div class="flex gap-2 items-center pl-5 pt-0.5">
-                    <span class="bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded text-[10px] font-black text-indigo-600 tracking-tight">PIN: ${order.pin || 'N/A'}</span>
-                    <span class="bg-gray-50 border border-gray-100 px-2 py-0.5 rounded text-[10px] font-black text-gray-500 tracking-tight capitalize">${order.state || 'N/A'}</span>
-                    <button onclick="copyAddress('${order.address ? order.address.replace(/'/g, "\\'") : ""}')" 
-                        class="text-[10px] text-blue-500 hover:text-blue-700 font-black ml-auto flex items-center gap-1">📋 COPY</button>
+                <div class="flex gap-2 items-center pt-1">
+                    <span class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-2 py-1 rounded-lg text-[10px] font-black shadow-sm">PIN: ${order.pin || 'N/A'}</span>
+                    <span class="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-2 py-1 rounded-lg text-[10px] font-black shadow-sm capitalize">${order.state || 'N/A'}</span>
+                    <button onclick="copyAddress('${order.address ? order.address.replace(/'/g, "\\'") : ""}')\" 
+                        class="text-[10px] text-blue-600 hover:text-blue-700 font-black ml-auto flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-blue-200 hover:border-blue-300 transition-all shadow-sm">📋 COPY</button>
                 </div>
             </div>
         </div>
@@ -2956,8 +2957,12 @@ function generateOrderCardHTML(order) {
         <!-- Actions Footer -->
         <div class="px-4 py-3.5 bg-gray-50/70 border-t border-gray-100 space-y-2.5">
             ${isVerification ? `
+                <!-- View Details Button -->
+                <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
+                    class="w-full bg-gray-500 hover:bg-gray-600 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-gray-200/50 active:scale-95 transition-all uppercase tracking-widest">👁️ VIEW DETAILS</button>
+                
                 <!-- Primary Actions -->
-                <div class="grid grid-cols-2 gap-2 mt-1">
+                <div class="grid grid-cols-2 gap-2">
                     <button type="button" onclick="verifyAddress('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                         class="bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-blue-200/50 active:scale-95 transition-all uppercase tracking-widest">VERIFY</button>
                     <button type="button" onclick="markAsUnverified('${order.orderId}')" 
@@ -2979,21 +2984,21 @@ function generateOrderCardHTML(order) {
                     </select>
                 </div>
             ` : (order.status === 'Dispatched' ? `
-                <!-- Already Dispatched Actions -->
-                <div class="space-y-2 pt-1">
+                <!-- Already Dispatched Actions with Modern Design -->
+                <div class="space-y-2.5 pt-1 px-4 pb-4">
                     <button type="button" onclick="approveDelivery('${order.orderId}')" 
-                        class="w-full bg-blue-500 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-blue-200/50 hover:bg-blue-600 active:scale-95 transition-all uppercase tracking-widest">✅ MARK DELIVERED</button>
-                    <div class="grid grid-cols-2 gap-2">
+                        class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3.5 rounded-xl text-xs font-black shadow-xl shadow-blue-300/40 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">✅ MARK DELIVERED</button>
+                    <div class="grid grid-cols-2 gap-2.5">
                         <button type="button" onclick="editDispatchedOrder('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                            class="bg-amber-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-amber-200/50 hover:bg-amber-600 active:scale-95 transition-all">✏️ EDIT</button>
+                            class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
                         <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
-                            class="bg-gray-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-gray-200/50 hover:bg-gray-600 active:scale-95 transition-all">👁️ VIEW</button>
+                            class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
                     </div>
                     ${(order.tracking?.trackingId || order.shiprocket?.awb) ? `
-                    <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg space-y-2">
+                    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 p-3.5 rounded-xl space-y-2 shadow-sm">
                         <div class="flex justify-between items-center">
-                            <span class="text-[10px] font-black text-indigo-700 uppercase">${order.tracking?.courier || 'Shiprocket'}</span>
-                            <span class="text-[11px] font-mono font-bold text-gray-600">${order.tracking?.trackingId || order.shiprocket?.awb}</span>
+                            <span class="text-[10px] font-black text-indigo-700 uppercase bg-white px-2 py-1 rounded-lg shadow-sm">${order.tracking?.courier || 'Shiprocket'}</span>
+                            <span class="text-[11px] font-mono font-bold text-gray-700 bg-white px-2 py-1 rounded-lg">${order.tracking?.trackingId || order.shiprocket?.awb}</span>
                         </div>
                         ${order.tracking?.currentStatus ? `
                         <div class="pt-2 border-t border-indigo-200">
@@ -3003,7 +3008,7 @@ function generateOrderCardHTML(order) {
                         </div>
                         ` : ''}
                     </div>
-                    ` : ''}\r
+                    ` : ''}
                 </div>
             ` : `
                 <!-- Suggested Courier Badge -->
@@ -3931,82 +3936,122 @@ async function viewOrderDetails(orderId) {
         const modal = document.createElement('div');
         modal.id = 'viewOrderModal';
         modal.innerHTML = `
-            <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
-                <div style="background: white; border-radius: 20px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                    <div style="background: linear-gradient(135deg, #3b82f6, #60a5fa); padding: 20px; border-radius: 20px 20px 0 0;">
-                        <h3 style="font-size: 24px; font-weight: bold; color: white; margin: 0;">📋 Order Details</h3>
-                        <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 5px;">${order.orderId}</p>
+            <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease;">
+                <div style="background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,255,255,0.95)); border-radius: 24px; max-width: 800px; width: 100%; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 80px rgba(0,0,0,0.4); animation: slideUp 0.3s ease;">
+                    
+                    <!-- Premium Header with Gradient -->
+                    <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%); padding: 32px 28px; position: relative; overflow: hidden;">
+                        <div style="position: absolute; top: -50%; right: -10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.15), transparent); border-radius: 50%;"></div>
+                        <div style="position: relative; z-index: 1;">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">📋</div>
+                                <div>
+                                    <h3 style="font-size: 28px; font-weight: 800; color: white; margin: 0; letter-spacing: -0.5px;">Order Details</h3>
+                                    <p style="color: rgba(255,255,255,0.9); font-size: 15px; margin: 4px 0 0 0; font-weight: 600; font-family: monospace;">${order.orderId}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div style="padding: 25px;">
-                        <!-- Customer Info -->
-                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
-                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">👤 Customer Information</h4>
-                            <div style="display: grid; gap: 8px; font-size: 14px;">
-                                <div><strong>Name:</strong> ${order.customerName}</div>
-                                <div><strong>Phone:</strong> ${order.telNo}</div>
-                                ${order.altNo ? `<div><strong>Alt Phone:</strong> ${order.altNo}</div>` : ''}
+                    <!-- Scrollable Content -->
+                    <div style="padding: 28px; max-height: calc(90vh - 200px); overflow-y: auto;">
+                        
+                        <!-- Customer Card -->
+                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 16px; border: 1px solid rgba(59,130,246,0.2); box-shadow: 0 2px 8px rgba(59,130,246,0.08);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(59,130,246,0.3);">👤</div>
+                                <h4 style="font-weight: 700; color: #1e40af; margin: 0; font-size: 16px;">Customer Information</h4>
+                            </div>
+                            <div style="display: grid; gap: 10px; font-size: 14px;">
+                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 80px;">Name:</span><strong style="color: #0f172a;">${order.customerName}</strong></div>
+                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 80px;">Phone:</span><strong style="font-family: monospace; color: #0f172a;">${order.telNo}</strong></div>
+                                ${order.altNo ? `<div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 80px;">Alt Phone:</span><strong style="font-family: monospace; color: #0f172a;">${order.altNo}</strong></div>` : ''}
                             </div>
                         </div>
 
-                        <!-- Address -->
-                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
-                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">📍 Delivery Address</h4>
-                            <div style="font-size: 14px; line-height: 1.6;">
+                        <!-- Address Card -->
+                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; border: 1px solid rgba(245,158,11,0.2); box-shadow: 0 2px 8px rgba(245,158,11,0.08);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">📍</div>
+                                <h4 style="font-weight: 700; color: #92400e; margin: 0; font-size: 16px;">Delivery Address</h4>
+                            </div>
+                            <div style="font-size: 14px; line-height: 1.7; color: #78350f; font-weight: 500;">
                                 ${order.address}<br>
-                                ${order.distt || order.district || ''}, ${order.state || ''} - ${order.pin || order.pincode || ''}
+                                <strong>${order.distt || order.district || ''}, ${order.state || ''} - ${order.pin || order.pincode || ''}</strong>
                             </div>
                         </div>
 
-                        <!-- Order Items -->
-                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
-                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">🛒 Items</h4>
-                            ${order.items && order.items.length > 0 ? order.items.map(item => `
-                                <div style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-size: 14px;">
-                                    <div style="display: flex; justify-between;">
-                                        <span>${item.description || 'Product'}</span>
-                                        <span>Qty: ${item.quantity || 1}</span>
+                        <!-- Items Card -->
+                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-radius: 16px; border: 1px solid rgba(34,197,94,0.2); box-shadow: 0 2px 8px rgba(34,197,94,0.08);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(34,197,94,0.3);">🛒</div>
+                                <h4 style="font-weight: 700; color: #14532d; margin: 0; font-size: 16px;">Order Items</h4>
+                            </div>
+                            ${order.items && order.items.length > 0 ? order.items.map((item, idx) => `
+                                <div style="padding: 12px; background: white; border-radius: 10px; margin-bottom: 8px; border: 1px solid rgba(34,197,94,0.15); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                    <div style="display: flex; justify-between; align-items: center; font-size: 14px;">
+                                        <span style="font-weight: 600; color: #0f172a;">${idx + 1}. ${item.description || 'Product'}</span>
+                                        <span style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 4px 12px; border-radius: 8px; font-weight: 700; font-size: 12px;">Qty: ${item.quantity || 1}</span>
                                     </div>
                                 </div>
-                            `).join('') : '<p style="font-size: 14px; color: #666;">No items</p>'}
+                            `).join('') : '<p style="font-size: 14px; color: #6b7280; text-align: center; padding: 12px;">No items</p>'}
                         </div>
 
-                        <!-- Payment Details -->
-                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
-                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">💰 Payment Details</h4>
-                            <div style="display: grid; gap: 8px; font-size: 14px;">
-                                <div style="display: flex; justify-between;"><span>Total Amount:</span><strong>₹${order.total || 0}</strong></div>
-                                <div style="display: flex; justify-between;"><span>Advance Paid:</span><span>₹${order.advance || 0}</span></div>
-                                <div style="display: flex; justify-between; padding-top: 8px; border-top: 2px solid #3b82f6;"><span><strong>COD Amount:</strong></span><strong style="color: #ef4444;">₹${order.codAmount || 0}</strong></div>
+                        <!-- Payment Card -->
+                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #fce7f3, #fbcfe8); border-radius: 16px; border: 1px solid rgba(236,72,153,0.2); box-shadow: 0 2px 8px rgba(236,72,153,0.08);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #ec4899, #db2777); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(236,72,153,0.3);">💰</div>
+                                <h4 style="font-weight: 700; color: #831843; margin: 0; font-size: 16px;">Payment Details</h4>
+                            </div>
+                            <div style="display: grid; gap: 10px; font-size: 14px;">
+                                <div style="display: flex; justify-between; padding: 10px; background: white; border-radius: 8px;"><span style="color: #64748b;">Total:</span><strong style="color: #0f172a; font-size: 16px;">₹${order.total || 0}</strong></div>
+                                <div style="display: flex; justify-between; padding: 10px; background: white; border-radius: 8px;"><span style="color: #64748b;">Advance:</span><span style="color: #22c55e; font-weight: 600;">₹${order.advance || 0}</span></div>
+                                <div style="display: flex; justify-between; padding: 14px; background: linear-gradient(135deg, #fee2e2, #fecaca); border-radius: 10px; border: 2px solid #ef4444;"><span style="font-weight: 700; color: #7f1d1d;">COD:</span><strong style="color: #dc2626; font-size: 18px;">₹${order.codAmount || 0}</strong></div>
                             </div>
                         </div>
 
-                        <!-- Tracking Info (if dispatched) -->
                         ${order.status === 'Dispatched' && order.tracking ? `
-                        <div style="margin-bottom: 20px; padding: 15px; background: #ecfdf5; border: 2px solid #10b981; border-radius: 12px;">
-                            <h4 style="font-weight: bold; color: #10b981; margin-bottom: 10px; font-size: 14px;">📦 Tracking Information</h4>
-                            <div style="display: grid; gap: 8px; font-size: 14px;">
-                                <div><strong>Courier:</strong> ${order.tracking.courier || 'N/A'}</div>
-                                <div><strong>AWB/Tracking ID:</strong> <span style="font-family: monospace; background: white; padding: 4px 8px; border-radius: 4px;">${order.tracking.trackingId || order.shiprocket?.awb || 'Pending'}</span></div>
+                        <!-- Tracking Card -->
+                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 16px; border: 2px solid #10b981; box-shadow: 0 4px 16px rgba(16,185,129,0.15);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(16,185,129,0.3);">📦</div>
+                                <h4 style="font-weight: 700; color: #064e3b; margin: 0; font-size: 16px;">Tracking Info</h4>
+                            </div>
+                            <div style="display: grid; gap: 10px; font-size: 14px;">
+                                <div style="display: flex; gap: 8px;"><span style="color: #065f46; min-width: 100px;">Courier:</span><strong style="color: #064e3b;">${order.tracking.courier || 'N/A'}</strong></div>
+                                <div style="display: flex; gap: 8px;"><span style="color: #065f46; min-width: 100px;">Tracking ID:</span><span style="font-family: monospace; background: white; padding: 6px 12px; border-radius: 8px; font-weight: 700; color: #064e3b;">${order.tracking.trackingId || order.shiprocket?.awb || 'Pending'}</span></div>
                             </div>
                         </div>
                         ` : ''}
 
-                        <!-- Status & Timestamps -->
-                        <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 12px;">
-                            <h4 style="font-weight: bold; color: #3b82f6; margin-bottom: 10px; font-size: 14px;">📊 Status</h4>
-                            <div style="display: grid; gap: 8px; font-size: 14px;">
-                                <div><strong>Current Status:</strong> <span style="background: #3b82f6; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${order.status}</span></div>
-                                <div><strong>Order Date:</strong> ${new Date(order.timestamp).toLocaleString('en-IN')}</div>
-                                ${order.dispatchedAt ? `<div><strong>Dispatched:</strong> ${new Date(order.dispatchedAt).toLocaleString('en-IN')}</div>` : ''}
+                        <!-- Status Card -->
+                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #e0e7ff, #c7d2fe); border-radius: 16px; border: 1px solid rgba(99,102,241,0.2); box-shadow: 0 2px 8px rgba(99,102,241,0.08);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #6366f1, #4f46e5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(99,102,241,0.3);">📊</div>
+                                <h4 style="font-weight: 700; color: #312e81; margin: 0; font-size: 16px;">Status & Timeline</h4>
+                            </div>
+                            <div style="display: grid; gap: 10px; font-size: 14px;">
+                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 100px;">Status:</span><span style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; padding: 6px 16px; border-radius: 20px; font-weight: 700; box-shadow: 0 2px 8px rgba(99,102,241,0.3);">${order.status}</span></div>
+                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 100px;">Order Date:</span><strong style="color: #0f172a;">${new Date(order.timestamp).toLocaleString('en-IN')}</strong></div>
+                                ${order.dispatchedAt ? `<div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 100px;">Dispatched:</span><strong style="color: #0f172a;">${new Date(order.dispatchedAt).toLocaleString('en-IN')}</strong></div>` : ''}
                             </div>
                         </div>
 
-                        <!-- Close Button -->
-                        <button onclick="document.getElementById('viewOrderModal').remove()" 
-                            style="width: 100%; padding: 14px; background: linear-gradient(135deg, #3b82f6, #60a5fa); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; box-shadow: 0 4px 12px rgba(59,130,246,0.3);">
-                            Close
-                        </button>
+                        <!-- Action Buttons -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px;">
+                            <button onclick="document.getElementById('viewOrderModal').remove(); openEditOrderModal('${order.orderId}')" 
+                                style="padding: 16px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 15px; box-shadow: 0 6px 20px rgba(245,158,11,0.35); transition: all 0.2s;"
+                                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(245,158,11,0.45)'"
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(245,158,11,0.35)'">
+                                ✏️ Edit Order
+                            </button>
+                            <button onclick="document.getElementById('viewOrderModal').remove()" 
+                                style="padding: 16px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 15px; box-shadow: 0 6px 20px rgba(99,102,241,0.35); transition: all 0.2s;"
+                                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(99,102,241,0.45)'"
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(99,102,241,0.35)'">
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
