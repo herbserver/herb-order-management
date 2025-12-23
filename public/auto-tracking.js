@@ -40,7 +40,16 @@ async function checkForOutForDelivery() {
             }
         }
 
+        let requestCount = 0;
+        const maxRequestsPerBatch = 10; // Limit to 10 requests per check
+
         for (const order of orders) {
+            // Stop if we've hit the batch limit
+            if (requestCount >= maxRequestsPerBatch) {
+                console.log(`⏸️ Batch limit reached (${maxRequestsPerBatch}). Remaining orders will be checked next cycle.`);
+                break;
+            }
+
             if (order.shiprocket && order.shiprocket.awb) {
                 const awb = order.shiprocket.awb;
 
@@ -49,34 +58,48 @@ async function checkForOutForDelivery() {
                     continue;
                 }
 
-                // Get latest tracking
-                const trackRes = await fetch(`${API_URL}/shiprocket/track/${awb}`);
-                const trackData = await trackRes.json();
+                try {
+                    // Get latest tracking
+                    const trackRes = await fetch(`${API_URL}/shiprocket/track/${awb}`);
 
-                if (trackData.success && trackData.tracking) {
-                    const status = trackData.tracking.currentStatus || '';
-
-                    // Check if Out for Delivery
-                    if (status.toLowerCase().includes('out for delivery')) {
-                        // Mark as notified
-                        window.notifiedOrders.add(order.orderId);
-
-                        // Show alert
-                        showOutForDeliveryAlert(order, trackData.tracking);
-
-                        // Update order in background
-                        await fetch(`${API_URL}/orders/${order.orderId}/update-tracking`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ awb: awb })
-                        });
+                    // Check for rate limiting
+                    if (trackRes.status === 429) {
+                        console.warn('⚠️ Rate limit hit. Stopping batch and will retry next cycle.');
+                        break;
                     }
+
+                    const trackData = await trackRes.json();
+                    requestCount++;
+
+                    if (trackData.success && trackData.tracking) {
+                        const status = trackData.tracking.currentStatus || '';
+
+                        // Check if Out for Delivery
+                        if (status.toLowerCase().includes('out for delivery')) {
+                            // Mark as notified
+                            window.notifiedOrders.add(order.orderId);
+
+                            // Show alert
+                            showOutForDeliveryAlert(order, trackData.tracking);
+
+                            // Update order in background
+                            await fetch(`${API_URL}/orders/${order.orderId}/update-tracking`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ awb: awb })
+                            });
+                        }
+                    }
+                } catch (trackError) {
+                    console.error(`Error tracking ${order.orderId}:`, trackError.message);
                 }
 
-                // Small delay to avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Longer delay to avoid rate limiting (3 seconds between requests)
+                await new Promise(resolve => setTimeout(resolve, 3000));
             }
         }
+
+        console.log(`✅ Batch complete. Checked ${requestCount} orders.`);
 
     } catch (error) {
         console.error('Error checking tracking:', error);

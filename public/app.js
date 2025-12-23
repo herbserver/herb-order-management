@@ -2917,6 +2917,16 @@ function generateOrderCardHTML(order) {
                 </div>
             </div>
             
+            <!-- Employee Badge -->
+            ${order.employeeId || order.createdBy || order.employee ? `
+            <div class="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-indigo-50 px-3 py-1.5 rounded-lg border border-purple-200/50 shadow-sm">
+                <span class="text-purple-600 text-xs">👤</span>
+                <span class="text-xs font-bold text-purple-700">
+                    ${order.employee ? `${order.employee}${order.employeeId ? ` (${order.employeeId})` : ''}` : (order.employeeId || order.createdBy)}
+                </span>
+            </div>
+            ` : ''}
+            
             <!-- Contact Card -->
             <div class="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-cyan-50 px-3 py-2 rounded-xl border border-blue-200/50 shadow-sm">
                 <span class="text-blue-500">${phoneIcon}</span>
@@ -2954,23 +2964,29 @@ function generateOrderCardHTML(order) {
         </div>
         ` : ''}
 
-        <!-- Actions Footer -->
+        <!-- Actions Footer with Modern Design -->
         <div class="px-4 py-3.5 bg-gray-50/70 border-t border-gray-100 space-y-2.5">
             ${isVerification ? `
-                <!-- View Details Button -->
-                <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
-                    class="w-full bg-gray-500 hover:bg-gray-600 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-gray-200/50 active:scale-95 transition-all uppercase tracking-widest">👁️ VIEW DETAILS</button>
+                <!-- Primary Action -->
+                <button type="button" onclick="verifyAddress('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                    class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3.5 rounded-xl text-xs font-black shadow-xl shadow-blue-300/40 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">✅ VERIFY ADDRESS</button>
                 
-                <!-- Primary Actions -->
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="verifyAddress('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                        class="bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-blue-200/50 active:scale-95 transition-all uppercase tracking-widest">VERIFY</button>
-                    <button type="button" onclick="markAsUnverified('${order.orderId}')" 
-                        class="bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg text-xs font-black shadow-lg shadow-amber-200/50 active:scale-95 transition-all uppercase tracking-widest">HOLD</button>
+                <!-- Quick Actions Row -->
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
+                        class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
+                    <button type="button" onclick="cancelOrder('${order.orderId}')" 
+                        class="bg-gradient-to-r from-red-500 to-rose-600 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-red-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">❌ CANCEL</button>
+                    <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
+                        class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
                 </div>
 
+                <!-- Hold Button -->
+                <button type="button" onclick="markAsUnverified('${order.orderId}')" 
+                    class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">⏸️ HOLD ORDER</button>
+
                 <!-- Courier Suggestion -->
-                <div class="mt-2 pt-2 border-t border-gray-100">
+                <div class="pt-2 border-t border-gray-100">
                     <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">💡 Suggest Courier for Dispatch</label>
                     <select id="courierSelect_${order.orderId}" 
                         class="w-full border border-purple-200 rounded-lg px-3 py-2 text-xs bg-white font-bold text-gray-700 outline-none focus:border-purple-500 shadow-sm">
@@ -3025,22 +3041,25 @@ function generateOrderCardHTML(order) {
                 </div>
                 ` : ''}
                 
-                <!-- Dispatch Actions -->
-                <div class="space-y-2 pt-1">
+                <!-- Dispatch Actions with Modern Design -->
+                <div class="space-y-2.5 pt-1 px-4 pb-4">
+                    <!-- Primary Action -->
                     <button type="button" onclick="dispatchWithShiprocket('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                        class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-lg text-xs font-black shadow-xl shadow-orange-200/50 hover:scale-[1.02] active:scale-95 transition-all">🚀 SHIPROCKET</button>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                            class="bg-purple-600 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-purple-200/50 hover:bg-purple-700 active:scale-95 transition-all">📦 MANUAL</button>
+                        class="w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white py-3.5 rounded-xl text-xs font-black shadow-xl shadow-orange-300/50 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all">🚀 SHIPROCKET DISPATCH</button>
+                    
+                    <!-- Quick Actions Row -->
+                    <div class="grid grid-cols-3 gap-2">
                         <button type="button" onclick="editDispatchOrder('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                            class="bg-amber-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-amber-200/50 hover:bg-amber-600 active:scale-95 transition-all">✏️ EDIT</button>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
+                            class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
                         <button type="button" onclick="cancelOrder('${order.orderId}')" 
-                            class="bg-red-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-red-200/50 hover:bg-red-600 active:scale-95 transition-all">❌ CANCEL</button>
+                            class="bg-gradient-to-r from-red-500 to-rose-600 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-red-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">❌ CANCEL</button>
                         <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
-                            class="bg-gray-500 text-white py-2.5 rounded-lg text-xs font-black shadow-lg shadow-gray-200/50 hover:bg-gray-600 active:scale-95 transition-all">👁️ VIEW</button>
+                            class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
                     </div>
+                    
+                    <!-- Manual Dispatch -->
+                    <button type="button" onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                        class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2.5 rounded-xl text-xs font-black shadow-lg shadow-purple-300/40 hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all">📦 MANUAL DISPATCH</button>
                 </div>
             `)}
         </div>
