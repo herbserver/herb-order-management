@@ -55,6 +55,7 @@ const orderRoutes = require('./routes/orders');
 const analyticsRoutes = require('./routes/analytics');
 const locationRoutes = require('./routes/locations');
 const shiprocketRoutes = require('./routes/shiprocket');
+const shiprocketWebhookRoutes = require('./routes/shiprocket-webhook');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payment');
 const leaderboardRoutes = require('./routes/leaderboard');
@@ -68,6 +69,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/shiprocket', shiprocketRoutes);
+app.use('/api/shiprocket', shiprocketWebhookRoutes); // Webhook endpoint
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);

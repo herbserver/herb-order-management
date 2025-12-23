@@ -185,13 +185,40 @@ const shiprocketConfigSchema = new mongoose.Schema({
     collection: 'shiprocket_config'
 });
 
+// Notification Schema - For real-time alerts
+const notificationSchema = new mongoose.Schema({
+    orderId: { type: String, required: true, index: true },
+    employeeId: String,
+    type: {
+        type: String,
+        enum: ['tracking_update', 'order_update', 'system_alert'],
+        required: true
+    },
+    title: { type: String, required: true },
+    message: { type: String, required: true },
+    emoji: String,
+    priority: {
+        type: String,
+        enum: ['low', 'medium', 'high'],
+        default: 'medium'
+    },
+    data: mongoose.Schema.Types.Mixed,
+    read: { type: Boolean, default: false },
+    timestamp: { type: Date, default: Date.now, index: true }
+}, {
+    timestamps: true,
+    collection: 'notifications'
+});
+
 // Create models
 const Order = mongoose.model('Order', orderSchema);
 const Department = mongoose.model('Department', departmentSchema);
 const ShiprocketConfig = mongoose.model('ShiprocketConfig', shiprocketConfigSchema);
+const Notification = mongoose.model('Notification', notificationSchema);
 
 module.exports = {
     Order,
     Department,
-    ShiprocketConfig
+    ShiprocketConfig,
+    Notification
 };

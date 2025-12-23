@@ -14,13 +14,14 @@ function initializeAutoTracking() {
         clearInterval(window.trackingInterval);
     }
 
-    console.log('🔔 Auto-tracking initialized - checking every 3 minutes');
+    console.log('🔔 Auto-tracking initialized - checking every 30 minutes (backup mode)');
+    console.log('📡 Primary updates via Shiprocket webhook');
 
     // Check immediately
     checkForOutForDelivery();
 
-    // Then check every 3 minutes
-    window.trackingInterval = setInterval(checkForOutForDelivery, 3 * 60 * 1000);
+    // Then check every 30 minutes (backup only, webhook is primary)
+    window.trackingInterval = setInterval(checkForOutForDelivery, 30 * 60 * 1000);
 }
 
 // Check all dispatched orders for "Out for Delivery" status
