@@ -229,9 +229,10 @@ function showEmployeePanel() {
     loadMyOrders();
 
     // Start auto-tracking for Out for Delivery alerts (employee's own orders)
-    if (typeof initializeAutoTracking === 'function') {
-        initializeAutoTracking();
-    }
+    // Auto-tracking DISABLED - Using webhook for real-time updates
+    // if (typeof initializeAutoTracking === 'function') {
+    //     initializeAutoTracking();
+    // }
 }
 
 function showDepartmentPanel() {
@@ -280,9 +281,10 @@ function showDepartmentPanel() {
 
     loadDeptOrders();
     // Start auto-tracking for Out for Delivery alerts
-    if (typeof initializeAutoTracking === 'function') {
-        initializeAutoTracking();
-    }
+    // Auto-tracking DISABLED - Using webhook for real-time updates
+    // if (typeof initializeAutoTracking === 'function') {
+    //     initializeAutoTracking();
+    // }
 }
 
 // Load Admin Panel Data - COMPLETE VERSION
@@ -371,9 +373,10 @@ function showAdminPanel() {
     loadAdminData();
 
     // Start auto-tracking for Out for Delivery alerts
-    if (typeof initializeAutoTracking === 'function') {
-        initializeAutoTracking();
-    }
+    // Auto-tracking DISABLED - Using webhook for real-time updates
+    // if (typeof initializeAutoTracking === 'function') {
+    //     initializeAutoTracking();
+    // }
 }
 
 // ==================== AUTH FUNCTIONS ====================
@@ -6277,6 +6280,9 @@ function switchVerificationTab(tab) {
     document.getElementById('verificationPendingTab').classList.add('hidden');
     document.getElementById('verificationUnverifiedTab').classList.add('hidden');
     document.getElementById('verificationHistoryTab').classList.add('hidden');
+    if (document.getElementById('verificationCancelledTab')) {
+        document.getElementById('verificationCancelledTab').classList.add('hidden');
+    }
 
     document.getElementById('verificationTabPending').classList.remove('tab-active');
     document.getElementById('verificationTabPending').classList.add('bg-white', 'text-gray-600');
@@ -6305,8 +6311,10 @@ function switchVerificationTab(tab) {
         document.getElementById('verificationTabHistory').classList.remove('bg-white', 'text-gray-600');
         loadVerificationHistory();
     } else if (tab === 'cancelled') {
-        // Cancelled tab doesn't have its own tab div, it's a section in verification history
-        document.getElementById('verificationHistoryTab').classList.remove('hidden');
+        // Show cancelled tab (now has its own tab div)
+        if (document.getElementById('verificationCancelledTab')) {
+            document.getElementById('verificationCancelledTab').classList.remove('hidden');
+        }
         if (document.getElementById('verificationTabCancelled')) {
             document.getElementById('verificationTabCancelled').classList.add('tab-active');
             document.getElementById('verificationTabCancelled').classList.remove('bg-white', 'text-gray-600');

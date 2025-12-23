@@ -20,6 +20,7 @@ router.post('/orders', async (req, res) => {
                     order.customerName,
                     order.telNo,
                     order.mobile,
+                    order.altNo,
                     order.address,
                     order.pin,
                     order.pincode,
