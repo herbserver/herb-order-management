@@ -32,6 +32,33 @@ function writeJSON(filePath, data) {
     }
 }
 
+// Helper function to sync all employees to MongoDB
+async function syncAllEmployeesToMongo(employees) {
+    try {
+        if (!dataAccess.getMongoStatus()) {
+            console.log('⚠️ MongoDB not connected, skipping sync');
+            return false;
+        }
+
+        // Get or find employee department
+        let empDept = await dataAccess.getDepartment('HON-EMP');
+        if (!empDept) {
+            const allDepts = await dataAccess.getAllDepartments();
+            empDept = allDepts.find(d => d.departmentType === 'employee');
+        }
+
+        if (empDept) {
+            await dataAccess.updateDepartment(empDept.departmentId, { employees });
+            console.log(`✅ All employees synced to MongoDB (${Object.keys(employees).length} employees)`);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('❌ Failed to sync employees to MongoDB:', error.message);
+        return false;
+    }
+}
+
 // Get All Employees (for Admin)
 router.get('/', async (req, res) => {
     try {
@@ -153,6 +180,10 @@ router.put('/:empId', async (req, res) => {
             });
             writeJSON(ORDERS_FILE, orders);
             writeJSON(EMPLOYEES_FILE, employees);
+
+            // Sync to MongoDB
+            await syncAllEmployeesToMongo(employees);
+
             return res.json({ success: true, message: 'Employee ID updated successfully!', newId: newIdUpper });
         }
 
@@ -164,6 +195,10 @@ router.put('/:empId', async (req, res) => {
             });
             writeJSON(ORDERS_FILE, orders);
             writeJSON(EMPLOYEES_FILE, employees);
+
+            // Sync to MongoDB
+            await syncAllEmployeesToMongo(employees);
+
             return res.json({ success: true, message: 'Employee name updated successfully!' });
         }
 

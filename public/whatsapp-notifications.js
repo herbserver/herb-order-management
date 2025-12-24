@@ -6,8 +6,10 @@ if (!window.whatsappQueue) {
 }
 
 // Message Templates - Hinglish Version
-const whatsappTemplates = {
-    booked: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+// Use var with check to avoid duplicate declaration if common.js loads first
+if (typeof whatsappTemplates === 'undefined') {
+    var whatsappTemplates = {
+        booked: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
 Namaste *${order.customerName}* ji! 🙏
@@ -28,7 +30,7 @@ Namaste *${order.customerName}* ji! 🙏
 _Team Herb On Naturals_ 💚
 🌐 herbonnaturals.in`,
 
-    verified: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+        verified: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
 Namaste *${order.customerName}* ji! 🙏
@@ -49,7 +51,7 @@ Namaste *${order.customerName}* ji! 🙏
 
 _Team Herb On Naturals_ 💚`,
 
-    dispatched: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+        dispatched: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
 Namaste *${order.customerName}* ji! 🙏
@@ -77,7 +79,7 @@ Namaste *${order.customerName}* ji! 🙏
 _Happy Shopping!_ 🛍️
 _Team Herb On Naturals_ 💚`,
 
-    out_for_delivery: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+        out_for_delivery: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
 Namaste *${order.customerName}* ji! 🙏
@@ -94,7 +96,7 @@ Namaste *${order.customerName}* ji! 🙏
 
 _Team Herb On Naturals_ 💚`,
 
-    delivered: (order) => `🌿 *_HERB ON NATURALS_* 🌿
+        delivered: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
 Namaste *${order.customerName}* ji! 🙏
@@ -111,7 +113,8 @@ Namaste *${order.customerName}* ji! 🙏
 
 _Warm regards,_ 💚
 _Team Herb On Naturals_`
-};
+    };
+}
 
 // Helper functions
 function getCompanyName() {

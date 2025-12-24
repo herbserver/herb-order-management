@@ -92,6 +92,96 @@ class ShiprocketAPI {
         }
     }
 
+    // Create order in Shiprocket
+    async createOrder(orderData) {
+        try {
+            const token = await this.getToken();
+            console.log('📦 Creating Shiprocket order...');
+
+            const response = await axios.post(`${this.baseURL}/orders/create/adhoc`, orderData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = response.data;
+            console.log('📡 Shiprocket Create Order Response:', result);
+
+            if (result && (result.order_id || result.shipment_id)) {
+                return {
+                    success: true,
+                    orderId: result.order_id,
+                    shipmentId: result.shipment_id,
+                    awb: result.awb_code || null,
+                    courierName: result.courier_name || null,
+                    message: 'Order created successfully'
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.message || 'Failed to create order',
+                    details: result.errors || result
+                };
+            }
+        } catch (error) {
+            console.error('❌ Shiprocket Create Order Error:', error.response?.data || error.message);
+            return {
+                success: false,
+                message: error.response?.data?.message || error.message,
+                details: error.response?.data?.errors || error.response?.data
+            };
+        }
+    }
+
+    // Check serviceability for delivery pincode
+    async checkServiceability(pickupPostcode, deliveryPostcode, weight = 0.5, codAmount = 0) {
+        try {
+            const token = await this.getToken();
+
+            const response = await axios.get(`${this.baseURL}/courier/serviceability/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                params: {
+                    pickup_postcode: pickupPostcode,
+                    delivery_postcode: deliveryPostcode,
+                    weight: weight,
+                    cod: codAmount > 0 ? 1 : 0
+                }
+            });
+
+            const result = response.data;
+
+            if (result && result.data && result.data.available_courier_companies) {
+                return {
+                    success: true,
+                    serviceable: result.data.available_courier_companies.length > 0,
+                    couriers: result.data.available_courier_companies.map(c => ({
+                        id: c.courier_company_id,
+                        name: c.courier_name,
+                        rate: c.rate,
+                        estimatedDays: c.etd
+                    }))
+                };
+            }
+
+            return {
+                success: false,
+                serviceable: false,
+                message: 'Pincode not serviceable'
+            };
+        } catch (error) {
+            console.error('❌ Shiprocket Serviceability Error:', error.response?.data || error.message);
+            return {
+                success: false,
+                serviceable: false,
+                message: error.response?.data?.message || error.message
+            };
+        }
+    }
+
     // Deep Scanning Search (Up to 500 orders)
     async getOrderByChannelId(channelOrderId, customerMobile = null, customerName = null, location = {}) {
         try {

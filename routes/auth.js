@@ -3,10 +3,52 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const { hashPassword, comparePassword, generateToken } = require('../auth');
+const dataAccess = require('../dataAccess');
 
 // Data Files Path (Assuming they are in ../data)
 const DATA_DIR = path.join(__dirname, '../data');
 const EMPLOYEES_FILE = path.join(DATA_DIR, 'employees.json');
+
+// Helper function to sync employee to MongoDB
+async function syncEmployeeToMongo(employeeId, employeeData) {
+    try {
+        if (!dataAccess.getMongoStatus()) {
+            console.log('⚠️ MongoDB not connected, skipping sync');
+            return false;
+        }
+
+        // Get or create employee department
+        let empDept = await dataAccess.getDepartment('HON-EMP');
+        if (!empDept) {
+            // Check if any employee type department exists
+            const allDepts = await dataAccess.getAllDepartments();
+            empDept = allDepts.find(d => d.departmentType === 'employee');
+        }
+
+        if (empDept) {
+            const employees = empDept.employees || {};
+            employees[employeeId] = employeeData;
+            await dataAccess.updateDepartment(empDept.departmentId, { employees });
+            console.log(`✅ Employee ${employeeId} synced to MongoDB`);
+            return true;
+        } else {
+            // Create employee department if not exists
+            await dataAccess.createDepartment('HON-EMP', 'Employee Department', employeeData.password, 'employee');
+            console.log('✅ Created Employee Department in MongoDB');
+            // Now add the employee
+            const newDept = await dataAccess.getDepartment('HON-EMP');
+            if (newDept) {
+                const employees = { [employeeId]: employeeData };
+                await dataAccess.updateDepartment('HON-EMP', { employees });
+                console.log(`✅ Employee ${employeeId} synced to MongoDB`);
+            }
+            return true;
+        }
+    } catch (error) {
+        console.error('❌ Failed to sync employee to MongoDB:', error.message);
+        return false;
+    }
+}
 
 // Helper Functions for JSON (Fallback)
 function readJSON(filePath, defaultValue = []) {
@@ -44,12 +86,17 @@ router.post('/register', async (req, res) => {
         }
 
         const hashedPassword = await hashPassword(password);
-        employees[id] = {
+        const employeeData = {
             name,
             password: hashedPassword,
             createdAt: new Date().toISOString()
         };
+
+        employees[id] = employeeData;
         writeJSON(EMPLOYEES_FILE, employees);
+
+        // Also sync to MongoDB for production
+        await syncEmployeeToMongo(id, employeeData);
 
         console.log(`✅ New Employee Registered: ${name} (${id})`);
         res.json({ success: true, message: 'Registration successful!', employee: { id, name } });
