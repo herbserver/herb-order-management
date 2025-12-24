@@ -54,7 +54,7 @@ const orderSchema = new mongoose.Schema({
     // Status
     status: {
         type: String,
-        enum: ['Pending', 'Address Verified', 'Dispatched', 'Delivered', 'Cancelled', 'On Hold', 'Unverified'],
+        enum: ['Pending', 'Address Verified', 'Dispatched', 'Delivered', 'Cancelled', 'On Hold', 'Unverified', 'Delivery Requested'],
         default: 'Pending',
         index: true
     },
@@ -125,6 +125,7 @@ const orderSchema = new mongoose.Schema({
     },
 
     // Courier Suggestion (from Verification to Dispatch)
+    suggestedCourier: String,  // Root level for quick access
     courierSuggestion: {
         suggestedCourier: String,
         suggestedBy: String,

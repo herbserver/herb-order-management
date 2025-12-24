@@ -18,9 +18,9 @@ Namaste *${order.customerName}* ji! 🙏
 
 📦 *ORDER DETAILS*
 ▸ Order No: *${order.orderId}*
-▸ Total Amount: *Rs. ${order.total}*
+▸ Total Amount: *Rs. ${order.total || 0}*
 ▸ Advance Paid: Rs. ${order.advance || 0}
-▸ COD Amount: *Rs. ${order.codAmount || 0}*
+▸ COD Amount: *Rs. ${order.codAmount || order.cod || 0}*
 
 📞 Hamari team jaldi hi aapko call karegi address verify karne ke liye.
 
@@ -40,9 +40,9 @@ Namaste *${order.customerName}* ji! 🙏
 📦 *ORDER: ${order.orderId}*
 
 💰 *PAYMENT INFO*
-▸ Total: Rs. ${order.total}
+▸ Total: Rs. ${order.total || 0}
 ▸ Paid: Rs. ${order.advance || 0}
-▸ COD: *Rs. ${order.codAmount || 0}*
+▸ COD: *Rs. ${order.codAmount || order.cod || 0}*
 
 📦 Order packing ho raha hai. Tracking details jaldi milenge!
 
@@ -65,8 +65,8 @@ Namaste *${order.customerName}* ji! 🙏
 ▸ Courier: *${order.shiprocket?.courierName || order.tracking?.courier || 'Processing'}*
 
 💰 *PAYMENT*
-▸ Total: Rs. ${order.total}
-▸ COD: *Rs. ${order.codAmount || 0}*
+▸ Total: Rs. ${order.total || 0}
+▸ COD: *Rs. ${order.codAmount || order.cod || 0}*
 
 🔗 Track karein: shiprocket.co/tracking
 
@@ -87,7 +87,7 @@ Namaste *${order.customerName}* ji! 🙏
 🏃 *AJ DELIVERY HOGI!*
 
 📦 Order: *${order.orderId}*
-💵 COD: *Rs. ${order.codAmount || 0}*
+💵 COD: *Rs. ${order.codAmount || order.cod || 0}*
 
 🏠 Aaj aapka parcel aane wala hai, please available rahein.
 

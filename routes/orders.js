@@ -154,6 +154,19 @@ router.get('/delivered', async (req, res) => {
     }
 });
 
+// Get Delivery Requests (Employees requesting delivery confirmation)
+router.get('/delivery-requests', async (req, res) => {
+    try {
+        const orders = await dataAccess.getAllOrders();
+        const requests = orders.filter(o => o.status === 'Delivery Requested');
+        console.log(`📬 [DELIVERY REQUESTS] Found ${requests.length} delivery requests`);
+        res.json({ success: true, requests: requests });
+    } catch (e) {
+        console.error('❌ Get delivery requests error:', e);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // Mark Order as Delivered
 router.post('/deliver', async (req, res) => {
     try {
