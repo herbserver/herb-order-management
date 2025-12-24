@@ -63,5 +63,10 @@
     "name": "Khushi",
     "password": "$2b$10$L4PPkRN4FqeeYnIGxbtaueSaOzCI6kAhUFiVp.xeMo7YezJ7IdCVO",
     "createdAt": "2025-12-18T06:44:33.637Z"
+  },
+  "HON-E014": {
+    "name": "Preeti Sharma",
+    "password": "$2b$10$L4PPkRN4FqeeYnIGxbtaueSaOzCI6kAhUFiVp.xeMo7YezJ7IdCVO",
+    "createdAt": "2025-12-24T10:59:00.000Z"
   }
 }

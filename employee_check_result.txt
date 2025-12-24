@@ -1,0 +1,76 @@
+Connecting to MongoDB...
+Connected!
+
+Departments found: 4
+
+Department: Verification (HON-V001)
+Type: verification
+Employees in this dept: 0
+
+Department: Dispatch (HON-D001)
+Type: dispatch
+Employees in this dept: 0
+
+Department: Muskan (HON-D002)
+Type: delivery
+Employees in this dept: 0
+
+Department: Employee Department (HON-EMP)
+Type: employee
+Employees in this dept: 14
+  HON-E008: Kumkum
+  HON-E007: Neha
+  HON-E010: Anita
+  HON-E009: Harleen
+  HON-E001: Seema
+  HON-E004: Rama
+  HON-E006: Poonam
+  HON-E002: Khushboo gupta
+  HON-E005: Saloni
+  HON-E003: Harpreet
+  HON-E011: Annu Arora
+  HON-E012: Ila Singh
+  HON-E013: Khushi
+  HON-E014: Preeti Sharma
+
+========================================
+TOTAL EMPLOYEES: 14
+========================================
+
+ALL EMPLOYEES (sorted):
+1. HON-E001 - Seema
+2. HON-E002 - Khushboo gupta
+3. HON-E003 - Harpreet
+4. HON-E004 - Rama
+5. HON-E005 - Saloni
+6. HON-E006 - Poonam
+7. HON-E007 - Neha
+8. HON-E008 - Kumkum
+9. HON-E009 - Harleen
+10. HON-E010 - Anita
+11. HON-E011 - Annu Arora
+12. HON-E012 - Ila Singh
+13. HON-E013 - Khushi
+14. HON-E014 - Preeti Sharma
+
+--- CHECK HON-E001 to HON-E014 ---
+[OK] HON-E001: Seema
+[OK] HON-E002: Khushboo gupta
+[OK] HON-E003: Harpreet
+[OK] HON-E004: Rama
+[OK] HON-E005: Saloni
+[OK] HON-E006: Poonam
+[OK] HON-E007: Neha
+[OK] HON-E008: Kumkum
+[OK] HON-E009: Harleen
+[OK] HON-E010: Anita
+[OK] HON-E011: Annu Arora
+[OK] HON-E012: Ila Singh
+[OK] HON-E013: Khushi
+[OK] HON-E014: Preeti Sharma
+
+--- SUMMARY ---
+Found: 14
+Missing: 0
+
+Done.
