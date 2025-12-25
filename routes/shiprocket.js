@@ -47,6 +47,51 @@ router.post('/create-order', async (req, res) => {
             });
         }
 
+        // ==================== SIMPLE MEDICINE FORMAT ====================
+        // Final amount to collect (COD amount)
+        const finalAmount = order.codAmount || order.total || 0;
+
+        // Calculate total quantity of all items
+        const totalQuantity = order.items && order.items.length > 0
+            ? order.items.reduce((sum, item) => sum + (item.quantity || item.qty || 1), 0)
+            : 1;
+
+        // Calculate MRP Total (for discount calculation)
+        const mrpTotal = order.items && order.items.length > 0
+            ? order.items.reduce((sum, item) => {
+                const itemPrice = item.price || item.mrp || item.unitPrice || 0;
+                const itemQty = item.quantity || item.qty || 1;
+                return sum + (itemPrice * itemQty);
+            }, 0)
+            : finalAmount;
+
+        // Calculate unit price (COD / Quantity)
+        const unitPrice = Math.round(finalAmount / totalQuantity);
+
+        // Calculate discount (MRP - COD)
+        const totalDiscount = mrpTotal > finalAmount ? mrpTotal - finalAmount : 0;
+        const perUnitDiscount = Math.round(totalDiscount / totalQuantity);
+
+        console.log(`💊 Medicine Order for ${order.orderId}:`);
+        console.log(`   Quantity: ${totalQuantity}`);
+        console.log(`   MRP Total: ₹${mrpTotal}`);
+        console.log(`   COD Amount: ₹${finalAmount}`);
+        console.log(`   Unit Price: ₹${unitPrice}`);
+        console.log(`   Discount: ₹${totalDiscount} (₹${perUnitDiscount}/unit)`);
+
+        // Single item: "Medicine"
+        const orderItems = [{
+            name: "Medicine",
+            sku: "MEDICINE",
+            units: totalQuantity,
+            selling_price: unitPrice,
+            discount: perUnitDiscount,
+            tax: 0,
+            hsn: 0
+        }];
+
+        console.log(`   ✅ Shiprocket Total: ₹${unitPrice * totalQuantity}`);
+
         const payload = {
             order_id: order.orderId,
             order_date: new Date().toISOString().split('T')[0],
@@ -60,17 +105,9 @@ router.post('/create-order', async (req, res) => {
             billing_country: "India",
             billing_phone: order.telNo,
             shipping_is_billing: true,
-            order_items: [{
-                name: "Medicine",
-                sku: "MEDICINE",
-                units: order.items.reduce((sum, item) => sum + (item.quantity || 1), 0), // Total quantity
-                selling_price: order.total, // Total amount
-                discount: 0,
-                tax: 0,
-                hsn: 0
-            }],
+            order_items: orderItems,  // Items with adjusted prices
             payment_method: "COD",
-            sub_total: order.codAmount || order.total, // COD amount (after advance payment)
+            sub_total: finalAmount,   // Final COD amount
             length: dimensions.length,
             breadth: dimensions.breadth,
             height: dimensions.height,

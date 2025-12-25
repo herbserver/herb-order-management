@@ -129,6 +129,21 @@ async function getOrdersByStatus(status) {
     return orders.filter(o => o.status === status);
 }
 
+// Check if an active order already exists for a mobile number
+async function findActiveOrderByMobile(mobileNumber) {
+    const activeStatuses = ['Pending', 'Address Verified', 'On Hold', 'Dispatched', 'Delivery Requested'];
+
+    if (mongoConnected) {
+        return await Order.findOne({
+            telNo: mobileNumber,
+            status: { $in: activeStatuses }
+        });
+    }
+    // Fallback to JSON
+    const orders = readJSONFile(path.join(__dirname, 'data', 'orders.json'), []);
+    return orders.find(o => o.telNo === mobileNumber && activeStatuses.includes(o.status));
+}
+
 async function createOrder(orderData) {
     if (mongoConnected) {
         const order = new Order(orderData);
@@ -264,6 +279,7 @@ module.exports = {
     getAllOrders,
     getOrderById,
     getOrdersByStatus,
+    findActiveOrderByMobile, // ✅ Check duplicate orders by mobile
     createOrder,
     updateOrder,
     deleteOrder, // ✅ Added delete function

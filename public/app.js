@@ -1562,7 +1562,55 @@ async function saveOrder() {
         }
 
         else {
-            showMessage(data.message || 'Order save nahi hua!', 'error', 'empMessage');
+            // Check if it's a duplicate order error
+            if (data.existingOrder) {
+                const popup = document.createElement('div');
+                popup.innerHTML = `
+                    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s;">
+                        <div style="background: white; border-radius: 20px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s;">
+                            <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 40px;">⚠️</span>
+                            </div>
+                            <h2 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 12px; text-align: center;">Duplicate Order Alert!</h2>
+                            <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px; text-align: center;">
+                                Is mobile number par pehle se ek order hai!<br>
+                                Doosre employee ne already order le liya hai.
+                            </p>
+                            
+                            <div style="background: #fef3c7; padding: 16px; border-radius: 12px; border: 1px solid #fcd34d; margin-bottom: 20px;">
+                                <div style="display: grid; gap: 8px; font-size: 14px;">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #92400e;">📦 Order ID:</span>
+                                        <span style="font-weight: bold; color: #1f2937;">${data.existingOrder.orderId}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #92400e;">📊 Status:</span>
+                                        <span style="font-weight: bold; color: #1f2937;">${data.existingOrder.status}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #92400e;">👤 Employee:</span>
+                                        <span style="font-weight: bold; color: #1f2937;">${data.existingOrder.employeeName || data.existingOrder.createdBy || 'Unknown'}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #92400e;">📅 Created:</span>
+                                        <span style="font-weight: bold; color: #1f2937;">${new Date(data.existingOrder.createdAt).toLocaleDateString('hi-IN')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button onclick="this.closest('div[style*=fixed]').remove()" 
+                                style="width: 100%; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 14px 24px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(245,158,11,0.3);" 
+                                onmouseover="this.style.transform='scale(1.02)'" 
+                                onmouseout="this.style.transform='scale(1)'">
+                                समझ गया!
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(popup);
+            } else {
+                showMessage(data.message || 'Order save nahi hua!', 'error', 'empMessage');
+            }
         }
 
         btn.innerHTML = originalText;
@@ -3099,13 +3147,30 @@ function generateOrderCardHTML(order) {
                     </select>
                 </div>
             ` : (order.status === 'Dispatched' ? `
+                <!-- Courier Suggestion Badge for Dispatched Orders -->
+                ${order.suggestedCourier || order.courierSuggestion?.suggestedCourier ? `
+                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-3 rounded-xl mx-4 mt-2 shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">💡</span>
+                        <div class="flex-grow">
+                            <div class="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Verification Suggested</div>
+                            <div class="text-sm font-black text-purple-800">${order.suggestedCourier || order.courierSuggestion?.suggestedCourier}</div>
+                        </div>
+                        <span class="bg-purple-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">USED</span>
+                    </div>
+                    ${order.courierSuggestion?.suggestedBy ? `<div class="text-[10px] text-purple-500 mt-1 ml-8">By: ${order.courierSuggestion.suggestedBy}</div>` : ''}
+                </div>
+                ` : ''}
+                
                 <!-- Already Dispatched Actions with Modern Design -->
                 <div class="space-y-2.5 pt-1 px-4 pb-4">
                     <button type="button" onclick="approveDelivery('${order.orderId}')" 
                         class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3.5 rounded-xl text-xs font-black shadow-xl shadow-blue-300/40 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">✅ MARK DELIVERED</button>
-                    <div class="grid grid-cols-2 gap-2.5">
+                    <div class="grid grid-cols-3 gap-2">
                         <button type="button" onclick="editDispatchedOrder('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                             class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
+                        <button type="button" onclick="revertDispatch('${order.orderId}')" 
+                            class="bg-gradient-to-r from-rose-500 to-pink-600 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-rose-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">🔙 REVERT</button>
                         <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
                             class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
                     </div>
@@ -3437,6 +3502,55 @@ async function suggestCourier(orderId) {
     }
 }
 
+// Revert Dispatch - Move order back from Dispatched to Ready for Dispatch
+async function revertDispatch(orderId) {
+    const reason = prompt('Revert karne ka reason batao (e.g., Galti se dispatch, Wrong address, etc.):');
+
+    if (reason === null) return; // User cancelled
+
+    if (!reason.trim()) {
+        alert('Please provide a reason for reverting the dispatch!');
+        return;
+    }
+
+    if (!confirm(`⚠️ Kya aap sure ho?\n\nOrder "${orderId}" wapas "Ready for Dispatch" mein chala jayega.\n\nNote: Shiprocket mein order manually cancel karna padega!`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/orders/${orderId}/revert-dispatch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                reason: reason.trim(),
+                revertedBy: currentUser?.id || currentUser?.name || 'Dispatch Dept'
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccessPopup(
+                'Order Reverted! 🔙',
+                `Order ${orderId} wapas "Ready for Dispatch" mein aa gaya!\n\nReason: ${reason}\n\n⚠️ Shiprocket mein manually cancel karo!`,
+                '🔙',
+                '#ec4899'
+            );
+
+            // Reload the dispatched orders list
+            setTimeout(() => {
+                if (typeof loadDispatchedOrders === 'function') loadDispatchedOrders();
+                if (typeof loadDeptOrders === 'function') loadDeptOrders();
+                if (typeof loadDispatchHistory === 'function') loadDispatchHistory();
+            }, 1000);
+        } else {
+            alert('Failed to revert dispatch: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Revert dispatch error:', error);
+        alert('Error reverting dispatch. Please try again.');
+    }
+}
 
 // Load Dispatch Dashboard Stats (Mini Dashboard)
 async function loadDispatchDashboardStats() {
@@ -4249,10 +4363,21 @@ async function openEditOrderModal(orderId) {
         let itemsHtml = '';
 
         (order.items || []).forEach((item, idx) => {
-            itemsHtml += ` <div class="flex gap-2 edit-item-row"> <input type="text" value="${item.description}" class="flex-1 border rounded-lg px-3 py-2 text-sm edit-item-desc"> <input type="number" value="${item.rate}" class="w-20 border rounded-lg px-2 py-2 text-sm edit-item-rate"> <input type="number" value="${item.amount}" class="w-20 border rounded-lg px-2 py-2 text-sm edit-item-amount" oninput="updateEditTotal()"> <button type="button" onclick="this.parentElement.remove(); updateEditTotal();" class="text-red-500 font-bold px-2">×</button> </div> `;
+            const qty = item.quantity || item.qty || 1;
+            const rate = item.rate || item.price || item.mrp || 0;
+            const amount = item.amount || (rate * qty) || 0;
+            itemsHtml += `
+                <div class="grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 edit-item-row">
+                    <input type="text" value="${item.description || item.name || ''}" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500">
+                    <input type="number" value="${qty}" min="1" placeholder="Qty" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-qty outline-none focus:border-emerald-500 text-center font-bold" oninput="updateEditItemAmount(this)">
+                    <input type="number" value="${rate}" placeholder="Rate" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-rate outline-none focus:border-emerald-500" oninput="updateEditItemAmount(this)">
+                    <input type="number" value="${amount}" placeholder="Amt" class="col-span-4 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-amount outline-none focus:border-emerald-500 bg-gray-50 font-bold" oninput="updateEditTotal()">
+                    <button type="button" onclick="this.parentElement.remove(); updateEditTotal();" class="col-span-2 md:col-span-1 text-red-500 font-bold hover:bg-red-50 rounded p-1 transition-colors">×</button>
+                </div>
+            `;
         });
 
-        document.getElementById('editOrderModalContent').innerHTML = ` <form id="editOrderForm" class="space-y-4"> <input type="hidden" id="editOrderId" value="${orderId}"> <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label class="block text-sm font-medium mb-1">Customer Name *</label> <input type="text" id="editCustomerName" value="${order.customerName}" required class="w-full border-2 rounded-xl px-4 py-2"> </div> <div> <label class="block text-sm font-medium mb-1">Tel No. *</label> <input type="tel" id="editTelNo" value="${order.telNo}" required class="w-full border-2 rounded-xl px-4 py-2"> </div> </div> <div class="grid grid-cols-2 md:grid-cols-4 gap-3"> <div> <label class="block text-xs font-medium mb-1">H.NO.</label> <input type="text" id="editHNo" value="${order.hNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">BLOCK/GALI</label> <input type="text" id="editBlockGaliNo" value="${order.blockGaliNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">VILL/COLONY</label> <input type="text" id="editVillColony" value="${order.villColony || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">P.O.</label> <input type="text" id="editPo" value="${order.po || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> </div> <div class="grid grid-cols-2 md:grid-cols-4 gap-3"> <div> <label class="block text-xs font-medium mb-1">TAH/TALUKA</label> <input type="text" id="editTahTaluka" value="${order.tahTaluka || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">DISTT.</label> <input type="text" id="editDistt" value="${order.distt || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">STATE</label> <input type="text" id="editState" value="${order.state || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">PIN</label> <input type="text" id="editPin" value="${order.pin || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> </div> <div class="grid grid-cols-2 gap-3"> <div> <label class="block text-xs font-medium mb-1">LANDMARK</label> <input type="text" id="editLandMark" value="${order.landMark || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">ALT NO.</label> <input type="tel" id="editAltNo" value="${order.altNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> </div> <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200"> <div class="flex justify-between items-center mb-3"> <label class="font-bold text-emerald-700">🛒 ITEMS</label> <button type="button" onclick="addEditItem()" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-sm">+ Add Item</button> </div> <div id="editItemsContainer" class="space-y-2"> ${itemsHtml}
+        document.getElementById('editOrderModalContent').innerHTML = ` <form id="editOrderForm" class="space-y-4"> <input type="hidden" id="editOrderId" value="${orderId}"> <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label class="block text-sm font-medium mb-1">Customer Name *</label> <input type="text" id="editCustomerName" value="${order.customerName}" required class="w-full border-2 rounded-xl px-4 py-2"> </div> <div> <label class="block text-sm font-medium mb-1">Tel No. *</label> <input type="tel" id="editTelNo" value="${order.telNo}" required class="w-full border-2 rounded-xl px-4 py-2"> </div> </div> <div class="grid grid-cols-2 md:grid-cols-4 gap-3"> <div> <label class="block text-xs font-medium mb-1">H.NO.</label> <input type="text" id="editHNo" value="${order.hNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">BLOCK/GALI</label> <input type="text" id="editBlockGaliNo" value="${order.blockGaliNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">VILL/COLONY</label> <input type="text" id="editVillColony" value="${order.villColony || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">P.O.</label> <input type="text" id="editPo" value="${order.po || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> </div> <div class="grid grid-cols-2 md:grid-cols-4 gap-3"> <div> <label class="block text-xs font-medium mb-1">TAH/TALUKA</label> <input type="text" id="editTahTaluka" value="${order.tahTaluka || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">DISTT.</label> <input type="text" id="editDistt" value="${order.distt || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">STATE</label> <input type="text" id="editState" value="${order.state || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">PIN</label> <input type="text" id="editPin" value="${order.pin || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> </div> <div class="grid grid-cols-2 gap-3"> <div> <label class="block text-xs font-medium mb-1">LANDMARK</label> <input type="text" id="editLandMark" value="${order.landMark || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">ALT NO.</label> <input type="tel" id="editAltNo" value="${order.altNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> </div> <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200"> <div class="flex justify-between items-center mb-3"> <label class="font-bold text-emerald-700">🛒 ITEMS</label> <button type="button" onclick="addEditItem()" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-sm">+ Add Item</button> </div> <div class="mb-2 grid grid-cols-12 gap-2 text-xs font-bold text-emerald-800 px-2"> <span class="col-span-12 md:col-span-5">Product</span> <span class="col-span-3 md:col-span-2 text-center">Qty</span> <span class="col-span-3 md:col-span-2 text-center">Rate</span> <span class="col-span-4 md:col-span-2 text-center">Amount</span> <span class="col-span-2 md:col-span-1"></span> </div> <div id="editItemsContainer" class="space-y-2"> ${itemsHtml}
 
                 </div> <div class="mt-3 pt-3 border-t border-emerald-300 flex justify-between font-bold text-lg"> <span>Total:</span> <span id="editTotalAmount" class="text-red-600">₹${order.total || 0
             }
@@ -4271,14 +4396,25 @@ async function openEditOrderModal(orderId) {
 function addEditItem() {
     const container = document.getElementById('editItemsContainer');
     const div = document.createElement('div');
-    // Responsive Grid Layout
+    // Responsive Grid Layout with Qty field
     div.className = 'grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 mb-2 edit-item-row';
     div.innerHTML = ` 
-            <input type="text" placeholder="Product" class="col-span-12 md:col-span-6 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500"> 
-            <input type="number" placeholder="Rate" class="col-span-5 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-rate outline-none focus:border-emerald-500"> 
-            <input type="number" placeholder="Amt" class="col-span-5 md:col-span-3 border rounded-lg px-2 py-2 text-sm edit-item-amount outline-none focus:border-emerald-500" oninput="updateEditTotal()"> 
+            <input type="text" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500"> 
+            <input type="number" placeholder="Qty" value="1" min="1" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-qty outline-none focus:border-emerald-500 text-center font-bold" oninput="updateEditItemAmount(this)"> 
+            <input type="number" placeholder="Rate" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-rate outline-none focus:border-emerald-500" oninput="updateEditItemAmount(this)"> 
+            <input type="number" placeholder="Amt" class="col-span-4 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-amount outline-none focus:border-emerald-500 bg-gray-50 font-bold" oninput="updateEditTotal()"> 
             <button type="button" onclick="this.parentElement.remove(); updateEditTotal();" class="col-span-2 md:col-span-1 text-red-500 font-bold hover:bg-red-50 rounded p-1 transition-colors">×</button> `;
     container.appendChild(div);
+}
+
+// Auto-calculate Amount when Qty or Rate changes
+function updateEditItemAmount(input) {
+    const row = input.closest('.edit-item-row');
+    const qty = parseFloat(row.querySelector('.edit-item-qty').value) || 1;
+    const rate = parseFloat(row.querySelector('.edit-item-rate').value) || 0;
+    const amountInput = row.querySelector('.edit-item-amount');
+    amountInput.value = (qty * rate).toFixed(0);
+    updateEditTotal();
 }
 
 function updateEditTotal() {
@@ -4304,11 +4440,18 @@ async function saveEditOrder() {
 
     document.querySelectorAll('.edit-item-row').forEach(row => {
         const desc = row.querySelector('.edit-item-desc').value.trim();
+        const qtyInput = row.querySelector('.edit-item-qty');
+        const qty = qtyInput ? (parseFloat(qtyInput.value) || 1) : 1;
         const rate = row.querySelector('.edit-item-rate').value;
         const amount = row.querySelector('.edit-item-amount').value;
 
         if (desc) items.push({
-            description: desc, rate: parseFloat(rate) || 0, amount: parseFloat(amount) || 0
+            description: desc,
+            name: desc,
+            quantity: qty,
+            rate: parseFloat(rate) || 0,
+            price: parseFloat(rate) || 0,
+            amount: parseFloat(amount) || 0
         });
     });
 
@@ -6885,8 +7028,23 @@ async function loadVerificationHistory() {
                     </div>
                 </div>
 
+                <!-- Courier Suggestion Badge (if exists) -->
+                ${order.suggestedCourier || order.courierSuggestion?.suggestedCourier ? `
+                <div class="mx-4 mt-3 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-3 rounded-xl shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🚚</span>
+                        <div class="flex-grow">
+                            <div class="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Courier Suggested</div>
+                            <div class="text-sm font-black text-purple-800">${order.suggestedCourier || order.courierSuggestion?.suggestedCourier}</div>
+                        </div>
+                        <span class="bg-purple-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">SENT</span>
+                    </div>
+                    ${order.courierSuggestion?.suggestedBy ? `<div class="text-[10px] text-purple-500 mt-1 ml-7">By: ${order.courierSuggestion.suggestedBy}</div>` : ''}
+                </div>
+                ` : ''}
+
                 <!-- Footer Actions -->
-                <div class="p-4 flex gap-2 items-center justify-between border-t border-purple-100">
+                <div class="p-4 flex gap-2 items-center justify-between border-t border-purple-100 mt-auto">
                     <div class="text-xs text-gray-500">
                         <span class="block text-gray-400 text-[10px] uppercase font-bold">Verified On</span>
                         ${order.verifiedAt ? new Date(order.verifiedAt).toLocaleDateString() + ' ' + new Date(order.verifiedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A')}

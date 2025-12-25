@@ -46,6 +46,27 @@ function writeJSON(filePath, data) {
 router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
     try {
         const orderData = req.body;
+
+        // ✅ Check for duplicate mobile number - prevent same customer order by different employees
+        const mobileNumber = orderData.telNo;
+        if (mobileNumber) {
+            const existingOrder = await dataAccess.findActiveOrderByMobile(mobileNumber);
+            if (existingOrder) {
+                console.log(`⚠️ Duplicate Order Attempt: Mobile ${mobileNumber} already has active order ${existingOrder.orderId}`);
+                return res.status(409).json({
+                    success: false,
+                    message: 'Is mobile number par pehle se ek order hai!',
+                    existingOrder: {
+                        orderId: existingOrder.orderId,
+                        status: existingOrder.status,
+                        createdBy: existingOrder.employeeId || existingOrder.createdBy,
+                        employeeName: existingOrder.employee,
+                        createdAt: existingOrder.timestamp
+                    }
+                });
+            }
+        }
+
         const config = await dataAccess.getShiprocketConfig();
         const nextId = config.shiprocketOrderCounter || 1;
         const orderId = `Order ID-${nextId.toString().padStart(4, '0')}`;
@@ -295,6 +316,64 @@ router.put('/:orderId/dispatch', async (req, res) => {
     } catch (error) {
         console.error('❌ Dispatch error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Revert Dispatch - Move order back from Dispatched to Ready for Dispatch
+router.post('/:orderId/revert-dispatch', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { reason, revertedBy } = req.body;
+
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        // Only allow reverting Dispatched orders
+        if (order.status !== 'Dispatched') {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot revert order with status "${order.status}". Only Dispatched orders can be reverted.`
+            });
+        }
+
+        const updates = {
+            status: 'Address Verified',  // Back to ready for dispatch
+            revertInfo: {
+                revertedAt: new Date().toISOString(),
+                revertedBy: revertedBy || 'Dispatch Dept',
+                revertReason: reason || 'Dispatch reverted',
+                previousStatus: 'Dispatched',
+                previousDispatchInfo: {
+                    dispatchedAt: order.dispatchedAt,
+                    dispatchedBy: order.dispatchedBy,
+                    shiprocket: order.shiprocket,
+                    tracking: order.tracking
+                }
+            },
+            // Clear dispatch data
+            dispatchedAt: null,
+            dispatchedBy: null,
+            // Keep shiprocket info for reference but mark as reverted
+            'shiprocket.reverted': true,
+            updatedAt: new Date().toISOString()
+        };
+
+        const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+
+        console.log(`🔙 Order Reverted: ${orderId} (Dispatched → Address Verified)`);
+        console.log(`   Reason: ${reason || 'Not specified'}`);
+        console.log(`   By: ${revertedBy || 'Dispatch Dept'}`);
+
+        res.json({
+            success: true,
+            message: 'Order reverted to Ready for Dispatch!',
+            order: updatedOrder
+        });
+    } catch (error) {
+        console.error('❌ Revert dispatch error:', error);
+        res.status(500).json({ success: false, message: 'Failed to revert dispatch' });
     }
 });
 
