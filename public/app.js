@@ -3975,7 +3975,13 @@ async function confirmDispatch() {
 
 
 // Edit Dispatch Order (Ready to Dispatch or Dispatched)
+// Redirect to full edit modal for consistency and all fields
 function editDispatchOrder(orderId, order) {
+    openEditOrderModal(orderId);
+}
+
+// Keeping old function as backup - renamed
+function _oldEditDispatchOrder(orderId, order) {
     // Create edit modal
     const modal = document.createElement('div');
     modal.id = 'editOrderModal';
@@ -4318,15 +4324,14 @@ async function approveDelivery(orderId) {
     if (!confirm('Order ko Delivered mark karna hai?')) return;
 
     try {
-        const res = await fetch(`${API_URL}/orders/${orderId}/deliver`, {
-            method: 'PUT',
+        const res = await fetch(`${API_URL}/orders/deliver`, {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
-
-            ,
+            },
             body: JSON.stringify({
-                approvedBy: currentUser.id
+                orderId: orderId,
+                deliveredBy: currentUser?.id || currentUser?.name || 'Dispatch Dept'
             })
         });
         const data = await res.json();
