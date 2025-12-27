@@ -4568,9 +4568,22 @@ async function saveEditOrder() {
         return;
     }
 
+    // Helper function to get value from modal (scoped to dynamic modal)
+    const getVal = (id) => {
+        if (dynamicModal) {
+            const el = dynamicModal.querySelector('#' + id);
+            if (el) return el.value || '';
+        }
+        // Fallback to global
+        const globalEl = document.getElementById(id);
+        return globalEl ? (globalEl.value || '') : '';
+    };
+
     const items = [];
 
-    document.querySelectorAll('.edit-item-row').forEach(row => {
+    // Find items within dynamic modal if present
+    const itemContainer = dynamicModal || document;
+    itemContainer.querySelectorAll('.edit-item-row').forEach(row => {
         const desc = row.querySelector('.edit-item-desc').value.trim();
         const qtyInput = row.querySelector('.edit-item-qty');
         const qty = qtyInput ? (parseFloat(qtyInput.value) || 1) : 1;
@@ -4589,34 +4602,36 @@ async function saveEditOrder() {
 
     const total = items.reduce((sum, item) => sum + item.amount, 0);
 
-    // Build address
-    const addressParts = [document.getElementById('editHNo').value,
-    document.getElementById('editBlockGaliNo').value,
-    document.getElementById('editVillColony').value,
-    document.getElementById('editPo').value,
-    document.getElementById('editTahTaluka').value,
-    document.getElementById('editDistt').value,
-    document.getElementById('editState').value,
-    document.getElementById('editPin').value].filter(v => v.trim());
+    // Build address using scoped getVal helper
+    const addressParts = [
+        getVal('editHNo'),
+        getVal('editBlockGaliNo'),
+        getVal('editVillColony'),
+        getVal('editPo'),
+        getVal('editTahTaluka'),
+        getVal('editDistt'),
+        getVal('editState'),
+        getVal('editPin')
+    ].filter(v => v && v.trim());
 
     const updateData = {
-        customerName: toTitleCase(document.getElementById('editCustomerName').value.trim()),
-        telNo: document.getElementById('editTelNo').value.trim(),
-        altNo: document.getElementById('editAltNo').value.trim(),
-        hNo: document.getElementById('editHNo').value.trim(),
-        blockGaliNo: toTitleCase(document.getElementById('editBlockGaliNo').value.trim()),
-        villColony: toTitleCase(document.getElementById('editVillColony').value.trim()),
-        po: toTitleCase(document.getElementById('editPo').value.trim()),
-        tahTaluka: toTitleCase(document.getElementById('editTahTaluka').value.trim()),
-        distt: toTitleCase(document.getElementById('editDistt').value.trim()),
-        state: toTitleCase(document.getElementById('editState').value.trim()),
-        pin: document.getElementById('editPin').value.trim(),
-        landMark: toTitleCase(document.getElementById('editLandMark').value.trim()),
+        customerName: toTitleCase(getVal('editCustomerName').trim()),
+        telNo: getVal('editTelNo').trim(),
+        altNo: getVal('editAltNo').trim(),
+        hNo: getVal('editHNo').trim(),
+        blockGaliNo: toTitleCase(getVal('editBlockGaliNo').trim()),
+        villColony: toTitleCase(getVal('editVillColony').trim()),
+        po: toTitleCase(getVal('editPo').trim()),
+        tahTaluka: toTitleCase(getVal('editTahTaluka').trim()),
+        distt: toTitleCase(getVal('editDistt').trim()),
+        state: toTitleCase(getVal('editState').trim()),
+        pin: getVal('editPin').trim(),
+        landMark: toTitleCase(getVal('editLandMark').trim()),
         address: addressParts.map(p => toTitleCase(p.trim())).join(', '),
         items,
         total,
-        advance: parseFloat(document.getElementById('editAdvance').value) || 0,
-        codAmount: parseFloat(document.getElementById('editCodAmount').value) || 0,
+        advance: parseFloat(getVal('editAdvance')) || 0,
+        codAmount: parseFloat(getVal('editCodAmount')) || 0,
         editedBy: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : 'Department',
         editedAt: new Date().toISOString()
     };
