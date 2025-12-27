@@ -129,20 +129,6 @@ async function getOrdersByStatus(status) {
     return orders.filter(o => o.status === status);
 }
 
-// Check if an active order already exists for a mobile number
-async function findActiveOrderByMobile(mobileNumber) {
-    const activeStatuses = ['Pending', 'Address Verified', 'On Hold', 'Dispatched', 'Delivery Requested'];
-
-    if (mongoConnected) {
-        return await Order.findOne({
-            telNo: mobileNumber,
-            status: { $in: activeStatuses }
-        });
-    }
-    // Fallback to JSON
-    const orders = readJSONFile(path.join(__dirname, 'data', 'orders.json'), []);
-    return orders.find(o => o.telNo === mobileNumber && activeStatuses.includes(o.status));
-}
 
 async function createOrder(orderData) {
     if (mongoConnected) {
@@ -197,6 +183,33 @@ async function deleteOrder(orderId) {
         return true;
     }
     return false;
+}
+
+async function updateEmployeeOrders(oldId, newId, newName) {
+    const updates = {};
+    if (newId) updates.employeeId = newId;
+    if (newName) updates.employee = newName;
+
+    if (Object.keys(updates).length === 0) return;
+
+    if (mongoConnected) {
+        return await Order.updateMany({ employeeId: oldId }, { $set: updates });
+    }
+
+    // Fallback to JSON
+    const orders = readJSONFile(path.join(__dirname, 'data', 'orders.json'), []);
+    let modified = false;
+    orders.forEach(order => {
+        if (order.employeeId === oldId) {
+            if (newId) order.employeeId = newId;
+            if (newName) order.employee = newName;
+            modified = true;
+        }
+    });
+    if (modified) {
+        writeJSONFile(path.join(__dirname, 'data', 'orders.json'), orders);
+    }
+    return { modifiedCount: orders.filter(o => o.employeeId === (newId || oldId)).length };
 }
 
 // ==================== SHIPROCKET CONFIG ====================
@@ -279,10 +292,10 @@ module.exports = {
     getAllOrders,
     getOrderById,
     getOrdersByStatus,
-    findActiveOrderByMobile, // ✅ Check duplicate orders by mobile
     createOrder,
     updateOrder,
-    deleteOrder, // ✅ Added delete function
+    deleteOrder,
+    updateEmployeeOrders,
     // Shiprocket
     getShiprocketConfig,
     updateShiprocketConfig

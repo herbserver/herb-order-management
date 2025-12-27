@@ -74,6 +74,17 @@ router.get('/dashboard', async (req, res) => {
             .sort((a, b) => b.totalOrders - a.totalOrders)
             .slice(0, 5);
 
+        // Status Distribution
+        const statusDistribution = {
+            total: orders.length,
+            pending: orders.filter(o => o.status === 'Pending').length,
+            verified: orders.filter(o => o.status === 'Address Verified').length,
+            dispatched: orders.filter(o => o.status === 'Dispatched').length,
+            delivered: orders.filter(o => o.status === 'Delivered').length,
+            cancelled: orders.filter(o => o.status === 'Cancelled').length,
+            onhold: orders.filter(o => o.status === 'On Hold').length
+        };
+
         // Quick stats
         const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
         const uniqueCustomers = new Set(orders.map(o => o.mobileNumber || o.telNo)).size;

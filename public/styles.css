@@ -245,3 +245,189 @@ button:active {
         /* Reduce padding on mobile */
     }
 }
+
+/* ============================================ */
+/* ADMIN PANEL SHIPROCKET STYLE */
+/* ============================================ */
+
+/* Admin Tab Styling */
+.admin-tab {
+    background: transparent;
+    color: #64748b;
+    border: none;
+    cursor: pointer;
+}
+
+.admin-tab:hover {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.admin-tab.tab-active {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+    transform: scale(1.02);
+}
+
+.admin-tab.tab-active[data-color="red"] {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.admin-tab.tab-active[data-color="blue"] {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+
+.admin-tab.tab-active[data-color="purple"] {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+}
+
+.admin-tab.tab-active[data-color="emerald"] {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.admin-tab.tab-active[data-color="rose"] {
+    background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+    box-shadow: 0 4px 12px rgba(244, 63, 94, 0.35);
+}
+
+.admin-tab.tab-active[data-color="indigo"] {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+.admin-tab.tab-active[data-color="violet"] {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+}
+
+.admin-tab.tab-active[data-color="slate"] {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.35);
+}
+
+.admin-tab.tab-active[data-color="cyan"] {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.35);
+}
+
+/* Quick Stats Pulse Animation */
+@keyframes statPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+.quick-stat:hover {
+    animation: statPulse 0.5s ease;
+}
+
+/* Admin Cards Modern Style */
+.admin-order-card {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.admin-order-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    border-color: transparent;
+}
+
+/* Scrollbar Hide Utility */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Scale In Animation */
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-scaleIn {
+    animation: scaleIn 0.3s ease forwards;
+}
+
+/* Admin Filter Card */
+.admin-filter-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1.25rem;
+}
+
+/* Admin Stats Cards */
+.admin-stat-card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.admin-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: currentColor;
+    opacity: 0.8;
+}
+
+.admin-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Sidebar Navigation Active State */
+.sidebar-nav-item.sidebar-active {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+    color: #065f46 !important;
+    border-left: 3px solid #10b981;
+    font-weight: 600;
+}
+
+.sidebar-nav-item:hover {
+    background: #f1f5f9;
+}
+
+/* Admin Sidebar Mobile Overlay */
+@media (max-width: 1023px) {
+    #adminSidebar:not(.-translate-x-full)::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+    }
+}

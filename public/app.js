@@ -205,13 +205,30 @@ function showMessage(msg, type, elementId) {
     const el = document.getElementById(elementId);
     if (!el) return;
 
-    el.className = `mb-4 p-3 rounded-xl text-sm ${type === 'success' ? 'bg-green-100 text-green-700' : type === 'error' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-        }
+    // Fixed Top positioning for common message containers
+    if (elementId === 'adminMessage' || elementId === 'loginMessage' || elementId === 'registerMessage' || elementId === 'resetMessage') {
+        el.className = `fixed top-10 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[90%] p-5 rounded-2xl text-sm shadow-2xl transition-all duration-300 transform font-bold flex items-center gap-3 border-l-8 ${type === 'success' ? 'bg-white text-emerald-700 border-emerald-500' :
+            type === 'error' ? 'bg-white text-red-700 border-red-500' :
+                'bg-white text-blue-700 border-blue-500'
+            }`;
+        el.style.opacity = '1';
+        el.style.transform = 'translate(-50%, 0)';
+        el.innerHTML = `<span class="text-xl">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span> <div>${msg}</div>`;
+    } else {
+        // Fallback for contextual messages
+        el.className = `mb-4 p-3 rounded-xl text-sm ${type === 'success' ? 'bg-green-100 text-green-700' :
+            type === 'error' ? 'bg-red-100 text-red-700' :
+                'bg-blue-100 text-blue-700'
+            }`;
+        el.textContent = msg;
+    }
 
-            `;
-    el.textContent = msg;
     el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 5000);
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        el.classList.add('hidden');
+    }, 5000);
 }
 
 function closeModal(id) {
@@ -332,7 +349,7 @@ function showEmployeePanel() {
 }
 
 function showDepartmentPanel() {
-    document.querySelectorAll('#app> div').forEach(d => d.classList.add('hidden'));
+    document.querySelectorAll('#app > div').forEach(d => d.classList.add('hidden'));
     document.getElementById('departmentPanel').classList.remove('hidden');
     document.getElementById('deptIdDisplay').textContent = currentUser.id;
 
@@ -350,38 +367,81 @@ function showDepartmentPanel() {
         document.getElementById('deliveryDeptContent').classList.add('hidden');
     }
 
+    // Hide all nav groups
+    document.querySelectorAll('[id^="navGroup"]').forEach(group => group.classList.add('hidden'));
+
     if (currentDeptType === 'verification') {
-        document.getElementById('deptPanelTitle').textContent = '📍 Verification Department';
+        const headerTitle = document.getElementById('deptHeaderTitle');
+        if (headerTitle) headerTitle.textContent = 'Verification Dept';
+        const sidebarSubtitle = document.getElementById('deptSidebarSubtitle');
+        if (sidebarSubtitle) sidebarSubtitle.textContent = 'Verification Team';
+
+        const navGroup = document.getElementById('navGroupVerification');
+        if (navGroup) navGroup.classList.remove('hidden');
         document.getElementById('verificationDeptContent').classList.remove('hidden');
-        if (exportBtn) exportBtn.classList.add('hidden');
-        loadVerificationHistory();
+
+        switchVerificationTab('pending');
     } else if (currentDeptType === 'dispatch') {
-        document.getElementById('deptPanelTitle').textContent = '📦 Dispatch Department';
+        const headerTitle = document.getElementById('deptHeaderTitle');
+        if (headerTitle) headerTitle.textContent = 'Dispatch Dept';
+        const sidebarSubtitle = document.getElementById('deptSidebarSubtitle');
+        if (sidebarSubtitle) sidebarSubtitle.textContent = 'Dispatch Team';
+
+        const navGroup = document.getElementById('navGroupDispatch');
+        if (navGroup) navGroup.classList.remove('hidden');
         document.getElementById('dispatchDeptContent').classList.remove('hidden');
-        if (exportBtn) exportBtn.classList.remove('hidden');
-        if (dateFilter) {
-            dateFilter.classList.remove('hidden');
-            dateFilter.valueAsDate = new Date(); // Default to today
+
+        if (exportBtn) {
+            exportBtn.classList.remove('hidden');
+            exportBtn.onclick = exportDispatchedOrdersFiltered;
         }
-        loadDeliveryRequests();
-        loadDispatchHistory();
+
+        switchDispatchTab('ready');
     } else if (currentDeptType === 'delivery') {
-        document.getElementById('deptPanelTitle').textContent = '🚚 Delivery Department';
+        const headerTitle = document.getElementById('deptHeaderTitle');
+        if (headerTitle) headerTitle.textContent = 'Delivery Dept';
+        const sidebarSubtitle = document.getElementById('deptSidebarSubtitle');
+        if (sidebarSubtitle) sidebarSubtitle.textContent = 'Delivery Team';
+
+        const navGroup = document.getElementById('navGroupDelivery');
+        if (navGroup) navGroup.classList.remove('hidden');
         if (document.getElementById('deliveryDeptContent')) {
             document.getElementById('deliveryDeptContent').classList.remove('hidden');
         }
-        if (exportBtn) exportBtn.classList.add('hidden');
-        // Load delivery specific data
-        if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+
+        switchDeliveryTab('outfordelivery');
     }
 
     loadDeptOrders();
-    // Start auto-tracking for Out for Delivery alerts
-    // Auto-tracking DISABLED - Using webhook for real-time updates
-    // if (typeof initializeAutoTracking === 'function') {
-    //     initializeAutoTracking();
-    // }
 }
+
+function toggleDeptSidebar() {
+    const sidebar = document.getElementById('deptSidebar');
+    if (sidebar) sidebar.classList.toggle('-translate-x-full');
+}
+
+function setActiveDeptTab(tabId) {
+    // Selection for both original tabs (if still present) and new sidebar items
+    document.querySelectorAll('.sidebar-nav-item').forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-indigo-100');
+        btn.classList.add('text-slate-600', 'hover:bg-indigo-50');
+    });
+
+    const activeBtn = document.getElementById(tabId);
+    if (activeBtn) {
+        activeBtn.classList.remove('text-slate-600', 'hover:bg-indigo-50');
+        activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-100');
+    }
+
+    // Auto-close sidebar on mobile after selection
+    if (window.innerWidth < 1024) {
+        const sidebar = document.getElementById('deptSidebar');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.add('-translate-x-full');
+        }
+    }
+}
+
 
 // Load Admin Panel Data - COMPLETE VERSION
 async function loadAdminData() {
@@ -2383,43 +2443,25 @@ function switchDispatchTab(tab) {
     document.getElementById('dispatchDispatchedTab').classList.add('hidden');
     document.getElementById('dispatchHistoryTab').classList.add('hidden');
 
-    document.getElementById('dispatchTabReady').classList.remove('tab-active');
-    document.getElementById('dispatchTabReady').classList.add('bg-white', 'text-gray-600');
-    document.getElementById('dispatchTabRequests').classList.remove('tab-active');
-    document.getElementById('dispatchTabRequests').classList.add('bg-white', 'text-gray-600');
-    document.getElementById('dispatchTabDispatched').classList.remove('tab-active');
-    document.getElementById('dispatchTabDispatched').classList.add('bg-white', 'text-gray-600');
-    document.getElementById('dispatchTabHistory').classList.remove('tab-active');
-    document.getElementById('dispatchTabHistory').classList.add('bg-white', 'text-gray-600');
-
     if (tab === 'ready') {
         document.getElementById('dispatchReadyTab').classList.remove('hidden');
-        document.getElementById('dispatchTabReady').classList.add('tab-active');
-        document.getElementById('dispatchTabReady').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabReady');
         loadDeptOrders();
-    }
-
-    else if (tab === 'requests') {
+    } else if (tab === 'requests') {
         document.getElementById('dispatchRequestsTab').classList.remove('hidden');
-        document.getElementById('dispatchTabRequests').classList.add('tab-active');
-        document.getElementById('dispatchTabRequests').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabRequests');
         loadDeliveryRequests();
-    }
-
-    else if (tab === 'dispatched') {
+    } else if (tab === 'dispatched') {
         document.getElementById('dispatchDispatchedTab').classList.remove('hidden');
-        document.getElementById('dispatchTabDispatched').classList.add('tab-active');
-        document.getElementById('dispatchTabDispatched').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabDispatched');
         loadDispatchedOrders();
-    }
-
-    else if (tab === 'history') {
+    } else if (tab === 'history') {
         document.getElementById('dispatchHistoryTab').classList.remove('hidden');
-        document.getElementById('dispatchTabHistory').classList.add('tab-active');
-        document.getElementById('dispatchTabHistory').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabDispatchHistory');
         loadDispatchHistory();
     }
 }
+
 
 // Delivery Department Tab Switching
 function switchDeliveryTab(tab) {
@@ -2428,40 +2470,25 @@ function switchDeliveryTab(tab) {
     document.getElementById('deliveryFailedTab').classList.add('hidden');
     document.getElementById('deliveryPerformanceTab').classList.add('hidden');
 
-    document.getElementById('deliveryTabOutForDelivery').classList.remove('tab-active');
-    document.getElementById('deliveryTabOutForDelivery').classList.add('bg-white', 'text-gray-600');
-    document.getElementById('deliveryTabDelivered').classList.remove('tab-active');
-    document.getElementById('deliveryTabDelivered').classList.add('bg-white', 'text-gray-600');
-    document.getElementById('deliveryTabFailed').classList.remove('tab-active');
-    document.getElementById('deliveryTabFailed').classList.add('bg-white', 'text-gray-600');
-    document.getElementById('deliveryTabPerformance').classList.remove('tab-active');
-    document.getElementById('deliveryTabPerformance').classList.add('bg-white', 'text-gray-600');
-
     if (tab === 'outfordelivery') {
         document.getElementById('deliveryOutForDeliveryTab').classList.remove('hidden');
-        document.getElementById('deliveryTabOutForDelivery').classList.add('tab-active');
-        document.getElementById('deliveryTabOutForDelivery').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabOutForDelivery');
         loadDeliveryOrders();
-    }
-    else if (tab === 'delivered') {
+    } else if (tab === 'delivered') {
         document.getElementById('deliveryDeliveredTab').classList.remove('hidden');
-        document.getElementById('deliveryTabDelivered').classList.add('tab-active');
-        document.getElementById('deliveryTabDelivered').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabDelivered');
         loadDeliveredOrders();
-    }
-    else if (tab === 'failed') {
+    } else if (tab === 'failed') {
         document.getElementById('deliveryFailedTab').classList.remove('hidden');
-        document.getElementById('deliveryTabFailed').classList.add('tab-active');
-        document.getElementById('deliveryTabFailed').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabFailed');
         loadFailedDeliveries();
-    }
-    else if (tab === 'performance') {
+    } else if (tab === 'performance') {
         document.getElementById('deliveryPerformanceTab').classList.remove('hidden');
-        document.getElementById('deliveryTabPerformance').classList.add('tab-active');
-        document.getElementById('deliveryTabPerformance').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabPerformance');
         loadDeliveryPerformance();
     }
 }
+
 
 // Load Out for Delivery Orders
 async function loadDeliveryOrders() {
@@ -4567,7 +4594,12 @@ async function filterAdminOrders(mobile) {
             html += ` <div class="glass-card p-4 border-l-4 ${order.status === 'Pending' ? 'border-red-500' : order.status === 'Address Verified' ? 'border-blue-500' : order.status === 'Dispatched' ? 'border-purple-500' : 'border-green-500'}"> 
                         <div class="flex justify-between items-start"> 
                             <div> 
-                                <p class="font-bold text-gray-800">${order.orderId}</p> 
+                                <div class="flex items-center gap-2">
+                                    <p class="font-bold text-gray-800">${order.orderId}</p> 
+                                    ${order.isReorder ?
+                    '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">🔄 Re-order</span>' :
+                    '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">🆕 New</span>'}
+                                </div>
                                 <p class="text-sm text-gray-600">${order.customerName} - ${order.telNo}</p> 
                                 <p class="text-xs text-gray-500 mt-1">Date: ${order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A'}</p> 
                             </div> 
@@ -4602,6 +4634,14 @@ async function filterAdminOrders(mobile) {
 
 
 // ==================== ADMIN PANEL ====================
+// Toggle Admin Sidebar (for mobile)
+function toggleAdminSidebar() {
+    const sidebar = document.getElementById('adminSidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('-translate-x-full');
+    }
+}
+
 function switchAdminTab(tab) {
     if (!tab) return;
     const capTab = tab.charAt(0).toUpperCase() + tab.slice(1);
@@ -4625,18 +4665,24 @@ function switchAdminTab(tab) {
         el.classList.add('hidden');
     });
 
-    // Deactivate all buttons
-    const buttons = document.querySelectorAll('[id^="adminTab"]');
+    // Deactivate all sidebar nav items
+    const buttons = document.querySelectorAll('.sidebar-nav-item, [id^="adminTab"]');
     buttons.forEach(el => {
-        el.classList.remove('tab-active');
-        el.classList.add('bg-white');
+        el.classList.remove('sidebar-active');
     });
 
     contentEl.classList.remove('hidden');
 
     if (buttonEl) {
-        buttonEl.classList.add('tab-active');
-        buttonEl.classList.remove('bg-white');
+        buttonEl.classList.add('sidebar-active');
+    }
+
+    // Close sidebar on mobile after selection
+    if (window.innerWidth < 1024) {
+        const sidebar = document.getElementById('adminSidebar');
+        if (sidebar) {
+            sidebar.classList.add('-translate-x-full');
+        }
     }
 
     if (tab === 'employees') loadEmployees();
@@ -4650,6 +4696,7 @@ function switchAdminTab(tab) {
     if (tab === 'dispatched') loadAdminDispatched();
     if (tab === 'delivered') loadAdminDelivered();
     if (tab === 'cancelled') loadAdminCancelled();
+    if (tab === 'onhold') loadAdminOnHold();
 
     updateAdminBadges();
 }
@@ -4660,11 +4707,29 @@ async function updateAdminBadges() {
         const verified = await (await fetch(`${API_URL}/orders/verified`)).json();
         const dispatched = await (await fetch(`${API_URL}/orders/dispatched`)).json();
         const delivered = await (await fetch(`${API_URL}/orders/delivered`)).json();
+        const cancelled = await (await fetch(`${API_URL}/orders/cancelled`)).json();
+        const onhold = await (await fetch(`${API_URL}/orders/onhold`)).json();
 
-        if (document.getElementById('pendingCount')) document.getElementById('pendingCount').textContent = pending.orders ? pending.orders.length : 0;
-        if (document.getElementById('verifiedCount')) document.getElementById('verifiedCount').textContent = verified.orders ? verified.orders.length : 0;
-        if (document.getElementById('dispatchedCount')) document.getElementById('dispatchedCount').textContent = dispatched.orders ? dispatched.orders.length : 0;
-        if (document.getElementById('deliveredCount')) document.getElementById('deliveredCount').textContent = delivered.orders ? delivered.orders.length : 0;
+        const pendingCount = pending.orders ? pending.orders.length : 0;
+        const verifiedCount = verified.orders ? verified.orders.length : 0;
+        const dispatchedCount = dispatched.orders ? dispatched.orders.length : 0;
+        const deliveredCount = delivered.orders ? delivered.orders.length : 0;
+        const cancelledCount = cancelled.orders ? cancelled.orders.length : 0;
+        const onholdCount = onhold.orders ? onhold.orders.length : 0;
+
+        // Update Tab Badges
+        if (document.getElementById('pendingCount')) document.getElementById('pendingCount').textContent = pendingCount;
+        if (document.getElementById('verifiedCount')) document.getElementById('verifiedCount').textContent = verifiedCount;
+        if (document.getElementById('dispatchedCount')) document.getElementById('dispatchedCount').textContent = dispatchedCount;
+        if (document.getElementById('deliveredCount')) document.getElementById('deliveredCount').textContent = deliveredCount;
+        if (document.getElementById('cancelledCount')) document.getElementById('cancelledCount').textContent = cancelledCount;
+        if (document.getElementById('onholdCount')) document.getElementById('onholdCount').textContent = onholdCount;
+
+        // Update Quick Stats Pills (Header)
+        if (document.getElementById('quickStatPending')) document.getElementById('quickStatPending').textContent = pendingCount;
+        if (document.getElementById('quickStatVerified')) document.getElementById('quickStatVerified').textContent = verifiedCount;
+        if (document.getElementById('quickStatDispatched')) document.getElementById('quickStatDispatched').textContent = dispatchedCount;
+        if (document.getElementById('quickStatDelivered')) document.getElementById('quickStatDelivered').textContent = deliveredCount;
     } catch (e) { console.error('Badge update failed', e); }
 }
 
@@ -4752,21 +4817,45 @@ function applyQuickDateFilter(prefix, range) {
 }
 
 // GENERIC LOAD FUNCTION FOR ADMIN TABS
-async function loadAdminStatusTab(status, listId, searchId, startId, endId, statsIds, dateField) {
+// Pagination state
+let adminPagination = {
+    pending: 1,
+    verified: 1,
+    dispatched: 1,
+    delivered: 1,
+    cancelled: 1,
+    onhold: 1
+};
+const ORDERS_PER_PAGE = 10;
+
+async function loadAdminStatusTab(status, listId, searchId, startId, endId, statsIds, dateField, page = null) {
     try {
         let res;
         const endpointMap = {
             'Pending': '/orders/pending',
             'Address Verified': '/orders/verified',
             'Dispatched': '/orders/dispatched',
-            'Delivered': '/orders/delivered'
+            'Delivered': '/orders/delivered',
+            'Cancelled': '/orders/cancelled',
+            'On Hold': '/orders/onhold'
         };
+
+        // Determine page key
+        const pageKey = status === 'Address Verified' ? 'verified' : (status === 'On Hold' ? 'onhold' : status.toLowerCase());
+
+        // Set page if provided, else use current
+        if (page !== null) {
+            adminPagination[pageKey] = page;
+        }
+        const currentPage = adminPagination[pageKey] || 1;
 
         res = await fetch(`${API_URL}${endpointMap[status]}`);
         const data = await res.json();
         let orders = data.orders || [];
 
-        calculateAndRenderStats(orders, statsIds[0], statsIds[1], statsIds[2], dateField);
+        if (statsIds && statsIds.length > 0) {
+            calculateAndRenderStats(orders, statsIds[0], statsIds[1], statsIds[2], dateField);
+        }
 
         const searchInput = document.getElementById(searchId);
         const search = searchInput ? searchInput.value.toLowerCase() : '';
@@ -4806,12 +4895,19 @@ async function loadAdminStatusTab(status, listId, searchId, startId, endId, stat
         const container = document.getElementById(listId);
         if (!container) return;
 
+        // Calculate pagination
+        const totalOrders = orders.length;
+        const totalPages = Math.ceil(totalOrders / ORDERS_PER_PAGE);
+        const startIndex = (currentPage - 1) * ORDERS_PER_PAGE;
+        const endIndex = startIndex + ORDERS_PER_PAGE;
+        const paginatedOrders = orders.slice(startIndex, endIndex);
+
         if (orders.length === 0) {
             container.innerHTML = `
-                        <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                            <p class="text-4xl mb-3">📭</p>
-                            <p class="text-gray-500 font-medium">No ${status} orders found</p>
-        </div>`;
+                <div class="col-span-full text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                    <p class="text-4xl mb-3">📭</p>
+                    <p class="text-slate-500 font-medium">No ${status} orders found</p>
+                </div>`;
             return;
         }
 
@@ -4824,7 +4920,7 @@ async function loadAdminStatusTab(status, listId, searchId, startId, endId, stat
         if (status === 'Dispatched') themeColor = 'purple';
         if (status === 'Delivered') themeColor = 'green';
 
-        orders.forEach(order => {
+        paginatedOrders.forEach(order => {
             // Determine date for grouping
             const orderDateStr = order[dateField] ? order[dateField].split('T')[0] : (order.timestamp ? order.timestamp.split('T')[0] : 'N/A');
 
@@ -4833,12 +4929,12 @@ async function loadAdminStatusTab(status, listId, searchId, startId, endId, stat
                 const isTodayStr = new Date().toISOString().split('T')[0] === orderDateStr;
 
                 html += `
-                <div class="col-span-full mt-6 mb-2">
-                    <div class="flex items-center gap-4">
-                        <span class="bg-${isTodayStr ? 'blue' : 'gray'}-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm">
-                            ${isTodayStr ? 'Today' : displayDate}
+                <div class="col-span-full mt-6 mb-3">
+                    <div class="flex items-center gap-3">
+                        <span class="px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${isTodayStr ? 'bg-emerald-500 text-white' : 'bg-white text-slate-600 border border-slate-200'}">
+                            ${isTodayStr ? '📌 Today' : displayDate}
                         </span>
-                        <div class="h-[2px] flex-grow bg-gradient-to-r from-${isTodayStr ? 'blue' : 'gray'}-200 to-transparent rounded-full"></div>
+                        <div class="h-px flex-grow bg-slate-200"></div>
                     </div>
                 </div>`;
                 lastDate = orderDateStr;
@@ -4848,108 +4944,140 @@ async function loadAdminStatusTab(status, listId, searchId, startId, endId, stat
             const dateDisplay = order[dateField] ? new Date(order[dateField]).toLocaleDateString() : (order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A');
 
             html += `
-            <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-${themeColor}-100 flex flex-col h-full bg-white">
-                <!-- Card Header -->
-                <div class="p-5 border-b border-${themeColor}-50 bg-gradient-to-r from-${themeColor}-50/50 to-white relative">
-                     <div class="absolute top-0 right-0 w-24 h-24 bg-${themeColor}-400 rounded-bl-full opacity-5 pointer-events-none"></div>
-                    <div class="flex justify-between items-start relative z-10">
-                        <div>
-                             <div class="flex items-center gap-2 mb-1">
-                                <span class="bg-${themeColor}-100 text-${themeColor}-700 text-xs font-bold px-2 py-0.5 rounded-md border border-${themeColor}-200 uppercase tracking-wide">
-                                    ${order.orderId}
-                                </span>
-                                <button onclick="sendWhatsAppDirect('${status === 'Pending' ? 'booked' : status === 'Address Verified' ? 'verified' : 'dispatched'}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                                    class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
-                                    ${WHATSAPP_ICON}
-                                </button>
-                            </div>
-                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">
-                                ${order.customerName}
-                            </h3>
-                        </div>
-                        <div class="text-right">
-                             <p class="text-xl font-black text-gray-800 tracking-tight">₹${order.total}</p>
-                             <span class="bg-${themeColor}-100 text-${themeColor}-700 px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 mt-1">
-                                ${status}
-                             </span>
-                        </div>
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-300 overflow-hidden flex flex-col h-full">
+                <!-- Card Header - Clean & Minimal -->
+                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                            ${order.orderId}
+                        </span>
+                        ${order.isReorder ?
+                    '<span class="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">🔄 Re-order</span>' :
+                    '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">🆕 New</span>'}
+                        <span class="w-2 h-2 rounded-full ${status === 'Pending' ? 'bg-red-500' : status === 'Address Verified' ? 'bg-blue-500' : status === 'Dispatched' ? 'bg-purple-500' : 'bg-emerald-500'} animate-pulse"></span>
                     </div>
+                    <span class="text-lg font-black text-slate-800">₹${order.total}</span>
                 </div>
-
-                 <!-- Card Body -->
-                <div class="p-5 space-y-4 flex-grow bg-white/60">
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-${themeColor}-50 flex items-center justify-center text-${themeColor}-600 flex-shrink-0">
-                            📞
+                
+                <!-- Customer Info -->
+                <div class="px-4 py-3 flex-grow">
+                    <div class="flex items-start gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-${themeColor}-400 to-${themeColor}-600 flex items-center justify-center text-white font-bold text-sm shadow-md flex-shrink-0">
+                            ${order.customerName.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Contact</p>
-                            <p class="text-sm font-semibold text-gray-700 font-mono">${order.telNo}</p>
-                             ${order.altNo ? `<p class="text-xs text-gray-500 font-mono mt-0.5">Alt: ${order.altNo}</p>` : ''}
+                        <div class="min-w-0 flex-1">
+                            <h3 class="font-bold text-slate-800 text-base truncate" title="${order.customerName}">${order.customerName}</h3>
+                            <p class="text-sm text-slate-500 font-medium font-mono">${order.telNo}</p>
                         </div>
+                        <button onclick="sendWhatsAppDirect('${status === 'Pending' ? 'booked' : status === 'Address Verified' ? 'verified' : 'dispatched'}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                            class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-md transition-all flex-shrink-0" title="WhatsApp">
+                            ${WHATSAPP_ICON}
+                        </button>
                     </div>
-
+                    
                     ${tracking.trackingId ? `
-                    <div class="flex items-start gap-3">
-                         <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
-                             🧾
-                         </div>
-                         <div>
-                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Tracking</p>
-                             <div class="flex items-center gap-2">
-                                <p class="text-sm font-mono font-bold text-blue-700 tracking-wide">${tracking.trackingId}</p>
-                                <button onclick="copyTracking('${tracking.trackingId}')" class="text-xs text-gray-400 hover:text-blue-600">📋</button>
-                             </div>
-                             ${tracking.courier ? `<p class="text-xs text-gray-500 mt-0.5">${tracking.courier}</p>` : ''}
-                         </div>
+                    <div class="flex items-center gap-2 p-2 bg-blue-50 rounded-lg mb-3">
+                        <span class="text-blue-600">🧾</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-blue-600 font-bold truncate">${tracking.trackingId}</p>
+                            <p class="text-[10px] text-blue-500">${tracking.courier || 'Courier'}</p>
+                        </div>
+                        <button onclick="copyTracking('${tracking.trackingId}')" class="text-blue-400 hover:text-blue-600">📋</button>
                     </div>
                     ` : ''}
-
-                    <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
-                        <span class="text-xs text-gray-400">
-                            <span class="block text-gray-300 text-[10px] uppercase font-bold">Date & Time</span>
-                            ${dateDisplay} ${order.timestamp ? new Date(order.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </span>
-                        ${order.employee ? `
-                        <span class="text-gray-300">•</span>
-                        <span class="text-xs text-gray-400">
-                             <span class="block text-gray-300 text-[10px] uppercase font-bold">By</span>
-                            <span class="font-extrabold text-emerald-700">${order.employee}</span>
-                        </span>` : ''}
+                    
+                    <!-- Meta Info Row -->
+                    <div class="flex items-center gap-3 text-xs text-slate-400 pt-2 border-t border-slate-50">
+                        <span>📅 ${dateDisplay}</span>
+                        ${order.employee ? `<span class="text-emerald-600 font-semibold">👤 ${order.employee} (${order.employeeId})</span>` : ''}
                     </div>
                 </div>
 
-                <!-- Footer Actions -->
-                <div class="p-3 bg-${themeColor}-50/30 border-t border-${themeColor}-100 grid grid-cols-2 gap-2">
-                     <button type="button" onclick="viewOrder('${order.orderId}')" 
-                        class="bg-white border border-${themeColor}-200 text-${themeColor}-700 hover:bg-${themeColor}-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-2">
-                        <span>👁️</span> View
+                <!-- Footer Actions - Compact -->
+                <div class="px-3 py-2 bg-slate-50 border-t border-slate-100 flex gap-2">
+                    <button onclick="viewOrder('${order.orderId}')" 
+                        class="flex-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1">
+                        👁️ View
                     </button>
                     
                     ${status === 'Address Verified' ? `
-                    <button type="button" onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                        class="bg-purple-600 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:bg-purple-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                        <span>📦</span> Dispatch
-                    </button>
-                    ` : ''}
-
-                     ${status === 'Pending' ? `
-                    <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
-                        class="bg-orange-100 text-orange-700 border border-orange-200 py-2 rounded-xl text-xs font-bold hover:bg-orange-200 transition-colors flex items-center justify-center gap-2">
-                        <span>✏️</span> Edit
+                    <button onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                        class="flex-1 bg-purple-600 text-white py-2 rounded-lg text-xs font-bold shadow-md hover:bg-purple-700 transition-all flex items-center justify-center gap-1">
+                        📦 Dispatch
                     </button>
                     ` : ''}
                     
-                     <button type="button" onclick="deleteOrder('${order.orderId}')" 
-                        class="col-span-2 bg-red-50 text-red-600 border border-red-100 py-2 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
-                        <span>🗑️</span> Delete Order
+                    ${status === 'Pending' ? `
+                    <button onclick="openEditOrderModal('${order.orderId}')" 
+                        class="flex-1 bg-amber-50 text-amber-700 border border-amber-200 py-2 rounded-lg text-xs font-semibold hover:bg-amber-100 transition-all flex items-center justify-center gap-1">
+                        ✏️ Edit
+                    </button>
+                    ` : ''}
+                    
+                    <button onclick="deleteOrder('${order.orderId}')" 
+                        class="px-3 bg-red-50 text-red-500 border border-red-100 py-2 rounded-lg text-xs font-semibold hover:bg-red-100 transition-all">
+                        🗑️
                     </button>
                 </div>
             </div>`;
         });
+
+        // Add pagination controls
+        if (totalPages > 1) {
+            const loadFuncName = status === 'Pending' ? 'loadAdminPending' :
+                status === 'Address Verified' ? 'loadAdminVerified' :
+                    status === 'Dispatched' ? 'loadAdminDispatched' :
+                        status === 'Delivered' ? 'loadAdminDelivered' : 'loadAdminCancelled';
+
+            html += `
+            <div class="col-span-full mt-6 flex items-center justify-center gap-2">
+                <button onclick="goToAdminPage('${pageKey}', ${currentPage - 1}, '${loadFuncName}')" 
+                    ${currentPage === 1 ? 'disabled' : ''}
+                    class="px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1 ${currentPage === 1 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}">
+                    ← Previous
+                </button>
+                
+                <div class="flex items-center gap-1">
+                    ${Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                    pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                } else {
+                    pageNum = currentPage - 2 + i;
+                }
+                return `<button onclick="goToAdminPage('${pageKey}', ${pageNum}, '${loadFuncName}')" 
+                            class="w-9 h-9 rounded-lg text-sm font-bold transition-all ${pageNum === currentPage ? 'bg-emerald-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}">
+                            ${pageNum}
+                        </button>`;
+            }).join('')}
+                </div>
+                
+                <button onclick="goToAdminPage('${pageKey}', ${currentPage + 1}, '${loadFuncName}')" 
+                    ${currentPage === totalPages ? 'disabled' : ''}
+                    class="px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1 ${currentPage === totalPages ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}">
+                    Next →
+                </button>
+            </div>
+            
+            <div class="col-span-full text-center mt-2">
+                <p class="text-xs text-slate-400">Showing ${startIndex + 1}-${Math.min(endIndex, totalOrders)} of ${totalOrders} orders</p>
+            </div>`;
+        }
+
         container.innerHTML = html;
 
     } catch (e) { console.error('Error loading admin tab', e); }
+}
+
+// Pagination navigation helper
+function goToAdminPage(pageKey, page, loadFunc) {
+    if (page < 1) return;
+    adminPagination[pageKey] = page;
+    window[loadFunc]();
 }
 
 function loadAdminPending() {
@@ -4968,6 +5096,14 @@ function loadAdminDelivered() {
     loadAdminStatusTab('Delivered', 'adminDeliveredList', 'adminDeliveredSearch', 'adminDeliveredStartDate', 'adminDeliveredEndDate',
         ['statsAdminDeliveredToday', 'statsAdminDeliveredYesterday', 'statsAdminDeliveredWeek'], 'deliveredAt');
 }
+function loadAdminCancelled() {
+    loadAdminStatusTab('Cancelled', 'adminCancelledList', 'adminCancelledSearch', 'adminCancelledStartDate', 'adminCancelledEndDate',
+        null, 'cancelledAt');
+}
+function loadAdminOnHold() {
+    loadAdminStatusTab('On Hold', 'adminOnholdList', 'adminOnholdSearch', 'adminOnholdStartDate', 'adminOnholdEndDate',
+        null, 'timestamp');
+}
 
 function resetAdminFilters(type) {
     const capType = type.charAt(0).toUpperCase() + type.slice(1);
@@ -4979,6 +5115,8 @@ function resetAdminFilters(type) {
     else if (type === 'verified') loadAdminVerified();
     else if (type === 'dispatched') loadAdminDispatched();
     else if (type === 'delivered') loadAdminDelivered();
+    else if (type === 'cancelled') loadAdminCancelled();
+    else if (type === 'onhold') loadAdminOnHold();
 
     // Scroll to the list after reset
     const listId = `admin${capType}List`;
@@ -5039,9 +5177,15 @@ async function loadEmployees() {
                         </div>
                     </div>
                     
-                    <button class="w-full mt-4 bg-indigo-50 text-indigo-600 font-bold py-2 rounded-xl text-xs hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
-                        <span>📊</span> View Performance
-                    </button>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="event.stopPropagation(); showEditEmployeeModal('${emp.id}', '${emp.name}')" 
+                            class="flex-1 bg-orange-50 text-orange-600 font-bold py-2 rounded-xl text-xs hover:bg-orange-100 transition-colors flex items-center justify-center gap-2 border border-orange-100">
+                            <span>✏️</span> Edit
+                        </button>
+                        <button class="flex-[2] bg-indigo-50 text-indigo-600 font-bold py-2 rounded-xl text-xs hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
+                            <span>📊</span> Performance
+                        </button>
+                    </div>
                 </div>
             </div>`;
         });
@@ -5100,7 +5244,12 @@ async function viewEmployeeProfile(empId) {
                         </div>
                         <div>
                             <h3 class="text-3xl font-black tracking-tight mb-1">${emp.name}</h3>
-                            <p class="opacity-80 font-mono text-sm bg-indigo-500/30 inline-block px-3 py-1 rounded-lg border border-indigo-400/30">${emp.id}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="opacity-80 font-mono text-sm bg-indigo-500/30 inline-block px-3 py-1 rounded-lg border border-indigo-400/30">${emp.id}</p>
+                                <button onclick="showEditEmployeeModal('${emp.id}', '${emp.name}')" class="bg-white/20 hover:bg-white/40 text-white px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 border border-white/20">
+                                    <span>✏️</span> Edit Details
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -5162,9 +5311,17 @@ async function viewEmployeeProfile(empId) {
 
 async function loadDepartments() {
     try {
-        const res = await fetch(`${API_URL}/departments`);
-        const data = await res.json();
-        const departments = data.departments || [];
+        // Fetch departments and stats in parallel
+        const [deptRes, statsRes] = await Promise.all([
+            fetch(`${API_URL}/departments`),
+            fetch(`${API_URL}/admin/department-stats`)
+        ]);
+
+        const deptData = await deptRes.json();
+        const statsData = await statsRes.json();
+
+        const departments = deptData.departments || [];
+        const allStats = statsData.stats || {};
 
         if (departments.length === 0) {
             document.getElementById('adminDepartmentsTab').innerHTML = `
@@ -5179,23 +5336,27 @@ async function loadDepartments() {
 
         departments.forEach(dept => {
             // Determine type-specific styling
-            let themeColor, icon, label;
+            let themeColor, icon, label, deptStats;
             if (dept.type === 'verification') {
                 themeColor = 'blue';
                 icon = '📍';
                 label = 'Verification Dept';
+                deptStats = allStats.verification || { today: 0, yesterday: 0, last7Days: 0 };
             } else if (dept.type === 'dispatch') {
                 themeColor = 'purple';
                 icon = '📦';
                 label = 'Dispatch Dept';
+                deptStats = allStats.dispatch || { today: 0, yesterday: 0, last7Days: 0 };
             } else if (dept.type === 'delivery') {
                 themeColor = 'orange';
                 icon = '🚚';
                 label = 'Delivery Dept';
+                deptStats = allStats.delivery || { today: 0, yesterday: 0, last7Days: 0 };
             } else {
                 themeColor = 'gray';
                 icon = '🏢';
                 label = 'Department';
+                deptStats = { today: 0, yesterday: 0, last7Days: 0 };
             }
 
             html += `
@@ -5214,21 +5375,75 @@ async function loadDepartments() {
                 </div>
                 
                 <div class="p-6 border-t border-${themeColor}-50">
-                    <div class="flex items-center gap-2 mb-4">
-                        <span class="text-gray-400 text-xs font-bold uppercase tracking-wider">ID</span>
-                        <span class="font-mono text-sm bg-gray-50 px-2 py-0.5 rounded border border-gray-100 text-gray-600">${dept.id}</span>
+                    <!-- Day-to-Day Output Section -->
+                    <div class="mb-6">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <span>📅</span> Day-to-Day Output
+                        </p>
+                        <div class="space-y-2">
+                            <!-- Today -->
+                            <div class="bg-${themeColor}-50/50 rounded-xl p-2 border border-${themeColor}-100/50 flex justify-between items-center">
+                                <span class="text-[10px] font-bold text-${themeColor}-700 uppercase w-16">Today</span>
+                                <div class="flex gap-3">
+                                    <div class="text-center">
+                                        <p class="text-lg font-black text-${themeColor}-700 loading-none">${(deptStats.today.fresh || 0) + (deptStats.today.reorder || 0)}</p>
+                                    </div>
+                                    <div class="h-8 w-px bg-${themeColor}-200"></div>
+                                    <div class="text-right">
+                                        <p class="text-[9px] font-bold text-${themeColor}-600">🆕 ${deptStats.today.fresh || 0}</p>
+                                        <p class="text-[9px] font-bold text-${themeColor}-600">🔄 ${deptStats.today.reorder || 0}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Yesterday -->
+                            <div class="bg-gray-50 rounded-xl p-2 border border-gray-100 flex justify-between items-center">
+                                <span class="text-[10px] font-bold text-gray-500 uppercase w-16">Yesterday</span>
+                                <div class="flex gap-3">
+                                    <div class="text-center">
+                                        <p class="text-lg font-black text-gray-600 loading-none">${(deptStats.yesterday.fresh || 0) + (deptStats.yesterday.reorder || 0)}</p>
+                                    </div>
+                                    <div class="h-8 w-px bg-gray-200"></div>
+                                    <div class="text-right">
+                                        <p class="text-[9px] font-bold text-gray-500">🆕 ${deptStats.yesterday.fresh || 0}</p>
+                                        <p class="text-[9px] font-bold text-gray-500">🔄 ${deptStats.yesterday.reorder || 0}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 7 Days -->
+                            <div class="bg-slate-50 rounded-xl p-2 border border-slate-100 flex justify-between items-center">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase w-16">Last 7 Days</span>
+                                <div class="flex gap-3">
+                                    <div class="text-center">
+                                        <p class="text-lg font-black text-slate-600 loading-none">${(deptStats.last7Days.fresh || 0) + (deptStats.last7Days.reorder || 0)}</p>
+                                    </div>
+                                    <div class="h-8 w-px bg-slate-200"></div>
+                                    <div class="text-right">
+                                        <p class="text-[9px] font-bold text-slate-500">🆕 ${deptStats.last7Days.fresh || 0}</p>
+                                        <p class="text-[9px] font-bold text-slate-500">🔄 ${deptStats.last7Days.reorder || 0}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <button type="button" onclick="openEditDeptModal('${dept.id}', '${dept.name}')" 
-                        class="w-full bg-${themeColor}-50 text-${themeColor}-600 border border-${themeColor}-100 font-bold py-2.5 rounded-xl text-sm hover:bg-${themeColor}-100 transition-colors flex items-center justify-center gap-2">
-                        <span>✏️</span> Manage Department
-                    </button>
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">ID</span>
+                            <span class="font-mono text-xs bg-gray-50 px-2 py-0.5 rounded border border-gray-100 text-gray-600">${dept.id}</span>
+                        </div>
+                        <button type="button" onclick="openEditDeptModal('${dept.id}', '${dept.name}')" 
+                            class="bg-white text-gray-500 hover:text-${themeColor}-600 p-2 rounded-lg hover:bg-${themeColor}-50 transition-all border border-transparent hover:border-${themeColor}-100">
+                            ⚙️
+                        </button>
+                    </div>
                 </div>
             </div>`;
         });
         html += '</div>';
         document.getElementById('adminDepartmentsTab').innerHTML = html;
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error('Error loading departments:', e); }
 }
 
 async function openEditDeptModal(deptId, deptName) {
@@ -5345,7 +5560,7 @@ async function loadAdminHistory() {
                             <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Employee</label>
                             <select id="adminHistoryEmployee" onchange="filterAdminHistory()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 bg-white">
                                 <option value="">All Employees</option>
-                                ${employees.map(e => `<option value="${e}">${e}</option>`).join('')}
+                                ${[...new Map(orders.filter(o => o.employeeId && o.employee).map(o => [o.employeeId, o.employee])).entries()].map(([id, name]) => `<option value="${id}">${name} (${id})</option>`).join('')}
                             </select>
                         </div>
                         <div class="flex-1 min-w-[200px]">
@@ -5420,7 +5635,7 @@ function renderAdminHistoryTable(orders) {
         html += `
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-6 py-4 font-mono font-bold text-blue-600 text-xs">${o.orderId}</td>
-                    <td class="px-6 py-4 font-medium text-gray-700">${o.employee}</td>
+                    <td class="px-6 py-4 font-medium text-gray-700">${o.employee} (${o.employeeId})</td>
                     <td class="px-6 py-4 text-gray-600 max-w-[150px] truncate" title="${o.customerName}">${o.customerName}</td>
                     <td class="px-6 py-4 text-right font-bold text-gray-800">₹${(o.total || 0).toFixed(2)}</td>
                     <td class="px-6 py-4 text-center">
@@ -5448,37 +5663,98 @@ function renderAdminHistoryTable(orders) {
 }
 
 async function loadAdminProgress() {
-    // Render basic structure with filters
     const html = `
-            <div class="glass-card mb-6 p-4">
-                 <div class="flex flex-wrap gap-4 items-end">
-                    <div class="flex-1 min-w-[150px]">
-                        <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Start Date</label>
-                        <input type="date" id="adminProgressStartDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
+        <div class="glass-card mb-6 p-4">
+            <div class="flex flex-wrap gap-4 items-end">
+                <div class="flex-1 min-w-[150px]">
+                    <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Start Date</label>
+                    <input type="date" id="adminProgressStartDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div class="flex-1 min-w-[150px]">
+                    <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">End Date</label>
+                    <input type="date" id="adminProgressEndDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div class="flex-1 min-w-[150px]">
+                    <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Employee</label>
+                    <select id="adminProgressEmployee" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 bg-white">
+                        <option value="">All Employees</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="loadAdminProgress()" class="bg-blue-500 text-white font-bold px-6 py-2 rounded-xl text-sm hover:bg-blue-600 transition-all">
+                        🔄 Refresh
+                    </button>
+                    <button onclick="exportAnalyticsReport()" class="bg-emerald-600 text-white font-bold px-6 py-2 rounded-xl text-sm hover:bg-emerald-700 transition-all flex items-center gap-2">
+                        <span>📥</span> Export Report
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="adminProgressStatsContainer" class="space-y-6">
+            <!-- Summary Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="analyticsSummaryGrid">
+                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
+                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
+                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
+                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Main Trend Chart -->
+                <div class="lg:col-span-2 glass-card p-6 bg-white shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-6">
+                        <h4 class="font-bold text-slate-800 flex items-center gap-2">
+                             <span class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">📈</span>
+                             Business Performance Trend
+                        </h4>
+                        <div class="flex gap-4 text-xs font-semibold">
+                             <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span>Revenue</span>
+                             <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span>Delivered</span>
+                             <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span>Cancelled</span>
+                        </div>
                     </div>
-                    <div class="flex-1 min-w-[150px]">
-                        <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">End Date</label>
-                        <input type="date" id="adminProgressEndDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
+                    <div class="relative h-[300px]">
+                        <canvas id="trendChart"></canvas>
                     </div>
-                     <div class="flex-1 min-w-[150px]">
-                        <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Employee</label>
-                         <select id="adminProgressEmployee" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 bg-white">
-                            <option value="">All Employees</option>
-                        </select>
+                </div>
+
+                <!-- Status Distribution Chart -->
+                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                         <span class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">🥧</span>
+                         Order Breakdown
+                    </h4>
+                    <div class="relative h-[300px] flex items-center justify-center">
+                        <canvas id="statusChart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <div id="adminProgressStatsContainer">
-                <!-- Stats will be loaded here -->
-                <div class="animate-pulse space-y-4">
-                    <div class="h-32 bg-gray-100 rounded-2xl"></div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="h-64 bg-gray-100 rounded-2xl"></div>
-                        <div class="h-64 bg-gray-100 rounded-2xl"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Employee Performance -->
+                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                         <span class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">🏆</span>
+                         Employee Leaderboard
+                    </h4>
+                    <div class="relative h-[300px]">
+                        <canvas id="employeeChart"></canvas>
                     </div>
                 </div>
-            </div>`;
+
+                <!-- City Distribution -->
+                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                         <span class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">📍</span>
+                         Top Cities (Orders)
+                    </h4>
+                    <div class="relative h-[300px]">
+                        <canvas id="cityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>`;
 
     document.getElementById('adminProgressTab').innerHTML = html;
 
@@ -5491,7 +5767,7 @@ async function loadAdminProgress() {
         employees.forEach(e => {
             const opt = document.createElement('option');
             opt.value = e.id;
-            opt.textContent = e.name;
+            opt.textContent = `${e.name} (${e.id})`;
             select.appendChild(opt);
         });
     } catch (e) { console.error('Error loading employees for filter', e); }
@@ -5500,123 +5776,334 @@ async function loadAdminProgress() {
     filterAdminProgress();
 }
 
+// Global Chart Instances
+let analyticsCharts = {
+    trend: null,
+    status: null,
+    employee: null,
+    city: null
+};
+
 async function filterAdminProgress() {
     try {
         const startDate = document.getElementById('adminProgressStartDate').value;
         const endDate = document.getElementById('adminProgressEndDate').value;
         const employeeId = document.getElementById('adminProgressEmployee').value;
 
-        // Fetch data (optimized: fetch all and filter client side for smooth UX, or fetch filtered from server if API supports)
-        // Assuming we fetch all history for stats
-        const res = await fetch(`${API_URL}/admin/history`);
-        const data = await res.json();
-        let orders = data.orders || [];
+        // Fetch range data from dedicated API
+        let url = `${API_URL}/analytics/range?`;
+        if (startDate) url += `startDate=${startDate}&`;
+        if (endDate) url += `endDate=${endDate}&`;
+        if (employeeId) url += `employeeId=${employeeId}&`;
 
-        // Filter
+        const res = await fetch(url);
+        const result = await res.json();
+
+        // We also need all orders for detailed chart processing if range API is too light
+        // For now, let's fetch history for full flexibility in charting
+        const historyRes = await fetch(`${API_URL}/admin/history`);
+        const historyData = await historyRes.json();
+        // Pre-process Fresh/Re-order status on FULL history before filtering
+        const sortedHistory = [...(historyData.orders || [])].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const seenMobiles = new Set();
+        const orderReorderMap = new Map(); // Map orderId -> isReorder boolean
+
+        sortedHistory.forEach(o => {
+            const mobile = o.telNo || o.mobileNumber;
+            const isReorder = seenMobiles.has(mobile);
+            if (mobile) seenMobiles.add(mobile);
+            orderReorderMap.set(o.orderId, isReorder);
+        });
+
+        // Apply filters locally on the full set
+        // Note: We use orderReorderMap to check status during counting
+        let orders = historyData.orders || [];
         if (startDate) orders = orders.filter(o => o.timestamp >= startDate);
         if (endDate) orders = orders.filter(o => o.timestamp <= endDate + 'T23:59:59');
         if (employeeId) orders = orders.filter(o => o.employeeId === employeeId);
 
-        // Calculate Stats
+        // Calculate Summary Stats
         const totalOrders = orders.length;
         const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+        const delivered = orders.filter(o => o.status === 'Delivered').length;
         const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(0) : 0;
 
-        // Status Breakdown
-        const pending = orders.filter(o => o.status === 'Pending').length;
-        const verified = orders.filter(o => o.status === 'Address Verified').length;
-        const dispatched = orders.filter(o => o.status === 'Dispatched').length;
-        const delivered = orders.filter(o => o.status === 'Delivered').length;
+        // Calculate Fresh vs Re-order for the FILTERED set
+        let freshCount = 0;
+        let reorderCount = 0;
+        orders.forEach(o => {
+            if (orderReorderMap.get(o.orderId)) reorderCount++;
+            else freshCount++;
+        });
 
-        // Employee Breakdown (if no employee selected, show top performers)
-        // If employee selected, show their specific stats breakdown logic could be added here
+        // Find Top City
+        const cityCounts = {};
+        orders.forEach(o => {
+            const loc = (o.distt || o.city || '').trim().toUpperCase();
+            if (loc && loc !== 'SAME' && loc !== 'NA' && loc !== 'N/A' && loc !== 'NULL') {
+                cityCounts[loc] = (cityCounts[loc] || 0) + 1;
+            }
+        });
+        const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
 
-        // Render Stats Container
-        const statsHtml = `
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="glass-card p-6 bg-white border border-indigo-100 flex items-center justify-between">
-                         <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Revenue</p>
-                            <p class="text-3xl font-black text-gray-800">₹${totalRevenue.toLocaleString()}</p>
-                         </div>
-                         <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 text-2xl">💰</div>
-                    </div>
-                     <div class="glass-card p-6 bg-white border border-blue-100 flex items-center justify-between">
-                         <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Orders</p>
-                            <p class="text-3xl font-black text-gray-800">${totalOrders}</p>
-                         </div>
-                         <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 text-2xl">📦</div>
-                    </div>
-                     <div class="glass-card p-6 bg-white border border-green-100 flex items-center justify-between">
-                         <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Avg Order Value</p>
-                            <p class="text-3xl font-black text-gray-800">₹${avgOrderValue}</p>
-                         </div>
-                         <div class="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600 text-2xl">📊</div>
-                    </div>
-                     <div class="glass-card p-6 bg-white border border-purple-100 flex items-center justify-between">
-                         <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Conversion Rate</p>
-                            <p class="text-3xl font-black text-gray-800">${totalOrders > 0 ? ((delivered / totalOrders) * 100).toFixed(1) : 0}%</p>
-                         </div>
-                         <div class="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 text-2xl">📈</div>
-                    </div>
+        // Render Summary Grid
+        document.getElementById('analyticsSummaryGrid').innerHTML = `
+            <div class="glass-card p-6 bg-white border border-blue-50">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Revenue</p>
+                <div class="flex items-end justify-between">
+                    <p class="text-2xl font-black text-slate-800">₹${totalRevenue.toLocaleString()}</p>
+                    <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">💰 Income</span>
                 </div>
+            </div>
+            <div class="glass-card p-4 bg-white border border-emerald-50">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Orders</p>
+                <div class="flex items-end justify-between mb-2">
+                    <p class="text-3xl font-black text-slate-800">${totalOrders}</p>
+                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">📦 Volume</span>
+                </div>
+                <div class="flex gap-2 pt-2 border-t border-slate-50">
+                     <div class="flex-1 text-center bg-emerald-50/50 rounded-lg py-1 border border-emerald-100">
+                        <span class="block text-[10px] uppercase font-bold text-emerald-500 tracking-wider">Fresh</span>
+                        <span class="block text-xl font-black text-emerald-600">🆕 ${freshCount}</span>
+                     </div>
+                     <div class="flex-1 text-center bg-blue-50/50 rounded-lg py-1 border border-blue-100">
+                        <span class="block text-[10px] uppercase font-bold text-blue-500 tracking-wider">Re-order</span>
+                        <span class="block text-xl font-black text-blue-600">🔄 ${reorderCount}</span>
+                     </div>
+                </div>
+            </div>
+            <div class="glass-card p-6 bg-white border border-amber-50">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Avg Order Value</p>
+                <div class="flex items-end justify-between">
+                    <p class="text-2xl font-black text-slate-800">₹${avgOrderValue}</p>
+                    <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">📊 Ticket</span>
+                </div>
+            </div>
+            <div class="glass-card p-6 bg-white border border-purple-50">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Top Marketing City</p>
+                <div class="flex items-end justify-between">
+                    <p class="text-2xl font-black text-slate-800 truncate pr-2" title="${topCity}">${topCity}</p>
+                    <span class="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-lg">📍 Lead</span>
+                </div>
+            </div>
+        `;
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Status Distribution -->
-                    <div class="glass-card p-6 bg-white">
-                        <h4 class="font-bold text-gray-800 mb-6 flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">🥧</span>
-                            Status Breakdown
-                        </h4>
-                        <div class="space-y-4">
-                            <div>
-                                <div class="flex justify-between text-sm font-bold text-gray-600 mb-1">
-                                    <span>Pending</span>
-                                    <span>${pending} (${totalOrders > 0 ? ((pending / totalOrders) * 100).toFixed(1) : 0}%)</span>
-                                </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                    <div class="bg-red-500 h-2.5 rounded-full" style="width: ${totalOrders > 0 ? (pending / totalOrders) * 100 : 0}%"></div>
-                                </div>
-                            </div>
-                             <div>
-                                <div class="flex justify-between text-sm font-bold text-gray-600 mb-1">
-                                    <span>Address Verified</span>
-                                    <span>${verified} (${totalOrders > 0 ? ((verified / totalOrders) * 100).toFixed(1) : 0}%)</span>
-                                </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                     <div class="bg-blue-500 h-2.5 rounded-full" style="width: ${totalOrders > 0 ? (verified / totalOrders) * 100 : 0}%"></div>
-                                </div>
-                            </div>
-                             <div>
-                                <div class="flex justify-between text-sm font-bold text-gray-600 mb-1">
-                                    <span>Dispatched</span>
-                                    <span>${dispatched} (${totalOrders > 0 ? ((dispatched / totalOrders) * 100).toFixed(1) : 0}%)</span>
-                                </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                     <div class="bg-purple-500 h-2.5 rounded-full" style="width: ${totalOrders > 0 ? (dispatched / totalOrders) * 100 : 0}%"></div>
-                                </div>
-                            </div>
-                             <div>
-                                <div class="flex justify-between text-sm font-bold text-gray-600 mb-1">
-                                    <span>Delivered</span>
-                                    <span>${delivered} (${totalOrders > 0 ? ((delivered / totalOrders) * 100).toFixed(1) : 0}%)</span>
-                                </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                     <div class="bg-green-500 h-2.5 rounded-full" style="width: ${totalOrders > 0 ? (delivered / totalOrders) * 100 : 0}%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-
-        document.getElementById('adminProgressStatsContainer').innerHTML = statsHtml;
+        // Render Charts
+        renderAnalyticsTrend(orders);
+        renderAnalyticsStatus(orders);
+        renderAnalyticsEmployees(orders);
+        renderAnalyticsCities(orders);
 
     } catch (e) {
         console.error('Error filtering progress', e);
+        showToast('Analytics load failed!', 'error');
     }
+}
+
+// Chart Helper: Trend Line
+function renderAnalyticsTrend(orders) {
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    if (analyticsCharts.trend) analyticsCharts.trend.destroy();
+
+    // Process data: group by date
+    const dailyData = {};
+    orders.forEach(o => {
+        const date = (o.timestamp || '').split('T')[0];
+        if (!date) return;
+        if (!dailyData[date]) dailyData[date] = { revenue: 0, delivered: 0, cancelled: 0 };
+        dailyData[date].revenue += (o.total || 0);
+        if (o.status === 'Delivered') dailyData[date].delivered++;
+        if (o.status === 'Cancelled') dailyData[date].cancelled++;
+    });
+
+    const labels = Object.keys(dailyData).sort();
+    const revenueSet = labels.map(l => dailyData[l].revenue);
+    const deliveredSet = labels.map(l => dailyData[l].delivered);
+    const cancelledSet = labels.map(l => dailyData[l].cancelled);
+
+    analyticsCharts.trend = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Revenue (₹)',
+                    data: revenueSet,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Delivered',
+                    data: deliveredSet,
+                    borderColor: '#10b981',
+                    borderDash: [5, 5],
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: { type: 'linear', display: true, position: 'left', grid: { drawOnChartArea: false } },
+                y1: { type: 'linear', display: true, position: 'right' }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+// Chart Helper: Status Doughnut
+function renderAnalyticsStatus(orders) {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    if (analyticsCharts.status) analyticsCharts.status.destroy();
+
+    const stats = {
+        'Delivered': orders.filter(o => o.status === 'Delivered').length,
+        'Cancelled': orders.filter(o => o.status === 'Cancelled').length,
+        'On Hold': orders.filter(o => o.status === 'On Hold').length,
+        'Pending': orders.filter(o => o.status === 'Pending').length,
+        'Verified': orders.filter(o => o.status === 'Address Verified').length,
+        'In Transit': orders.filter(o => o.status === 'Dispatched').length
+    };
+
+    analyticsCharts.status = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(stats),
+            datasets: [{
+                data: Object.values(stats),
+                backgroundColor: [
+                    '#10b981', // Delivered (Emerald)
+                    '#ef4444', // Cancelled (Red)
+                    '#f59e0b', // On Hold (Amber)
+                    '#f43f5e', // Pending (Rose/Pink)
+                    '#3b82f6', // Verified (Blue)
+                    '#8b5cf6'  // In Transit (Violet)
+                ],
+                borderWidth: 0,
+                hoverOffset: 15
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: { size: 11, weight: '600' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    padding: 12,
+                    bodyFont: { size: 13 },
+                    titleFont: { size: 13, weight: '700' }
+                }
+            },
+            cutout: '70%'
+        }
+    });
+}
+
+// Chart Helper: Employee Performance
+function renderAnalyticsEmployees(orders) {
+    const ctx = document.getElementById('employeeChart').getContext('2d');
+    if (analyticsCharts.employee) analyticsCharts.employee.destroy();
+
+    const empStats = {};
+    orders.forEach(o => {
+        if (!o.employee) return;
+        const empName = o.employee;
+        if (!empStats[empName]) empStats[empName] = { total: 0, delivered: 0 };
+        empStats[empName].total++;
+        if (o.status === 'Delivered') empStats[empName].delivered++;
+    });
+
+    // Sort by total orders and take top 10
+    const sortedData = Object.entries(empStats)
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, 10);
+
+    const labels = sortedData.map(d => d[0]);
+    const totalData = sortedData.map(d => d[1].total);
+    const deliveredData = sortedData.map(d => d[1].delivered);
+
+    analyticsCharts.employee = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Total Orders',
+                    data: totalData,
+                    backgroundColor: '#6366f1', // Indigo
+                    borderRadius: 6
+                },
+                {
+                    label: 'Delivered',
+                    data: deliveredData,
+                    backgroundColor: '#10b981', // Emerald
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: { boxWidth: 12, font: { size: 10, weight: '600' } }
+                }
+            },
+            scales: {
+                x: { stacked: false, grid: { display: false } },
+                y: { stacked: false, grid: { display: false } }
+            }
+        }
+    });
+}
+
+// Chart Helper: City Distribution
+function renderAnalyticsCities(orders) {
+    const ctx = document.getElementById('cityChart').getContext('2d');
+    if (analyticsCharts.city) analyticsCharts.city.destroy();
+
+    const cityStats = {};
+    orders.forEach(o => {
+        const city = (o.distt || o.city || '').trim().toUpperCase();
+        if (!city || city === 'SAME' || city === 'NA' || city === 'N/A' || city === 'NULL') return;
+        cityStats[city] = (cityStats[city] || 0) + 1;
+    });
+
+    const data = Object.entries(cityStats).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    analyticsCharts.city = new Chart(ctx, {
+        type: 'polarArea',
+        data: {
+            labels: data.map(d => d[0]),
+            datasets: [{
+                data: data.map(d => d[1]),
+                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
+        }
+    });
 }
 
 // ==================== SHARED FUNCTIONS ====================
@@ -5830,87 +6317,201 @@ function copyTracking(text) {
     }
 }
 
+// Helper to map order to Excel schema
+function mapOrderForExport(order, index) {
+    let address = order.address || '';
+    let landmark = '';
+    if (typeof address === 'object' && address !== null) {
+        landmark = address.landmark || order.landmark || order.landMark || '';
+        address = `${address.houseNo || ''}, ${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''}`;
+    } else {
+        landmark = order.landmark || order.landMark || '';
+    }
+
+    const fullAddress = landmark ? `${address} {${landmark}}` : address;
+
+    let productNames = '';
+    if (Array.isArray(order.items)) {
+        productNames = order.items.map(i => i && i.description ? i.description : '').join(', ');
+    } else if (typeof order.items === 'string') {
+        productNames = order.items;
+    }
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        try {
+            return new Date(dateStr).toLocaleDateString('en-GB');
+        } catch (e) { return dateStr; }
+    };
+
+    return {
+        "S.No": index + 1,
+        "Customer Name": order.customerName || '',
+        "Mobile Number": order.telNo || '',
+        "Address": toTitleCase(fullAddress),
+        "Add1": "",
+        "Add2": "",
+        "Add3": "",
+        "Order Date": formatDate(order.timestamp),
+        "Delivered Date": order.status === 'Delivered' ? formatDate(order.deliveryDate) : '',
+        "Product Name": productNames,
+        "Delivery Status": order.status || 'Unknown',
+        "Amount Rs.": order.total || 0,
+        "Advance Payment": order.advance || 0,
+        "Payment Method": order.paymentMode || 'COD',
+        "Agent": order.employee || '',
+        "Order Type": order.orderType || 'New',
+        "Invoice Date": formatDate(order.tracking?.dispatchedAt || order.dispatchedAt || order.timestamp),
+        "Delivered by": (order.shiprocket && order.shiprocket.courierName) ? order.shiprocket.courierName : (order.courier || order.dispatchedBy || ''),
+        "AWB Number": order.tracking ? (order.tracking.trackingId || '') : '',
+        "RTO Status": order.rtoStatus || ''
+    };
+}
+
 async function exportAllOrders() {
     try {
         showMessage('⏳ Generating Excel file...', 'success', 'adminMessage');
-
-        // Fetch all raw data from server
         const res = await fetch(`${API_URL}/orders`);
         const data = await res.json();
+        if (!data.success || !data.orders) throw new Error('Orders load nahi hue!');
 
-        if (!data.success || !data.orders) throw new Error('Failed to fetch orders');
+        const exportData = data.orders.map((o, i) => mapOrderForExport(o, i));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "All_Orders");
 
-        const orders = data.orders;
+        XLSX.writeFile(wb, `HerbOnNaturals_All_Orders_${new Date().toISOString().split('T')[0]}.xlsx`);
+        showMessage('All Orders Exported! ✅', 'success', 'adminMessage');
+    } catch (e) {
+        console.error(e);
+        alert('Export failed! ' + e.message);
+    }
+}
 
-        // Map to Schema
-        const exportData = orders.map((order, index) => {
-            let address = order.address || '';
-            // Format address if it's an object
-            let landmark = '';
-            if (typeof address === 'object' && address !== null) {
-                // Try all sources for landmark
-                landmark = address.landmark || order.landmark || order.landMark || '';
-                address = `${address.houseNo || ''}, ${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''}`;
-            } else {
-                landmark = order.landmark || order.landMark || '';
-            }
+async function exportOrdersByStatus(status) {
+    try {
+        showMessage(`⏳ Generating ${status} Orders Excel...`, 'success', 'adminMessage');
+        const res = await fetch(`${API_URL}/orders`);
+        const data = await res.json();
+        if (!data.success || !data.orders) throw new Error('Orders load nahi hue!');
 
-            // Append landmark in braces if it exists
-            const fullAddress = landmark ? `${address} {${landmark}}` : address;
+        // Filter by Status
+        const filtered = data.orders.filter(o => o.status === status);
 
-            // Handle items safely
-            let productNames = '';
-            if (Array.isArray(order.items)) {
-                productNames = order.items.map(i => i && i.description ? i.description : '').join(', ');
-            } else if (typeof order.items === 'string') {
-                productNames = order.items;
-            }
+        if (filtered.length === 0) {
+            return alert(`Koi '${status}' orders nahi mile!`);
+        }
 
-            // Safe date formatting
-            const formatDate = (dateStr) => {
-                if (!dateStr) return '';
-                try {
-                    return new Date(dateStr).toLocaleDateString('en-GB');
-                } catch (e) { return dateStr; }
-            };
-
-            return {
-                "S.No": index + 1,
-                "Customer Name": order.customerName || '',
-                "Mobile Number": order.telNo || '',
-                "Address": toTitleCase(fullAddress),
-                "Add1": "", // Placeholder
-                "Add2": "", // Placeholder
-                "Add3": "", // Placeholder
-                "Order Date": formatDate(order.timestamp),
-                "Delivered Date": order.status === 'Delivered' ? formatDate(order.deliveryDate) : '',
-                "Product Name": productNames,
-                "Delivery Status": "On Way",
-                "Amount Rs.": order.total || 0,
-                "Advance Payment": order.advance || 0,
-                "Payment Method": order.paymentMode || 'COD',
-                "Agent": order.employee || '',
-                "Order Type": order.orderType || 'New',
-                "Invoice Date": formatDate(order.tracking?.dispatchedAt || order.dispatchedAt || order.timestamp),
-                "Delivered by": (order.shiprocket && order.shiprocket.courierName) ? order.shiprocket.courierName : (order.courier || order.dispatchedBy || ''),
-                "AWB Number": order.tracking ? (order.tracking.trackingId || '') : '',
-                "RTO Status": order.rtoStatus || ''
-            };
-        });
-
-        // Generate Worksheet
+        const exportData = filtered.map((o, i) => mapOrderForExport(o, i));
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Orders");
 
-        // Download File
-        const fileName = `HerbOnNaturals_Orders_${new Date().toISOString().split('T')[0]}.xlsx`;
-        XLSX.writeFile(wb, fileName); // Keep this line for actual download
-        if (document.getElementById('adminMessage')) showMessage('Orders Exported Successfully! ✅', 'success', 'adminMessage');
-
+        const fileName = `${status.replace(/\s+/g, '_')}_Orders_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        showMessage(`${status} Orders Exported! ✅`, 'success', 'adminMessage');
     } catch (e) {
         console.error(e);
         alert('Export failed! ' + e.message);
+    }
+}
+
+async function exportAnalyticsReport() {
+    try {
+        const startDate = document.getElementById('adminProgressStartDate').value;
+        const endDate = document.getElementById('adminProgressEndDate').value;
+        const employeeId = document.getElementById('adminProgressEmployee').value;
+
+        showMessage('⏳ Preparing Analytics Report...', 'success', 'adminMessage');
+
+        // Fetch all orders for report generation
+        const res = await fetch(`${API_URL}/admin/history`);
+        const data = await res.json();
+        let orders = data.orders || [];
+
+        // Apply filters
+        if (startDate) orders = orders.filter(o => o.timestamp >= startDate);
+        if (endDate) orders = orders.filter(o => o.timestamp <= endDate + 'T23:59:59');
+        if (employeeId) orders = orders.filter(o => o.employeeId === employeeId);
+
+        const wb = XLSX.utils.book_new();
+
+        // 1. DASHBOARD SUMMARY
+        const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+        const delivered = orders.filter(o => o.status === 'Delivered').length;
+        const cancelled = orders.filter(o => o.status === 'Cancelled').length;
+        const hold = orders.filter(o => o.status === 'On Hold').length;
+        const pending = orders.filter(o => o.status === 'Pending').length;
+
+        const summaryData = [
+            { Metric: "Total Orders", Value: orders.length },
+            { Metric: "Total Revenue", Value: `₹${totalRevenue.toLocaleString()}` },
+            { Metric: "Average Order Value", Value: orders.length > 0 ? `₹${(totalRevenue / orders.length).toFixed(2)}` : 0 },
+            { Metric: "Delivered Orders", Value: delivered },
+            { Metric: "Cancelled Orders", Value: cancelled },
+            { Metric: "On Hold Orders", Value: hold },
+            { Metric: "Pending Orders", Value: pending },
+            { Metric: "Report Start Date", Value: startDate || 'All Time' },
+            { Metric: "Report End Date", Value: endDate || 'All Time' }
+        ];
+        const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
+
+        // 2. EMPLOYEE PERFORMANCE
+        const empStats = {};
+        orders.forEach(o => {
+            const eid = o.employeeId || 'Unknown';
+            const ename = o.employee || 'Unknown';
+            const key = `${eid} - ${ename}`;
+            if (!empStats[key]) empStats[key] = { ID: eid, Name: ename, Total: 0, Delivered: 0, Revenue: 0 };
+            empStats[key].Total++;
+            empStats[key].Revenue += (o.total || 0);
+            if (o.status === 'Delivered') empStats[key].Delivered++;
+        });
+        const employeeData = Object.values(empStats).sort((a, b) => b.Total - a.Total);
+        const wsEmployee = XLSX.utils.json_to_sheet(employeeData);
+        XLSX.utils.book_append_sheet(wb, wsEmployee, "Employee_Performance");
+
+        // 3. CITY BREAKDOWN
+        const cityStats = {};
+        orders.forEach(o => {
+            const city = (o.distt || o.city || 'Unknown').trim().toUpperCase();
+            if (city === 'SAME' || city === 'NA') return;
+            if (!cityStats[city]) cityStats[city] = { City: city, Orders: 0, Revenue: 0 };
+            cityStats[city].Orders++;
+            cityStats[city].Revenue += (o.total || 0);
+        });
+        const cityData = Object.values(cityStats).sort((a, b) => b.Orders - a.Orders).slice(0, 100);
+        const wsCity = XLSX.utils.json_to_sheet(cityData);
+        XLSX.utils.book_append_sheet(wb, wsCity, "City_Breakdown");
+
+        // 4. DAILY TREND
+        const dailyStats = {};
+        orders.forEach(o => {
+            const date = (o.timestamp || '').split('T')[0];
+            if (!date) return;
+            if (!dailyStats[date]) dailyStats[date] = { Date: date, Orders: 0, Revenue: 0, Delivered: 0 };
+            dailyStats[date].Orders++;
+            dailyStats[date].Revenue += (o.total || 0);
+            if (o.status === 'Delivered') dailyStats[date].Delivered++;
+        });
+        const trendData = Object.values(dailyStats).sort((a, b) => a.Date.localeCompare(b.Date));
+        const wsTrend = XLSX.utils.json_to_sheet(trendData);
+        XLSX.utils.book_append_sheet(wb, wsTrend, "Daily_Trend");
+
+        // 5. RAW DATA
+        const rawData = orders.map((o, i) => mapOrderForExport(o, i));
+        const wsRaw = XLSX.utils.json_to_sheet(rawData);
+        XLSX.utils.book_append_sheet(wb, wsRaw, "Source_Data");
+
+        // Save File
+        const fileName = `HerbOnNaturals_Analytics_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        showMessage('Analytics Report Exported! ✅', 'success', 'adminMessage');
+
+    } catch (e) {
+        console.error('Export Analytics Error', e);
+        alert('Export Failed: ' + e.message);
     }
 }
 
@@ -6560,44 +7161,27 @@ function switchVerificationTab(tab) {
         document.getElementById('verificationCancelledTab').classList.add('hidden');
     }
 
-    document.getElementById('verificationTabPending').classList.remove('tab-active');
-    document.getElementById('verificationTabPending').classList.add('bg-white', 'text-gray-600');
-    document.getElementById('verificationTabUnverified').classList.remove('tab-active');
-    document.getElementById('verificationTabUnverified').classList.add('bg-white', 'text-gray-600');
-    document.getElementById('verificationTabHistory').classList.remove('tab-active');
-    document.getElementById('verificationTabHistory').classList.add('bg-white', 'text-gray-600');
-    if (document.getElementById('verificationTabCancelled')) {
-        document.getElementById('verificationTabCancelled').classList.remove('tab-active');
-        document.getElementById('verificationTabCancelled').classList.add('bg-white', 'text-gray-600');
-    }
-
     if (tab === 'pending') {
         document.getElementById('verificationPendingTab').classList.remove('hidden');
-        document.getElementById('verificationTabPending').classList.add('tab-active');
-        document.getElementById('verificationTabPending').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabPending');
         loadDeptOrders();
     } else if (tab === 'unverified') {
         document.getElementById('verificationUnverifiedTab').classList.remove('hidden');
-        document.getElementById('verificationTabUnverified').classList.add('tab-active');
-        document.getElementById('verificationTabUnverified').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabUnverified');
         loadVerificationUnverified();
     } else if (tab === 'history') {
         document.getElementById('verificationHistoryTab').classList.remove('hidden');
-        document.getElementById('verificationTabHistory').classList.add('tab-active');
-        document.getElementById('verificationTabHistory').classList.remove('bg-white', 'text-gray-600');
+        setActiveDeptTab('deptTabHistory');
         loadVerificationHistory();
     } else if (tab === 'cancelled') {
-        // Show cancelled tab (now has its own tab div)
         if (document.getElementById('verificationCancelledTab')) {
             document.getElementById('verificationCancelledTab').classList.remove('hidden');
         }
-        if (document.getElementById('verificationTabCancelled')) {
-            document.getElementById('verificationTabCancelled').classList.add('tab-active');
-            document.getElementById('verificationTabCancelled').classList.remove('bg-white', 'text-gray-600');
-        }
+        setActiveDeptTab('deptTabCancelled');
         loadVerificationCancelled();
     }
 }
+
 
 async function loadVerificationUnverified() {
     try {
@@ -7592,7 +8176,7 @@ setInterval(function () {
 // ==================== UNIVERSAL SUCCESS POPUP ====================
 function showSuccessPopup(title, msg, icon = '✅', color = '#10b981', whatsappData = null) {
     const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn';
+    modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-24 animate-fadeIn';
 
     let whatsappBtn = '';
     if (whatsappData) {
@@ -7634,7 +8218,7 @@ function sendWhatsAppDirect(type, order) {
 
 function showWarningPopup(title, msg) {
     const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn';
+    modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-24 animate-fadeIn';
     modal.innerHTML = `
         <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl transform transition-all scale-100 border-4 border-amber-400">
             <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner text-amber-600">
@@ -8088,5 +8672,107 @@ async function syncShiprocketStatus() {
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
+    }
+}
+
+// ==================== EMPLOYEE EDIT FUNCTIONS ====================
+function showEditEmployeeModal(empId, name) {
+    document.getElementById('editEmpOldId').value = empId;
+    document.getElementById('editEmpNewId').value = empId;
+    document.getElementById('editEmpName').value = name;
+    document.getElementById('editEmpPass').value = ''; // Clean password field
+
+    document.getElementById('editEmployeeModal').classList.remove('hidden');
+}
+
+async function saveEmployeeChanges() {
+    try {
+        const oldId = document.getElementById('editEmpOldId').value;
+        const newId = document.getElementById('editEmpNewId').value.trim();
+        const newName = document.getElementById('editEmpName').value.trim();
+        const newPassword = document.getElementById('editEmpPass').value.trim();
+
+        if (!newId || !newName) return alert('Name aur ID required hain!');
+
+        const btn = event?.target?.closest('button');
+        const originalText = btn ? btn.innerHTML : 'Save';
+        if (btn) { btn.innerHTML = '⏳ Saving...'; btn.disabled = true; }
+
+        const res = await fetch(`${API_URL}/employees/${oldId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ newId, name: newName, password: newPassword })
+        });
+
+        // Robust JSON handling
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const data = await res.json();
+            if (data.success) {
+                showSuccessPopup('Employee Updated Successfully! ✅', 'Details have been updated and orders synced.', '👤', '#f97316');
+                closeModal('editEmployeeModal');
+                closeModal('employeeProfileModal');
+                loadEmployees(); // Reload list
+            } else {
+                alert(data.message || 'Update failed!');
+            }
+        } else {
+            const text = await res.text();
+            console.error('Non-JSON response:', text);
+            alert(`Server Error (${res.status}): Server ne JSON ki jagah HTML bheja hai. Technical issue ho sakti hai.`);
+        }
+
+        if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
+    } catch (e) {
+        console.error(e);
+        alert('Error: ' + e.message);
+    }
+}
+
+function filterDeptOrdersHeader(query) {
+    const q = query.toLowerCase();
+
+    if (currentDeptType === 'verification') {
+        const inputs = ['verificationPendingSearch', 'verificationUnverifiedSearch', 'verificationHistorySearch'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = q;
+        });
+
+        const activeTab = document.querySelector('#navGroupVerification .tab-active');
+        if (activeTab) {
+            if (activeTab.id === 'deptTabPending') loadDeptOrders();
+            else if (activeTab.id === 'deptTabUnverified') filterVerificationUnverified();
+            else if (activeTab.id === 'deptTabHistory') loadVerificationHistory();
+            else if (activeTab.id === 'deptTabCancelled') loadVerificationCancelled();
+        }
+    } else if (currentDeptType === 'dispatch') {
+        const inputs = ['dispatchReadySearch', 'dispatchedSearch', 'dispatchHistorySearch', 'dispatchMobileSearch'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = q;
+        });
+
+        const activeTab = document.querySelector('#navGroupDispatch .tab-active');
+        if (activeTab) {
+            if (activeTab.id === 'deptTabReady') loadDeptOrders();
+            else if (activeTab.id === 'deptTabRequests') loadDeliveryRequests();
+            else if (activeTab.id === 'deptTabDispatched') loadDispatchedOrders();
+            else if (activeTab.id === 'deptTabDispatchHistory') loadDispatchHistory();
+        }
+    } else if (currentDeptType === 'delivery') {
+        const inputs = ['deliveryMobileSearch'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = q;
+        });
+
+        const activeTab = document.querySelector('#navGroupDelivery .tab-active');
+        if (activeTab) {
+            if (activeTab.id === 'deptTabOutForDelivery') loadDeliveryOrders();
+            else if (activeTab.id === 'deptTabDelivered') loadDeliveredOrders();
+            else if (activeTab.id === 'deptTabFailed') loadFailedDeliveries();
+            else if (activeTab.id === 'deptTabPerformance') loadDeliveryPerformance();
+        }
     }
 }

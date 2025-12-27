@@ -154,58 +154,50 @@ router.get('/:empId', async (req, res) => {
 router.put('/:empId', async (req, res) => {
     try {
         const oldId = req.params.empId.toUpperCase();
-        const { newId, name } = req.body;
+        const { newId, name, password } = req.body; // Added password
         const employees = readJSON(EMPLOYEES_FILE, {});
 
         if (!employees[oldId]) {
             return res.status(404).json({ success: false, message: 'Employee not found!' });
         }
 
-        if (newId && newId.toUpperCase() !== oldId) {
-            const newIdUpper = newId.toUpperCase();
-            if (employees[newIdUpper]) {
-                return res.status(400).json({ success: false, message: 'New employee ID already exists!' });
+        const employeeData = { ...employees[oldId] };
+        if (name) employeeData.name = name;
+        if (password) {
+            const { hashPassword } = require('../auth');
+            employeeData.password = await hashPassword(password);
+        }
+
+        const nId = (newId || oldId).toUpperCase();
+
+        if (oldId !== nId) {
+            if (employees[nId]) {
+                return res.status(400).json({ success: false, message: `ID ${nId} already in use!` });
             }
-
-            employees[newIdUpper] = { ...employees[oldId] };
-            if (name) employees[newIdUpper].name = name;
             delete employees[oldId];
-
-            const orders = readJSON(ORDERS_FILE, []);
-            orders.forEach(order => {
-                if (order.employeeId === oldId) {
-                    order.employeeId = newIdUpper;
-                    if (name) order.employee = name;
-                }
-            });
-            writeJSON(ORDERS_FILE, orders);
-            writeJSON(EMPLOYEES_FILE, employees);
-
-            // Sync to MongoDB
-            await syncAllEmployeesToMongo(employees);
-
-            return res.json({ success: true, message: 'Employee ID updated successfully!', newId: newIdUpper });
+            employees[nId] = employeeData;
+        } else {
+            employees[oldId] = employeeData;
         }
 
-        if (name) {
-            employees[oldId].name = name;
-            const orders = readJSON(ORDERS_FILE, []);
-            orders.forEach(order => {
-                if (order.employeeId === oldId) order.employee = name;
-            });
-            writeJSON(ORDERS_FILE, orders);
-            writeJSON(EMPLOYEES_FILE, employees);
+        writeJSON(EMPLOYEES_FILE, employees);
 
-            // Sync to MongoDB
-            await syncAllEmployeesToMongo(employees);
+        // Sync to MongoDB Department
+        const { syncEmployeeToMongo } = require('./auth'); // Assuming shared logic if possible, or local
+        // Actually, let's just use the shared logic or local helper if needed.
+        // For now, employees.js has syncAllEmployeesToMongo, which is better.
+        await syncAllEmployeesToMongo(employees);
 
-            return res.json({ success: true, message: 'Employee name updated successfully!' });
+        // SYNC ORDERS: Update employeeId and Name in all existing orders
+        if (dataAccess.updateEmployeeOrders) {
+            await dataAccess.updateEmployeeOrders(oldId, nId, name);
         }
 
-        res.status(400).json({ success: false, message: 'No changes provided' });
+        console.log(`👤 Employee Updated: ${oldId} -> ${nId} (${employeeData.name})`);
+        res.json({ success: true, message: 'Employee updated successfully!', employee: { id: nId, name: employeeData.name } });
     } catch (error) {
         console.error('❌ Employee update error:', error.message);
-        res.status(500).json({ success: false, message: 'Update failed. Please try again.' });
+        res.status(500).json({ success: false, message: 'Update failed. ' + error.message });
     }
 });
 

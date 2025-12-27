@@ -38,15 +38,17 @@ async function pushOrderToShiprocket(orderId) {
             billing_email: order.email || "customer@example.com",
             billing_phone: order.telNo || order.mobile,
             shipping_is_billing: true,
-            order_items: order.items.map(item => ({
-                name: item.description || "Product",
-                sku: (item.description || "Product").substring(0, 10).replace(/ /g, '-'),
-                units: item.quantity || 1,
-                selling_price: order.items.length === 1 ? order.total : 0,
+            order_items: [{
+                name: "Medicine",
+                sku: "MEDICINE",
+                units: order.items && order.items.length > 0
+                    ? order.items.reduce((sum, item) => sum + (item.quantity || item.qty || 1), 0)
+                    : 1,
+                selling_price: order.codAmount || order.total,  // Direct COD amount
                 discount: 0,
                 tax: 0,
                 hsn: 0
-            })),
+            }],
             payment_method: "COD",
             sub_total: order.total,
             length: 16,

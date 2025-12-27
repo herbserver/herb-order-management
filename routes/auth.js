@@ -164,4 +164,66 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
+// Update Employee Details
+router.put('/update-employee', async (req, res) => {
+    try {
+        const { oldId, newId, newName, newPassword } = req.body;
+        const employees = readJSON(EMPLOYEES_FILE, {});
+        const oId = oldId.toUpperCase();
+        const nId = newId.toUpperCase();
+
+        if (!employees[oId]) {
+            return res.status(404).json({ success: false, message: 'Employee not found!' });
+        }
+
+        // If ID is changing, check if new ID already exists
+        if (oId !== nId && employees[nId]) {
+            return res.status(400).json({ success: false, message: `New ID (${nId}) is already in use!` });
+        }
+
+        const employeeData = { ...employees[oId] };
+
+        // Update Name if provided
+        if (newName) employeeData.name = newName;
+
+        // Update Password if provided
+        if (newPassword) {
+            employeeData.password = await hashPassword(newPassword);
+        }
+
+        // Handle ID Change
+        if (oId !== nId) {
+            delete employees[oId];
+            employees[nId] = employeeData;
+        } else {
+            employees[oId] = employeeData;
+        }
+
+        writeJSON(EMPLOYEES_FILE, employees);
+
+        // Sync to MongoDB (Department/Employee list)
+        await syncEmployeeToMongo(nId, employeeData);
+
+        // If ID changed, remove old ID from MongoDB Department too
+        if (oId !== nId) {
+            let empDept = await dataAccess.getDepartment('HON-EMP');
+            if (empDept && empDept.employees && empDept.employees[oId]) {
+                const updatedEmps = { ...empDept.employees };
+                delete updatedEmps[oId];
+                await dataAccess.updateDepartment(empDept.departmentId, { employees: updatedEmps });
+                console.log(`🗑️ Removed old employee ID ${oId} from MongoDB`);
+            }
+        }
+
+        // SYNC ORDERS: Update employeeId and Name in all existing orders
+        await dataAccess.updateEmployeeOrders(oId, nId, newName);
+
+        console.log(`👤 Employee Updated & Orders Synced: ${oId} -> ${nId} (${employeeData.name})`);
+        res.json({ success: true, message: 'Employee updated successfully!', employee: { id: nId, name: employeeData.name } });
+    } catch (error) {
+        console.error('❌ Update employee error:', error.message);
+        res.status(500).json({ success: false, message: 'Update failed. Please try again.' });
+    }
+});
+
 module.exports = router;

@@ -241,19 +241,7 @@ async function saveOrder() {
             updateAddress(); // Clear preview
             loadMyOrders(); // Refresh list
         } else {
-            // Check if it's a duplicate order error
-            if (data.existingOrder) {
-                showWarningPopup(
-                    '⚠️ Duplicate Order Alert!',
-                    `Is mobile number (${orderData.telNo}) par pehle se ek order hai!\n\n` +
-                    `📦 Order ID: ${data.existingOrder.orderId}\n` +
-                    `📊 Status: ${data.existingOrder.status}\n` +
-                    `👤 Employee: ${data.existingOrder.employeeName || data.existingOrder.createdBy || 'Unknown'}\n` +
-                    `📅 Created: ${new Date(data.existingOrder.createdAt).toLocaleDateString('hi-IN')}`
-                );
-            } else {
-                showWarningPopup('Error!', data.message || 'Order save nahi ho paya.');
-            }
+            showWarningPopup('Error!', data.message || 'Order save nahi ho paya.');
         }
 
         btn.innerText = originalText;

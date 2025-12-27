@@ -14,13 +14,34 @@ async function loadAdminStats() {
         const data = await res.json();
 
         if (data.success) {
-            // Update UI Cards
-            document.getElementById('totalOrdersCount').innerText = data.stats.total || 0;
+            updateCardStats('totalOrdersCount', data.stats.totalOrders, data.stats.totalFresh, data.stats.totalReorder);
             document.getElementById('totalRevenueCount').innerText = '₹' + (data.stats.revenue || 0).toLocaleString();
-            document.getElementById('pendingCount').innerText = data.stats.pending || 0;
-            document.getElementById('dispatchedCount').innerText = data.stats.dispatched || 0;
+            updateCardStats('pendingCount', data.stats.pendingOrders, data.stats.pendingFresh, data.stats.pendingReorder);
+            document.getElementById('dispatchedCount').innerText = data.stats.dispatchedOrders || 0;
         }
     } catch (e) { console.error('Stats error', e); }
+}
+
+function updateCardStats(elementId, total, fresh, reorder) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    // Check if Stats Container already exists to avoid duplication if re-run
+    let container = el.parentElement.querySelector('.stats-breakdown');
+    if (container) {
+        container.innerHTML = `<span class="text-emerald-600">🆕 ${fresh}</span> <span class="text-gray-300">|</span> <span class="text-blue-600">🔄 ${reorder}</span>`;
+        // Update main count just in case
+        el.innerText = total;
+    } else {
+        el.innerText = total;
+        // Inject breakdown
+        const breakdownHtml = `<div class="stats-breakdown text-[10px] font-bold mt-1 tracking-wide flex gap-2">
+            <span class="text-emerald-600">🆕 ${fresh || 0}</span> 
+            <span class="text-gray-300">|</span> 
+            <span class="text-blue-600">🔄 ${reorder || 0}</span>
+        </div>`;
+        el.insertAdjacentHTML('afterend', breakdownHtml);
+    }
 }
 
 async function loadAllEmployees() {

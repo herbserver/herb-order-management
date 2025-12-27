@@ -47,50 +47,31 @@ router.post('/create-order', async (req, res) => {
             });
         }
 
-        // ==================== SIMPLE MEDICINE FORMAT ====================
+        // ==================== SIMPLIFIED COD FORMAT ====================
         // Final amount to collect (COD amount)
         const finalAmount = order.codAmount || order.total || 0;
 
-        // Calculate total quantity of all items
+        // Total quantity (for reference only)
         const totalQuantity = order.items && order.items.length > 0
             ? order.items.reduce((sum, item) => sum + (item.quantity || item.qty || 1), 0)
             : 1;
 
-        // Calculate MRP Total (for discount calculation)
-        const mrpTotal = order.items && order.items.length > 0
-            ? order.items.reduce((sum, item) => {
-                const itemPrice = item.price || item.mrp || item.unitPrice || 0;
-                const itemQty = item.quantity || item.qty || 1;
-                return sum + (itemPrice * itemQty);
-            }, 0)
-            : finalAmount;
-
-        // Calculate unit price (COD / Quantity)
-        const unitPrice = Math.round(finalAmount / totalQuantity);
-
-        // Calculate discount (MRP - COD)
-        const totalDiscount = mrpTotal > finalAmount ? mrpTotal - finalAmount : 0;
-        const perUnitDiscount = Math.round(totalDiscount / totalQuantity);
-
         console.log(`💊 Medicine Order for ${order.orderId}:`);
         console.log(`   Quantity: ${totalQuantity}`);
-        console.log(`   MRP Total: ₹${mrpTotal}`);
         console.log(`   COD Amount: ₹${finalAmount}`);
-        console.log(`   Unit Price: ₹${unitPrice}`);
-        console.log(`   Discount: ₹${totalDiscount} (₹${perUnitDiscount}/unit)`);
 
-        // Single item: "Medicine"
+        // Single item: "Medicine" with full COD amount as selling price
         const orderItems = [{
             name: "Medicine",
             sku: "MEDICINE",
             units: totalQuantity,
-            selling_price: unitPrice,
-            discount: perUnitDiscount,
+            selling_price: finalAmount,  // Direct COD amount, no calculation
+            discount: 0,                 // No discount
             tax: 0,
             hsn: 0
         }];
 
-        console.log(`   ✅ Shiprocket Total: ₹${unitPrice * totalQuantity}`);
+        console.log(`   ✅ Shiprocket COD Total: ₹${finalAmount}`);
 
         const payload = {
             order_id: order.orderId,

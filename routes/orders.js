@@ -47,25 +47,6 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
     try {
         const orderData = req.body;
 
-        // ✅ Check for duplicate mobile number - prevent same customer order by different employees
-        const mobileNumber = orderData.telNo;
-        if (mobileNumber) {
-            const existingOrder = await dataAccess.findActiveOrderByMobile(mobileNumber);
-            if (existingOrder) {
-                console.log(`⚠️ Duplicate Order Attempt: Mobile ${mobileNumber} already has active order ${existingOrder.orderId}`);
-                return res.status(409).json({
-                    success: false,
-                    message: 'Is mobile number par pehle se ek order hai!',
-                    existingOrder: {
-                        orderId: existingOrder.orderId,
-                        status: existingOrder.status,
-                        createdBy: existingOrder.employeeId || existingOrder.createdBy,
-                        employeeName: existingOrder.employee,
-                        createdAt: existingOrder.timestamp
-                    }
-                });
-            }
-        }
 
         const config = await dataAccess.getShiprocketConfig();
         const nextId = config.shiprocketOrderCounter || 1;
@@ -116,7 +97,17 @@ router.put('/:orderId', async (req, res) => {
 // Get All Orders
 router.get('/', async (req, res) => {
     try {
-        const orders = await dataAccess.getAllOrders();
+        let orders = await dataAccess.getAllOrders();
+
+        // Add isReorder flags
+        orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const seen = new Set();
+        orders.forEach(o => {
+            const mobile = o.telNo || o.mobileNumber;
+            if (seen.has(mobile)) o.isReorder = true;
+            else { o.isReorder = false; if (mobile) seen.add(mobile); }
+        });
+
         res.json({ success: true, orders });
     } catch (error) {
         console.error('❌ Get orders error:', error);
@@ -124,10 +115,28 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Helper to add isReorder status
+const addReorderFlags = (orders) => {
+    // Sort by date asc
+    orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const seen = new Set();
+    orders.forEach(o => {
+        const mobile = o.telNo || o.mobileNumber;
+        if (seen.has(mobile)) {
+            o.isReorder = true;
+        } else {
+            o.isReorder = false;
+            if (mobile) seen.add(mobile);
+        }
+    });
+    return orders; // Returns sorted orders with flags
+};
+
 // Get Pending Orders
 router.get('/pending', async (req, res) => {
     try {
-        const orders = await dataAccess.getAllOrders();
+        let orders = await dataAccess.getAllOrders();
+        addReorderFlags(orders); // sorting and flagging
         const pending = orders.filter(o => o.status === 'Pending');
         res.json({ success: true, orders: pending });
     } catch (e) {
@@ -138,7 +147,8 @@ router.get('/pending', async (req, res) => {
 // Get Verified Orders
 router.get('/verified', async (req, res) => {
     try {
-        const orders = await dataAccess.getAllOrders();
+        let orders = await dataAccess.getAllOrders();
+        addReorderFlags(orders);
         const verified = orders.filter(o => o.status === 'Address Verified');
         res.json({ success: true, orders: verified });
     } catch (e) {
@@ -149,17 +159,11 @@ router.get('/verified', async (req, res) => {
 // Get Dispatched Orders
 router.get('/dispatched', async (req, res) => {
     try {
-        console.log('📦 [DISPATCHED] Fetching dispatched orders...');
-        const orders = await dataAccess.getAllOrders();
-        console.log(`📦 [DISPATCHED] Total orders: ${orders.length}`);
-
+        let orders = await dataAccess.getAllOrders();
+        addReorderFlags(orders);
         const dispatched = orders.filter(o => o.status === 'Dispatched');
-        console.log(`📦 [DISPATCHED] Dispatched orders: ${dispatched.length}`);
-
         res.json({ success: true, orders: dispatched });
     } catch (e) {
-        console.error('❌ [DISPATCHED] Error:', e.message);
-        console.error('❌ [DISPATCHED] Stack:', e.stack);
         res.status(500).json({ success: false, message: 'Server error', error: e.message });
     }
 });
@@ -167,9 +171,34 @@ router.get('/dispatched', async (req, res) => {
 // Get Delivered Orders
 router.get('/delivered', async (req, res) => {
     try {
-        const orders = await dataAccess.getAllOrders();
+        let orders = await dataAccess.getAllOrders();
+        addReorderFlags(orders);
         const delivered = orders.filter(o => o.status === 'Delivered');
         res.json({ success: true, orders: delivered });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Get Cancelled Orders
+router.get('/cancelled', async (req, res) => {
+    try {
+        let orders = await dataAccess.getAllOrders();
+        addReorderFlags(orders);
+        const cancelled = orders.filter(o => o.status === 'Cancelled');
+        res.json({ success: true, orders: cancelled });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Get On Hold Orders
+router.get('/onhold', async (req, res) => {
+    try {
+        let orders = await dataAccess.getAllOrders();
+        addReorderFlags(orders);
+        const onhold = orders.filter(o => o.status === 'On Hold');
+        res.json({ success: true, orders: onhold });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
