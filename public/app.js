@@ -4386,14 +4386,31 @@ async function approveDelivery(orderId) {
 // ==================== EDIT ORDER ====================
 async function openEditOrderModal(orderId) {
     try {
-        const res = await fetch(`${API_URL}/orders/${orderId}`);
-        const data = await res.json();
-        const order = data.order;
+        console.log('Opening edit modal for order:', orderId);
 
-        document.getElementById('editOrderIdDisplay').textContent = orderId;
+        // Fetch order data first
+        const res = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}`);
+        const data = await res.json();
+
+        if (!data.success || !data.order) {
+            console.error('Failed to fetch order:', data);
+            alert('❌ Order data load nahi hua! Order: ' + orderId);
+            return;
+        }
+
+        const order = data.order;
+        console.log('Order data loaded:', order.orderId);
+
+        // Remove existing modal if any
+        const existingModal = document.getElementById('dynamicEditModal');
+        if (existingModal) existingModal.remove();
+
+        // Create modal dynamically with inline styles
+        const modal = document.createElement('div');
+        modal.id = 'dynamicEditModal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
 
         let itemsHtml = '';
-
         (order.items || []).forEach((item, idx) => {
             const qty = item.quantity || item.qty || 1;
             const rate = item.rate || item.price || item.mrp || 0;
@@ -4409,19 +4426,78 @@ async function openEditOrderModal(orderId) {
             `;
         });
 
-        document.getElementById('editOrderModalContent').innerHTML = ` <form id="editOrderForm" class="space-y-4"> <input type="hidden" id="editOrderId" value="${orderId}"> <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label class="block text-sm font-medium mb-1">Customer Name *</label> <input type="text" id="editCustomerName" value="${order.customerName}" required class="w-full border-2 rounded-xl px-4 py-2"> </div> <div> <label class="block text-sm font-medium mb-1">Tel No. *</label> <input type="tel" id="editTelNo" value="${order.telNo}" required class="w-full border-2 rounded-xl px-4 py-2"> </div> </div> <div class="grid grid-cols-2 md:grid-cols-4 gap-3"> <div> <label class="block text-xs font-medium mb-1">H.NO.</label> <input type="text" id="editHNo" value="${order.hNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">BLOCK/GALI</label> <input type="text" id="editBlockGaliNo" value="${order.blockGaliNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">VILL/COLONY</label> <input type="text" id="editVillColony" value="${order.villColony || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">P.O.</label> <input type="text" id="editPo" value="${order.po || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> </div> <div class="grid grid-cols-2 md:grid-cols-4 gap-3"> <div> <label class="block text-xs font-medium mb-1">TAH/TALUKA</label> <input type="text" id="editTahTaluka" value="${order.tahTaluka || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">DISTT.</label> <input type="text" id="editDistt" value="${order.distt || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">STATE</label> <input type="text" id="editState" value="${order.state || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">PIN</label> <input type="text" id="editPin" value="${order.pin || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> </div> <div class="grid grid-cols-2 gap-3"> <div> <label class="block text-xs font-medium mb-1">LANDMARK</label> <input type="text" id="editLandMark" value="${order.landMark || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> <div> <label class="block text-xs font-medium mb-1">ALT NO.</label> <input type="tel" id="editAltNo" value="${order.altNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"> </div> </div> <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200"> <div class="flex justify-between items-center mb-3"> <label class="font-bold text-emerald-700">🛒 ITEMS</label> <button type="button" onclick="addEditItem()" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-sm">+ Add Item</button> </div> <div class="mb-2 grid grid-cols-12 gap-2 text-xs font-bold text-emerald-800 px-2"> <span class="col-span-12 md:col-span-5">Product</span> <span class="col-span-3 md:col-span-2 text-center">Qty</span> <span class="col-span-3 md:col-span-2 text-center">Rate</span> <span class="col-span-4 md:col-span-2 text-center">Amount</span> <span class="col-span-2 md:col-span-1"></span> </div> <div id="editItemsContainer" class="space-y-2"> ${itemsHtml}
+        modal.innerHTML = `
+            <div style="background:white;border-radius:20px;max-width:800px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px rgba(0,0,0,0.3);">
+                <div style="background:linear-gradient(135deg,#f97316,#ea580c);padding:20px;border-radius:20px 20px 0 0;display:flex;justify-content:space-between;align-items:center;">
+                    <h3 style="color:white;font-size:20px;font-weight:bold;margin:0;">✏️ Edit Order - ${orderId}</h3>
+                    <button onclick="document.getElementById('dynamicEditModal').remove();" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:24px;width:40px;height:40px;border-radius:50%;cursor:pointer;">×</button>
+                </div>
+                <div style="padding:24px;">
+                    <form id="editOrderForm" class="space-y-4">
+                        <input type="hidden" id="editOrderId" value="${orderId}">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Customer Name *</label>
+                                <input type="text" id="editCustomerName" value="${order.customerName || ''}" required class="w-full border-2 rounded-xl px-4 py-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Tel No. *</label>
+                                <input type="tel" id="editTelNo" value="${order.telNo || ''}" required class="w-full border-2 rounded-xl px-4 py-2">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div><label class="block text-xs font-medium mb-1">H.NO.</label><input type="text" id="editHNo" value="${order.hNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium mb-1">BLOCK/GALI</label><input type="text" id="editBlockGaliNo" value="${order.blockGaliNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium mb-1">VILL/COLONY</label><input type="text" id="editVillColony" value="${order.villColony || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium mb-1">P.O.</label><input type="text" id="editPo" value="${order.po || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div><label class="block text-xs font-medium mb-1">TAH/TALUKA</label><input type="text" id="editTahTaluka" value="${order.tahTaluka || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium mb-1">DISTT.</label><input type="text" id="editDistt" value="${order.distt || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium mb-1">STATE</label><input type="text" id="editState" value="${order.state || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium mb-1">PIN</label><input type="text" id="editPin" value="${order.pin || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="block text-xs font-medium mb-1">LANDMARK</label><input type="text" id="editLandMark" value="${order.landMark || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium mb-1">ALT NO.</label><input type="tel" id="editAltNo" value="${order.altNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+                        </div>
+                        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="font-bold text-emerald-700">🛒 ITEMS</label>
+                                <button type="button" onclick="addEditItem()" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-sm">+ Add Item</button>
+                            </div>
+                            <div class="mb-2 grid grid-cols-12 gap-2 text-xs font-bold text-emerald-800 px-2">
+                                <span class="col-span-12 md:col-span-5">Product</span>
+                                <span class="col-span-3 md:col-span-2 text-center">Qty</span>
+                                <span class="col-span-3 md:col-span-2 text-center">Rate</span>
+                                <span class="col-span-4 md:col-span-2 text-center">Amount</span>
+                                <span class="col-span-2 md:col-span-1"></span>
+                            </div>
+                            <div id="editItemsContainer" class="space-y-2">${itemsHtml}</div>
+                            <div class="mt-3 pt-3 border-t border-emerald-300 flex justify-between font-bold text-lg">
+                                <span>Total:</span>
+                                <span id="editTotalAmount" class="text-red-600">₹${order.total || 0}</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="block text-sm font-medium mb-1">Advance</label><input type="number" id="editAdvance" value="${order.advance || 0}" oninput="updateEditCOD()" class="w-full border-2 rounded-xl px-4 py-2"></div>
+                            <div><label class="block text-sm font-medium mb-1">COD Amount</label><input type="number" id="editCodAmount" value="${order.codAmount || 0}" readonly class="w-full border-2 rounded-xl px-4 py-2 bg-red-50 text-red-700 font-bold"></div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button type="button" onclick="document.getElementById('dynamicEditModal').remove();" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button>
+                            <button type="button" onclick="saveEditOrder()" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-medium hover:bg-orange-700">💾 Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
 
-                </div> <div class="mt-3 pt-3 border-t border-emerald-300 flex justify-between font-bold text-lg"> <span>Total:</span> <span id="editTotalAmount" class="text-red-600">₹${order.total || 0
-            }
+        document.body.appendChild(modal);
+        console.log('Dynamic edit modal created and appended to body');
 
-                </span> </div> </div> <div class="grid grid-cols-2 gap-3"> <div> <label class="block text-sm font-medium mb-1">Advance</label> <input type="number" id="editAdvance" value="${order.advance || 0}" oninput="updateEditCOD()" class="w-full border-2 rounded-xl px-4 py-2"> </div> <div> <label class="block text-sm font-medium mb-1">COD Amount</label> <input type="number" id="editCodAmount" value="${order.codAmount || 0}" readonly class="w-full border-2 rounded-xl px-4 py-2 bg-red-50 text-red-700 font-bold"> </div> </div> <div class="flex gap-3"> <button type="button" onclick="closeModal('editOrderModal')" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button> <button type="button" onclick="saveEditOrder()" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-medium hover:bg-orange-700">💾 Save Changes</button> </div> </form> `;
-
-        document.getElementById('editOrderModal').classList.remove('hidden');
-    }
-
-    catch (e) {
-        console.error(e);
-        alert('Order load nahi hua!');
+    } catch (e) {
+        console.error('Error in openEditOrderModal:', e);
+        alert('Order load nahi hua! Error: ' + e.message);
     }
 }
 
@@ -4466,7 +4542,31 @@ function updateEditCOD() {
 }
 
 async function saveEditOrder() {
-    const orderId = document.getElementById('editOrderId').value;
+    // Try to find editOrderId from dynamic modal first
+    const dynamicModal = document.getElementById('dynamicEditModal');
+    let orderId = '';
+
+    if (dynamicModal) {
+        const orderIdInput = dynamicModal.querySelector('#editOrderId');
+        if (orderIdInput) {
+            orderId = orderIdInput.value;
+        }
+    }
+
+    // Fallback to global search
+    if (!orderId) {
+        const globalOrderIdEl = document.getElementById('editOrderId');
+        if (globalOrderIdEl) {
+            orderId = globalOrderIdEl.value;
+        }
+    }
+
+    console.log('🆔 Order ID found:', orderId);
+
+    if (!orderId) {
+        alert('❌ Order ID not found! Cannot save.');
+        return;
+    }
 
     const items = [];
 
@@ -4517,44 +4617,62 @@ async function saveEditOrder() {
         total,
         advance: parseFloat(document.getElementById('editAdvance').value) || 0,
         codAmount: parseFloat(document.getElementById('editCodAmount').value) || 0,
-        editedBy: currentUser.id,
+        editedBy: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : 'Department',
         editedAt: new Date().toISOString()
-    }
-
-        ;
+    };
 
     try {
-        const res = await fetch(`${API_URL}/orders/${orderId}`, {
+        const apiUrl = `${API_URL}/orders/${encodeURIComponent(orderId)}`;
+        console.log('📤 Saving order to:', apiUrl);
+        console.log('📄 Update data:', updateData);
 
+        const res = await fetch(apiUrl, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
-            }
-
-            ,
+            },
             body: JSON.stringify(updateData)
         });
+
+        console.log('📥 Response status:', res.status, res.statusText);
+
+        // Check if response is OK before parsing JSON
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error('❌ Server response (not JSON):', errorText.substring(0, 200));
+            throw new Error(`Server returned ${res.status}: ${res.statusText}`);
+        }
+
         const data = await res.json();
 
         if (data.success) {
-            closeModal('editOrderModal');
+            // Close dynamic modal
+            const dynamicModal = document.getElementById('dynamicEditModal');
+            if (dynamicModal) dynamicModal.remove();
+
+            // Also try closing static modal if it exists
+            const staticModal = document.getElementById('editOrderModal');
+            if (staticModal) staticModal.classList.add('hidden');
+
             showSuccessPopup(
                 'Order Updated! ✏️',
-                `Order ${updateData.orderId} successfully update ho gaya!`,
+                `Order ${orderId} successfully update ho gaya!`,
                 '✏️',
                 '#3b82f6'
             );
-            setTimeout(() => loadDeptOrders(), 1000);
-        }
 
-        else {
+            // Reload appropriate list
+            if (typeof loadDeptOrders === 'function') {
+                setTimeout(() => loadDeptOrders(), 1000);
+            } else if (typeof loadAdminPending === 'function') {
+                setTimeout(() => location.reload(), 1000);
+            }
+        } else {
             alert(data.message || 'Update failed!');
         }
-    }
-
-    catch (e) {
-        console.error(e);
-        alert('Server error!');
+    } catch (e) {
+        console.error('Error saving order:', e);
+        alert('Server error! ' + e.message);
     }
 }
 
@@ -8772,7 +8890,8 @@ function filterDeptOrdersHeader(query) {
             if (activeTab.id === 'deptTabOutForDelivery') loadDeliveryOrders();
             else if (activeTab.id === 'deptTabDelivered') loadDeliveredOrders();
             else if (activeTab.id === 'deptTabFailed') loadFailedDeliveries();
-            else if (activeTab.id === 'deptTabPerformance') loadDeliveryPerformance();
         }
     }
 }
+
+// Note: openEditOrderModal, calculateEditCOD, and submitEditOrder functions are defined at line 4387+

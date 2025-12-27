@@ -76,14 +76,11 @@ router.get('/stats', async (req, res) => {
         let totalFresh = 0, totalReorder = 0;
         let pendingFresh = 0, pendingReorder = 0;
 
-        // Sort by date asc to find first occurrence
-        const sortedOrders = [...orders].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        const seenMobiles = new Set();
+        // Calculate Fresh vs Re-order (Using persisted orderType)
 
-        sortedOrders.forEach(o => {
-            const mobile = o.telNo || o.mobileNumber;
-            const isReorder = seenMobiles.has(mobile);
-            if (mobile) seenMobiles.add(mobile);
+        orders.forEach(o => {
+            // Use persisted field (Defaults to Fresh if missing, but migration should have fixed this)
+            const isReorder = o.orderType === 'Reorder';
 
             if (isReorder) {
                 totalReorder++;
@@ -136,10 +133,8 @@ router.get('/department-stats', async (req, res) => {
         const last7Days = new Date();
         last7Days.setDate(last7Days.getDate() - 7);
 
-        // Sort orders by timestamp to correctly identify "Fresh" vs "Re-order"
+        // Sort orders by timestamp to ensure chronological processing if needed (though orderType is static now)
         orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-        const seenMobiles = new Set();
 
         // Initialize stats structure
         const initStats = () => ({
@@ -155,11 +150,8 @@ router.get('/department-stats', async (req, res) => {
         };
 
         orders.forEach(o => {
-            const mobile = o.telNo || o.mobileNumber; // Handle variations
-            const isReorder = seenMobiles.has(mobile);
-            if (mobile) seenMobiles.add(mobile); // Mark as seen
-
-            const typeKey = isReorder ? 'reorder' : 'fresh';
+            // Use persisted status
+            const typeKey = (o.orderType === 'Reorder') ? 'reorder' : 'fresh';
 
             // --- Aggregation Logic ---
 

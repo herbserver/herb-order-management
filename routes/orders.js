@@ -54,9 +54,29 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
 
         await dataAccess.updateShiprocketConfig({ shiprocketOrderCounter: nextId + 1 });
 
+        // Determine Fresh vs Reorder
+        // PRIORITY: Manual Selection > Automatic History Check
+        let orderType = orderData.orderType; // 'Fresh' or 'Reorder' from frontend
+
+        if (!orderType) {
+            // Fallback to automatic detection if not provided
+            orderType = 'Fresh';
+            try {
+                const allOrders = await dataAccess.getAllOrders();
+                const customerMobile = orderData.telNo || orderData.mobileNumber;
+                const exists = allOrders.some(o => (o.telNo === customerMobile || o.mobileNumber === customerMobile));
+                if (exists) {
+                    orderType = 'Reorder';
+                }
+            } catch (err) {
+                console.error('Error checking order history:', err);
+            }
+        }
+
         const newOrder = {
             ...orderData,
             orderId,
+            orderType, // Saved explicitly
             status: 'Pending',
             tracking: null,
             deliveryRequested: false,
@@ -65,7 +85,7 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
         };
 
         await dataAccess.createOrder(newOrder);
-        console.log(`📦 New Order: ${orderId} by ${orderData.employee} (${orderData.employeeId})`);
+        console.log(`📦 New Order: ${orderId} (${orderType}) by ${orderData.employee} (${orderData.employeeId})`);
         res.json({ success: true, message: 'Order saved!', orderId });
     } catch (error) {
         console.error('❌ Create order error:', error.message);
@@ -76,8 +96,12 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
 // Update Order (Generic Edit)
 router.put('/:orderId', async (req, res) => {
     try {
+        console.log(`📝 [PUT ORDER] Received update request for: "${req.params.orderId}"`);
         const order = await dataAccess.getOrderById(req.params.orderId);
-        if (!order) return res.status(404).json({ success: false, message: 'Order not found!' });
+        if (!order) {
+            console.log(`❌ [PUT ORDER] Order not found: "${req.params.orderId}"`);
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
 
         const updates = { ...req.body, updatedAt: new Date().toISOString() };
         // Protect critical fields

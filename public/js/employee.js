@@ -205,7 +205,9 @@ async function saveOrder() {
         total: Number(form.total.value),
         advance: Number(form.advancePaid.value),
         cod: Number(form.codAmount.value),
-        remark: form.remark.value
+        remark: form.remark.value,
+        // Capture Manual Order Type
+        orderType: document.querySelector('input[name="orderType"]:checked')?.value === 'NEW' ? 'Fresh' : 'Reorder'
     };
 
     try {
