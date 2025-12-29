@@ -549,7 +549,8 @@ async function loadDeptOrders(page = null) {
 }
 
 function renderPaginationControls(container, currentPage, totalPages, fetchFuncName) {
-    if (totalPages <= 1) return;
+    // Always show pagination controls for consistency
+    // if (totalPages <= 1) return;  // Commented out to always show
 
     const controls = document.createElement('div');
     controls.className = 'col-span-full flex justify-center items-center gap-4 mt-6';
@@ -572,55 +573,86 @@ function renderPaginationControls(container, currentPage, totalPages, fetchFuncN
 // ==================== VERIFICATION FUNCTIONS ====================
 function renderVerificationCard(o) {
     return `
-    <div class="bg-white border rounded-xl p-4 hover:shadow-lg transition-all">
-        <div class="flex justify-between items-start mb-3">
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">New</span>
+    <div class="bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 rounded-2xl p-5 hover:shadow-2xl hover:border-emerald-300 transition-all duration-300 relative overflow-hidden group">
+        <!-- Decorative Corner -->
+        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-100/40 to-blue-100/40 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500"></div>
+        
+        <!-- Header Section -->
+        <div class="flex justify-between items-start mb-4 relative z-10">
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full font-bold shadow-lg shadow-orange-200 animate-pulse">✨ NEW</span>
                     <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
-                        class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                        class="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl flex items-center justify-center hover:scale-110 hover:rotate-12 shadow-lg shadow-green-200 transition-all" title="Send WhatsApp">
                         ${WHATSAPP_ICON}
                     </button>
                 </div>
-                <h4 class="font-bold text-lg text-gray-800 mt-1">${o.customerName}</h4>
-                <p class="text-xs text-gray-500">${new Date(o.timestamp).toLocaleString()}</p>
+                <h4 class="font-black text-xl text-gray-900 leading-tight">${o.customerName}</h4>
+                <p class="text-xs text-gray-500 font-medium mt-1">🕒 ${new Date(o.timestamp).toLocaleString()}</p>
             </div>
-            <div class="text-right">
-                <p class="font-bold text-xl text-emerald-600">₹${o.total}</p>
+            <div class="text-right bg-gradient-to-br from-emerald-50 to-teal-50 px-4 py-3 rounded-2xl border-2 border-emerald-200 shadow-sm">
+                <p class="text-xs text-emerald-600 font-bold uppercase tracking-wide">Total</p>
+                <p class="font-black text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">₹${o.total}</p>
             </div>
         </div>
         
-        <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-600 mb-3 space-y-1">
-            <p>📍 ${o.address}</p>
-            <p>📞 ${o.telNo}</p>
+        <!-- Contact Info Section -->
+        <div class="bg-gradient-to-r from-gray-50 to-slate-50 p-4 rounded-xl border border-gray-200 mb-4 space-y-2 shadow-inner">
+            <div class="flex items-start gap-2">
+                <span class="text-lg">📍</span>
+                <p class="text-sm text-gray-700 font-medium flex-1">${o.address}</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-lg">📞</span>
+                <p class="text-sm text-gray-800 font-bold">${o.telNo}</p>
+            </div>
         </div>
         
-        <div class="mb-3">
-            <textarea id="remark-${o.orderId}" placeholder="Add remark..." class="w-full text-sm p-2 border rounded-lg h-16">${o.remark || ''}</textarea>
+        <!-- Remark Section -->
+        <div class="mb-4">
+            <label class="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 block">📝 Internal Notes</label>
+            <textarea id="remark-${o.orderId}" placeholder="Add verification notes, special instructions..." 
+                class="w-full text-sm p-3 border-2 border-gray-200 rounded-xl h-20 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all resize-none">${o.remark || ''}</textarea>
         </div>
         
-        <!-- Courier Suggestion Dropdown -->
-        <div class="mb-3">
-            <label class="text-sm font-bold text-gray-600 block mb-1">🚚 Suggest Courier:</label>
-            <select id="courier-${o.orderId}" class="w-full p-2 border rounded-lg text-sm">
+        <!-- Courier Suggestion -->
+        <div class="mb-4">
+            <label class="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <span class="text-lg">🚚</span> Suggest Courier
+            </label>
+            <select id="courier-${o.orderId}" 
+                class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm font-medium focus:border-orange-400 focus:ring-4 focus:ring-orange-100 outline-none transition-all bg-white">
                 <option value="">-- No Suggestion --</option>
-                <option value="Delhivery">Delhivery</option>
-                <option value="Delhivery Air">Delhivery Air</option>
-                <option value="Blue Dart Air">Blue Dart Air</option>
-                <option value="DTDC Air 500gm">DTDC Air 500gm</option>
-                <option value="Xpressbees">Xpressbees</option>
-                <option value="Ekart">Ekart</option>
-                <option value="Shiprocket Auto">Shiprocket Auto (Let Shiprocket Decide)</option>
+                <option value="Delhivery">🚛 Delhivery</option>
+                <option value="Delhivery Air">✈️ Delhivery Air</option>
+                <option value="Blue Dart Air">🔵 Blue Dart Air</option>
+                <option value="DTDC Air 500gm">📦 DTDC Air 500gm</option>
+                <option value="Xpressbees">⚡ Xpressbees</option>
+                <option value="Ekart">🛒 Ekart</option>
+                <option value="Shiprocket Auto">🤖 Shiprocket Auto (AI Decides)</option>
             </select>
         </div>
         
-        <div class="grid grid-cols-2 gap-2">
-            <button onclick="saveOrderRemark('${o.orderId}')" class="bg-gray-100 text-gray-700 font-bold py-2 rounded-lg hover:bg-gray-200">Save Remark</button>
-            <button onclick="viewOrder('${o.orderId}')" class="bg-blue-50 text-blue-600 font-bold py-2 rounded-lg hover:bg-blue-100">View Details</button>
+        <!-- Action Buttons -->
+        <div class="grid grid-cols-2 gap-3 mb-3">
+            <button onclick="saveOrderRemark('${o.orderId}')" 
+                class="bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700 font-bold py-3 rounded-xl hover:from-gray-200 hover:to-slate-200 transition-all border-2 border-gray-300 shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+                <span>💾</span> Save Notes
+            </button>
+            <button onclick="viewOrder('${o.orderId}')" 
+                class="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 font-bold py-3 rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all border-2 border-blue-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+                <span>👁️</span> View
+            </button>
         </div>
-        <div class="grid grid-cols-2 gap-2 mt-2">
-            <button onclick="verifyAddress('${o.orderId}')" class="bg-green-500 text-white font-bold py-2 rounded-lg hover:bg-green-600">✅ Approve</button>
-            <button onclick="cancelOrder('${o.orderId}')" class="bg-red-50 text-red-500 font-bold py-2 rounded-lg hover:bg-red-100">❌ Cancel</button>
+        <div class="grid grid-cols-2 gap-3">
+            <button onclick="verifyAddress('${o.orderId}')" 
+                class="bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg shadow-green-200 hover:shadow-green-300 hover:scale-105 transform flex items-center justify-center gap-2">
+                <span>✅</span> Approve
+            </button>
+            <button onclick="cancelOrder('${o.orderId}')" 
+                class="bg-gradient-to-r from-red-50 to-rose-50 text-red-600 font-bold py-3 rounded-xl hover:from-red-100 hover:to-rose-100 transition-all border-2 border-red-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+                <span>❌</span> Cancel
+            </button>
         </div>
     </div>`;
 }
@@ -707,41 +739,65 @@ function renderDispatchCard(o) {
     const remark = o.verificationRemark?.text || o.remark || '';
 
     return `
-    <div class="bg-white border rounded-xl p-4">
-        <div class="flex justify-between items-center mb-3">
-           <div class="flex items-center gap-3">
-               <h4 class="font-bold">${o.customerName}</h4>
+    <div class="bg-gradient-to-br from-white to-orange-50/30 border-2 border-orange-200 rounded-2xl p-5 hover:shadow-2xl hover:border-orange-400 transition-all duration-300 relative overflow-hidden group">
+        <!-- Decorative Corner -->
+        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-100/40 to-amber-100/40 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500"></div>
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-4 relative z-10">
+           <div class="flex items-center gap-3 flex-1">
+               <h4 class="font-black text-xl text-gray-900">${o.customerName}</h4>
                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
-                   class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                   class="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl flex items-center justify-center hover:scale-110 hover:rotate-12 shadow-lg shadow-green-200 transition-all" title="Send WhatsApp">
                    ${WHATSAPP_ICON}
                </button>
            </div>
-           <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Verified</span>
+           <span class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg shadow-green-200">✓ Verified</span>
         </div>
         
-        <p class="text-sm text-gray-600 mb-2">📍 ${o.address}</p>
-        <p class="text-sm text-gray-600 mb-2">📞 ${o.telNo || o.mobile || ''}</p>
-        <p class="text-sm font-bold text-gray-800 mb-3">💰 ₹${o.codAmount || o.total || 0} COD</p>
+        <!-- Contact Info -->
+        <div class="bg-gradient-to-r from-gray-50 to-slate-50 p-4 rounded-xl border border-gray-200 mb-4 space-y-2 shadow-inner">
+            <div class="flex items-start gap-2">
+                <span class="text-lg">📍</span>
+                <p class="text-sm text-gray-700 font-medium flex-1">${o.address}</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-lg">📞</span>
+                <p class="text-sm text-gray-800 font-bold">${o.telNo || o.mobile || ''}</p>
+            </div>
+        </div>
+        
+        <!-- COD Amount -->
+        <div class="bg-gradient-to-br from-yellow-50 to-amber-50 p-4 rounded-xl border-2 border-yellow-300 mb-4 flex items-center justify-between shadow-sm">
+            <span class="text-base font-bold text-yellow-800">💰 COD Amount</span>
+            <span class="text-2xl font-black bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">₹${o.codAmount || o.total || 0}</span>
+        </div>
         
         ${suggestedCourier ? `
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-            <div class="flex items-center gap-2 mb-1">
-                <span class="text-lg">🚚</span>
-                <span class="font-bold text-blue-800">Suggested Courier: ${suggestedCourier}</span>
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 mb-4 shadow-sm">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-2xl">🚚</span>
+                <div class="flex-1">
+                    <p class="font-bold text-blue-900 text-sm">Suggested Courier</p>
+                    <p class="font-black text-blue-700 text-lg">${suggestedCourier}</p>
+                </div>
             </div>
-            ${suggestionNote ? `<p class="text-sm text-blue-600 ml-6">📝 ${suggestionNote}</p>` : ''}
-            ${suggestedBy ? `<p class="text-xs text-blue-500 ml-6">By: ${suggestedBy}</p>` : ''}
+            ${suggestionNote ? `<p class="text-sm text-blue-600 ml-8 mt-2">📝 ${suggestionNote}</p>` : ''}
+            ${suggestedBy ? `<p class="text-xs text-blue-500 ml-8 mt-1">By: ${suggestedBy}</p>` : ''}
         </div>
         ` : ''}
         
         ${remark ? `
-        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-3 text-sm text-yellow-800">
-            📝 <b>Remark:</b> ${remark}
+        <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl p-3 mb-4 shadow-sm">
+            <p class="text-sm text-yellow-900"><span class="font-bold">📝 Note:</span> ${remark}</p>
         </div>
         ` : ''}
         
-        <button onclick="dispatchWithShiprocket('${o.orderId}')" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-200">
-            🚀 Dispatch via Shiprocket
+        <!-- Dispatch Button -->
+        <button onclick="dispatchWithShiprocket('${o.orderId}')" 
+            class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-4 rounded-xl hover:from-orange-600 hover:to-red-600 transition-all shadow-2xl shadow-orange-300 hover:shadow-orange-400 hover:scale-105 transform flex items-center justify-center gap-3 text-base">
+            <span class="text-2xl">🚀</span>
+            <span>Dispatch via Shiprocket</span>
         </button>
     </div>`;
 }

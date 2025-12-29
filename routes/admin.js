@@ -72,22 +72,45 @@ router.get('/stats', async (req, res) => {
             return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
         });
 
-        // Calculate Fresh vs Re-order
+        // Calculate Fresh vs Re-order (with Revenue)
         let totalFresh = 0, totalReorder = 0;
         let pendingFresh = 0, pendingReorder = 0;
+        let freshRevenue = 0, reorderRevenue = 0;
 
-        // Calculate Fresh vs Re-order (Using persisted orderType)
+        // Status-specific revenue breakdown
+        let pendingFreshRev = 0, pendingReorderRev = 0;
+        let verifiedFreshRev = 0, verifiedReorderRev = 0;
+        let dispatchedFreshRev = 0, dispatchedReorderRev = 0;
+        let deliveredFreshRev = 0, deliveredReorderRev = 0;
 
+        // Calculate Fresh vs Re-order (ONLY count orders with orderType field set)
         orders.forEach(o => {
-            // Use persisted field (Defaults to Fresh if missing, but migration should have fixed this)
+            // Skip orders without orderType field (old orders)
+            if (!o.orderType) return;
+
             const isReorder = o.orderType === 'Reorder';
+            const orderTotal = o.total || 0;
 
             if (isReorder) {
                 totalReorder++;
-                if (o.status === 'Pending') pendingReorder++;
+                reorderRevenue += orderTotal;
+                if (o.status === 'Pending') {
+                    pendingReorder++;
+                    pendingReorderRev += orderTotal;
+                }
+                if (o.status === 'Address Verified') verifiedReorderRev += orderTotal;
+                if (o.status === 'Dispatched') dispatchedReorderRev += orderTotal;
+                if (o.status === 'Delivered') deliveredReorderRev += orderTotal;
             } else {
                 totalFresh++;
-                if (o.status === 'Pending') pendingFresh++;
+                freshRevenue += orderTotal;
+                if (o.status === 'Pending') {
+                    pendingFresh++;
+                    pendingFreshRev += orderTotal;
+                }
+                if (o.status === 'Address Verified') verifiedFreshRev += orderTotal;
+                if (o.status === 'Dispatched') dispatchedFreshRev += orderTotal;
+                if (o.status === 'Delivered') deliveredFreshRev += orderTotal;
             }
         });
 
@@ -95,14 +118,24 @@ router.get('/stats', async (req, res) => {
             success: true,
             stats: {
                 totalOrders: orders.length,
-                totalFresh,               // Added
-                totalReorder,             // Added
+                totalFresh,
+                totalReorder,
+                freshRevenue,            // NEW - Fresh orders revenue
+                reorderRevenue,          // NEW - Reorder revenue
                 pendingOrders: orders.filter(o => o.status === 'Pending').length,
-                pendingFresh,             // Added
-                pendingReorder,           // Added
+                pendingFresh,
+                pendingReorder,
+                pendingFreshRevenue: pendingFreshRev,
+                pendingReorderRevenue: pendingReorderRev,
                 verifiedOrders: orders.filter(o => o.status === 'Address Verified').length,
+                verifiedFreshRevenue: verifiedFreshRev,
+                verifiedReorderRevenue: verifiedReorderRev,
                 dispatchedOrders: orders.filter(o => o.status === 'Dispatched').length,
+                dispatchedFreshRevenue: dispatchedFreshRev,
+                dispatchedReorderRevenue: dispatchedReorderRev,
                 deliveredOrders: orders.filter(o => o.status === 'Delivered').length,
+                deliveredFreshRevenue: deliveredFreshRev,
+                deliveredReorderRevenue: deliveredReorderRev,
                 totalEmployees: totalEmployees,
                 totalDepartments: departments.length,
                 thisMonthOrders: thisMonth.length
@@ -150,7 +183,10 @@ router.get('/department-stats', async (req, res) => {
         };
 
         orders.forEach(o => {
-            // Use persisted status
+            // Skip orders without orderType field (old orders)
+            if (!o.orderType) return;
+
+            // Use persisted orderType field
             const typeKey = (o.orderType === 'Reorder') ? 'reorder' : 'fresh';
 
             // --- Aggregation Logic ---

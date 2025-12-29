@@ -81,7 +81,9 @@ router.get('/', async (req, res) => {
                 pendingOrders: empOrders.filter(o => o.status === 'Pending').length,
                 verifiedOrders: empOrders.filter(o => o.status === 'Address Verified').length,
                 dispatchedOrders: empOrders.filter(o => o.status === 'Dispatched').length,
-                deliveredOrders: empOrders.filter(o => o.status === 'Delivered').length
+                deliveredOrders: empOrders.filter(o => o.status === 'Delivered').length,
+                cancelledOrders: empOrders.filter(o => o.status === 'Cancelled').length,
+                onHoldOrders: empOrders.filter(o => o.status === 'On Hold').length
             };
         });
 
@@ -137,6 +139,8 @@ router.get('/:empId', async (req, res) => {
                 verified: empOrders.filter(o => o.status === 'Address Verified').length,
                 dispatched: empOrders.filter(o => o.status === 'Dispatched').length,
                 delivered: empOrders.filter(o => o.status === 'Delivered').length,
+                cancelled: empOrders.filter(o => o.status === 'Cancelled').length,
+                onHold: empOrders.filter(o => o.status === 'On Hold').length,
                 thisMonth: empOrders.filter(o => {
                     const orderDate = new Date(o.timestamp);
                     const now = new Date();

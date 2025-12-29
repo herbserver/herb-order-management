@@ -15,11 +15,76 @@ async function loadAdminStats() {
 
         if (data.success) {
             updateCardStats('totalOrdersCount', data.stats.totalOrders, data.stats.totalFresh, data.stats.totalReorder);
-            document.getElementById('totalRevenueCount').innerText = '₹' + (data.stats.revenue || 0).toLocaleString();
+
+            // Update Total Revenue with Fresh/Reorder breakdown
+            const totalRevenue = (data.stats.freshRevenue || 0) + (data.stats.reorderRevenue || 0);
+            const revenueEl = document.getElementById('totalRevenueCount');
+            if (revenueEl) {
+                revenueEl.innerText = '₹' + totalRevenue.toLocaleString();
+
+                // Add revenue breakdown below total
+                let revenueBreakdown = revenueEl.parentElement.querySelector('.revenue-breakdown');
+                if (!revenueBreakdown) {
+                    const breakdownHtml = `<div class="revenue-breakdown text-[10px] font-bold mt-1 tracking-wide flex gap-2">
+                        <span class="text-emerald-600">🆕 ₹${(data.stats.freshRevenue || 0).toLocaleString()}</span> 
+                        <span class="text-gray-300">|</span> 
+                        <span class="text-blue-600">🔄 ₹${(data.stats.reorderRevenue || 0).toLocaleString()}</span>
+                    </div>`;
+                    revenueEl.insertAdjacentHTML('afterend', breakdownHtml);
+                } else {
+                    revenueBreakdown.innerHTML = `
+                        <span class="text-emerald-600">🆕 ₹${(data.stats.freshRevenue || 0).toLocaleString()}</span> 
+                        <span class="text-gray-300">|</span> 
+                        <span class="text-blue-600">🔄 ₹${(data.stats.reorderRevenue || 0).toLocaleString()}</span>
+                    `;
+                }
+            }
+
             updateCardStats('pendingCount', data.stats.pendingOrders, data.stats.pendingFresh, data.stats.pendingReorder);
             document.getElementById('dispatchedCount').innerText = data.stats.dispatchedOrders || 0;
+
+            // Update Pending Tab Revenue Stats
+            updateRevenueStats('Pending',
+                data.stats.pendingFreshRevenue || 0,
+                data.stats.pendingReorderRevenue || 0
+            );
+
+            // Update Verified Tab Revenue Stats
+            updateRevenueStats('Verified',
+                data.stats.verifiedFreshRevenue || 0,
+                data.stats.verifiedReorderRevenue || 0
+            );
+
+            // Update Dispatched Tab Revenue Stats
+            updateRevenueStats('Dispatched',
+                data.stats.dispatchedFreshRevenue || 0,
+                data.stats.dispatchedReorderRevenue || 0
+            );
+
+            // Update Delivered Tab Revenue Stats
+            updateRevenueStats('Delivered',
+                data.stats.deliveredFreshRevenue || 0,
+                data.stats.deliveredReorderRevenue || 0
+            );
         }
     } catch (e) { console.error('Stats error', e); }
+}
+
+// Helper function to update revenue breakdown stats for each tab
+function updateRevenueStats(status, freshRev, reorderRev) {
+    const totalRev = freshRev + reorderRev;
+
+    // Update total revenue
+    const totalEl = document.getElementById(`statsAdmin${status}Revenue`);
+    if (totalEl) totalEl.innerText = '₹' + totalRev.toLocaleString();
+
+    // Update fresh revenue
+    const freshEl = document.getElementById(`statsAdmin${status}FreshRev`);
+    if (freshEl) freshEl.innerText = '₹' + freshRev.toLocaleString();
+
+    // Update reorder revenue
+    const reorderEl = document.getElementById(`statsAdmin${status}ReorderRev`);
+    if (reorderEl) reorderEl.innerText = '₹' + reorderRev.toLocaleString();
 }
 
 function updateCardStats(elementId, total, fresh, reorder) {

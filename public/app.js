@@ -3119,7 +3119,7 @@ function generateOrderCardHTML(order) {
                 <div class="flex gap-2 items-center pt-1">
                     <span class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-2 py-1 rounded-lg text-[10px] font-black shadow-sm">PIN: ${order.pin || 'N/A'}</span>
                     <span class="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-2 py-1 rounded-lg text-[10px] font-black shadow-sm capitalize">${order.state || 'N/A'}</span>
-                    <button onclick="copyAddress('${order.address ? order.address.replace(/'/g, "\\'") : ""}')\" 
+                    <button onclick="copyAddress('${order.address ? order.address.replace(/'/g, "\\'") : ""}')" 
                         class="text-[10px] text-blue-600 hover:text-blue-700 font-black ml-auto flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-blue-200 hover:border-blue-300 transition-all shadow-sm">📋 COPY</button>
                 </div>
             </div>
@@ -3945,37 +3945,66 @@ async function filterDispatchOrders(mobile) {
 
 
 function openDispatchModal(orderId, order = null) {
+    console.log('📦 Manual Dispatch button clicked for Order:', orderId);
+    console.log('📦 Order Data:', order);
+
     currentDispatchOrder = order;
-    document.getElementById('dispatchOrderId').value = orderId;
-    document.getElementById('dispatchCourier').value = '';
-    document.getElementById('dispatchTrackingId').value = '';
-    document.getElementById('dispatchModal').classList.remove('hidden');
+
+    const modal = document.getElementById('dispatchModal');
+    if (!modal) {
+        console.error('❌ FATAL: dispatchModal element not found in DOM!');
+        alert('Internal Error: Dispatch modal not found! Please refresh page.');
+        return;
+    }
+
+    const idInput = document.getElementById('dispatchOrderId');
+    const courierInput = document.getElementById('dispatchCourier');
+    const trackingInput = document.getElementById('dispatchTrackingId');
+
+    if (idInput) idInput.value = orderId;
+    if (courierInput) courierInput.value = '';
+    if (trackingInput) trackingInput.value = '';
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    console.log('✅ Dispatch Modal should now be visible');
 }
 
 async function confirmDispatch() {
+    console.log('🚚 Confirming Dispatch...');
+
     const orderId = document.getElementById('dispatchOrderId').value;
     const courier = document.getElementById('dispatchCourier').value;
     const trackingId = document.getElementById('dispatchTrackingId').value.trim();
+
+    console.log('🚚 OrderID:', orderId, 'Courier:', courier, 'Tracking:', trackingId);
 
     if (!courier) return alert('Courier select karein!');
     if (!trackingId) return alert('Tracking ID daalna zaroori hai!');
 
     try {
+        console.log('🚀 Sending Dispatch API Request...');
         const res = await fetch(`${API_URL}/orders/${orderId}/dispatch`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
-            }
-
-            ,
+            },
             body: JSON.stringify({
-                courier, trackingId, dispatchedBy: currentUser.id
+                courier,
+                trackingId,
+                dispatchedBy: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : 'dispatch_dept'
             })
         });
         const data = await res.json();
 
         if (data.success) {
-            closeModal('dispatchModal');
+            // Close modal inline
+            const modal = document.getElementById('dispatchModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
 
             const whatsappData = currentDispatchOrder ? { type: 'dispatched', order: { ...currentDispatchOrder, tracking: { courier, trackingId } } } : null;
 
@@ -5291,22 +5320,30 @@ async function loadEmployees() {
                 </div>
                 
                 <div class="p-6">
-                    <div class="grid grid-cols-2 gap-3 text-center">
+                    <div class="grid grid-cols-3 gap-2 text-center">
                         <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
                             <p class="text-xl font-black text-gray-800">${emp.totalOrders}</p>
-                            <p class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total</p>
+                            <p class="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Total</p>
                         </div>
                         <div class="bg-red-50 rounded-xl p-3 border border-red-100">
                             <p class="text-xl font-black text-red-500">${emp.pendingOrders}</p>
-                            <p class="text-[10px] uppercase font-bold text-red-400 tracking-wider">Pending</p>
+                            <p class="text-[9px] uppercase font-bold text-red-400 tracking-wider">Pending</p>
                         </div>
                         <div class="bg-purple-50 rounded-xl p-3 border border-purple-100">
                             <p class="text-xl font-black text-purple-500">${emp.dispatchedOrders}</p>
-                            <p class="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Dispatched</p>
+                            <p class="text-[9px] uppercase font-bold text-purple-400 tracking-wider">Dispatched</p>
                         </div>
                         <div class="bg-green-50 rounded-xl p-3 border border-green-100">
                             <p class="text-xl font-black text-green-500">${emp.deliveredOrders}</p>
-                            <p class="text-[10px] uppercase font-bold text-green-400 tracking-wider">Delivered</p>
+                            <p class="text-[9px] uppercase font-bold text-green-400 tracking-wider">Delivered</p>
+                        </div>
+                        <div class="bg-orange-50 rounded-xl p-3 border border-orange-100">
+                            <p class="text-xl font-black text-orange-500">${emp.cancelledOrders || 0}</p>
+                            <p class="text-[9px] uppercase font-bold text-orange-400 tracking-wider">Cancelled</p>
+                        </div>
+                        <div class="bg-yellow-50 rounded-xl p-3 border border-yellow-100">
+                            <p class="text-xl font-black text-yellow-600">${emp.onHoldOrders || 0}</p>
+                            <p class="text-[9px] uppercase font-bold text-yellow-500 tracking-wider">On Hold</p>
                         </div>
                     </div>
                     
@@ -5961,13 +5998,26 @@ async function filterAdminProgress() {
         const delivered = orders.filter(o => o.status === 'Delivered').length;
         const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(0) : 0;
 
-        // Calculate Fresh vs Re-order for the FILTERED set
+        // Calculate Fresh vs Re-order for the FILTERED set (with Revenue)
         let freshCount = 0;
         let reorderCount = 0;
+        let freshRevenue = 0;
+        let reorderRevenue = 0;
+
         orders.forEach(o => {
-            if (orderReorderMap.get(o.orderId)) reorderCount++;
-            else freshCount++;
+            const orderTotal = o.total || 0;
+            // Use orderType field if available, otherwise fall back to orderReordermMap
+            const isReorder = o.orderType ? (o.orderType === 'Reorder') : orderReorderMap.get(o.orderId);
+
+            if (isReorder) {
+                reorderCount++;
+                reorderRevenue += orderTotal;
+            } else {
+                freshCount++;
+                freshRevenue += orderTotal;
+            }
         });
+
 
         // Find Top City
         const cityCounts = {};
@@ -5983,9 +6033,19 @@ async function filterAdminProgress() {
         document.getElementById('analyticsSummaryGrid').innerHTML = `
             <div class="glass-card p-6 bg-white border border-blue-50">
                 <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Revenue</p>
-                <div class="flex items-end justify-between">
+                <div class="flex items-end justify-between mb-2">
                     <p class="text-2xl font-black text-slate-800">₹${totalRevenue.toLocaleString()}</p>
                     <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">💰 Income</span>
+                </div>
+                <div class="flex gap-2 pt-2 border-t border-slate-50">
+                     <div class="flex-1 text-center bg-emerald-50/50 rounded-lg py-1 border border-emerald-100">
+                        <span class="block text-[10px] uppercase font-bold text-emerald-500 tracking-wider">Fresh</span>
+                        <span class="block text-sm font-black text-emerald-600">🆕 ₹${freshRevenue.toLocaleString()}</span>
+                     </div>
+                     <div class="flex-1 text-center bg-blue-50/50 rounded-lg py-1 border border-blue-100">
+                        <span class="block text-[10px] uppercase font-bold text-blue-500 tracking-wider">Re-order</span>
+                        <span class="block text-sm font-black text-blue-600">🔄 ₹${reorderRevenue.toLocaleString()}</span>
+                     </div>
                 </div>
             </div>
             <div class="glass-card p-4 bg-white border border-emerald-50">

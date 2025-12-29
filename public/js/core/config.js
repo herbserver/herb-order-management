@@ -16,7 +16,7 @@ var API_URL = typeof API_URL !== 'undefined' ? API_URL : (window.location.origin
 console.log('Connecting to API at:', API_URL);
 
 // Admin Password 
-const ADMIN_PASS = 'admin123';
+var ADMIN_PASS = ADMIN_PASS || 'admin123';
 
 // Courier Tracking URLs
 const COURIER_TRACKING = {

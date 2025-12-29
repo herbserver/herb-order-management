@@ -637,7 +637,7 @@
                 <div class="flex-1 lg:ml-64 h-screen flex flex-col overflow-hidden">
 
                     <!-- TOP HEADER -->
-                    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+                    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
                         <div class="px-4 sm:px-6 py-3 flex items-center gap-4">
 
                             <!-- Mobile Menu Toggle -->
@@ -700,7 +700,7 @@
 
                             <!-- PENDING TAB -->
                             <div id="verificationPendingTab" class="animate-fadeIn">
-                                <div class="sticky top-0 z-20 bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
+                                <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
                                     <div class="flex flex-col md:flex-row justify-between items-center px-2 gap-4">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <span class="w-2 h-8 bg-blue-500 rounded-full block"></span>
@@ -744,7 +744,7 @@
                                 </div>
                                 <!-- Quick Filter Buttons -->
                                 <div id="dateFilterButtons"
-                                    class="sticky top-24 z-10 bg-white mb-4 px-2 hidden shadow-md">
+                                    class="bg-white mb-4 px-2 hidden shadow-md">
                                     <div
                                         class="flex flex-wrap gap-2 items-center p-3 bg-gradient-to-r from-blue-50 to-emerald-50 rounded-xl border border-blue-200 shadow-sm">
                                         <span class="text-xs font-bold text-gray-600 uppercase tracking-wide">Quick
@@ -897,7 +897,7 @@
 
                             <!-- READY TAB -->
                             <div id="dispatchReadyTab" class="hidden animate-fadeIn">
-                                <div class="sticky top-0 z-20 bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
+                                <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
                                     <div class="flex flex-col md:flex-row justify-between items-center px-2 gap-4">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <span class="w-2 h-8 bg-blue-500 rounded-full block"></span>
@@ -951,7 +951,7 @@
 
                             <!-- REQUESTS TAB -->
                             <div id="dispatchRequestsTab" class="hidden animate-fadeIn">
-                                <div class="sticky top-0 z-20 bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
+                                <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
                                     <div class="flex justify-between items-center px-2">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <span class="w-2 h-8 bg-pink-500 rounded-full block"></span>
@@ -970,7 +970,7 @@
 
                             <!-- DISPATCHED TAB -->
                             <div id="dispatchDispatchedTab" class="hidden animate-fadeIn">
-                                <div class="sticky top-0 z-20 bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
+                                <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
                                     <div class="flex justify-between items-center px-2">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <span class="w-2 h-8 bg-indigo-500 rounded-full block"></span>
@@ -1103,7 +1103,7 @@
 
                             <!-- OUT FOR DELIVERY TAB -->
                             <div id="deliveryOutForDeliveryTab" class="animate-fadeIn">
-                                <div class="sticky top-0 z-20 bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
+                                <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
                                     <div class="flex justify-between items-center px-2">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <span class="w-2 h-8 bg-orange-400 rounded-full block"></span>
@@ -1122,7 +1122,7 @@
 
                             <!-- DELIVERED TAB -->
                             <div id="deliveryDeliveredTab" class="hidden animate-fadeIn">
-                                <div class="sticky top-0 z-20 bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
+                                <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
                                     <div class="flex justify-between items-center px-2">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <span class="w-2 h-8 bg-teal-500 rounded-full block"></span>
@@ -1141,7 +1141,7 @@
 
                             <!-- FAILED DELIVERY TAB -->
                             <div id="deliveryFailedTab" class="hidden animate-fadeIn">
-                                <div class="sticky top-0 z-20 bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
+                                <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
                                     <div class="flex justify-between items-center px-2">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <span class="w-2 h-8 bg-red-400 rounded-full block"></span>
@@ -1224,6 +1224,43 @@
 
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!--====================GLOBAL MODALS====================-->
+        <!-- Dispatch Modal (Globally Accessible) -->
+        <div id="dispatchModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-2xl max-w-md w-full">
+                <div class="bg-purple-600 text-white p-4 rounded-t-2xl">
+                    <h3 class="font-bold text-lg">📦 Dispatch Order</h3>
+                </div>
+                <div class="p-6 space-y-4"><input type="hidden" id="dispatchOrderId">
+                    <div><label class="block text-sm font-medium mb-1">Courier
+                            Company</label><select id="dispatchCourier" class="w-full border-2 rounded-xl px-4 py-3">
+                            <option value="">-- Select Courier --</option>
+                            <option value="India Post">India Post</option>
+                            <option value="DTDC">DTDC</option>
+                            <option value="Blue Dart">Blue Dart</option>
+                            <option value="Delhivery">Delhivery</option>
+                            <option value="Ekart">Ekart</option>
+                            <option value="Xpressbees">Xpressbees</option>
+                            <option value="Ecom Express">Ecom Express</option>
+                            <option value="Shadowfax">Shadowfax</option>
+                            <option value="Amazon">Amazon</option>
+                            <option value="Professional">Professional</option>
+                            <option value="Other">Other</option>
+                        </select></div>
+                    <div><label class="block text-sm font-medium mb-1">Tracking
+                            ID *</label><input type="text" id="dispatchTrackingId" placeholder="Enter tracking number"
+                            class="w-full border-2 rounded-xl px-4 py-3">
+                    </div>
+                    <div class="flex gap-3"><button type="button"
+                            onclick="document.getElementById('dispatchModal').classList.add('hidden'); document.getElementById('dispatchModal').style.display = 'none';"
+                            class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button><button
+                            type="button" onclick="confirmDispatch()"
+                            class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-medium hover:bg-purple-700">🚚
+                            Dispatch</button></div>
                 </div>
             </div>
         </div>
@@ -1364,8 +1401,8 @@
                 <!-- MAIN CONTENT AREA - Scrollable while sidebar stays fixed -->
                 <div class="flex-1 lg:ml-64 h-screen flex flex-col overflow-hidden">
 
-                    <!-- TOP HEADER - Sticky & Clean -->
-                    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+                    <!-- TOP HEADER -->
+                    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
                         <div class="px-4 sm:px-6 py-3 flex items-center gap-4">
                             <!-- Mobile Menu Toggle -->
                             <button onclick="toggleAdminSidebar()"
@@ -1377,19 +1414,7 @@
                                 </svg>
                             </button>
 
-                            <!-- Search Bar - Improved -->
-                            <div class="flex-1 max-w-lg relative">
-                                <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                                <input type="text" id="adminMobileSearch" placeholder="Search orders..."
-                                    class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all placeholder:text-slate-400"
-                                    oninput="filterAdminOrders(this.value)">
-                            </div>
-
-                            <!-- Quick Stats Pills - Redesigned -->
+                            <!-- Quick Stats Pills -->
                             <div class="hidden md:flex items-center gap-2 ml-auto">
                                 <div
                                     class="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-red-50 to-rose-50 border border-red-100 rounded-xl">
@@ -1411,7 +1436,7 @@
                                 </div>
                             </div>
 
-                            <!-- User Menu - Compact -->
+                            <!-- User Menu -->
                             <div class="flex items-center gap-2 pl-3 border-l border-slate-200">
                                 <div class="hidden sm:block text-right">
                                     <p class="text-sm font-bold text-slate-800">Admin</p>
@@ -1435,9 +1460,8 @@
 
                         <!-- PENDING TAB -->
                         <div id="adminPendingTab" class="hidden animate-fadeIn">
-                            <!-- Sticky Stats & Filters Bar -->
-                            <div
-                                class="sticky top-0 z-20 bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                            <!-- Stats & Filters Bar -->
+                            <div class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <!-- Stats Row - Compact Horizontal -->
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <button onclick="applyQuickDateFilter('adminPending', 'today')"
@@ -1518,7 +1542,7 @@
                         <div id="adminVerifiedTab" class="hidden animate-fadeIn">
                             <!-- Sticky Stats & Filters Bar -->
                             <div
-                                class="sticky top-0 z-20 bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <!-- Stats Row -->
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <button onclick="applyQuickDateFilter('adminVerified', 'today')"
@@ -1597,7 +1621,7 @@
                         <div id="adminDispatchedTab" class="hidden animate-fadeIn">
                             <!-- Sticky Stats & Filters Bar -->
                             <div
-                                class="sticky top-0 z-20 bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <!-- Stats Row -->
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <button onclick="applyQuickDateFilter('adminDispatched', 'today')"
@@ -1675,7 +1699,7 @@
                         <div id="adminDeliveredTab" class="hidden animate-fadeIn">
                             <!-- Sticky Stats & Filters Bar -->
                             <div
-                                class="sticky top-0 z-20 bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <!-- Stats Row -->
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <button onclick="applyQuickDateFilter('adminDelivered', 'today')"
@@ -1753,7 +1777,7 @@
                         <div id="adminCancelledTab" class="hidden animate-fadeIn">
                             <!-- Sticky Filters Bar -->
                             <div
-                                class="sticky top-0 z-20 bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
                                     <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                                         <span class="w-3 h-3 bg-red-500 rounded-full"></span> Cancelled
@@ -1806,7 +1830,7 @@
                         <div id="adminOnholdTab" class="hidden animate-fadeIn">
                             <!-- Sticky Filters Bar -->
                             <div
-                                class="sticky top-0 z-20 bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
                                     <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                                         <span class="w-3 h-3 bg-amber-500 rounded-full"></span> On Hold
@@ -1931,479 +1955,471 @@
                         <div id="editOrderModalContent" class="p-6"></div>
                     </div>
                 </div>
-                <!-- Dispatch Modal -->
-                <div id="dispatchModal"
-                    class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div class="bg-white rounded-2xl max-w-md w-full">
-                        <div class="bg-purple-600 text-white p-4 rounded-t-2xl">
-                            <h3 class="font-bold text-lg">📦 Dispatch Order</h3>
+            </div>
+            <!-- Register Department Modal -->
+            <div id="registerDeptModal"
+                class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-2xl max-w-md w-full">
+                    <div class="bg-indigo-600 text-white p-4 rounded-t-2xl">
+                        <h3 class="font-bold text-lg">➕ Register Department</h3>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div><label class="block text-sm font-medium mb-1">Department
+                                Name</label><input type="text" id="newDeptName" placeholder="e.g., Address Team"
+                                class="w-full border-2 rounded-xl px-4 py-3">
                         </div>
-                        <div class="p-6 space-y-4"><input type="hidden" id="dispatchOrderId">
-                            <div><label class="block text-sm font-medium mb-1">Courier
-                                    Company</label><select id="dispatchCourier"
-                                    class="w-full border-2 rounded-xl px-4 py-3">
-                                    <option value="">-- Select Courier --</option>
-                                    <option value="India Post">India Post</option>
-                                    <option value="DTDC">DTDC</option>
-                                    <option value="Blue Dart">Blue Dart</option>
-                                    <option value="Delhivery">Delhivery</option>
-                                    <option value="Ekart">Ekart</option>
-                                    <option value="Xpressbees">Xpressbees</option>
-                                    <option value="Ecom Express">Ecom Express</option>
-                                    <option value="Shadowfax">Shadowfax</option>
-                                    <option value="Amazon">Amazon</option>
-                                    <option value="Professional">Professional</option>
-                                    <option value="Other">Other</option>
-                                </select></div>
-                            <div><label class="block text-sm font-medium mb-1">Tracking
-                                    ID *</label><input type="text" id="dispatchTrackingId"
-                                    placeholder="Enter tracking number" class="w-full border-2 rounded-xl px-4 py-3">
-                            </div>
-                            <div class="flex gap-3"><button type="button" onclick="closeModal('dispatchModal')"
-                                    class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button><button
-                                    type="button" onclick="confirmDispatch()"
-                                    class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-medium hover:bg-purple-700">🚚
-                                    Dispatch</button></div>
+                        <div><label class="block text-sm font-medium mb-1">Department
+                                ID</label><input type="text" id="newDeptId" placeholder="e.g., ADDR001"
+                                class="w-full border-2 rounded-xl px-4 py-3">
                         </div>
+                        <div><label class="block text-sm font-medium mb-1">Password</label><input type="password"
+                                id="newDeptPass" class="w-full border-2 rounded-xl px-4 py-3">
+                        </div>
+                        <div><label class="block text-sm font-medium mb-1">Department
+                                Type</label><select id="newDeptType" class="w-full border-2 rounded-xl px-4 py-3">
+                                <option value="verification">📍 Verification
+                                    Department</option>
+                                <option value="dispatch">📦 Dispatch Department
+                                </option>
+                                <option value="delivery">🚚 Delivery Department
+                                </option>
+                            </select></div>
+                        <div class="flex gap-3"><button type="button" onclick="closeModal('registerDeptModal')"
+                                class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button><button
+                                type="button" onclick="registerDepartment()"
+                                class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-medium hover:bg-indigo-700">✅
+                                Register</button></div>
                     </div>
                 </div>
-                <!-- Register Department Modal -->
-                <div id="registerDeptModal"
-                    class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div class="bg-white rounded-2xl max-w-md w-full">
-                        <div class="bg-indigo-600 text-white p-4 rounded-t-2xl">
-                            <h3 class="font-bold text-lg">➕ Register Department</h3>
+            </div>
+            <!-- Edit Department Modal (Full Edit) -->
+            <div id="editDeptModal"
+                class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+                <div class="bg-white rounded-2xl max-w-md w-full">
+                    <div class="bg-orange-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                        <h3 class="font-bold text-lg">✏️ Full Edit
+                            Department</h3><button type="button" onclick="closeModal('editDeptModal')"
+                            class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
+                    </div>
+                    <div class="p-6 space-y-4"><input type="hidden" id="editDeptOldId">
+                        <div class="bg-yellow-50 border border-yellow-300 rounded-xl p-3 text-sm text-yellow-800">
+                            ⚠️ <strong>Warning:</strong>ID change karne se
+                            purani ID delete ho jayegi aur nayi ban jayegi !
                         </div>
-                        <div class="p-6 space-y-4">
-                            <div><label class="block text-sm font-medium mb-1">Department
-                                    Name</label><input type="text" id="newDeptName" placeholder="e.g., Address Team"
-                                    class="w-full border-2 rounded-xl px-4 py-3">
-                            </div>
-                            <div><label class="block text-sm font-medium mb-1">Department
-                                    ID</label><input type="text" id="newDeptId" placeholder="e.g., ADDR001"
-                                    class="w-full border-2 rounded-xl px-4 py-3">
-                            </div>
-                            <div><label class="block text-sm font-medium mb-1">Password</label><input type="password"
-                                    id="newDeptPass" class="w-full border-2 rounded-xl px-4 py-3">
-                            </div>
-                            <div><label class="block text-sm font-medium mb-1">Department
-                                    Type</label><select id="newDeptType" class="w-full border-2 rounded-xl px-4 py-3">
-                                    <option value="verification">📍 Verification
-                                        Department</option>
-                                    <option value="dispatch">📦 Dispatch Department
-                                    </option>
-                                    <option value="delivery">🚚 Delivery Department
-                                    </option>
-                                </select></div>
-                            <div class="flex gap-3"><button type="button" onclick="closeModal('registerDeptModal')"
-                                    class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button><button
-                                    type="button" onclick="registerDepartment()"
-                                    class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-medium hover:bg-indigo-700">✅
-                                    Register</button></div>
+                        <div><label class="block text-sm font-medium mb-1">Department
+                                ID *</label><input type="text" id="editDeptNewId" placeholder="e.g., ADDR001"
+                                class="w-full border-2 rounded-xl px-4 py-3 font-mono">
+                            <p class="text-xs text-gray-500 mt-1">Current ID
+                                shown above. Change if needed.</p>
                         </div>
+                        <div><label class="block text-sm font-medium mb-1">Department
+                                Name *</label><input type="text" id="editDeptName" placeholder="e.g., Verification Team"
+                                class="w-full border-2 rounded-xl px-4 py-3">
+                        </div>
+                        <div><label class="block text-sm font-medium mb-1">Password
+                                *</label><input type="password" id="editDeptPass" placeholder="Enter new password"
+                                class="w-full border-2 rounded-xl px-4 py-3">
+                            <p class="text-xs text-gray-500 mt-1">New
+                                password set hoga</p>
+                        </div>
+                        <div><label class="block text-sm font-medium mb-1">Department
+                                Type *</label><select id="editDeptType" class="w-full border-2 rounded-xl px-4 py-3">
+                                <option value="verification">📍 Verification
+                                    Department</option>
+                                <option value="dispatch">📦 Dispatch
+                                    Department</option>
+                                <option value="delivery">🚚 Delivery
+                                    Department</option>
+                            </select></div>
+                        <div class="flex gap-3 pt-2"><button type="button" onclick="closeModal('editDeptModal')"
+                                class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button><button
+                                type="button" onclick="deleteDepartment()"
+                                class="bg-red-400 text-white px-4 py-3 rounded-xl font-medium hover:bg-red-500">🗑️</button><button
+                                type="button" onclick="updateDepartmentFull()"
+                                class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-medium hover:bg-orange-700">💾
+                                Save All</button></div>
                     </div>
                 </div>
-                <!-- Edit Department Modal (Full Edit) -->
-                <div id="editDeptModal"
-                    class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-                    <div class="bg-white rounded-2xl max-w-md w-full">
-                        <div class="bg-orange-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
-                            <h3 class="font-bold text-lg">✏️ Full Edit
-                                Department</h3><button type="button" onclick="closeModal('editDeptModal')"
-                                class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
-                        </div>
-                        <div class="p-6 space-y-4"><input type="hidden" id="editDeptOldId">
-                            <div class="bg-yellow-50 border border-yellow-300 rounded-xl p-3 text-sm text-yellow-800">
-                                ⚠️ <strong>Warning:</strong>ID change karne se
-                                purani ID delete ho jayegi aur nayi ban jayegi !
-                            </div>
-                            <div><label class="block text-sm font-medium mb-1">Department
-                                    ID *</label><input type="text" id="editDeptNewId" placeholder="e.g., ADDR001"
-                                    class="w-full border-2 rounded-xl px-4 py-3 font-mono">
-                                <p class="text-xs text-gray-500 mt-1">Current ID
-                                    shown above. Change if needed.</p>
-                            </div>
-                            <div><label class="block text-sm font-medium mb-1">Department
-                                    Name *</label><input type="text" id="editDeptName"
-                                    placeholder="e.g., Verification Team" class="w-full border-2 rounded-xl px-4 py-3">
-                            </div>
-                            <div><label class="block text-sm font-medium mb-1">Password
-                                    *</label><input type="password" id="editDeptPass" placeholder="Enter new password"
-                                    class="w-full border-2 rounded-xl px-4 py-3">
-                                <p class="text-xs text-gray-500 mt-1">New
-                                    password set hoga</p>
-                            </div>
-                            <div><label class="block text-sm font-medium mb-1">Department
-                                    Type *</label><select id="editDeptType"
-                                    class="w-full border-2 rounded-xl px-4 py-3">
-                                    <option value="verification">📍 Verification
-                                        Department</option>
-                                    <option value="dispatch">📦 Dispatch
-                                        Department</option>
-                                    <option value="delivery">🚚 Delivery
-                                        Department</option>
-                                </select></div>
-                            <div class="flex gap-3 pt-2"><button type="button" onclick="closeModal('editDeptModal')"
-                                    class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button><button
-                                    type="button" onclick="deleteDepartment()"
-                                    class="bg-red-400 text-white px-4 py-3 rounded-xl font-medium hover:bg-red-500">🗑️</button><button
-                                    type="button" onclick="updateDepartmentFull()"
-                                    class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-medium hover:bg-orange-700">💾
-                                    Save All</button></div>
-                        </div>
+            </div>
+            <!-- Edit Employee Modal -->
+            <div id="editEmployeeModal"
+                class="hidden fixed inset-0 bg-black/50 flex items-start justify-center p-4 z-[60] pt-20">
+                <div class="bg-white rounded-2xl max-w-md w-full">
+                    <div class="bg-orange-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                        <h3 class="font-bold text-lg">✏️ Edit Employee Details</h3>
+                        <button type="button" onclick="closeModal('editEmployeeModal')"
+                            class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
                     </div>
-                </div>
-                <!-- Edit Employee Modal -->
-                <div id="editEmployeeModal"
-                    class="hidden fixed inset-0 bg-black/50 flex items-start justify-center p-4 z-[60] pt-20">
-                    <div class="bg-white rounded-2xl max-w-md w-full">
-                        <div class="bg-orange-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
-                            <h3 class="font-bold text-lg">✏️ Edit Employee Details</h3>
+                    <div class="p-6 space-y-4">
+                        <input type="hidden" id="editEmpOldId">
+                        <div class="bg-yellow-50 border border-yellow-300 rounded-xl p-3 text-sm text-yellow-800">
+                            ⚠️ <strong>Warning:</strong> ID change karne par login details badal
+                            jayengi!
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1 text-slate-600">Employee Name
+                                *</label>
+                            <input type="text" id="editEmpName" placeholder="Enter Full Name"
+                                class="w-full border-2 rounded-xl px-4 py-3 focus:border-orange-500 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1 text-slate-600">Employee ID
+                                *</label>
+                            <input type="text" id="editEmpNewId" placeholder="e.g., HON-E001"
+                                class="w-full border-2 rounded-xl px-4 py-3 font-mono focus:border-orange-500 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1 text-slate-600">New Password
+                                (Leave blank
+                                for no change)</label>
+                            <input type="password" id="editEmpPass" placeholder="Enter new password"
+                                class="w-full border-2 rounded-xl px-4 py-3 focus:border-orange-500 outline-none transition-all">
+                        </div>
+                        <div class="flex gap-3 pt-2">
                             <button type="button" onclick="closeModal('editEmployeeModal')"
-                                class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
-                        </div>
-                        <div class="p-6 space-y-4">
-                            <input type="hidden" id="editEmpOldId">
-                            <div class="bg-yellow-50 border border-yellow-300 rounded-xl p-3 text-sm text-yellow-800">
-                                ⚠️ <strong>Warning:</strong> ID change karne par login details badal
-                                jayengi!
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1 text-slate-600">Employee Name
-                                    *</label>
-                                <input type="text" id="editEmpName" placeholder="Enter Full Name"
-                                    class="w-full border-2 rounded-xl px-4 py-3 focus:border-orange-500 outline-none transition-all">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1 text-slate-600">Employee ID
-                                    *</label>
-                                <input type="text" id="editEmpNewId" placeholder="e.g., HON-E001"
-                                    class="w-full border-2 rounded-xl px-4 py-3 font-mono focus:border-orange-500 outline-none transition-all">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1 text-slate-600">New Password
-                                    (Leave blank
-                                    for no change)</label>
-                                <input type="password" id="editEmpPass" placeholder="Enter new password"
-                                    class="w-full border-2 rounded-xl px-4 py-3 focus:border-orange-500 outline-none transition-all">
-                            </div>
-                            <div class="flex gap-3 pt-2">
-                                <button type="button" onclick="closeModal('editEmployeeModal')"
-                                    class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">Cancel</button>
-                                <button type="button" onclick="saveEmployeeChanges()"
-                                    class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 shadow-lg shadow-orange-200 transition-all">💾
-                                    Save
-                                    Changes</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Employee Profile Modal -->
-                <div id="employeeProfileModal"
-                    class="hidden fixed inset-0 bg-black/50 flex items-start justify-center p-4 z-50 pt-10">
-                    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                        <div
-                            class="sticky top-0 bg-indigo-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
-                            <h3 class="font-bold text-lg">👤 Employee
-                                Profile</h3><button type="button" onclick="closeModal('employeeProfileModal')"
-                                class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
-                        </div>
-                        <div id="employeeProfileContent" class="p-6"></div>
-                    </div>
-                </div>
-                <!-- Order Detail Modal with Map -->
-                <div id="orderDetailModal"
-                    class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto relative">
-                        <div id="orderDetailContent" class="p-0">
-                            <!-- Content will be populated by viewOrder() function -->
+                                class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">Cancel</button>
+                            <button type="button" onclick="saveEmployeeChanges()"
+                                class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 shadow-lg shadow-orange-200 transition-all">💾
+                                Save
+                                Changes</button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-
-        <!-- District Explorer Modal (From Backup) -->
-        <div id="districtExplorerModal"
-            class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full"
-                style="max-height: 90vh; display: flex; flex-direction: column;">
-                <div
-                    class="bg-gradient-to-r from-blue-600 to-purple-600 p-4 flex justify-between items-center flex-shrink-0">
-                    <h3 class="text-xl font-bold text-white" id="districtExplorerTitle">📍 District Explorer
-                    </h3>
-                    <button type="button" onclick="closeModal('districtExplorerModal')"
-                        class="text-white text-2xl">×</button>
+            <!-- Employee Profile Modal -->
+            <div id="employeeProfileModal"
+                class="hidden fixed inset-0 bg-black/50 flex items-start justify-center p-4 z-50 pt-10">
+                <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                    <div
+                        class="sticky top-0 bg-indigo-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                        <h3 class="font-bold text-lg">👤 Employee
+                            Profile</h3><button type="button" onclick="closeModal('employeeProfileModal')"
+                            class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
+                    </div>
+                    <div id="employeeProfileContent" class="p-6"></div>
                 </div>
-                <div class="p-6 overflow-y-auto flex-1" style="min-height: 0;">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-blue-50 p-4 rounded-xl">
-                            <h4 class="font-bold mb-3">🏛️ Talukas</h4>
-                            <div id="talukasList" class="space-y-2 overflow-y-auto" style="max-height: 60vh;"></div>
-                        </div>
-                        <div class="bg-purple-50 p-4 rounded-xl">
-                            <h4 class="font-bold mb-3">📮 Post Offices</h4>
-                            <div id="postOfficesList" class="space-y-2 overflow-y-auto" style="max-height: 60vh;">
-                            </div>
-                        </div>
+            </div>
+            <!-- Order Detail Modal with Map -->
+            <div id="orderDetailModal"
+                class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto relative">
+                    <div id="orderDetailContent" class="p-0">
+                        <!-- Content will be populated by viewOrder() function -->
                     </div>
                 </div>
             </div>
         </div>
-        <!-- DISTRICT EXPLORER MODAL -->
-        <div id="districtExplorerModal"
-            class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+    </div>
+
+
+    <!-- District Explorer Modal (From Backup) -->
+    <div id="districtExplorerModal"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full"
+            style="max-height: 90vh; display: flex; flex-direction: column;">
             <div
-                class="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col animate-scaleIn overflow-hidden">
-                <!-- Header -->
-                <div
-                    class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 flex justify-between items-center text-white shrink-0">
-                    <div>
-                        <h3 class="text-2xl font-bold flex items-center gap-2">
-                            <span>🗺️</span>
-                            <span id="districtExplorerTitle">District Explorer</span>
-                        </h3>
-                        <p class="text-blue-100 text-sm mt-1">Select a Taluka (Block) to see Post Offices
-                        </p>
+                class="bg-gradient-to-r from-blue-600 to-purple-600 p-4 flex justify-between items-center flex-shrink-0">
+                <h3 class="text-xl font-bold text-white" id="districtExplorerTitle">📍 District Explorer
+                </h3>
+                <button type="button" onclick="closeModal('districtExplorerModal')"
+                    class="text-white text-2xl">×</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1" style="min-height: 0;">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-blue-50 p-4 rounded-xl">
+                        <h4 class="font-bold mb-3">🏛️ Talukas</h4>
+                        <div id="talukasList" class="space-y-2 overflow-y-auto" style="max-height: 60vh;"></div>
                     </div>
-                    <button onclick="closeModal('districtExplorerModal')"
-                        class="bg-white/20 hover:bg-white/30 text-white rounded-full p-2 transition-colors">
-                        ✕
-                    </button>
-                </div>
-
-                <!-- Body -->
-                <div class="flex-1 overflow-hidden flex flex-col md:flex-row">
-                    <!-- Left: Talukas -->
-                    <div class="md:w-1/3 bg-gray-50 border-r border-gray-200 flex flex-col">
-                        <div class="p-4 bg-gray-100 border-b font-bold text-gray-700 flex justify-between">
-                            <span>🏛️ Taluka / Block</span>
-                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full"
-                                id="talukaCountBadge">0</span>
-                        </div>
-                        <div id="talukasList" class="flex-1 overflow-y-auto p-2 space-y-2">
-                            <!-- Taluka items will be injected here -->
-                            <div class="p-4 text-center text-gray-500">Loading...</div>
-                        </div>
-                    </div>
-
-                    <!-- Right: Post Offices -->
-                    <div class="md:w-2/3 flex flex-col bg-white">
-                        <div
-                            class="p-4 bg-white border-b font-bold text-gray-700 flex justify-between items-center shadow-sm z-10">
-                            <span>📮 Post Offices</span>
-                            <input type="text" placeholder="🔍 Filter Offices..."
-                                class="border rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                oninput="filterExplorerOffices(this.value)">
-                        </div>
-                        <div id="postOfficesList"
-                            class="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
-                            <!-- Post Office items will be injected here -->
-                            <div class="col-span-full text-center text-gray-400 py-10">
-                                👈 Select a Taluka from the left to view Post Offices
-                            </div>
+                    <div class="bg-purple-50 p-4 rounded-xl">
+                        <h4 class="font-bold mb-3">📮 Post Offices</h4>
+                        <div id="postOfficesList" class="space-y-2 overflow-y-auto" style="max-height: 60vh;">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+    <!-- DISTRICT EXPLORER MODAL -->
+    <div id="districtExplorerModal"
+        class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div
+            class="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col animate-scaleIn overflow-hidden">
+            <!-- Header -->
+            <div
+                class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 flex justify-between items-center text-white shrink-0">
+                <div>
+                    <h3 class="text-2xl font-bold flex items-center gap-2">
+                        <span>🗺️</span>
+                        <span id="districtExplorerTitle">District Explorer</span>
+                    </h3>
+                    <p class="text-blue-100 text-sm mt-1">Select a Taluka (Block) to see Post Offices
+                    </p>
+                </div>
+                <button onclick="closeModal('districtExplorerModal')"
+                    class="bg-white/20 hover:bg-white/30 text-white rounded-full p-2 transition-colors">
+                    ✕
+                </button>
+            </div>
 
-        <!-- ╔═══════════════════════════════════════════════════════════════════════════════════╗
+            <!-- Body -->
+            <div class="flex-1 overflow-hidden flex flex-col md:flex-row">
+                <!-- Left: Talukas -->
+                <div class="md:w-1/3 bg-gray-50 border-r border-gray-200 flex flex-col">
+                    <div class="p-4 bg-gray-100 border-b font-bold text-gray-700 flex justify-between">
+                        <span>🏛️ Taluka / Block</span>
+                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full"
+                            id="talukaCountBadge">0</span>
+                    </div>
+                    <div id="talukasList" class="flex-1 overflow-y-auto p-2 space-y-2">
+                        <!-- Taluka items will be injected here -->
+                        <div class="p-4 text-center text-gray-500">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Right: Post Offices -->
+                <div class="md:w-2/3 flex flex-col bg-white">
+                    <div
+                        class="p-4 bg-white border-b font-bold text-gray-700 flex justify-between items-center shadow-sm z-10">
+                        <span>📮 Post Offices</span>
+                        <input type="text" placeholder="🔍 Filter Offices..."
+                            class="border rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            oninput="filterExplorerOffices(this.value)">
+                    </div>
+                    <div id="postOfficesList"
+                        class="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
+                        <!-- Post Office items will be injected here -->
+                        <div class="col-span-full text-center text-gray-400 py-10">
+                            👈 Select a Taluka from the left to view Post Offices
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ╔═══════════════════════════════════════════════════════════════════════════════════╗
              ║  📜 SCRIPTS (Lines 2212-2214)                                                        ║
              ╠═══════════════════════════════════════════════════════════════════════════════════╣
              ║  Contains: Main app.js, WhatsApp notifications, Auto tracking                     ║
              ╚═══════════════════════════════════════════════════════════════════════════════════╝ -->
-        <script src="app.js?v=20251233"></script>
-        <script src="whatsapp-notifications.js?v=2025123"></script>
-        <script src="auto-tracking.js?v=2025123"></script>
+    <script src="app.js?v=20251227_modal_working"></script>
+    <script src="whatsapp-notifications.js?v=2025123"></script>
+    <script src="auto-tracking.js?v=2025123"></script>
 
-        <!-- ╔═══════════════════════════════════════════════════════════════════════════════════╗
+    <!-- ╔═══════════════════════════════════════════════════════════════════════════════════╗
              ║  ✏️ EDIT ORDER MODAL (Lines 2217-2395)                                               ║
              ╠═══════════════════════════════════════════════════════════════════════════════════╣
              ║  Contains: Order edit form with customer, address, payment sections               ║
              ║  Functions: openEditOrderModal(), submitEditOrder(), calculateEditCOD()           ║
              ╚═══════════════════════════════════════════════════════════════════════════════════╝ -->
-        <div id="editOrderModal"
-            class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center overflow-y-auto py-10">
-            <div
-                class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 transform transition-all scale-100 flex flex-col max-h-[90vh]">
-                <!-- Header -->
-                <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-3xl">
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 text-xl shadow-sm">
-                            ✏️
+    <div id="editOrderModal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center overflow-y-auto py-10">
+        <div
+            class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 transform transition-all scale-100 flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-3xl">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 text-xl shadow-sm">
+                        ✏️
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-gray-800 tracking-tight">Edit Order</h3>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider" id="editOrderSubtitle">
+                            Updating Order Details</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('editOrderModal')"
+                    class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="p-8 overflow-y-auto custom-scrollbar space-y-6">
+                <input type="hidden" id="editOrderId">
+
+                <!-- Customer Details Section -->
+                <div class="bg-blue-50/50 p-5 rounded-2xl border border-blue-100/50">
+                    <h4 class="text-xs font-black text-blue-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        👤 Customer Information
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Customer
+                                Name</label>
+                            <input type="text" id="editCustomerName"
+                                class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
                         </div>
                         <div>
-                            <h3 class="text-xl font-black text-gray-800 tracking-tight">Edit Order</h3>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider" id="editOrderSubtitle">
-                                Updating Order Details</p>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mobile
+                                Number</label>
+                            <input type="text" id="editMobile"
+                                class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-mono font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Alternate
+                                Number</label>
+                            <input type="text" id="editAltMobile"
+                                class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-mono font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Order
+                                Type</label>
+                            <select id="editOrderType"
+                                class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all appearance-none cursor-pointer">
+                                <option value="Fresh">🆕 Fresh Order</option>
+                                <option value="Reorder">🔄 Reorder</option>
+                            </select>
                         </div>
                     </div>
-                    <button onclick="closeModal('editOrderModal')"
-                        class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-lg">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
                 </div>
 
-                <!-- Scrollable Content -->
-                <div class="p-8 overflow-y-auto custom-scrollbar space-y-6">
-                    <input type="hidden" id="editOrderId">
-
-                    <!-- Customer Details Section -->
-                    <div class="bg-blue-50/50 p-5 rounded-2xl border border-blue-100/50">
-                        <h4
-                            class="text-xs font-black text-blue-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            👤 Customer Information
-                        </h4>
+                <!-- Address Section -->
+                <div class="bg-orange-50/50 p-5 rounded-2xl border border-orange-100/50">
+                    <h4
+                        class="text-xs font-black text-orange-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        📍 Delivery Address
+                    </h4>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Full
+                                Address</label>
+                            <textarea id="editAddress" rows="2"
+                                class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all resize-none"></textarea>
+                        </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label
-                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Customer
-                                    Name</label>
-                                <input type="text" id="editCustomerName"
-                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Landmark</label>
+                                <input type="text" id="editLandmark"
+                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all">
                             </div>
                             <div>
                                 <label
-                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mobile
-                                    Number</label>
-                                <input type="text" id="editMobile"
-                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-mono font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">City
+                                    / District</label>
+                                <input type="text" id="editCity"
+                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all">
                             </div>
                             <div>
                                 <label
-                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Alternate
-                                    Number</label>
-                                <input type="text" id="editAltMobile"
-                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-mono font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">State</label>
+                                <input type="text" id="editState"
+                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all">
                             </div>
                             <div>
-                                <label
-                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Order
-                                    Type</label>
-                                <select id="editOrderType"
-                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all appearance-none cursor-pointer">
-                                    <option value="Fresh">🆕 Fresh Order</option>
-                                    <option value="Reorder">🔄 Reorder</option>
-                                </select>
+                                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">PIN
+                                    Code</label>
+                                <input type="text" id="editPin"
+                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-mono font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all">
                             </div>
                         </div>
                     </div>
-
-                    <!-- Address Section -->
-                    <div class="bg-orange-50/50 p-5 rounded-2xl border border-orange-100/50">
-                        <h4
-                            class="text-xs font-black text-orange-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            📍 Delivery Address
-                        </h4>
-                        <div class="space-y-4">
-                            <div>
-                                <label
-                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Full
-                                    Address</label>
-                                <textarea id="editAddress" rows="2"
-                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all resize-none"></textarea>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label
-                                        class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Landmark</label>
-                                    <input type="text" id="editLandmark"
-                                        class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all">
-                                </div>
-                                <div>
-                                    <label
-                                        class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">City
-                                        / District</label>
-                                    <input type="text" id="editCity"
-                                        class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all">
-                                </div>
-                                <div>
-                                    <label
-                                        class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">State</label>
-                                    <input type="text" id="editState"
-                                        class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all">
-                                </div>
-                                <div>
-                                    <label
-                                        class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">PIN
-                                        Code</label>
-                                    <input type="text" id="editPin"
-                                        class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-mono font-bold focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Financials Section -->
-                    <div class="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50">
-                        <h4
-                            class="text-xs font-black text-emerald-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            💰 Payment Details
-                        </h4>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label
-                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Total
-                                    Amount (₹)</label>
-                                <input type="number" id="editTotal"
-                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-black focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
-                                    oninput="calculateEditCOD()">
-                            </div>
-                            <div>
-                                <label
-                                    class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Advance
-                                    (₹)</label>
-                                <input type="number" id="editAdvance"
-                                    class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
-                                    oninput="calculateEditCOD()">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-red-500 uppercase tracking-wider mb-1.5">COD
-                                    Amount (₹)</label>
-                                <input type="number" id="editCod" readonly
-                                    class="w-full bg-red-50 border-2 border-red-100 rounded-xl px-4 py-2.5 text-red-600 font-black outline-none cursor-not-allowed">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Status Section -->
-                    <div class="bg-gray-50 p-5 rounded-2xl border border-gray-200">
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Order
-                            Status</label>
-                        <select id="editStatus"
-                            class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all cursor-pointer">
-                            <option value="Pending">🕒 Pending</option>
-                            <option value="Address Verified">✅ Address Verified</option>
-                            <option value="Dispatched">📦 Dispatched</option>
-                            <option value="Delivered">🎉 Delivered</option>
-                            <option value="Cancelled">❌ Cancelled</option>
-                            <option value="On Hold">⏸️ On Hold</option>
-                        </select>
-                        <p class="text-[10px] text-gray-400 mt-2 font-medium">⚠️ Changing status manually may bypass
-                            standard verification checks.</p>
-                    </div>
-
                 </div>
 
-                <!-- Footer -->
-                <div class="p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-3xl flex justify-end gap-3">
-                    <button onclick="closeModal('editOrderModal')"
-                        class="px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-all border border-transparent hover:border-gray-200">
-                        Cancel
-                    </button>
-                    <button onclick="submitEditOrder()"
-                        class="px-8 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 hover:scale-105 transition-all flex items-center gap-2">
-                        <span>💾</span> Save Changes
-                    </button>
+                <!-- Financials Section -->
+                <div class="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50">
+                    <h4
+                        class="text-xs font-black text-emerald-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        💰 Payment Details
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Total
+                                Amount (₹)</label>
+                            <input type="number" id="editTotal"
+                                class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-black focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
+                                oninput="calculateEditCOD()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Advance
+                                (₹)</label>
+                            <input type="number" id="editAdvance"
+                                class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
+                                oninput="calculateEditCOD()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-red-500 uppercase tracking-wider mb-1.5">COD
+                                Amount (₹)</label>
+                            <input type="number" id="editCod" readonly
+                                class="w-full bg-red-50 border-2 border-red-100 rounded-xl px-4 py-2.5 text-red-600 font-black outline-none cursor-not-allowed">
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Status Section -->
+                <div class="bg-gray-50 p-5 rounded-2xl border border-gray-200">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Order
+                        Status</label>
+                    <select id="editStatus"
+                        class="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 font-bold focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all cursor-pointer">
+                        <option value="Pending">🕒 Pending</option>
+                        <option value="Address Verified">✅ Address Verified</option>
+                        <option value="Dispatched">📦 Dispatched</option>
+                        <option value="Delivered">🎉 Delivered</option>
+                        <option value="Cancelled">❌ Cancelled</option>
+                        <option value="On Hold">⏸️ On Hold</option>
+                    </select>
+                    <p class="text-[10px] text-gray-400 mt-2 font-medium">⚠️ Changing status manually may bypass
+                        standard verification checks.</p>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-3xl flex justify-end gap-3">
+                <button onclick="closeModal('editOrderModal')"
+                    class="px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-all border border-transparent hover:border-gray-200">
+                    Cancel
+                </button>
+                <button onclick="submitEditOrder()"
+                    class="px-8 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 hover:scale-105 transition-all flex items-center gap-2">
+                    <span>💾</span> Save Changes
+                </button>
             </div>
         </div>
+    </div>
+
+    <!-- ========================================
+         MODULAR JAVASCRIPT ARCHITECTURE
+         ======================================== -->
+
+    <!-- CORE MODULES (Load First) -->
+    <script src="js/core/config.js"></script>
+    <script src="js/core/session.js"></script>
+    <script src="js/core/utils.js"></script>
+
+    <!-- UI UTILITIES -->
+    <script src="js/ui/messages.js"></script>
+    <script src="js/ui/navigation.js"></script>
+    <script src="js/ui/popups.js"></script>
+    <script src="js/ui/modals.js"></script>
+    <script src="js/ui/screen-manager.js"></script>
+
+    <!-- AUTHENTICATION -->
+    <script src="js/auth/login.js"></script>
+
+    <!-- WHATSAPP FEATURES -->
+    <script src="js/features/whatsapp/templates.js"></script>
+
+    <!-- MAIN APPLICATION (Monolith - Will gradually phase out) -->
+    <script src="app.js"></script>
+
+    <!-- EXISTING STANDALONE MODULES -->
+    <script src="analytics-dashboard.js"></script>
+    <script src="employee-performance.js"></script>
+    <script src="auto-tracking.js"></script>
+    <script src="order-notifications.js"></script>
+    <script src="whatsapp-notifications.js"></script>
+
+    <!-- APPLICATION INIT (Load Last) -->
+    <script src="js/init.js"></script>
 
 </body>
 

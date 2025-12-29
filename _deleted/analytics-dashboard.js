@@ -14,11 +14,10 @@ async function loadAnalyticsDashboard() {
         const res = await fetch(`${API_URL}/analytics/dashboard`);
         const data = await res.json();
 
-        console.log('🔍 ANALYTICS DATA:', data);
+        console.log('🔍 Analytics Dashboard Response:', data);
+        console.log('💰 Today Stats:', data.today);
         console.log('💰 Fresh Revenue:', data.today?.freshRevenue);
         console.log('💰 Reorder Revenue:', data.today?.reorderRevenue);
-        console.log('📊 Fresh Count:', data.today?.freshCount);
-        console.log('📊 Reorder Count:', data.today?.reorderCount);
 
         if (!data.success) {
             console.error('Analytics fetch failed');

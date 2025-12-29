@@ -31,24 +31,6 @@ router.get('/dashboard', async (req, res) => {
             orders = orders.filter(o => o.employeeId === employeeId.toUpperCase());
         }
 
-        // Calculate Fresh/Reorder for ALL ORDERS (not just today)
-        let totalFreshRevenue = 0, totalReorderRevenue = 0;
-        let totalFreshCount = 0, totalReorderCount = 0;
-
-        orders.forEach(o => {
-            const orderTotal = o.total || 0;
-            // Only count orders with orderType field set
-            if (!o.orderType) return;
-
-            if (o.orderType === 'Reorder') {
-                totalReorderRevenue += orderTotal;
-                totalReorderCount++;
-            } else {
-                totalFreshRevenue += orderTotal;
-                totalFreshCount++;
-            }
-        });
-
         // Today's stats (with Fresh/Reorder breakdown)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -59,6 +41,7 @@ router.get('/dashboard', async (req, res) => {
 
         todayOrders.forEach(o => {
             const orderTotal = o.total || 0;
+            // Only count orders with orderType field set
             if (!o.orderType) return;
 
             if (o.orderType === 'Reorder') {
@@ -73,10 +56,10 @@ router.get('/dashboard', async (req, res) => {
         const todayStats = {
             totalOrders: todayOrders.length,
             totalRevenue: todayOrders.reduce((sum, o) => sum + (o.total || 0), 0),
-            freshRevenue: todayFreshRevenue,
-            reorderRevenue: todayReorderRevenue,
-            freshCount: todayFreshCount,
-            reorderCount: todayReorderCount,
+            freshRevenue: todayFreshRevenue,        // NEW
+            reorderRevenue: todayReorderRevenue,    // NEW  
+            freshCount: todayFreshCount,            // NEW
+            reorderCount: todayReorderCount,        // NEW
             pendingVerification: todayOrders.filter(o => o.status === 'Pending').length,
             dispatched: todayOrders.filter(o => o.status === 'Dispatched').length,
             delivered: todayOrders.filter(o => o.status === 'Delivered').length
