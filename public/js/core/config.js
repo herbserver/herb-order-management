@@ -19,7 +19,7 @@ console.log('Connecting to API at:', API_URL);
 var ADMIN_PASS = ADMIN_PASS || 'admin123';
 
 // Courier Tracking URLs
-const COURIER_TRACKING = {
+window.COURIER_TRACKING = window.COURIER_TRACKING || {
     'Shiprocket': 'https://shiprocket.co/tracking/',
     'Delhivery': 'https://www.delhivery.com/track/package/',
     'BlueDart': 'https://www.bluedart.com/tracking/',
@@ -33,7 +33,7 @@ const COURIER_TRACKING = {
 };
 
 // Product List for Order Form
-const PRODUCT_LIST = [
+window.PRODUCT_LIST = window.PRODUCT_LIST || [
     { name: "Vedic Vain's Liquid" },
     { name: "Pain Snap Prash" },
     { name: "Naskhol" },
@@ -54,7 +54,7 @@ const PRODUCT_LIST = [
 ];
 
 // Emoji constants for WhatsApp compatibility
-const E = {
+window.E = window.E || {
     check: String.fromCodePoint(0x2705),
     cross: String.fromCodePoint(0x274C),
     phone: String.fromCodePoint(0x1F4DE),
@@ -76,10 +76,10 @@ const E = {
 };
 
 // Pagination settings
-const ORDERS_PER_PAGE = 10;
+window.ORDERS_PER_PAGE = window.ORDERS_PER_PAGE || 10;
 
 // Admin Pagination State
-let adminPagination = {
+var adminPagination = adminPagination || {
     pending: 1,
     verified: 1,
     dispatched: 1,

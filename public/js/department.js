@@ -533,11 +533,11 @@ async function loadDeptOrders(page = null) {
                 container.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400">No orders found</div>`;
             } else {
                 if (currentDeptType === 'verification') {
-                    container.innerHTML = paginatedOrders.map(o => renderVerificationCard(o)).join('');
+                    container.innerHTML = paginatedOrders.map(o => renderVerificationCardModern(o)).join('');
                 } else if (currentDeptType === 'dispatch') {
-                    container.innerHTML = paginatedOrders.map(o => renderDispatchCard(o)).join('');
+                    container.innerHTML = paginatedOrders.map(o => renderDispatchCardModern(o)).join('');
                 } else if (currentDeptType === 'delivery') {
-                    container.innerHTML = paginatedOrders.map(o => renderDeliveryCard(o)).join('');
+                    container.innerHTML = paginatedOrders.map(o => renderDeliveryCardModern(o)).join('');
                 }
 
                 // Append Pagination Controls
@@ -918,10 +918,121 @@ window.finalDispatch = async (orderId, dim, courierId, modal) => {
     } catch (e) { loading.remove(); alert(e.message); }
 }
 
+// ==================== MANUAL DISPATCH ====================
+function openManualDispatchModal(orderId) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h3 class="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+                <span class="text-2xl">📝</span>
+                Manual Dispatch
+            </h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">📦 Courier Name *</label>
+                    <select id="manualCourierSelect" class="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 outline-none font-medium">
+                        <option value="">-- Select Courier --</option>
+                        <option value="Delhivery">🚛 Delhivery</option>
+                        <option value="Delhivery Air">✈️ Delhivery Air</option>
+                        <option value="Blue Dart">🔵 Blue Dart</option>
+                        <option value="Blue Dart Air">🔵 Blue Dart Air</option>
+                        <option value="DTDC">📦 DTDC</option>
+                        <option value="DTDC Air">📦 DTDC Air</option>
+                        <option value="Xpressbees">⚡ Xpressbees</option>
+                        <option value="Ekart">🛒 Ekart</option>
+                        <option value="India Post">📮 India Post</option>
+                        <option value="Other">📫 Other</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">🔢 AWB / Tracking Number *</label>
+                    <input type="text" id="manualAWBInput" placeholder="Enter AWB number..." 
+                        class="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 outline-none font-mono font-bold">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">📝 Notes (Optional)</label>
+                    <textarea id="manualDispatchNotes" placeholder="Any additional notes..." rows="2"
+                        class="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 outline-none resize-none"></textarea>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button onclick="this.closest('.fixed').remove()" 
+                    class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+                <button onclick="submitManualDispatch('${orderId}', this.closest('.fixed'))" 
+                    class="bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg flex items-center justify-center gap-2">
+                    <span>✅</span> Dispatch
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Focus on courier select
+    setTimeout(() => document.getElementById('manualCourierSelect')?.focus(), 100);
+}
+
+window.submitManualDispatch = async (orderId, modal) => {
+    const courier = document.getElementById('manualCourierSelect')?.value;
+    const awb = document.getElementById('manualAWBInput')?.value?.trim();
+    const notes = document.getElementById('manualDispatchNotes')?.value?.trim();
+
+    if (!courier) {
+        alert('❌ Please select a courier!');
+        return;
+    }
+
+    if (!awb) {
+        alert('❌ Please enter AWB/Tracking number!');
+        return;
+    }
+
+    modal.remove();
+
+    // Show loading
+    const loading = document.createElement('div');
+    loading.innerHTML = '<div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><div class="bg-white p-6 rounded-2xl text-center"><p class="text-4xl mb-2">📦</p><p class="font-bold">Processing Manual Dispatch...</p></div></div>';
+    document.body.appendChild(loading);
+
+    try {
+        const res = await fetch(`${API_URL}/orders/${orderId}/dispatch`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                courier: courier,
+                trackingId: awb,
+                dispatchedBy: currentUser?.id || 'Dispatch Dept',
+                notes: notes || ''
+            })
+        });
+
+        const data = await res.json();
+        loading.remove();
+
+        if (data.success) {
+            showSuccessPopup('Dispatched!', `Manual dispatch successful\\nCourier: ${courier}\\nAWB: ${awb}`, '✅', '#10b981');
+            loadDeptOrders();
+            if (typeof loadDispatchedOrders === 'function') loadDispatchedOrders();
+        } else {
+            alert('❌ Error: ' + (data.message || 'Dispatch failed'));
+        }
+    } catch (e) {
+        loading.remove();
+        alert('❌ Error: ' + e.message);
+    }
+}
+
 // Global Exports
 window.verifyAddress = verifyAddress;
 window.cancelOrder = cancelOrder;
 window.saveOrderRemark = saveOrderRemark;
 window.dispatchWithShiprocket = dispatchWithShiprocket;
+window.openManualDispatchModal = openManualDispatchModal;
 window.loadDeptOrders = loadDeptOrders;
 window.switchDispatchTab = switchDispatchTab;
