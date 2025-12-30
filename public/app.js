@@ -3151,7 +3151,7 @@ function generateOrderCardHTML(order) {
                         class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
                     <button type="button" onclick="cancelOrder('${order.orderId}')" 
                         class="bg-gradient-to-r from-red-500 to-rose-600 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-red-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">❌ CANCEL</button>
-                    <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
+                    <button type="button" onclick="viewOrder('${order.orderId}')" 
                         class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
                 </div>
 
@@ -3198,7 +3198,7 @@ function generateOrderCardHTML(order) {
                             class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
                         <button type="button" onclick="revertDispatch('${order.orderId}')" 
                             class="bg-gradient-to-r from-rose-500 to-pink-600 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-rose-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">🔙 REVERT</button>
-                        <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
+                        <button type="button" onclick="viewOrder('${order.orderId}')" 
                             class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
                     </div>
                     ${(order.tracking?.trackingId || order.shiprocket?.awb) ? `
@@ -3244,7 +3244,7 @@ function generateOrderCardHTML(order) {
                             class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
                         <button type="button" onclick="cancelOrder('${order.orderId}')" 
                             class="bg-gradient-to-r from-red-500 to-rose-600 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-red-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">❌ CANCEL</button>
-                        <button type="button" onclick="viewOrderDetails('${order.orderId}')" 
+                        <button type="button" onclick="viewOrder('${order.orderId}')" 
                             class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
                     </div>
                     
@@ -4229,152 +4229,8 @@ function editDispatchedOrder(orderId, order) {
     editDispatchOrder(orderId, order);
 }
 
-// View Order Details
-async function viewOrderDetails(orderId) {
-    try {
-        // Fetch order details
-        const res = await fetch(`${API_URL}/orders/${orderId}`);
-        const data = await res.json();
+// viewOrderDetails removed to use unified viewOrder in modals.js
 
-        if (!data.success || !data.order) {
-            alert('Order not found!');
-            return;
-        }
-
-        const order = data.order;
-
-        // Create view modal
-        const modal = document.createElement('div');
-        modal.id = 'viewOrderModal';
-        modal.innerHTML = `
-            <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease;">
-                <div style="background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,255,255,0.95)); border-radius: 24px; max-width: 800px; width: 100%; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 80px rgba(0,0,0,0.4); animation: slideUp 0.3s ease;">
-                    
-                    <!-- Premium Header with Gradient -->
-                    <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%); padding: 32px 28px; position: relative; overflow: hidden;">
-                        <div style="position: absolute; top: -50%; right: -10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.15), transparent); border-radius: 50%;"></div>
-                        <div style="position: relative; z-index: 1;">
-                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                                <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">📋</div>
-                                <div>
-                                    <h3 style="font-size: 28px; font-weight: 800; color: white; margin: 0; letter-spacing: -0.5px;">Order Details</h3>
-                                    <p style="color: rgba(255,255,255,0.9); font-size: 15px; margin: 4px 0 0 0; font-weight: 600; font-family: monospace;">${order.orderId}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Scrollable Content -->
-                    <div style="padding: 28px; max-height: calc(90vh - 200px); overflow-y: auto;">
-                        
-                        <!-- Customer Card -->
-                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 16px; border: 1px solid rgba(59,130,246,0.2); box-shadow: 0 2px 8px rgba(59,130,246,0.08);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
-                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(59,130,246,0.3);">👤</div>
-                                <h4 style="font-weight: 700; color: #1e40af; margin: 0; font-size: 16px;">Customer Information</h4>
-                            </div>
-                            <div style="display: grid; gap: 10px; font-size: 14px;">
-                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 80px;">Name:</span><strong style="color: #0f172a;">${order.customerName}</strong></div>
-                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 80px;">Phone:</span><strong style="font-family: monospace; color: #0f172a;">${order.telNo}</strong></div>
-                                ${order.altNo ? `<div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 80px;">Alt Phone:</span><strong style="font-family: monospace; color: #0f172a;">${order.altNo}</strong></div>` : ''}
-                            </div>
-                        </div>
-
-                        <!-- Address Card -->
-                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; border: 1px solid rgba(245,158,11,0.2); box-shadow: 0 2px 8px rgba(245,158,11,0.08);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
-                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">📍</div>
-                                <h4 style="font-weight: 700; color: #92400e; margin: 0; font-size: 16px;">Delivery Address</h4>
-                            </div>
-                            <div style="font-size: 14px; line-height: 1.7; color: #78350f; font-weight: 500;">
-                                ${order.address}<br>
-                                <strong>${order.distt || order.district || ''}, ${order.state || ''} - ${order.pin || order.pincode || ''}</strong>
-                            </div>
-                        </div>
-
-                        <!-- Items Card -->
-                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-radius: 16px; border: 1px solid rgba(34,197,94,0.2); box-shadow: 0 2px 8px rgba(34,197,94,0.08);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
-                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(34,197,94,0.3);">🛒</div>
-                                <h4 style="font-weight: 700; color: #14532d; margin: 0; font-size: 16px;">Order Items</h4>
-                            </div>
-                            ${order.items && order.items.length > 0 ? order.items.map((item, idx) => `
-                                <div style="padding: 12px; background: white; border-radius: 10px; margin-bottom: 8px; border: 1px solid rgba(34,197,94,0.15); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                    <div style="display: flex; justify-between; align-items: center; font-size: 14px;">
-                                        <span style="font-weight: 600; color: #0f172a;">${idx + 1}. ${item.description || 'Product'}</span>
-                                        <span style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 4px 12px; border-radius: 8px; font-weight: 700; font-size: 12px;">Qty: ${item.quantity || 1}</span>
-                                    </div>
-                                </div>
-                            `).join('') : '<p style="font-size: 14px; color: #6b7280; text-align: center; padding: 12px;">No items</p>'}
-                        </div>
-
-                        <!-- Payment Card -->
-                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #fce7f3, #fbcfe8); border-radius: 16px; border: 1px solid rgba(236,72,153,0.2); box-shadow: 0 2px 8px rgba(236,72,153,0.08);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
-                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #ec4899, #db2777); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(236,72,153,0.3);">💰</div>
-                                <h4 style="font-weight: 700; color: #831843; margin: 0; font-size: 16px;">Payment Details</h4>
-                            </div>
-                            <div style="display: grid; gap: 10px; font-size: 14px;">
-                                <div style="display: flex; justify-between; padding: 10px; background: white; border-radius: 8px;"><span style="color: #64748b;">Total:</span><strong style="color: #0f172a; font-size: 16px;">₹${order.total || 0}</strong></div>
-                                <div style="display: flex; justify-between; padding: 10px; background: white; border-radius: 8px;"><span style="color: #64748b;">Advance:</span><span style="color: #22c55e; font-weight: 600;">₹${order.advance || 0}</span></div>
-                                <div style="display: flex; justify-between; padding: 14px; background: linear-gradient(135deg, #fee2e2, #fecaca); border-radius: 10px; border: 2px solid #ef4444;"><span style="font-weight: 700; color: #7f1d1d;">COD:</span><strong style="color: #dc2626; font-size: 18px;">₹${order.codAmount || 0}</strong></div>
-                            </div>
-                        </div>
-
-                        ${order.status === 'Dispatched' && order.tracking ? `
-                        <!-- Tracking Card -->
-                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 16px; border: 2px solid #10b981; box-shadow: 0 4px 16px rgba(16,185,129,0.15);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
-                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(16,185,129,0.3);">📦</div>
-                                <h4 style="font-weight: 700; color: #064e3b; margin: 0; font-size: 16px;">Tracking Info</h4>
-                            </div>
-                            <div style="display: grid; gap: 10px; font-size: 14px;">
-                                <div style="display: flex; gap: 8px;"><span style="color: #065f46; min-width: 100px;">Courier:</span><strong style="color: #064e3b;">${order.tracking.courier || 'N/A'}</strong></div>
-                                <div style="display: flex; gap: 8px;"><span style="color: #065f46; min-width: 100px;">Tracking ID:</span><span style="font-family: monospace; background: white; padding: 6px 12px; border-radius: 8px; font-weight: 700; color: #064e3b;">${order.tracking.trackingId || order.shiprocket?.awb || 'Pending'}</span></div>
-                            </div>
-                        </div>
-                        ` : ''}
-
-                        <!-- Status Card -->
-                        <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #e0e7ff, #c7d2fe); border-radius: 16px; border: 1px solid rgba(99,102,241,0.2); box-shadow: 0 2px 8px rgba(99,102,241,0.08);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
-                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #6366f1, #4f46e5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(99,102,241,0.3);">📊</div>
-                                <h4 style="font-weight: 700; color: #312e81; margin: 0; font-size: 16px;">Status & Timeline</h4>
-                            </div>
-                            <div style="display: grid; gap: 10px; font-size: 14px;">
-                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 100px;">Status:</span><span style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; padding: 6px 16px; border-radius: 20px; font-weight: 700; box-shadow: 0 2px 8px rgba(99,102,241,0.3);">${order.status}</span></div>
-                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 100px;">Order Date:</span><strong style="color: #0f172a;">${new Date(order.timestamp).toLocaleString('en-IN')}</strong></div>
-                                ${order.dispatchedAt ? `<div style="display: flex; gap: 8px;"><span style="color: #64748b; min-width: 100px;">Dispatched:</span><strong style="color: #0f172a;">${new Date(order.dispatchedAt).toLocaleString('en-IN')}</strong></div>` : ''}
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px;">
-                            <button onclick="document.getElementById('viewOrderModal').remove(); openEditOrderModal('${order.orderId}')" 
-                                style="padding: 16px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 15px; box-shadow: 0 6px 20px rgba(245,158,11,0.35); transition: all 0.2s;"
-                                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(245,158,11,0.45)'"
-                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(245,158,11,0.35)'">
-                                ✏️ Edit Order
-                            </button>
-                            <button onclick="document.getElementById('viewOrderModal').remove()" 
-                                style="padding: 16px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 15px; box-shadow: 0 6px 20px rgba(99,102,241,0.35); transition: all 0.2s;"
-                                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(99,102,241,0.45)'"
-                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(99,102,241,0.35)'">
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-    } catch (error) {
-        console.error('View order error:', error);
-        alert('Failed to load order details');
-    }
-}
 
 async function approveDelivery(orderId) {
     if (!confirm('Order ko Delivered mark karna hai?')) return;
@@ -6300,88 +6156,8 @@ function renderAnalyticsCities(orders) {
 }
 
 // ==================== SHARED FUNCTIONS ====================
-async function viewOrder(orderId) {
-    try {
-        const res = await fetch(`${API_URL}/orders/${orderId}`);
-        const data = await res.json();
-        const order = data.order;
+// Redundant viewOrder removed (using unified version in modals.js)
 
-        const tracking = order.tracking || {};
-
-        let itemsHtml = (order.items || []).map(i => {
-            const name = i.description || i.name || i.product || 'Unknown Item';
-            const qty = i.quantity || i.qty || 0;
-
-            return `<tr>
-                        <td class="p-2">${name}</td>
-                        <td class="p-2 text-center font-bold">${qty}</td>
-                    </tr>`;
-        }).join('');
-
-        document.getElementById('orderModalContent').innerHTML = ` <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> <div> <h4 class="font-bold text-gray-700 mb-3">👤 Customer Info</h4> <p><strong>Name:</strong> ${order.customerName}
-
-                </p> <p><strong>Tel:</strong> ${order.telNo}
-
-                </p> <p><strong>Alt:</strong> ${order.altNo || 'N/A'
-            }
-
-                </p> <p><strong>Treatment:</strong> ${order.treatment || 'N/A'
-            }
-
-                </p> <h4 class="font-bold text-gray-700 mt-4 mb-3">📍 Address</h4> <p class="text-sm bg-gray-100 p-3 rounded-lg">${order.address || 'N/A'
-            }
-
-                </p> <p class="text-xs text-gray-500 mt-1">PIN: ${order.pin || 'N/A'
-            }
-
-                | State: ${order.state || 'N/A'
-            }
-
-                </p> ${order.landMark ? `<p class="text-xs text-gray-500"> Landmark: ${order.landMark}
-
-                    </p> ` : ''
-            }
-
-                </div> <div> <h4 class="font-bold text-gray-700 mb-3">📦 Order Info</h4> <p><strong>Order ID:</strong> ${order.orderId}
-
-                </p> <p><strong>Status:</strong> <span class="px-2 py-0.5 rounded-full text-xs ${order.status === 'Delivered' ? 'status-delivered' : order.status === 'Pending' ? 'status-pending' : order.status === 'Dispatched' ? 'status-dispatched' : 'status-verified'}">${order.status}
-
-                </span></p> <p><strong>Employee:</strong> <span class="font-extrabold text-emerald-700">${order.employee}</span>
-
-                (${order.employeeId})</p> <p><strong>Date:</strong> ${order.date || 'N/A'
-            }
-
-                | <strong>Time:</strong> ${order.time || 'N/A'
-            }
-
-                </p> <p><strong>Type:</strong> ${order.orderType}
-
-                </p> ${tracking.courier ? ` <div class="bg-purple-50 p-3 rounded-lg mt-3"> <p><strong>🚚 Courier:</strong> ${tracking.courier}
-
-                    </p> <p><strong>Tracking:</strong> <span class="font-mono bg-white px-2 py-1 rounded">${tracking.trackingId || 'N/A'
-                }
-
-                    </span></p> </div> ` : ''
-            }
-
-                </div> </div> <h4 class="font-bold text-gray-700 mt-6 mb-3">🛒 Items</h4> <div class="overflow-x-auto border rounded-lg"><table class="w-full text-sm"> <thead class="bg-gray-100"><tr><th class="p-2 text-left">ITEM</th><th class="p-2 text-center">QTY</th></tr></thead> <tbody>${itemsHtml}
-
-                </tbody> </table></div> <div class="mt-4 bg-emerald-50 p-4 rounded-lg"> <div class="flex justify-between"><span>Total:</span><span class="font-bold">₹${order.total}
-
-                </span></div> <div class="flex justify-between"><span>Advance:</span><span>₹${order.advance || 0
-            }
-
-                </span></div> <div class="flex justify-between text-lg font-bold text-red-600"><span>COD:</span><span>₹${order.codAmount || 0
-            }
-
-                </span></div> </div> `;
-        document.getElementById('orderModal').classList.remove('hidden');
-    }
-
-    catch (e) {
-        console.error(e);
-    }
-}
 
 async function deleteOrder(orderId) {
     if (!confirm(`Are you sure you want to delete order ${orderId}?`)) return;
@@ -7005,226 +6781,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==================== ORDER DETAIL VIEW ====================
-async function viewOrder(orderId) {
-    try {
-        const res = await fetch(`${API_URL}/orders/${orderId}`);
-        const data = await res.json();
-        const order = data.order;
+// Redundant viewOrder removed (using unified version in modals.js)
 
-        if (!order) {
-            alert('Order not found!');
-            return;
-        }
-
-        const fullAddress = `${order.address || ''}, ${order.distt || ''}, ${order.state || ''} - ${order.pin || ''}`;
-
-        document.getElementById('orderDetailContent').innerHTML = `
-                <div class="flex flex-col h-full bg-gray-50/50">
-                    <!-- Premium Header -->
-                    <div class="bg-gradient-to-r from-blue-700 via-indigo-700 to-violet-700 p-8 text-white relative flex-shrink-0 rounded-t-2xl shadow-lg border-b border-white/10">
-                        <!-- Close Button -->
-                        <button onclick="closeModal('orderDetailModal')" class="absolute top-5 right-5 text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2.5 transition-all z-20 backdrop-blur-sm">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
-
-                        <div class="flex justify-between items-end relative z-10">
-                            <div class="space-y-2">
-                                <div class="flex items-center gap-3">
-                                    <h4 class="text-4xl font-black font-mono tracking-tighter drop-shadow-lg">${order.orderId}</h4>
-                                    <span class="px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl bg-white/20 backdrop-blur-md border border-white/30">
-                                        ${order.status}
-                                    </span>
-                                </div>
-                                <p class="text-sm font-bold text-white/70 flex items-center gap-2">
-                                    📅 ${order.timestamp ? new Date(order.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}
-                                </p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-5xl font-black drop-shadow-2xl tracking-tighter">₹${order.total || 0}</p>
-                                <p class="text-xs font-black text-white/60 uppercase tracking-widest mt-1">Total Order Value</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Layout Grid -->
-                    <div class="p-6 space-y-8 overflow-y-auto">
-                        
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <!-- Customer Details Card -->
-                            <div class="bg-white border-2 border-gray-50 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                                <div class="absolute top-0 right-0 bg-blue-600 text-white px-5 py-1.5 rounded-bl-3xl text-[10px] font-black uppercase tracking-widest shadow-md">CUSTOMER</div>
-                                <div class="flex items-center gap-5 mb-6">
-                                    <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 text-3xl shadow-inner group-hover:scale-110 transition-transform cursor-pointer">👤</div>
-                                    <div>
-                                        <div class="flex items-center gap-3">
-                                            <h5 class="text-2xl font-black text-gray-900 leading-tight">${order.customerName}</h5>
-                                            <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                                                class="w-7 h-7 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
-                                                ${WHATSAPP_ICON}
-                                            </button>
-                                        </div>
-                                        <p class="text-xs text-blue-500 font-black uppercase tracking-widest mt-0.5">Verified Client</p>
-                                    </div>
-                                </div>
-                                <div class="space-y-4">
-                                   <div class="flex flex-col">
-                                       <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Mobile Contact</span>
-                                       <span class="text-xl font-black text-gray-800 font-mono tracking-wide">${order.telNo}</span>
-                                   </div>
-                                   ${order.altNo ? `
-                                   <div class="flex flex-col">
-                                       <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Alternative Number</span>
-                                       <span class="text-lg font-bold text-gray-700 font-mono">${order.altNo}</span>
-                                   </div>` : ''}
-                                   <div class="pt-2">
-                                       <span class="px-4 py-2 bg-gray-100 rounded-xl text-xs font-black text-gray-600 border border-gray-200 uppercase tracking-wider">${order.orderType || 'Standard Order'}</span>
-                                   </div>
-                                </div>
-                            </div>
-
-                            <!-- Delivery Address Card -->
-                            <div class="bg-white border-2 border-gray-50 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                                <div class="absolute top-0 right-0 bg-orange-500 text-white px-5 py-1.5 rounded-bl-3xl text-[10px] font-black uppercase tracking-widest shadow-md">DELIVERY</div>
-                                <div class="flex items-center justify-between mb-6">
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 text-2xl shadow-inner">📍</div>
-                                        <h5 class="text-xl font-black text-gray-900 leading-none">Shipping Address</h5>
-                                    </div>
-                                    <button type="button" onclick="copyTracking(this.getAttribute('data-addr'))" data-addr="${fullAddress.replace(/"/g, '&quot;')}" 
-                                        class="bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white px-4 py-2 rounded-2xl text-[10px] font-black transition-all border border-blue-100 flex items-center gap-2 shadow-sm uppercase tracking-widest">
-                                        📋 Copy
-                                    </button>
-                                </div>
-                                <div class="bg-orange-50/50 p-5 rounded-2xl border border-orange-100 flex flex-col gap-3">
-                                    <p class="text-gray-900 font-bold text-lg leading-relaxed capitalize">
-                                        ${fullAddress}
-                                    </p>
-                                    ${order.landMark ? `
-                                    <div class="pt-2 border-t border-orange-200/50 flex items-start gap-3 text-sm text-gray-600">
-                                        <span class="text-orange-500 font-black">🚩</span>
-                                        <div class="flex flex-col">
-                                            <span class="text-[10px] font-black text-orange-400 uppercase tracking-widest">Landmark</span>
-                                            <span class="font-bold">${order.landMark}</span>
-                                        </div>
-                                    </div>` : ''}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Order Items Section -->
-                        <div class="bg-white border-2 border-gray-50 rounded-[40px] shadow-sm overflow-hidden">
-                            <div class="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-                                <h5 class="text-xl font-black text-gray-900 flex items-center gap-3">📦 <span class="uppercase tracking-tighter">Order Line Items</span></h5>
-                                <span class="text-[10px] bg-white text-gray-700 px-4 py-2 rounded-2xl border-2 border-gray-50 font-black uppercase tracking-widest shadow-sm">
-                                    ${order.items ? order.items.length : 0} Unique Products
-                                </span>
-                            </div>
-                            <div class="px-2 pb-2">
-                                ${order.items && order.items.length > 0 ?
-                `<div class="overflow-x-auto rounded-[30px] border border-gray-50">
-                                    <table class="w-full text-base">
-                                        <thead class="bg-gray-100/50 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] text-left">
-                                            <tr>
-                                                <th class="px-8 py-5">Product Description</th>
-                                                <th class="px-8 py-5 text-right">Rate</th>
-                                                <th class="px-8 py-5 text-center w-32">Qty</th>
-                                                <th class="px-8 py-5 text-right">Subtotal</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-50">
-                                            ${order.items.map(item => {
-                    const rate = item.rate || item.price || 0;
-                    const qty = item.quantity || item.qty || 1;
-                    const subtotal = item.amount || (rate * qty);
-                    return `
-                                                <tr class="hover:bg-blue-50/30 transition-all">
-                                                    <td class="px-8 py-5 font-black text-gray-800">${item.description || 'Unnamed Product'}</td>
-                                                    <td class="px-8 py-5 text-right font-bold text-gray-500">₹${rate}</td>
-                                                    <td class="px-8 py-5 text-center">
-                                                        <span class="bg-gray-100 px-3 py-1 rounded-lg text-sm font-black text-gray-700">x${qty}</span>
-                                                    </td>
-                                                    <td class="px-8 py-5 text-right font-black text-gray-900 text-lg">₹${subtotal}</td>
-                                                </tr>
-                                            `}).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>`
-                : '<div class="p-16 text-center text-gray-300 font-black uppercase tracking-widest">No Items in this Order</div>'
-            }
-                            </div>
-                            
-                            <!-- Detailed Totals Summary -->
-                            <div class="bg-gray-900 mx-4 mb-4 mt-2 p-8 rounded-[30px] shadow-2xl relative overflow-hidden">
-                                <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 pointer-events-none"></div>
-                                <div class="flex flex-col gap-4 ml-auto w-full md:w-1/2 relative z-10">
-                                    <div class="flex justify-between text-white/50 text-xs font-black uppercase tracking-widest">
-                                        <span>Order Total (MRP)</span>
-                                        <span class="text-white font-bold">₹${order.total || 0}</span>
-                                    </div>
-                                    <div class="flex justify-between text-white/50 text-xs font-black uppercase tracking-widest">
-                                        <span>Advance Payment</span>
-                                        <span class="text-emerald-400 font-bold">- ₹${order.advance || 0}</span>
-                                    </div>
-                                    <div class="h-px bg-white/10 my-1"></div>
-                                    <div class="flex justify-between items-end">
-                                        <div class="flex flex-col">
-                                            <span class="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mb-1">Total Balance Due</span>
-                                            <span class="text-3xl font-black text-white tracking-tighter">COD Payable</span>
-                                        </div>
-                                        <span class="text-4xl font-black text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">₹${order.codAmount || 0}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Map Integration -->
-                        <div class="bg-white border-2 border-gray-50 p-2 rounded-[40px] shadow-sm overflow-hidden">
-                            <div id="orderDetailMap" class="w-full h-80 rounded-[35px] bg-gray-100 overflow-hidden relative shadow-inner">
-                                <div class="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
-                                    <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                    <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Calibrating Satellite Imagery...</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Professional Footer Meta -->
-                        <div class="bg-gray-800 p-8 rounded-[40px] border border-gray-700 shadow-xl flex flex-col md:flex-row gap-6 items-center justify-between text-white">
-                            <div class="flex items-center gap-4">
-                               <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-xl backdrop-blur-sm">👨‍💻</div>
-                               <div class="flex flex-col">
-                                   <span class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Created By</span>
-                                   <span class="font-black text-lg text-emerald-400 capitalize">${order.employee} <span class="text-gray-500 font-mono text-sm">(${order.employeeId})</span></span>
-                               </div>
-                            </div>
-                            <div class="flex gap-4">
-                                ${order.verifiedBy ? `
-                                <div class="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 flex flex-col">
-                                    <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Verified</span>
-                                    <span class="text-sm font-black text-blue-400">${order.verifiedBy}</span>
-                                </div>` : ''}
-                                ${order.dispatchedBy ? `
-                                <div class="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 flex flex-col">
-                                    <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Dispatched</span>
-                                    <span class="text-sm font-black text-purple-400">${order.dispatchedBy}</span>
-                                </div>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-
-        // Show modal
-        document.getElementById('orderDetailModal').classList.remove('hidden');
-
-        // Initialize map after modal is visible
-        setTimeout(() => {
-            initOrderMap(fullAddress);
-        }, 300);
-
-    } catch (e) {
-        console.error('Error loading order:', e);
-        alert('Failed to load order details');
-    }
-}
 
 async function initOrderMap(address) {
     const mapDiv = document.getElementById('orderDetailMap');

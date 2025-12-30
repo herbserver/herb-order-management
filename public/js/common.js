@@ -289,24 +289,37 @@ function copyTracking(text) {
 
 // ==================== ORDER VIEW LOGIC (Shared) ====================
 async function viewOrder(orderId) {
+    if (!orderId) {
+        console.error('viewOrder: No orderId provided');
+        return;
+    }
+
     try {
+        console.log(`🔍 Viewing order: ${orderId}`);
         const res = await fetch(`${API_URL}/orders/${orderId}`);
         const data = await res.json();
-        const order = data.order;
+        const order = data.order || data.data; // Support both response formats
 
         if (!order) {
             alert('Order not found!');
             return;
         }
 
-        const fullAddress = `${order.address || '', order.distt || ''}, ${order.state || ''} - ${order.pin || ''}`;
+        const fullAddress = `${order.address || ''}, ${order.distt || ''}, ${order.state || ''} - ${order.pin || ''}`;
 
-        // Support both ID versions used across different pages
-        const modalContent = document.getElementById('orderDetailContent') || document.getElementById('orderModalContent');
-        const modalElement = document.getElementById('orderDetailModal') || document.getElementById('orderModal');
+        // Standardize on orderDetailModal (Premium)
+        let modalElement = document.getElementById('orderDetailModal');
+        let modalContent = document.getElementById('orderDetailContent');
 
-        if (!modalContent || !modalElement) {
-            console.error('Order Modal not found in DOM');
+        // Fallback to legacy orderModal if premium one isn't found
+        if (!modalElement || !modalContent) {
+            modalElement = document.getElementById('orderModal');
+            modalContent = document.getElementById('orderModalContent');
+        }
+
+        if (!modalElement || !modalContent) {
+            console.error('CRITICAL: No order modal found in DOM (tried orderDetailModal and orderModal)');
+            alert('System Error: View Modal not found. Please refresh.');
             return;
         }
 
@@ -475,7 +488,7 @@ async function viewOrder(orderId) {
                                <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-xl backdrop-blur-sm">👨‍💻</div>
                                <div class="flex flex-col">
                                    <span class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Created By</span>
-                                   <span class="font-black text-lg text-emerald-400 capitalize">${order.employee} <span class="text-gray-500 font-mono text-sm">(${order.employeeId})</span></span>
+                                   <span class="font-black text-lg text-emerald-400 capitalize">${order.employee || 'Admin'} <span class="text-gray-500 font-mono text-sm">(${order.employeeId || 'N/A'})</span></span>
                                </div>
                             </div>
                             <div class="flex gap-4">
@@ -496,6 +509,9 @@ async function viewOrder(orderId) {
 
         modalElement.classList.remove('hidden');
 
+        // Scroll to top of modal for consistency
+        modalElement.scrollTop = 0;
+
         // Note: Map initialization is skipped in common.js unless initOrderMap is present
         if (typeof initOrderMap === 'function') {
             setTimeout(() => {
@@ -508,3 +524,12 @@ async function viewOrder(orderId) {
         alert('Failed to load order details');
     }
 }
+
+// Global Exports
+window.viewOrder = viewOrder;
+window.sendWhatsAppDirect = sendWhatsAppDirect;
+window.showSuccessPopup = showSuccessPopup;
+window.showWarningPopup = showWarningPopup;
+window.copyTracking = copyTracking;
+window.closeModal = closeModal;
+window.showMessage = showMessage;

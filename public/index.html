@@ -743,8 +743,7 @@
                                     </div>
                                 </div>
                                 <!-- Quick Filter Buttons -->
-                                <div id="dateFilterButtons"
-                                    class="bg-white mb-4 px-2 hidden shadow-md">
+                                <div id="dateFilterButtons" class="bg-white mb-4 px-2 hidden shadow-md">
                                     <div
                                         class="flex flex-wrap gap-2 items-center p-3 bg-gradient-to-r from-blue-50 to-emerald-50 rounded-xl border border-blue-200 shadow-sm">
                                         <span class="text-xs font-bold text-gray-600 uppercase tracking-wide">Quick
@@ -1265,6 +1264,36 @@
             </div>
         </div>
 
+        <!-- Order Detail Modal (Globally Accessible for View Button) -->
+        <div id="orderDetailModal"
+            class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+                <div id="orderDetailContent">
+                    <!-- Content will be dynamically loaded by viewOrder() -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Modal (Alternative ID for app.js compatibility) -->
+        <div id="orderModal"
+            class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-800">📦 Order Details</h3>
+                    <button onclick="closeModal('orderModal')"
+                        class="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="orderModalContent" class="p-6">
+                    <!-- Content will be dynamically loaded -->
+                </div>
+            </div>
+        </div>
+
         <!--====================ADMIN PANEL====================-->
         <!--====================ADMIN PANEL====================-->
         <div id="adminPanel" class="hidden animate-fadeIn">
@@ -1541,8 +1570,7 @@
                         <!-- VERIFIED TAB -->
                         <div id="adminVerifiedTab" class="hidden animate-fadeIn">
                             <!-- Sticky Stats & Filters Bar -->
-                            <div
-                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                            <div class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <!-- Stats Row -->
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <button onclick="applyQuickDateFilter('adminVerified', 'today')"
@@ -1620,8 +1648,7 @@
                         <!-- DISPATCHED TAB -->
                         <div id="adminDispatchedTab" class="hidden animate-fadeIn">
                             <!-- Sticky Stats & Filters Bar -->
-                            <div
-                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                            <div class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <!-- Stats Row -->
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <button onclick="applyQuickDateFilter('adminDispatched', 'today')"
@@ -1698,8 +1725,7 @@
                         <!-- DELIVERED TAB -->
                         <div id="adminDeliveredTab" class="hidden animate-fadeIn">
                             <!-- Sticky Stats & Filters Bar -->
-                            <div
-                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                            <div class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <!-- Stats Row -->
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <button onclick="applyQuickDateFilter('adminDelivered', 'today')"
@@ -1776,8 +1802,7 @@
                         <!-- CANCELLED TAB -->
                         <div id="adminCancelledTab" class="hidden animate-fadeIn">
                             <!-- Sticky Filters Bar -->
-                            <div
-                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                            <div class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
                                     <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                                         <span class="w-3 h-3 bg-red-500 rounded-full"></span> Cancelled
@@ -1829,8 +1854,7 @@
                         <!-- ON HOLD TAB -->
                         <div id="adminOnholdTab" class="hidden animate-fadeIn">
                             <!-- Sticky Filters Bar -->
-                            <div
-                                class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
+                            <div class="bg-slate-50 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 border-b border-slate-200">
                                 <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
                                     <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                                         <span class="w-3 h-3 bg-amber-500 rounded-full"></span> On Hold
