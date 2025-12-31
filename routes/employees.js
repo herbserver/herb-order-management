@@ -62,7 +62,9 @@ async function syncAllEmployeesToMongo(employees) {
 // Get All Employees (for Admin)
 router.get('/', async (req, res) => {
     try {
+        // Read employees directly from JSON file
         const employees = readJSON(EMPLOYEES_FILE, {});
+        console.log(`📂 Loaded ${Object.keys(employees).length} employees from JSON file`);
         let orders = [];
         try {
             orders = await dataAccess.getAllOrders();

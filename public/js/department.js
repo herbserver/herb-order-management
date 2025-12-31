@@ -25,12 +25,13 @@ function setupDeptUI(type) {
     // Or maybe different sets of tabs.
     // For now, we load default tab.
     if (type === 'verification') {
-        document.getElementById('deptTabVerification').click();
+        const tab = document.getElementById('deptTabVerification');
+        if (tab) tab.click();
     } else if (type === 'dispatch') {
         // Find dispatch tab
         // In original app, layout might have been shared.
         // We will just default to loadDeptOrders which handles logic.
-        loadDeptOrders();
+        // loadDeptOrders(); // Removed duplicate call
     }
 }
 
@@ -145,13 +146,18 @@ async function loadDeliveryRequests(page = null) {
 
         let html = '';
         paginated.forEach(req => {
+            // Fix: Use correct backend properties
+            const reqTime = req.deliveryRequestedAt ? new Date(req.deliveryRequestedAt).toLocaleString() : 'Just now';
+            const reqBy = req.deliveryRequestedBy || req.employeeId || 'Unknown';
+            const empName = req.employee || 'Agent';
+
             html += ` <div class="order-card bg-white border rounded-xl p-4 border-l-4 border-l-pink-500 mb-3"> 
                         <div class="flex justify-between items-start"> 
                             <div> 
                                 <p class="font-bold text-blue-600">${req.orderId}</p> 
                                 <p class="text-gray-800">${req.customerName}</p> 
-                                <p class="text-sm text-gray-500">Requested by: <strong>${req.employeeName}</strong> (${req.employeeId})</p> 
-                                <p class="text-xs text-gray-400">${new Date(req.requestedAt).toLocaleString()}</p> 
+                                <p class="text-sm text-gray-500">Requested by: <strong>${empName}</strong> (${reqBy})</p> 
+                                <p class="text-xs text-gray-400">${reqTime}</p> 
                             </div> 
                             <div class="flex gap-2"> 
                                 <button type="button" onclick="approveDelivery('${req.orderId}')" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600">✅ Approve</button> 
@@ -374,7 +380,7 @@ function renderOrderCard(order, borderColor = 'gray') {
                 <div class="flex justify-between items-start mb-2">
                     <div>
                         <span class="bg-${borderColor}-100 text-${borderColor}-700 text-xs font-bold px-2 py-0.5 rounded-md uppercase">${order.orderId}</span>
-                        ${order.orderType === 'REORDER' ? '<span class="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-md ml-2">REORDER</span>' : ''}
+                        ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ? '<span class="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-md ml-2">REORDER</span>' : ''}
                         <h3 class="font-bold text-gray-800 text-lg mt-1">${order.customerName}</h3>
                     </div>
                 </div>
@@ -399,7 +405,7 @@ function generateOrderCardHTML(order) {
         <div class="flex justify-between items-start border-b border-gray-100 pb-3 mb-3">
             <div class="flex items-center gap-2">
                 <span class="bg-${statusColor}-100 text-${statusColor}-700 px-3 py-1 rounded-lg font-bold text-xs">${order.orderId}</span>
-                ${order.orderType === 'REORDER' ? `<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-lg text-xs font-bold">REORDER</span>` : ''}
+                ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ? `<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-lg text-xs font-bold">REORDER</span>` : ''}
                  <button onclick="sendWhatsAppDirect('${isVerification ? 'booked' : 'dispatched'}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                     class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:scale-110" title="WhatsApp">${WHATSAPP_ICON}</button>
             </div>

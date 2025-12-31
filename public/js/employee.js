@@ -81,7 +81,12 @@ const PRODUCT_LIST = [
     { name: "Herb On Vedic Plus Capsule", price: 1199 },
     { name: "Pain Over Capsule", price: 996 },
     { name: "Herb On Naturals Herbal Tea", price: 1860 },
-    { name: "Pangasic Oil", price: 800 }
+    { name: "Pangasic Oil", price: 800 },
+    { name: "Ostrich-Red Oil", price: 0 },
+    { name: "HOS Powder", price: 0 },
+    { name: "Mind Fresh Tea", price: 0 },
+    { name: "H.O.S.", price: 0 },
+    { name: "Slim fit kit", price: 0 }
 ];
 
 function addItem() {
@@ -101,7 +106,7 @@ function addItem() {
             <input type="number" class="w-full p-2 border rounded text-center" value="1" min="1" oninput="updateTotal(this)">
         </div>
         <div class="col-span-3">
-            <input type="text" class="w-full p-2 border rounded bg-gray-50 text-right" readonly value="0">
+            <input type="number" class="w-full p-2 border rounded text-right item-row-total" value="0" oninput="calculateTotal()">
         </div>
         <div class="col-span-1 text-center">
             <button type="button" onclick="this.closest('.item-row').remove(); calculateTotal();" class="text-red-500 font-bold text-xl">×</button>
@@ -111,19 +116,13 @@ function addItem() {
 }
 
 function updateTotal(el) {
-    const row = el.closest('.item-row');
-    const select = row.querySelector('select');
-    const qty = row.querySelector('input[type="number"]');
-    const total = row.querySelector('input[readonly]');
-
-    const price = select.options[select.selectedIndex]?.dataset.price || 0;
-    total.value = (price * qty.value);
+    // Automatic calculation disabled as per user request
     calculateTotal();
 }
 
 function calculateTotal() {
     let sum = 0;
-    document.querySelectorAll('.item-row input[readonly]').forEach(i => sum += Number(i.value));
+    document.querySelectorAll('.item-row .item-row-total').forEach(i => sum += Number(i.value || 0));
     document.getElementById('total').value = sum;
     calculateCOD();
 }

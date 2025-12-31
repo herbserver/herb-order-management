@@ -467,6 +467,26 @@ async function loadAdminData() {
 
         console.log(`✅ Loaded ${employees.length} employees, ${orders.length} orders`);
 
+        // Calculate Fresh vs Reorder stats
+        let totalFresh = 0, totalReorder = 0;
+        let freshRevenue = 0, reorderRevenue = 0;
+
+        orders.forEach(o => {
+            if (!o.orderType) return; // Skip orders without orderType
+
+            // Handle both old format (NEW, REORDER) and new format (Fresh, Reorder)
+            const isReorder = o.orderType === 'Reorder' || o.orderType === 'REORDER';
+            const orderTotal = o.total || 0;
+
+            if (isReorder) {
+                totalReorder++;
+                reorderRevenue += orderTotal;
+            } else {
+                totalFresh++;
+                freshRevenue += orderTotal;
+            }
+        });
+
         // Calculate statistics
         const stats = {
             totalOrders: orders.length,
@@ -476,7 +496,11 @@ async function loadAdminData() {
             verifiedOrders: orders.filter(o => o.status === 'Address Verified').length,
             dispatchedOrders: orders.filter(o => o.status === 'Dispatched').length,
             deliveredOrders: orders.filter(o => o.status === 'Delivered').length,
-            totalEmployees: employees.length
+            totalEmployees: employees.length,
+            totalFresh,
+            totalReorder,
+            freshRevenue,
+            reorderRevenue
         };
 
         console.log('📈 Stats calculated:', stats);
@@ -501,7 +525,7 @@ async function loadAdminData() {
 
         // Try to update various possible stat elements
         updateElement('totalOrders', stats.totalOrders);
-        updateElement('totalRevenue', `₹${stats.totalRevenue}`);
+        updateElement('totalRevenue', `₹${stats.totalRevenue.toLocaleString()}`);
         updateElement('avgOrderValue', `₹${Math.round(stats.avgOrderValue)}`);
         updateElement('pendingCount', stats.pendingOrders);
         updateElement('verifiedCount', stats.verifiedOrders);
@@ -509,11 +533,42 @@ async function loadAdminData() {
         updateElement('deliveredCount', stats.deliveredOrders);
         updateElement('totalEmployees', stats.totalEmployees);
 
+        // Update Fresh/Reorder stats in Total Orders card
+        const updateOrCreateBreakdown = (parentId, className, freshValue, reorderValue, isRevenue = false) => {
+            const parent = document.getElementById(parentId)?.parentElement;
+            if (!parent) return;
+
+            let breakdown = parent.querySelector(`.${className}`);
+            const freshDisplay = isRevenue ? `₹${freshValue.toLocaleString()}` : freshValue;
+            const reorderDisplay = isRevenue ? `₹${reorderValue.toLocaleString()}` : reorderValue;
+
+            if (!breakdown) {
+                const html = `<div class="${className} text-[10px] font-bold mt-1 tracking-wide flex gap-2">
+                    <span class="text-emerald-600">🆕 ${freshDisplay}</span> 
+                    <span class="text-gray-300">|</span> 
+                    <span class="text-blue-600">🔄 ${reorderDisplay}</span>
+                </div>`;
+                const mainEl = document.getElementById(parentId);
+                if (mainEl) mainEl.insertAdjacentHTML('afterend', html);
+            } else {
+                breakdown.innerHTML = `
+                    <span class="text-emerald-600">🆕 ${freshDisplay}</span> 
+                    <span class="text-gray-300">|</span> 
+                    <span class="text-blue-600">🔄 ${reorderDisplay}</span>
+                `;
+            }
+        };
+
+        // Update Total Orders breakdown (Fresh/Reorder counts)
+        updateOrCreateBreakdown('totalOrders', 'orders-breakdown', stats.totalFresh, stats.totalReorder, false);
+
+        // Update Total Revenue breakdown (Fresh/Reorder revenue)
+        updateOrCreateBreakdown('totalRevenue', 'revenue-breakdown', stats.freshRevenue, stats.reorderRevenue, true);
+
         // Also log to console for manual checking
         console.log('📊 Admin Panel Stats:');
-        console.log(`  Total Orders: ${stats.totalOrders}`);
-        console.log(`  Total Revenue: ₹${stats.totalRevenue}`);
-        console.log(`  Avg Order Value: ₹${Math.round(stats.avgOrderValue)}`);
+        console.log(`  Total Orders: ${stats.totalOrders} (Fresh: ${stats.totalFresh}, Reorder: ${stats.totalReorder})`);
+        console.log(`  Total Revenue: ₹${stats.totalRevenue} (Fresh: ₹${stats.freshRevenue}, Reorder: ₹${stats.reorderRevenue})`);
         console.log(`  Pending: ${stats.pendingOrders} | Verified: ${stats.verifiedOrders}`);
         console.log(`  Dispatched: ${stats.dispatchedOrders} | Delivered: ${stats.deliveredOrders}`);
         console.log(`  Total Employees: ${stats.totalEmployees}`);
@@ -1361,7 +1416,12 @@ const PRODUCT_LIST = [
     { name: "Black pills" },
     { name: "Tea-400" },
     { name: "Tea-1500" },
-    { name: "Tea-1800" }
+    { name: "Tea-1800" },
+    { name: "Ostrich-Red Oil" },
+    { name: "HOS Powder" },
+    { name: "Mind Fresh Tea" },
+    { name: "H.O.S." },
+    { name: "Slim fit kit" }
 ];
 
 function addItem() {
@@ -1399,15 +1459,8 @@ function calculateTotal() {
         if (desc) itemCount += qty;
     });
 
-    // Combo Offer: 3 items for 3400
-    if (itemCount === 3) {
-        totalInput.value = 3400;
-        comboBadge.classList.remove('hidden');
-    } else {
-        comboBadge.classList.add('hidden');
-        // If not combo, maybe just leave last value or clear if 0
-        if (itemCount === 0) totalInput.value = 0;
-    }
+    // Automatic calculation disabled as per user request
+    if (itemCount === 0) totalInput.value = 0;
 
     calculateCOD();
 }
@@ -1564,7 +1617,7 @@ async function saveOrder() {
         time: form.time.value,
         telNo,
         altNo: form.altNo.value,
-        orderType: form.orderType.value,
+        orderType: form.orderType.value === 'REORDER' ? 'Reorder' : 'Fresh',
         items,
         total: total,
         advance: parseFloat(form.advance.value) || 0,
@@ -1723,8 +1776,8 @@ async function editOrder(orderId) {
         document.getElementById('totalAmountInput').value = order.total || 0;
         calculateTotal(); // Trigger combo check
 
-        // Radio Button
-        if (order.orderType === 'REORDER') {
+        // Radio Button - handle both old "REORDER" and new "Reorder" format
+        if (order.orderType === 'REORDER' || order.orderType === 'Reorder') {
             document.querySelector('input[name="orderType"][value="REORDER"]').checked = true;
         } else {
             document.querySelector('input[name="orderType"][value="NEW"]').checked = true;
@@ -1892,7 +1945,7 @@ async function loadMyOrders() {
                                     class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
                                     ${WHATSAPP_ICON}
                                 </button>
-                                ${order.orderType === 'REORDER' ?
+                                ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ?
                     '<span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-200">REORDER</span>' : ''}
                             </div>
                             <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[150px]" title="${order.customerName}">
@@ -2436,6 +2489,183 @@ async function loadEmpProgress() {
     }
 }
 
+// ==================== PORTED FROM DEPARTMENT.JS ====================
+const DEPT_ITEMS_PER_PAGE = 10;
+let deptPagination = {
+    verification: 1,
+    dispatchReady: 1,
+    dispatchRequests: 1,
+    dispatchDispatched: 1,
+    dispatchHistory: 1,
+    deliveryOut: 1,
+    deliveryDelivered: 1,
+    deliveryFailed: 1,
+    deliveryPerf: 1
+};
+
+// Helper needed for tab switching
+function setActiveDeptTab(tabId) {
+    // Remove active class from all tabs
+    const tabs = ['deptTabReady', 'deptTabRequests', 'deptTabDispatched', 'deptTabDispatchHistory',
+        'deptTabOutForDelivery', 'deptTabDelivered', 'deptTabFailed', 'deptTabPerformance'];
+
+    tabs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('bg-indigo-100', 'text-indigo-700');
+            el.classList.add('text-gray-500', 'hover:bg-gray-50');
+        }
+    });
+
+    // Add active class to current
+    const activeEl = document.getElementById(tabId);
+    if (activeEl) {
+        activeEl.classList.remove('text-gray-500', 'hover:bg-gray-50');
+        activeEl.classList.add('bg-indigo-100', 'text-indigo-700');
+    }
+}
+
+async function loadDeliveryRequests(page = null) {
+    try {
+        const res = await fetch(`${API_URL}/orders/delivery-requests`);
+        const data = await res.json();
+        const requests = data.requests || [];
+
+        // UPDATE COUNTER
+        if (document.getElementById('requestsCount')) document.getElementById('requestsCount').textContent = requests.length;
+
+        // FORCE INJECT CONTAINER
+        let parent = document.getElementById('dispatchRequestsTab');
+        if (!parent) {
+            // If parent tab missing, inject directly into main dispatch content
+            parent = document.getElementById('dispatchDeptContent');
+            if (!parent) {
+                console.error("❌ CRITICAL: Main Dispatch Content Missing");
+                return;
+            }
+            let tempHost = document.getElementById('temp-requests-host');
+            if (!tempHost) {
+                tempHost = document.createElement('div');
+                tempHost.id = 'temp-requests-host';
+                parent.appendChild(tempHost);
+            }
+            parent = tempHost;
+        }
+
+        // Ensure parent is visible
+        parent.classList.remove('hidden');
+        parent.style.display = 'block'; // Inline style override
+
+        let container = document.getElementById('deliveryRequestsList');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'deliveryRequestsList';
+            container.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4';
+            parent.appendChild(container);
+        }
+
+        // Clear previous content
+        container.innerHTML = '';
+
+        if (requests.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-full text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-4xl">📭</p>
+                    <p class="text-gray-500 font-medium mt-2">Koi delivery requests nahi hain</p>
+                </div>`;
+            return;
+        }
+
+        // Pagination setup
+        if (page !== null) deptPagination.dispatchRequests = page;
+        const currentPage = deptPagination.dispatchRequests || 1;
+        const totalPages = Math.ceil(requests.length / DEPT_ITEMS_PER_PAGE) || 1;
+        const paginated = requests.slice((currentPage - 1) * DEPT_ITEMS_PER_PAGE, currentPage * DEPT_ITEMS_PER_PAGE);
+
+        // Render Cards
+        let html = '';
+        paginated.forEach(req => {
+            const reqTime = req.deliveryRequestedAt ? new Date(req.deliveryRequestedAt).toLocaleString() : 'Just now';
+            const reqBy = req.deliveryRequestedBy || req.employeeId || 'Unknown';
+            const empName = req.employee || 'Agent';
+
+            html += `
+            <div class="order-card bg-white border-l-4 border-pink-500 rounded-xl shadow-md p-5 hover:shadow-xl transition-all relative group">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <span class="bg-blue-100 text-blue-700 text-xs font-black px-2 py-1 rounded-md mb-2 inline-block">
+                            ${req.orderId}
+                        </span>
+                        <h3 class="font-bold text-gray-800 text-lg leading-tight">${req.customerName}</h3>
+                        <p class="text-xs text-gray-500 mt-1 font-mono">
+                            Requested by: <strong class="text-gray-700">${empName}</strong>
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2 text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded-lg">
+                    <span>🕒 ${reqTime}</span>
+                </div>
+
+                <button onclick="approveDelivery('${req.orderId}')" 
+                    class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-green-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
+                    <span>✅</span> Approve Delivery
+                </button>
+            </div>`;
+        });
+
+        container.innerHTML = html;
+        renderPaginationControls(container, currentPage, totalPages, 'loadDeliveryRequests');
+
+    } catch (e) {
+        console.error("❌ loadDeliveryRequests Error:", e);
+    }
+}
+
+// CRITICAL: Expose to window for HTML onclick events
+window.loadDeliveryRequests = loadDeliveryRequests;
+window.approveDelivery = approveDelivery;
+window.switchDispatchTab = switchDispatchTab;
+window.setActiveDeptTab = setActiveDeptTab;
+
+async function approveDelivery(orderId) {
+    if (!confirm('Order ko Delivered mark karna hai?')) return;
+    try {
+        const res = await fetch(`${API_URL}/orders/deliver`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId, deliveredBy: currentUser?.id || 'department' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('Delivery Confirmed! 🎊');
+            loadDeliveryRequests();
+            if (window.loadDispatchedOrders) loadDispatchedOrders(); // Refresh dispatched if available
+        }
+    } catch (e) { console.error(e); }
+}
+
+function renderPaginationControls(container, currentPage, totalPages, fetchFuncName) {
+    if (totalPages <= 1) return;
+
+    const controls = document.createElement('div');
+    controls.className = 'col-span-full flex justify-center items-center gap-4 mt-6';
+    controls.innerHTML = `
+        <button onclick="${fetchFuncName}(${currentPage - 1})" 
+            class="px-4 py-2 rounded-lg border ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}"
+            ${currentPage === 1 ? 'disabled' : ''}>
+            Previous
+        </button>
+        <span class="text-sm font-bold text-gray-600">Page ${currentPage} of ${totalPages}</span>
+        <button onclick="${fetchFuncName}(${currentPage + 1})" 
+            class="px-4 py-2 rounded-lg border ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}"
+            ${currentPage === totalPages ? 'disabled' : ''}>
+            Next
+        </button>
+    `;
+    container.appendChild(controls);
+}
+
 // ==================== DEPARTMENT PANEL ====================
 function switchDispatchTab(tab) {
     document.getElementById('dispatchReadyTab').classList.add('hidden');
@@ -2821,7 +3051,7 @@ function renderOrderCard(order, borderColor = 'gray') {
                                 <span class="bg-${borderColor}-100 text-${borderColor}-700 text-xs font-bold px-2 py-0.5 rounded-md border border-${borderColor}-200 uppercase tracking-wide">
                                     ${order.orderId}
                                 </span>
-                                ${order.orderType === 'REORDER' ?
+                                ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ?
             '<span class="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-md border border-purple-200">REORDER</span>'
             : ''}
                             </div>
@@ -3069,7 +3299,7 @@ function generateOrderCardHTML(order) {
                     class="w-7 h-7 bg-gradient-to-br from-green-400 to-green-600 text-white rounded-full flex items-center justify-center hover:scale-110 shadow-lg shadow-green-200/50 transition-all" title="Send WhatsApp">
                     ${WHATSAPP_ICON}
                 </button>
-                ${order.orderType === 'REORDER' ? `<span class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-2 py-1 rounded-lg text-xs font-bold shadow-md">REORDER</span>` : ''}
+                ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ? `<span class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-2 py-1 rounded-lg text-xs font-bold shadow-md">REORDER</span>` : ''}
             </div>
             <div class="text-gray-900 font-black text-sm z-10">₹${order.total} <span class="text-emerald-600 ml-1 font-extrabold">COD: ₹${order.codAmount || 0}</span></div>
         </div>
@@ -3257,40 +3487,7 @@ function generateOrderCardHTML(order) {
     </div>`;
 }
 
-async function loadDeliveryRequests() {
-    try {
-        const res = await fetch(`${API_URL}/orders/delivery-requests`);
-        const data = await res.json();
-        const requests = data.requests || [];
 
-        document.getElementById('requestsCount').textContent = requests.length;
-
-        if (requests.length === 0) {
-            document.getElementById('deliveryRequestsList').innerHTML = '<p class="text-center text-gray-500 py-8">Koi delivery requests nahi hain</p>';
-            return;
-        }
-
-        let html = '';
-
-        requests.forEach(req => {
-            html += ` <div class="order-card bg-white border rounded-xl p-4 border-l-4 border-l-pink-500"> <div class="flex justify-between items-start"> <div> <p class="font-bold text-blue-600">${req.orderId}
-
-                        </p> <p class="text-gray-800">${req.customerName}
-
-                        </p> <p class="text-sm text-gray-500">Requested by: <strong>${req.employeeName}
-
-                        </strong> (${req.employeeId})</p> <p class="text-xs text-gray-400">${new Date(req.requestedAt).toLocaleString()
-                }
-
-                        </p> </div> <div class="flex gap-2"> <button type="button" onclick="approveDelivery('${req.orderId}')" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600">✅ Approve Delivered</button> </div> </div> </div> `;
-        });
-        document.getElementById('deliveryRequestsList').innerHTML = html;
-    }
-
-    catch (e) {
-        console.error(e);
-    }
-}
 
 async function loadDispatchedOrders() {
     try {
@@ -5862,8 +6059,8 @@ async function filterAdminProgress() {
 
         orders.forEach(o => {
             const orderTotal = o.total || 0;
-            // Use orderType field if available, otherwise fall back to orderReordermMap
-            const isReorder = o.orderType ? (o.orderType === 'Reorder') : orderReorderMap.get(o.orderId);
+            // Handle both old (REORDER) and new (Reorder) format
+            const isReorder = o.orderType ? (o.orderType === 'Reorder' || o.orderType === 'REORDER') : orderReorderMap.get(o.orderId);
 
             if (isReorder) {
                 reorderCount++;

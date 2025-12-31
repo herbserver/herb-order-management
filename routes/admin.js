@@ -88,7 +88,8 @@ router.get('/stats', async (req, res) => {
             // Skip orders without orderType field (old orders)
             if (!o.orderType) return;
 
-            const isReorder = o.orderType === 'Reorder';
+            // Handle both old format (NEW, REORDER) and new format (Fresh, Reorder)
+            const isReorder = o.orderType === 'Reorder' || o.orderType === 'REORDER';
             const orderTotal = o.total || 0;
 
             if (isReorder) {
@@ -186,8 +187,8 @@ router.get('/department-stats', async (req, res) => {
             // Skip orders without orderType field (old orders)
             if (!o.orderType) return;
 
-            // Use persisted orderType field
-            const typeKey = (o.orderType === 'Reorder') ? 'reorder' : 'fresh';
+            // Use persisted orderType field - handle both old (REORDER) and new (Reorder) format
+            const typeKey = (o.orderType === 'Reorder' || o.orderType === 'REORDER') ? 'reorder' : 'fresh';
 
             // --- Aggregation Logic ---
 

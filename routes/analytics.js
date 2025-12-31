@@ -40,7 +40,8 @@ router.get('/dashboard', async (req, res) => {
             // Only count orders with orderType field set
             if (!o.orderType) return;
 
-            if (o.orderType === 'Reorder') {
+            // Handle both old (REORDER) and new (Reorder) format
+            if (o.orderType === 'Reorder' || o.orderType === 'REORDER') {
                 totalReorderRevenue += orderTotal;
                 totalReorderCount++;
             } else {
@@ -61,7 +62,8 @@ router.get('/dashboard', async (req, res) => {
             const orderTotal = o.total || 0;
             if (!o.orderType) return;
 
-            if (o.orderType === 'Reorder') {
+            // Handle both old (REORDER) and new (Reorder) format
+            if (o.orderType === 'Reorder' || o.orderType === 'REORDER') {
                 todayReorderRevenue += orderTotal;
                 todayReorderCount++;
             } else {

@@ -50,7 +50,12 @@ window.PRODUCT_LIST = window.PRODUCT_LIST || [
     { name: "Black pills" },
     { name: "Tea-400" },
     { name: "Tea-1500" },
-    { name: "Tea-1800" }
+    { name: "Tea-1800" },
+    { name: "Ostrich-Red Oil" },
+    { name: "HOS Powder" },
+    { name: "Mind Fresh Tea" },
+    { name: "H.O.S." },
+    { name: "Slim fit kit" }
 ];
 
 // Emoji constants for WhatsApp compatibility

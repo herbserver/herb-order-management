@@ -428,9 +428,10 @@ function showShiprocketModal() {
  * @param {string} name - Employee Name
  */
 function showEditEmployeeModal(empId, name) {
-    document.getElementById('editEmpId').value = empId;
+    document.getElementById('editEmpOldId').value = empId;
+    document.getElementById('editEmpNewId').value = empId;
     document.getElementById('editEmpName').value = name;
-    document.getElementById('editEmpNewPassword').value = '';
+    document.getElementById('editEmpPass').value = '';
     openModal('editEmployeeModal');
 }
 
