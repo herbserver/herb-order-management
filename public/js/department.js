@@ -28,10 +28,11 @@ function setupDeptUI(type) {
         const tab = document.getElementById('deptTabVerification');
         if (tab) tab.click();
     } else if (type === 'dispatch') {
-        // Find dispatch tab
-        // In original app, layout might have been shared.
-        // We will just default to loadDeptOrders which handles logic.
-        // loadDeptOrders(); // Removed duplicate call
+        const tab = document.getElementById('deptTabReady');
+        if (tab) tab.click();
+    } else if (type === 'delivery') {
+        const tab = document.getElementById('deptTabOutForDelivery');
+        if (tab) tab.click();
     }
 }
 
@@ -42,12 +43,12 @@ function setupDeptUI(type) {
 // ==================== TABS SWITCHING ====================
 
 function switchDispatchTab(tab) {
-    ['deptPendingTab', 'deptDispatchedTab', 'deptDispatchHistoryTab', 'deptDeliveryRequestsTab'].forEach(id => {
+    ['deptPendingTab', 'deptDispatchedTab', 'deptDispatchHistoryTab'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
 
-    ['deptTabPending', 'deptTabDispatched', 'deptTabHistory', 'deptTabRequests'].forEach(id => {
+    ['deptTabPending', 'deptTabDispatched', 'deptTabHistory'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.classList.remove('bg-blue-600', 'text-white');
@@ -57,8 +58,7 @@ function switchDispatchTab(tab) {
 
     const activeBtn = document.getElementById(
         tab === 'pending' ? 'deptTabPending' :
-            tab === 'requests' ? 'deptTabRequests' :
-                tab === 'dispatched' ? 'deptTabDispatched' : 'deptTabHistory'
+            tab === 'dispatched' ? 'deptTabDispatched' : 'deptTabHistory'
     );
     if (activeBtn) {
         activeBtn.classList.remove('bg-white', 'text-gray-600');
@@ -68,9 +68,6 @@ function switchDispatchTab(tab) {
     if (tab === 'pending') {
         document.getElementById('deptPendingTab').classList.remove('hidden');
         loadDeptOrders();
-    } else if (tab === 'requests') {
-        if (document.getElementById('deptDeliveryRequestsTab')) document.getElementById('deptDeliveryRequestsTab').classList.remove('hidden');
-        loadDeliveryRequests();
     } else if (tab === 'dispatched') {
         document.getElementById('deptDispatchedTab').classList.remove('hidden');
         loadDispatchedOrders();
@@ -81,41 +78,68 @@ function switchDispatchTab(tab) {
 }
 
 function switchDeliveryTab(tab) {
-    ['deptOutForDeliveryTab', 'deptDeliveredTab', 'deptFailedTab', 'deptPerformanceTab'].forEach(id => {
+    // Hide all tabs
+    [
+        'deliveryRequestsTab',
+        'deliveryOutForDeliveryTab',
+        'deliveryDeliveredTab',
+        'deliveryRTOTab'
+    ].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
 
-    ['deptTabOut', 'deptTabDelivered', 'deptTabFailed', 'deptTabPerformance'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.classList.remove('bg-blue-600', 'text-white');
-            el.classList.add('bg-white', 'text-gray-600');
-        }
-    });
+    // Set active button (using IDs from index.html)
+    const activeBtnMap = {
+        'requests': 'deptTabRequests',
+        'outfordelivery': 'deptTabOutForDelivery',
+        'out': 'deptTabOutForDelivery',
+        'delivered': 'deptTabDelivered',
+        'rto': 'deptTabRTO'
+    };
 
-    const activeBtn = document.getElementById(
-        tab === 'out' ? 'deptTabOut' :
-            tab === 'delivered' ? 'deptTabDelivered' :
-                tab === 'failed' ? 'deptTabFailed' : 'deptTabPerformance'
-    );
-    if (activeBtn) {
-        activeBtn.classList.remove('bg-white', 'text-gray-600');
-        activeBtn.classList.add('bg-blue-600', 'text-white');
+    const tabId = activeBtnMap[tab] || 'deptTabOutForDelivery';
+    if (typeof setActiveDeptTab === 'function') {
+        setActiveDeptTab(tabId);
     }
 
-    if (tab === 'out') {
-        document.getElementById('deptOutForDeliveryTab').classList.remove('hidden');
-        loadDeliveryOrders();
+    // Show content
+    if (tab === 'requests') {
+        document.getElementById('deliveryRequestsTab').classList.remove('hidden');
+        loadDeliveryRequests();
+    } else if (tab === 'out' || tab === 'outfordelivery') {
+        document.getElementById('deliveryOutForDeliveryTab').classList.remove('hidden');
+        if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
     } else if (tab === 'delivered') {
-        document.getElementById('deptDeliveredTab').classList.remove('hidden');
-        loadDeliveredOrders();
-    } else if (tab === 'failed') {
-        document.getElementById('deptFailedTab').classList.remove('hidden');
-        loadFailedDeliveries();
-    } else {
-        document.getElementById('deptPerformanceTab').classList.remove('hidden');
-        loadDeliveryPerformance();
+        document.getElementById('deliveryDeliveredTab').classList.remove('hidden');
+        if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
+    } else if (tab === 'rto') {
+        document.getElementById('deliveryRTOTab').classList.remove('hidden');
+        loadRTOOrders();
+    }
+}
+
+async function loadRTOOrders() {
+    try {
+        const res = await fetch(`${API_URL}/orders/rto`);
+        const data = await res.json();
+        const orders = data.orders || [];
+
+        const container = document.getElementById('rtoOrdersList');
+        if (!container) return;
+
+        if (orders.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi RTO orders nahi hain</p>';
+            return;
+        }
+
+        let html = '';
+        orders.forEach(o => {
+            html += renderDeliveryCardModern(o);
+        });
+        container.innerHTML = html;
+    } catch (e) {
+        console.error(e);
     }
 }
 
@@ -129,6 +153,7 @@ async function loadDeliveryRequests(page = null) {
         const requests = data.requests || [];
 
         if (document.getElementById('requestsCount')) document.getElementById('requestsCount').textContent = requests.length;
+        if (document.getElementById('requestsCountDept')) document.getElementById('requestsCountDept').textContent = requests.length;
 
         // Pagination
         if (page !== null) deptPagination.dispatchRequests = page;
@@ -270,40 +295,7 @@ async function loadDeliveryOrders(page = null) {
 
         let html = '';
         paginated.forEach(order => {
-            const hasShiprocket = order.shiprocket && order.shiprocket.awb;
-            let statusBadge = '';
-            // Basic logic for badges...
-            if (order.tracking && order.tracking.currentStatus) {
-                const status = order.tracking.currentStatus;
-                statusBadge = `<span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-bold">${status}</span>`;
-            }
-
-            html += `
-                <div class="glass-card p-4 hover:shadow-lg transition-all border rounded-xl bg-white mb-3" data-order-id="${order.orderId}">
-                    ${hasShiprocket ? `
-                    <div class="bg-orange-100 border-l-4 border-orange-500 p-3 rounded-lg mb-3">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-orange-600 font-bold text-xs">🚀 via Shiprocket</span>
-                            ${statusBadge}
-                        </div>
-                        <p class="font-mono font-black text-orange-700 text-xs">${order.shiprocket.awb}</p>
-                    </div>` : ''}
-                    
-                    <div class="mb-3">
-                         <h4 class="font-bold text-lg text-gray-800">${order.customerName}</h4>
-                         <p class="text-xl font-black text-gray-800">₹${order.total}</p>
-                         <p class="text-sm text-gray-600">📞 ${order.telNo}</p>
-                         <p class="text-xs text-gray-500 mt-1">📍 ${order.address}</p>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-2">
-                        <button onclick="approveDelivery('${order.orderId}')" 
-                            class="bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg flex items-center justify-center gap-2">
-                            ✅ Delivered
-                        </button>
-                    </div>
-                </div>
-            `;
+            html += renderDeliveryCardModern(order);
         });
         container.innerHTML = html;
         renderPaginationControls(container, currentPage, totalPages, 'loadDeliveryOrders');
@@ -1042,3 +1034,5 @@ window.dispatchWithShiprocket = dispatchWithShiprocket;
 window.openManualDispatchModal = openManualDispatchModal;
 window.loadDeptOrders = loadDeptOrders;
 window.switchDispatchTab = switchDispatchTab;
+window.switchDeliveryTab = switchDeliveryTab;
+window.loadRTOOrders = loadRTOOrders;

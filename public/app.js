@@ -496,6 +496,7 @@ async function loadAdminData() {
             verifiedOrders: orders.filter(o => o.status === 'Address Verified').length,
             dispatchedOrders: orders.filter(o => o.status === 'Dispatched').length,
             deliveredOrders: orders.filter(o => o.status === 'Delivered').length,
+            rtoOrders: orders.filter(o => o.status === 'RTO').length,
             totalEmployees: employees.length,
             totalFresh,
             totalReorder,
@@ -531,6 +532,7 @@ async function loadAdminData() {
         updateElement('verifiedCount', stats.verifiedOrders);
         updateElement('dispatchedCount', stats.dispatchedOrders);
         updateElement('deliveredCount', stats.deliveredOrders);
+        updateElement('rtoCount', stats.rtoOrders);
         updateElement('totalEmployees', stats.totalEmployees);
 
         // Update Fresh/Reorder stats in Total Orders card
@@ -2533,36 +2535,10 @@ async function loadDeliveryRequests(page = null) {
 
         // UPDATE COUNTER
         if (document.getElementById('requestsCount')) document.getElementById('requestsCount').textContent = requests.length;
+        if (document.getElementById('requestsCountDept')) document.getElementById('requestsCountDept').textContent = requests.length;
 
-        // FORCE INJECT CONTAINER
-        let parent = document.getElementById('dispatchRequestsTab');
-        if (!parent) {
-            // If parent tab missing, inject directly into main dispatch content
-            parent = document.getElementById('dispatchDeptContent');
-            if (!parent) {
-                console.error("❌ CRITICAL: Main Dispatch Content Missing");
-                return;
-            }
-            let tempHost = document.getElementById('temp-requests-host');
-            if (!tempHost) {
-                tempHost = document.createElement('div');
-                tempHost.id = 'temp-requests-host';
-                parent.appendChild(tempHost);
-            }
-            parent = tempHost;
-        }
-
-        // Ensure parent is visible
-        parent.classList.remove('hidden');
-        parent.style.display = 'block'; // Inline style override
-
-        let container = document.getElementById('deliveryRequestsList');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'deliveryRequestsList';
-            container.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4';
-            parent.appendChild(container);
-        }
+        const container = document.getElementById('deliveryRequestsList');
+        if (!container) return;
 
         // Clear previous content
         container.innerHTML = '';
@@ -2623,8 +2599,15 @@ async function loadDeliveryRequests(page = null) {
 }
 
 // CRITICAL: Expose to window for HTML onclick events
-window.loadDeliveryRequests = loadDeliveryRequests;
+window.markAsDelivered = markAsDelivered;
+window.markAsRTO = markAsRTO;
+window.loadRTOOrders = loadRTOOrders;
+window.loadDeliveredOrders = loadDeliveredOrders;
+window.loadDeliveryOrders = loadDeliveryOrders;
+window.loadFailedDeliveries = loadFailedDeliveries;
+window.loadDeliveryPerformance = loadDeliveryPerformance;
 window.approveDelivery = approveDelivery;
+window.loadDeliveryRequests = loadDeliveryRequests;
 window.switchDispatchTab = switchDispatchTab;
 window.setActiveDeptTab = setActiveDeptTab;
 
@@ -2669,7 +2652,6 @@ function renderPaginationControls(container, currentPage, totalPages, fetchFuncN
 // ==================== DEPARTMENT PANEL ====================
 function switchDispatchTab(tab) {
     document.getElementById('dispatchReadyTab').classList.add('hidden');
-    document.getElementById('dispatchRequestsTab').classList.add('hidden');
     document.getElementById('dispatchDispatchedTab').classList.add('hidden');
     document.getElementById('dispatchHistoryTab').classList.add('hidden');
 
@@ -2677,10 +2659,6 @@ function switchDispatchTab(tab) {
         document.getElementById('dispatchReadyTab').classList.remove('hidden');
         setActiveDeptTab('deptTabReady');
         loadDeptOrders();
-    } else if (tab === 'requests') {
-        document.getElementById('dispatchRequestsTab').classList.remove('hidden');
-        setActiveDeptTab('deptTabRequests');
-        loadDeliveryRequests();
     } else if (tab === 'dispatched') {
         document.getElementById('dispatchDispatchedTab').classList.remove('hidden');
         setActiveDeptTab('deptTabDispatched');
@@ -2695,12 +2673,16 @@ function switchDispatchTab(tab) {
 
 // Delivery Department Tab Switching
 function switchDeliveryTab(tab) {
+    document.getElementById('deliveryRequestsTab').classList.add('hidden');
     document.getElementById('deliveryOutForDeliveryTab').classList.add('hidden');
     document.getElementById('deliveryDeliveredTab').classList.add('hidden');
-    document.getElementById('deliveryFailedTab').classList.add('hidden');
-    document.getElementById('deliveryPerformanceTab').classList.add('hidden');
+    document.getElementById('deliveryRTOTab').classList.add('hidden');
 
-    if (tab === 'outfordelivery') {
+    if (tab === 'requests') {
+        document.getElementById('deliveryRequestsTab').classList.remove('hidden');
+        setActiveDeptTab('deptTabRequests');
+        loadDeliveryRequests();
+    } else if (tab === 'outfordelivery') {
         document.getElementById('deliveryOutForDeliveryTab').classList.remove('hidden');
         setActiveDeptTab('deptTabOutForDelivery');
         loadDeliveryOrders();
@@ -2708,14 +2690,10 @@ function switchDeliveryTab(tab) {
         document.getElementById('deliveryDeliveredTab').classList.remove('hidden');
         setActiveDeptTab('deptTabDelivered');
         loadDeliveredOrders();
-    } else if (tab === 'failed') {
-        document.getElementById('deliveryFailedTab').classList.remove('hidden');
-        setActiveDeptTab('deptTabFailed');
-        loadFailedDeliveries();
-    } else if (tab === 'performance') {
-        document.getElementById('deliveryPerformanceTab').classList.remove('hidden');
-        setActiveDeptTab('deptTabPerformance');
-        loadDeliveryPerformance();
+    } else if (tab === 'rto') {
+        document.getElementById('deliveryRTOTab').classList.remove('hidden');
+        setActiveDeptTab('deptTabRTO');
+        loadRTOOrders();
     }
 }
 
@@ -2734,75 +2712,7 @@ async function loadDeliveryOrders() {
 
         let html = '';
         orders.forEach(order => {
-            const hasShiprocket = order.shiprocket && order.shiprocket.awb;
-
-            // Get tracking status badge
-            let statusBadge = '';
-            if (order.tracking && order.tracking.currentStatus) {
-                const status = order.tracking.currentStatus;
-                let badgeColor = 'bg-blue-500';
-                if (status.includes('Delivered')) badgeColor = 'bg-green-500';
-                else if (status.includes('Out for Delivery')) badgeColor = 'bg-purple-500';
-                else if (status.includes('Transit')) badgeColor = 'bg-yellow-500';
-
-                statusBadge = `<span class="${badgeColor} text-white text-xs px-2 py-1 rounded-full font-bold">${status}</span>`;
-            }
-
-            html += `
-                    <div class="glass-card p-4 hover:shadow-lg transition-all" data-order-id="${order.orderId}">
-                        ${hasShiprocket ? `
-                        <div class="bg-orange-100 border-l-4 border-orange-500 p-3 rounded-lg mb-3">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-orange-600 font-bold text-xs">🚀 via Shiprocket</span>
-                                ${statusBadge}
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                    <p class="text-gray-500 font-bold">AWB:</p>
-                                    <p class="font-mono font-black text-orange-700">${order.shiprocket.awb}</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500 font-bold">Courier:</p>
-                                    <p class="font-bold text-gray-800">${order.shiprocket.courierName || 'N/A'}</p>
-                                </div>
-                            </div>
-                            ${order.tracking && order.tracking.lastUpdate ? `
-                            <div class="mt-2 text-xs text-gray-600">
-                                <p>📍 ${order.tracking.lastUpdate}</p>
-                            </div>
-                            ` : ''}
-                        </div>
-                        ` : ''}
-                        
-                        <div class="mb-3">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">${order.orderId}</span>
-                                    <h4 class="font-bold text-lg text-gray-800 mt-1">${order.customerName}</h4>
-                                </div>
-                                <p class="text-xl font-black text-gray-800">₹${order.total}</p>
-                            </div>
-                            
-                            <div class="text-sm text-gray-600 space-y-1">
-                                <p>📞 ${order.telNo || order.mobile}</p>
-                                <p class="line-clamp-2">📍 ${order.address}, ${order.pin}</p>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2">
-                            ${hasShiprocket ? `
-                            <button onclick="trackShiprocketOrder('${order.orderId}', '${order.shiprocket.awb}')" 
-                                class="bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2">
-                                🔍 Track
-                            </button>
-                            ` : '<div></div>'}
-                            <button onclick="markAsDelivered('${order.orderId}')" 
-                                class="bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg flex items-center justify-center gap-2">
-                                ✅ Delivered
-                            </button>
-                        </div>
-                    </div>
-                    `;
+            html += renderDeliveryCardModern(order);
         });
         document.getElementById('outForDeliveryList').innerHTML = html;
 
@@ -2936,6 +2846,76 @@ async function markAsDelivered(orderId) {
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
+    }
+}
+
+async function markAsRTO(orderId) {
+    const reason = prompt('RTO ka kaaran batayein (Reason for RTO):');
+    if (reason === null) return; // Cancelled
+
+    try {
+        const res = await fetch(`${API_URL}/orders/rto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                orderId,
+                rtoReason: reason,
+                rtoBy: currentUser?.name || 'Delivery Dept'
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showSuccessPopup('Order RTO! ↩️', `${orderId} marked as RTO successfully!`, '↩️', '#6366f1');
+            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+            if (typeof loadRTOOrders === 'function') loadRTOOrders();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (e) {
+        alert('❌ Error: ' + e.message);
+    }
+}
+
+// Load RTO Orders (Global)
+async function loadRTOOrders() {
+    try {
+        const res = await fetch(`${API_URL}/orders/rto`);
+        const data = await res.json();
+        const orders = data.orders || [];
+
+        // Try to find both containers (Admin and Dept)
+        const deptContainer = document.getElementById('rtoOrdersList');
+        const adminContainer = document.getElementById('rtoOrdersListAdmin');
+
+        if (!deptContainer && !adminContainer) return;
+
+        let html = '';
+        if (orders.length === 0) {
+            html = '<p class="text-center text-gray-500 py-8">Koi RTO orders nahi hain</p>';
+        } else {
+            orders.forEach(order => {
+                if (typeof renderDeliveryCardModern === 'function') {
+                    html += renderDeliveryCardModern(order);
+                } else if (typeof renderOrderCard === 'function') {
+                    html += renderOrderCard(order, 'indigo');
+                } else {
+                    // Fallback
+                    html += `<div class="p-4 border rounded-xl mb-3 bg-white shadow-sm">
+                        <p class="font-bold">${order.orderId}</p>
+                        <p>${order.customerName}</p>
+                        <p class="text-xs text-gray-500">${order.rtoReason || 'No reason specified'}</p>
+                    </div>`;
+                }
+            });
+        }
+
+        if (deptContainer) deptContainer.innerHTML = html;
+        if (adminContainer) adminContainer.innerHTML = html;
+
+        updateAdminBadges();
+    } catch (e) {
+        console.error(e);
     }
 }
 
@@ -4859,6 +4839,30 @@ function toggleAdminSidebar() {
 
 function switchAdminTab(tab) {
     if (!tab) return;
+
+    // Special Case for RTO (ID is adminRTOTab not adminRtoTab)
+    if (tab === 'rto') {
+        const contentEl = document.getElementById('adminRTOTab');
+        const buttonEl = document.getElementById('adminTabRto');
+
+        // Hide all admin tabs
+        document.querySelectorAll('[id^="admin"][id$="Tab"]').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.sidebar-nav-item, [id^="adminTab"]').forEach(el => el.classList.remove('sidebar-active'));
+
+        if (contentEl) contentEl.classList.remove('hidden');
+        if (buttonEl) buttonEl.classList.add('sidebar-active');
+
+        loadRTOOrders();
+        updateAdminBadges();
+
+        // Close sidebar on mobile
+        if (window.innerWidth < 1024) {
+            const sidebar = document.getElementById('adminSidebar');
+            if (sidebar) sidebar.classList.add('-translate-x-full');
+        }
+        return;
+    }
+
     const capTab = tab.charAt(0).toUpperCase() + tab.slice(1);
     const contentId = `admin${capTab}Tab`;
     const buttonId = `adminTab${capTab}`;
@@ -4924,6 +4928,7 @@ async function updateAdminBadges() {
         const delivered = await (await fetch(`${API_URL}/orders/delivered`)).json();
         const cancelled = await (await fetch(`${API_URL}/orders/cancelled`)).json();
         const onhold = await (await fetch(`${API_URL}/orders/onhold`)).json();
+        const rto = await (await fetch(`${API_URL}/orders/rto`)).json();
 
         const pendingCount = pending.orders ? pending.orders.length : 0;
         const verifiedCount = verified.orders ? verified.orders.length : 0;
@@ -4931,6 +4936,7 @@ async function updateAdminBadges() {
         const deliveredCount = delivered.orders ? delivered.orders.length : 0;
         const cancelledCount = cancelled.orders ? cancelled.orders.length : 0;
         const onholdCount = onhold.orders ? onhold.orders.length : 0;
+        const rtoCount = rto.orders ? rto.orders.length : 0;
 
         // Update Tab Badges
         if (document.getElementById('pendingCount')) document.getElementById('pendingCount').textContent = pendingCount;
@@ -4939,6 +4945,7 @@ async function updateAdminBadges() {
         if (document.getElementById('deliveredCount')) document.getElementById('deliveredCount').textContent = deliveredCount;
         if (document.getElementById('cancelledCount')) document.getElementById('cancelledCount').textContent = cancelledCount;
         if (document.getElementById('onholdCount')) document.getElementById('onholdCount').textContent = onholdCount;
+        if (document.getElementById('rtoCount')) document.getElementById('rtoCount').textContent = rtoCount;
 
         // Update Quick Stats Pills (Header)
         if (document.getElementById('quickStatPending')) document.getElementById('quickStatPending').textContent = pendingCount;
@@ -7941,11 +7948,11 @@ function reorderFromHistory(orderData) {
 function injectReorderButtons() {
     // Find all order cards in My Orders and History tabs
     const orderCards = document.querySelectorAll('#myOrdersList > div, #myHistoryList > div');
-
+ 
     orderCards.forEach(card => {
         // Skip if already has reorder button
         if (card.querySelector('.reorder-btn')) return;
-
+ 
         // Check if order is DELIVERED (look for status badge/text)
         const cardText = card.textContent.toLowerCase();
         const isDelivered = cardText.includes('delivered') ||
@@ -7953,33 +7960,33 @@ function injectReorderButtons() {
             cardText.includes('complete') ||
             card.querySelector('[class*="delivered"]') ||
             card.querySelector('[class*="success"]');
-
+ 
         // Only add button if delivered
         if (!isDelivered) return;
-
+ 
         // Extract mobile number for search filtering
         const mobileMatch = card.textContent.match(/(\d{10})/);
         const mobile = mobileMatch ? mobileMatch[1] : '';
-
+ 
         // Extract Order ID from card (with ORD- prefix)
         const orderIdMatch = card.textContent.match(/ORD-\d+/i);
         const orderId = orderIdMatch ? orderIdMatch[0] : '';
-
+ 
         if (!orderId) {
             console.warn('No order ID found in card, skipping reorder button');
             return;
         }
-
+ 
         // Add data-mobile attribute for filtering (THIS FIXES MOBILE SEARCH)
         if (mobile && !card.getAttribute('data-mobile')) {
             card.setAttribute('data-mobile', mobile);
         }
-
+ 
         // Add order-card class if not present
         if (!card.classList.contains('order-card')) {
             card.classList.add('order-card');
         }
-
+ 
         // Create and append reorder button (TESTED AND WORKING)
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -7991,14 +7998,14 @@ function injectReorderButtons() {
             const orderMobile = mobileMatch ? mobileMatch[1] : '';
             const nameEl = card.querySelector('[class*="font-bold"]');
             const customerName = nameEl ? nameEl.textContent.trim() : '';
-
+ 
             if (!orderMobile || !customerName) {
                 return alert('Could not extract order details!');
             }
-
+ 
             const form = document.getElementById('orderForm');
             if (!form) return alert('Form not found!');
-
+ 
             // Fill form
             form.customerName.value = customerName;
             form.mobile.value = orderMobile;
@@ -8009,19 +8016,19 @@ function injectReorderButtons() {
             form.tahTaluka.value = '';
             form.distt.value = '';
             form.state.value = '';
-
+ 
             // Clear items
             const items = document.getElementById('itemsContainer');
             if (items) items.innerHTML = '';
-
+ 
             // Switch to New Order tab
             if (typeof switchEmpTab === 'function') switchEmpTab('order');
-
+ 
             // Success alert
             alert('✅ Reorder Started!\n\nName: ' + customerName + '\nMobile: ' + orderMobile + '\n\nPlease add items and submit.');
         };
-
-
+ 
+ 
         card.appendChild(btn);
     });
 } */ // End of disabled function

@@ -63,6 +63,11 @@
             <span>❌</span> Cancelled
             <span id="cancelledCount" class="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
         </button>
+        <button onclick="switchAdminTab('rto')" id="adminTabRTO"
+            class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
+            <span>↩️</span> RTO
+            <span id="rtoCount" class="bg-indigo-500 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
+        </button>
         <button onclick="switchAdminTab('employees')" id="adminTabEmployees"
             class="px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 bg-white text-gray-600 hover:bg-gray-50 flex-shrink-0">
             <span>👥</span> Employees
@@ -349,17 +354,27 @@
     </div>
 
     <!-- CANCELLED TAB -->
-    <div id="adminCancelledTab" class="hidden animate-fadeIn space-y-8">
+    <div id="adminCancelledTab" class="hidden animate-fadeIn">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-black text-gray-800 flex items-center gap-3">
-                <span class="text-3xl">❌</span> Cancelled Orders
-            </h2>
-            <button onclick="loadAdminCancelled()"
-                class="px-5 py-3 rounded-xl text-sm font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-colors shadow-sm">
+            <h2 class="text-xl font-bold text-gray-800">Cancelled Orders</h2>
+            <button type="button" onclick="loadCancelledOrders()"
+                class="text-red-600 hover:bg-red-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors">
                 🔄 Refresh
             </button>
         </div>
-        <div id="adminCancelledList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <div id="cancelledOrdersList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+    </div>
+
+    <!-- RTO TAB -->
+    <div id="adminRTOTab" class="hidden animate-fadeIn">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800">RTO Orders</h2>
+            <button type="button" onclick="loadRTOOrders()"
+                class="text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors">
+                🔄 Refresh
+            </button>
+        </div>
+        <div id="rtoOrdersList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
     </div>
 
     <!-- OTHER TABS -->

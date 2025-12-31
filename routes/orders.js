@@ -216,6 +216,18 @@ router.get('/cancelled', async (req, res) => {
     }
 });
 
+// Get RTO Orders
+router.get('/rto', async (req, res) => {
+    try {
+        let orders = await dataAccess.getAllOrders();
+        addReorderFlags(orders);
+        const rto = orders.filter(o => o.status === 'RTO');
+        res.json({ success: true, orders: rto });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // Get On Hold Orders
 router.get('/onhold', async (req, res) => {
     try {
@@ -266,6 +278,34 @@ router.post('/deliver', async (req, res) => {
     } catch (error) {
         console.error('❌ Deliver order error:', error.message);
         res.status(500).json({ success: false, message: 'Failed to mark order as delivered' });
+    }
+});
+
+// Mark Order as RTO
+router.post('/rto', async (req, res) => {
+    try {
+        const { orderId, rtoReason, rtoBy } = req.body;
+        console.log(`\n📦 [RTO REQUEST] Order: ${orderId}`);
+
+        const updates = {
+            status: 'RTO',
+            rtoAt: new Date().toISOString(),
+            rtoBy: rtoBy || 'Delivery Dept',
+            rtoReason: rtoReason || 'Reason not specified',
+            updatedAt: new Date().toISOString()
+        };
+
+        const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+
+        if (updatedOrder) {
+            console.log(`✅ Success: Order ${orderId} is now marked as RTO.`);
+            res.json({ success: true, message: 'Order marked as RTO successfully', order: updatedOrder });
+        } else {
+            res.status(404).json({ success: false, message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error('❌ RTO order error:', error.message);
+        res.status(500).json({ success: false, message: 'Failed to mark order as RTO' });
     }
 });
 
