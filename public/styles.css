@@ -431,3 +431,219 @@ button:active {
         z-index: -1;
     }
 }
+
+/* ============================================ */
+/* SPEED POST LABEL PRINT STYLES */
+/* Exact match to India Post Speed Post COD */
+/* ============================================ */
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+
+    #labelPrintArea,
+    #labelPrintArea * {
+        visibility: visible !important;
+    }
+
+    #labelPrintArea {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        background: white !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+}
+
+/* Main Label Container - 6x4 inch */
+.speed-post-label {
+    width: 576px;
+    font-family: Arial, Helvetica, sans-serif;
+    border: 1px solid #000;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Yellow Header */
+.speed-post-label .header {
+    background: linear-gradient(180deg, #FFFDE7 0%, #FFF59D 100%);
+    color: #C62828;
+    font-size: 26px;
+    font-weight: bold;
+    font-style: italic;
+    text-align: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #000;
+}
+
+/* Biller/Customer ID Section - Gray */
+.speed-post-label .biller-info {
+    background: #F5F5F5;
+    padding: 8px 15px;
+    border-bottom: 1px solid #ccc;
+    font-size: 12px;
+    color: #333;
+}
+
+.speed-post-label .biller-info div {
+    margin: 2px 0;
+}
+
+.speed-post-label .biller-info strong {
+    color: #000;
+}
+
+/* Deliver To Section with Barcode */
+.speed-post-label .deliver-section {
+    display: flex;
+    padding: 12px 15px;
+    background: white;
+    border-bottom: 1px solid #ccc;
+    min-height: 100px;
+}
+
+.speed-post-label .address-block {
+    flex: 1;
+    padding-right: 15px;
+    border-right: 1px solid #ccc;
+    margin-right: 15px;
+}
+
+.speed-post-label .address-block .label-title {
+    font-size: 11px;
+    color: #333;
+    font-weight: normal;
+    margin-bottom: 2px;
+}
+
+.speed-post-label .address-block .customer-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: #000;
+    margin: 4px 0 8px 0;
+    line-height: 1.2;
+}
+
+.speed-post-label .address-block .address-text {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.speed-post-label .address-block .mobile-no {
+    font-size: 13px;
+    font-weight: bold;
+    color: #000;
+}
+
+/* Barcode Block - Right Side */
+.speed-post-label .barcode-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 150px;
+    padding: 5px;
+}
+
+.speed-post-label .barcode-block svg {
+    max-width: 140px;
+}
+
+.speed-post-label .tracking-number {
+    font-size: 12px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    margin-top: 5px;
+    color: #000;
+}
+
+/* COD Section */
+.speed-post-label .cod-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: white;
+    border-bottom: 1px solid #ccc;
+}
+
+.speed-post-label .cod-amount {
+    color: #C62828;
+}
+
+.speed-post-label .cod-amount .cod-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
+.speed-post-label .cod-amount .cod-value {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.speed-post-label .cod-amount .cod-value span {
+    font-size: 24px;
+}
+
+/* URGENT DELIVERY Badge */
+.speed-post-label .urgent-badge {
+    background: #FFF8E1;
+    color: #C62828;
+    border: 2px solid #C62828;
+    padding: 10px 18px;
+    font-weight: bold;
+    font-size: 14px;
+    text-align: center;
+    line-height: 1.3;
+}
+
+/* Weight Section - Gray */
+.speed-post-label .weight-section {
+    background: #F5F5F5;
+    padding: 8px 15px;
+    border-bottom: 1px solid #ccc;
+    font-size: 12px;
+    color: #333;
+}
+
+.speed-post-label .weight-section div {
+    margin: 2px 0;
+}
+
+.speed-post-label .weight-section strong {
+    color: #000;
+    font-weight: bold;
+}
+
+/* Sender Section - Gray */
+.speed-post-label .sender-section {
+    background: #F5F5F5;
+    padding: 10px 15px;
+    font-size: 12px;
+    color: #333;
+}
+
+.speed-post-label .sender-section .sender-title {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+.speed-post-label .sender-section .sender-name {
+    font-size: 13px;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 2px;
+}
+
+.speed-post-label .sender-section .sender-address {
+    color: #333;
+    line-height: 1.4;
+}

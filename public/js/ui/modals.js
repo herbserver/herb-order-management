@@ -334,7 +334,16 @@ function openDispatchModal(orderId, order = null) {
                 </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-3 mt-6">
+            <!-- Print Label Button for Post Office -->
+            <div class="mt-4 pt-4 border-t border-dashed border-gray-200">
+                <button onclick="document.getElementById('manualDispatchModalDynamic').remove(); openLabelPrintModal('${orderId}')" 
+                    class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg flex items-center justify-center gap-2">
+                    <span>🏷️</span> Print Speed Post Label
+                </button>
+                <p class="text-xs text-gray-400 text-center mt-2">For India Post / Speed Post COD</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 mt-4">
                 <button onclick="document.getElementById('manualDispatchModalDynamic').remove()" 
                     class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-all">
                     Cancel
@@ -447,6 +456,250 @@ function openEditDeptModal(deptId, deptName) {
     openModal('editDeptModal');
 }
 
+/**
+ * ============================================
+ * SPEED POST COD LABEL PRINTING
+ * ============================================
+ * For Post Office manual dispatch labels
+ */
+
+/**
+ * Open Label Print Modal for Speed Post COD
+ * @param {string} orderId - Order ID
+ * @param {Object} orderData - Optional order object (if already available)
+ */
+async function openLabelPrintModal(orderId, orderData = null) {
+    console.log('🏷️ Opening Label Print Modal for:', orderId);
+
+    let order = orderData;
+
+    // Fetch order if not provided
+    if (!order) {
+        try {
+            const res = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}`);
+            const data = await res.json();
+            order = data.order || data.data;
+        } catch (e) {
+            console.error('Failed to fetch order:', e);
+            alert('❌ Order data load nahi hua!');
+            return;
+        }
+    }
+
+    if (!order) {
+        alert('❌ Order not found!');
+        return;
+    }
+
+    // Create full address
+    const fullAddress = [
+        order.hNo,
+        order.blockGaliNo,
+        order.villColony,
+        order.po ? `P.O. ${order.po}` : '',
+        order.tahTaluka ? `Tah. ${order.tahTaluka}` : '',
+        `Dist. ${order.distt || ''}`,
+        order.state
+    ].filter(Boolean).join(', ');
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('labelPrintModal');
+    if (existingModal) existingModal.remove();
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'labelPrintModal';
+    modal.className = 'fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4 overflow-y-auto';
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-amber-500 to-orange-500 p-5 rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
+                <div>
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        🏷️ Speed Post COD Label
+                    </h3>
+                    <p class="text-white/80 text-sm">Order: ${orderId}</p>
+                </div>
+                <button onclick="document.getElementById('labelPrintModal').remove()" 
+                    class="text-white/80 hover:text-white text-2xl font-bold w-10 h-10 rounded-full hover:bg-white/20 transition-all">×</button>
+            </div>
+            
+            <!-- Input Form -->
+            <div class="p-5 bg-gray-50 border-b no-print">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1 uppercase">Tracking Number *</label>
+                        <input type="text" id="labelTrackingNo" placeholder="e.g., EZ144016497IN" 
+                            class="w-full border-2 border-gray-300 rounded-xl px-4 py-2.5 font-mono font-bold text-lg focus:border-amber-500 outline-none uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1 uppercase">Non-BNPL Code</label>
+                        <input type="text" id="labelBnplCode" value="928-461" placeholder="e.g., 928-461"
+                            class="w-full border-2 border-gray-300 rounded-xl px-4 py-2.5 font-mono focus:border-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1 uppercase">Customer/Biller ID</label>
+                        <input type="text" id="labelBillerId" value="${order.orderId || orderId}" 
+                            class="w-full border-2 border-gray-300 rounded-xl px-4 py-2.5 font-mono focus:border-amber-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1 uppercase">Weight (Approx)</label>
+                        <input type="text" id="labelWeight" value="150g" placeholder="e.g., 150g"
+                            class="w-full border-2 border-gray-300 rounded-xl px-4 py-2.5 focus:border-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1 uppercase">Dimensions (cm)</label>
+                        <input type="text" id="labelDimensions" value="16×16×5" placeholder="e.g., 16×16×5"
+                            class="w-full border-2 border-gray-300 rounded-xl px-4 py-2.5 focus:border-amber-500 outline-none">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-5">
+                    <button onclick="generateSpeedPostLabel()" 
+                        class="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl font-bold hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg flex items-center justify-center gap-2">
+                        📋 Generate Label
+                    </button>
+                    <button onclick="printSpeedPostLabel()" 
+                        class="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg flex items-center justify-center gap-2">
+                        🖨️ Print Label
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Label Preview Area -->
+            <div class="p-5">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 no-print">Label Preview</p>
+                <div id="labelPrintArea" class="flex justify-center">
+                    <div id="speedPostLabelContent" class="speed-post-label">
+                        <!-- Header -->
+                        <div class="header">Speed Post (Cash On Delivery)</div>
+                        
+                        <!-- Biller Info -->
+                        <div class="biller-info">
+                            <div><strong>Customer/Biller ID</strong> – <span id="lbl_billerId">${order.orderId || orderId}</span></div>
+                            <div><strong>Non-BNPL Code</strong> – <span id="lbl_bnplCode">928-461</span></div>
+                        </div>
+                        
+                        <!-- Delivery Section -->
+                        <div class="deliver-section">
+                            <div class="address-block">
+                                <div class="label-title">DELIVER To:</div>
+                                <div class="customer-name">${order.customerName || 'Customer Name'}</div>
+                                <div class="address-text">
+                                    ${fullAddress}<br>
+                                    <strong style="font-size: 15px; color: #000;">${order.pin || ''}</strong>
+                                </div>
+                                <div class="mobile-no"><strong>MOBILE NO</strong> – ${order.telNo || 'N/A'}</div>
+                            </div>
+                            <div class="barcode-block">
+                                <svg id="labelBarcode"></svg>
+                                <div id="lbl_trackingNo" class="tracking-number">Enter Tracking No.</div>
+                            </div>
+                        </div>
+                        
+                        <!-- COD Section -->
+                        <div class="cod-section">
+                            <div class="cod-amount">
+                                <div class="cod-title">CASH ON DELIVERY</div>
+                                <div class="cod-value">COLLECT COD – <span>Rs.${order.codAmount || order.total || 0}/-</span></div>
+                            </div>
+                            <div class="urgent-badge">URGENT<br>DELIVERY</div>
+                        </div>
+                        
+                        <!-- Weight Section -->
+                        <div class="weight-section">
+                            <div><strong>WEIGHT :</strong> <span id="lbl_weight">150 g</span> (Approx)</div>
+                            <div><strong>DIMENSIONS :</strong> <span id="lbl_dimensions">16×16×5</span> (cm) (Approx)</div>
+                        </div>
+                        
+                        <!-- Sender Section -->
+                        <div class="sender-section">
+                            <div class="sender-title">From (Sender):</div>
+                            <div class="sender-name">Herb On Naturals</div>
+                            <div class="sender-address">
+                                <strong>Add :-</strong> 24/47 AB, Old Market Rd, Tilak Nagar, Delhi-110018<br>
+                                <strong>Mobile No.:</strong> 8527668466
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Focus on tracking input
+    setTimeout(() => {
+        document.getElementById('labelTrackingNo')?.focus();
+    }, 100);
+
+    // Store order data for later use
+    window._currentLabelOrder = order;
+}
+
+/**
+ * Generate the Speed Post Label with inputs
+ */
+function generateSpeedPostLabel() {
+    const trackingNo = document.getElementById('labelTrackingNo')?.value.trim().toUpperCase();
+    const bnplCode = document.getElementById('labelBnplCode')?.value.trim();
+    const billerId = document.getElementById('labelBillerId')?.value.trim();
+    const weight = document.getElementById('labelWeight')?.value.trim();
+    const dimensions = document.getElementById('labelDimensions')?.value.trim();
+
+    if (!trackingNo) {
+        alert('❌ Tracking Number daalna zaroori hai!');
+        document.getElementById('labelTrackingNo')?.focus();
+        return;
+    }
+
+    // Update label content
+    document.getElementById('lbl_billerId').textContent = billerId;
+    document.getElementById('lbl_bnplCode').textContent = bnplCode;
+    document.getElementById('lbl_trackingNo').textContent = trackingNo;
+    document.getElementById('lbl_weight').textContent = weight;
+    document.getElementById('lbl_dimensions').textContent = dimensions;
+
+    // Generate barcode
+    try {
+        JsBarcode('#labelBarcode', trackingNo, {
+            format: 'CODE128',
+            width: 1.5,
+            height: 45,
+            displayValue: false,
+            margin: 5
+        });
+        console.log('✅ Barcode generated for:', trackingNo);
+    } catch (e) {
+        console.error('Barcode generation failed:', e);
+        alert('❌ Barcode generate nahi hua. Check tracking number format.');
+    }
+}
+
+/**
+ * Print the Speed Post Label
+ */
+function printSpeedPostLabel() {
+    const trackingNo = document.getElementById('labelTrackingNo')?.value.trim();
+
+    if (!trackingNo) {
+        alert('❌ Pehle Generate Label karo!');
+        return;
+    }
+
+    // Trigger print
+    window.print();
+}
+
+// Export to window
+window.openLabelPrintModal = openLabelPrintModal;
+window.generateSpeedPostLabel = generateSpeedPostLabel;
+window.printSpeedPostLabel = printSpeedPostLabel;
+
+
 // Global keyboard shortcut for ESC to close modals
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
@@ -459,7 +712,8 @@ document.addEventListener('keydown', function (event) {
             'editEmployeeModal',
             'editDeptModal',
             'registerDeptModal',
-            'dynamicEditModal'
+            'dynamicEditModal',
+            'labelPrintModal'
         ];
 
         modals.forEach(id => {
@@ -468,5 +722,9 @@ document.addEventListener('keydown', function (event) {
                 closeModal(id);
             }
         });
+
+        // Also remove dynamic label modal
+        const labelModal = document.getElementById('labelPrintModal');
+        if (labelModal) labelModal.remove();
     }
 });
