@@ -336,7 +336,7 @@ function openDispatchModal(orderId, order = null) {
             
             <!-- Print Label Button for Post Office -->
             <div class="mt-4 pt-4 border-t border-dashed border-gray-200">
-                <button onclick="document.getElementById('manualDispatchModalDynamic').remove(); openLabelPrintModal('${orderId}')" 
+                <button onclick="openLabelFromDispatch('${orderId}')" 
                     class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg flex items-center justify-center gap-2">
                     <span>🏷️</span> Print Speed Post Label
                 </button>
@@ -464,11 +464,28 @@ function openEditDeptModal(deptId, deptName) {
  */
 
 /**
+ * Helper: Open Label Modal from Dispatch Modal (captures AWB)
+ */
+function openLabelFromDispatch(orderId) {
+    const courier = document.getElementById('modalCourierSelect')?.value || 'India Post';
+    const awb = document.getElementById('modalAWBInput')?.value.trim() || '';
+
+    // Close dispatch modal
+    document.getElementById('manualDispatchModalDynamic')?.remove();
+
+    // Open label modal with AWB pre-filled
+    openLabelPrintModal(orderId, null, awb, courier);
+}
+window.openLabelFromDispatch = openLabelFromDispatch;
+
+/**
  * Open Label Print Modal for Speed Post COD
  * @param {string} orderId - Order ID
  * @param {Object} orderData - Optional order object (if already available)
+ * @param {string} trackingNo - Optional tracking number to pre-fill
+ * @param {string} courier - Optional courier name
  */
-async function openLabelPrintModal(orderId, orderData = null) {
+async function openLabelPrintModal(orderId, orderData = null, trackingNo = '', courier = 'India Post') {
     console.log('🏷️ Opening Label Print Modal for:', orderId);
 
     let order = orderData;
@@ -530,7 +547,7 @@ async function openLabelPrintModal(orderId, orderData = null) {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-600 mb-1 uppercase">Tracking Number *</label>
-                        <input type="text" id="labelTrackingNo" placeholder="e.g., EZ144016497IN" 
+                        <input type="text" id="labelTrackingNo" value="${trackingNo}" placeholder="e.g., EZ144016497IN" 
                             class="w-full border-2 border-gray-300 rounded-xl px-4 py-2.5 font-mono font-bold text-lg focus:border-amber-500 outline-none uppercase">
                     </div>
                     <div>
@@ -540,14 +557,14 @@ async function openLabelPrintModal(orderId, orderData = null) {
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-600 mb-1 uppercase">Customer/Biller ID</label>
-                        <input type="text" id="labelBillerId" value="${order.orderId || orderId}" 
+                        <input type="text" id="labelBillerId" value="1000059221" 
                             class="w-full border-2 border-gray-300 rounded-xl px-4 py-2.5 font-mono focus:border-amber-500 outline-none">
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-600 mb-1 uppercase">Weight (Approx)</label>
-                        <input type="text" id="labelWeight" value="150g" placeholder="e.g., 150g"
+                        <input type="text" id="labelWeight" value="450g" placeholder="e.g., 450g"
                             class="w-full border-2 border-gray-300 rounded-xl px-4 py-2.5 focus:border-amber-500 outline-none">
                     </div>
                     <div>
@@ -566,6 +583,14 @@ async function openLabelPrintModal(orderId, orderData = null) {
                         🖨️ Print Label
                     </button>
                 </div>
+                <!-- Dispatch Button -->
+                <div class="mt-4 pt-4 border-t border-dashed border-gray-200">
+                    <button onclick="dispatchFromLabelModal('${orderId}', '${courier}')" 
+                        class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-xl font-bold hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg flex items-center justify-center gap-2">
+                        ✅ Dispatch Order
+                    </button>
+                    <p class="text-xs text-gray-400 text-center mt-2">Print ke baad order dispatch ho jayega</p>
+                </div>
             </div>
             
             <!-- Label Preview Area -->
@@ -578,7 +603,7 @@ async function openLabelPrintModal(orderId, orderData = null) {
                         
                         <!-- Biller Info -->
                         <div class="biller-info">
-                            <div><strong>Customer/Biller ID</strong> – <span id="lbl_billerId">${order.orderId || orderId}</span></div>
+                            <div><strong>Customer/Biller ID</strong> – <span id="lbl_billerId">1000059221</span></div>
                             <div><strong>Non-BNPL Code</strong> – <span id="lbl_bnplCode">928-461</span></div>
                         </div>
                         
@@ -610,7 +635,7 @@ async function openLabelPrintModal(orderId, orderData = null) {
                         
                         <!-- Weight Section -->
                         <div class="weight-section">
-                            <div><strong>WEIGHT :</strong> <span id="lbl_weight">150 g</span> (Approx)</div>
+                            <div><strong>WEIGHT :</strong> <span id="lbl_weight">450 g</span> (Approx)</div>
                             <div><strong>DIMENSIONS :</strong> <span id="lbl_dimensions">16×16×5</span> (cm) (Approx)</div>
                         </div>
                         
@@ -631,13 +656,20 @@ async function openLabelPrintModal(orderId, orderData = null) {
 
     document.body.appendChild(modal);
 
-    // Focus on tracking input
-    setTimeout(() => {
-        document.getElementById('labelTrackingNo')?.focus();
-    }, 100);
-
     // Store order data for later use
     window._currentLabelOrder = order;
+
+    // If tracking number is pre-filled, auto-generate label
+    if (trackingNo) {
+        setTimeout(() => {
+            generateSpeedPostLabel();
+        }, 200);
+    } else {
+        // Focus on tracking input if empty
+        setTimeout(() => {
+            document.getElementById('labelTrackingNo')?.focus();
+        }, 100);
+    }
 }
 
 /**
@@ -694,10 +726,73 @@ function printSpeedPostLabel() {
     window.print();
 }
 
+/**
+ * Dispatch order directly from Label Print Modal
+ * Uses the tracking number entered in the label modal
+ */
+async function dispatchFromLabelModal(orderId, courier) {
+    const trackingNo = document.getElementById('labelTrackingNo')?.value.trim().toUpperCase();
+
+    if (!trackingNo) {
+        alert('❌ Pehle Tracking Number daalo!');
+        document.getElementById('labelTrackingNo')?.focus();
+        return;
+    }
+
+    try {
+        console.log('🚀 Dispatching from Label Modal:', orderId, courier, trackingNo);
+
+        const res = await fetch(`${API_URL}/orders/${orderId}/dispatch`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                courier: courier || 'India Post',
+                trackingId: trackingNo,
+                dispatchedBy: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : 'dispatch_dept'
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            // Close label modal
+            document.getElementById('labelPrintModal')?.remove();
+
+            // Show success
+            if (typeof showSuccessPopup === 'function') {
+                showSuccessPopup(
+                    'Order Dispatched! 🚀',
+                    `Order ${orderId} dispatched!\n\nCourier: ${courier}\nTracking: ${trackingNo}`,
+                    '🚀',
+                    '#9333ea'
+                );
+            } else {
+                alert(`✅ Order ${orderId} Dispatched!\n\nCourier: ${courier}\nTracking: ${trackingNo}`);
+            }
+
+            // Reload orders
+            if (typeof loadDeptOrders === 'function') {
+                setTimeout(() => loadDeptOrders(), 1000);
+            }
+            if (typeof loadDispatchHistory === 'function') {
+                setTimeout(() => loadDispatchHistory(), 1000);
+            }
+        } else {
+            alert('❌ Dispatch failed: ' + (data.message || 'Unknown error'));
+        }
+    } catch (e) {
+        console.error('Dispatch error:', e);
+        alert('❌ Dispatch failed: ' + e.message);
+    }
+}
+
 // Export to window
 window.openLabelPrintModal = openLabelPrintModal;
 window.generateSpeedPostLabel = generateSpeedPostLabel;
 window.printSpeedPostLabel = printSpeedPostLabel;
+window.dispatchFromLabelModal = dispatchFromLabelModal;
 
 
 // Global keyboard shortcut for ESC to close modals
