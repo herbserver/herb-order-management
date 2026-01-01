@@ -61,17 +61,24 @@ router.post('/create-order', async (req, res) => {
         console.log(`   COD Amount: ₹${finalAmount}`);
 
         // Single item: "Medicine" with full COD amount as selling price
+        // units=1 ensures Shiprocket calculation: 1 × COD = correct total
         const orderItems = [{
             name: "Medicine",
             sku: "MEDICINE",
-            units: totalQuantity,
-            selling_price: finalAmount,  // Direct COD amount, no calculation
-            discount: 0,                 // No discount
+            units: 1,  // Fixed to 1 so selling_price = total COD
+            selling_price: finalAmount,  // Full COD amount
+            discount: 0,
             tax: 0,
             hsn: 0
         }];
 
         console.log(`   ✅ Shiprocket COD Total: ₹${finalAmount}`);
+
+        // Build address with landmark if available
+        let fullAddress = order.address || '';
+        if (order.landMark || order.landmark) {
+            fullAddress += `, Landmark: ${order.landMark || order.landmark}`;
+        }
 
         const payload = {
             order_id: order.orderId,
@@ -79,16 +86,18 @@ router.post('/create-order', async (req, res) => {
             pickup_location: "warehouse",
             billing_customer_name: order.customerName.split(' ')[0],
             billing_last_name: order.customerName.split(' ').slice(1).join(' ') || '.',
-            billing_address: order.address,
+            billing_address: fullAddress,
+            billing_address_2: order.landMark || order.landmark || '',  // Landmark
             billing_city: order.distt || order.district || 'Delhi',
             billing_pincode: order.pin || order.pincode,
             billing_state: order.state || 'Delhi',
             billing_country: "India",
             billing_phone: order.telNo,
+            billing_alternate_phone: order.altNo || '',  // Alternate number
             shipping_is_billing: true,
-            order_items: orderItems,  // Items with adjusted prices
+            order_items: orderItems,
             payment_method: "COD",
-            sub_total: finalAmount,   // Final COD amount
+            sub_total: finalAmount,
             length: dimensions.length,
             breadth: dimensions.breadth,
             height: dimensions.height,

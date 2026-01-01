@@ -94,7 +94,11 @@
                                 <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🔒</span>
                             </div>
                             <input type="password" id="empLoginPass" placeholder="Password"
-                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                                class="w-full pl-11 pr-12 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                            <button type="button" onclick="togglePassword('empLoginPass', this)"
+                                class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                <span class="text-lg">👁️</span>
+                            </button>
                         </div>
 
                         <button type="button" onclick="employeeLogin()"
@@ -143,7 +147,11 @@
                                 <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🔒</span>
                             </div>
                             <input type="password" id="deptLoginPass" placeholder="Department Password"
-                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                                class="w-full pl-11 pr-12 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                            <button type="button" onclick="togglePassword('deptLoginPass', this)"
+                                class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                <span class="text-lg">👁️</span>
+                            </button>
                         </div>
 
                         <button type="button" onclick="departmentLogin()"
@@ -165,7 +173,11 @@
                                 <span class="text-gray-400 group-focus-within:text-gray-800 transition-colors">🔑</span>
                             </div>
                             <input type="password" id="adminLoginPass" placeholder="Admin Access Key"
-                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-600 focus:border-gray-600 outline-none transition-all placeholder-gray-400 font-medium">
+                                class="w-full pl-11 pr-12 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-600 focus:border-gray-600 outline-none transition-all placeholder-gray-400 font-medium">
+                            <button type="button" onclick="togglePassword('adminLoginPass', this)"
+                                class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                <span class="text-lg">👁️</span>
+                            </button>
                         </div>
 
                         <button type="button" onclick="adminLogin()"

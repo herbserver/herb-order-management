@@ -217,22 +217,22 @@ async function viewOrder(orderId) {
                             </div>
                             
                             <!-- Detailed Totals Summary -->
-                            <div class="bg-gray-900 mx-4 mb-4 mt-2 p-8 rounded-[30px] shadow-2xl relative overflow-hidden">
-                                <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 pointer-events-none"></div>
+                            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 mx-4 mb-4 mt-2 p-8 rounded-[30px] shadow-lg border border-emerald-100 relative overflow-hidden">
+                                <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-100/50 rounded-full -mr-32 -mt-32 pointer-events-none"></div>
                                 <div class="flex flex-col gap-4 ml-auto w-full md:w-1/2 relative z-10">
-                                    <div class="flex justify-between text-white/50 text-xs font-black uppercase tracking-widest">
+                                    <div class="flex justify-between text-gray-500 text-xs font-black uppercase tracking-widest">
                                         <span>Order Total (MRP)</span>
-                                        <span class="text-white font-bold">₹${order.total || 0}</span>
+                                        <span class="text-gray-800 font-bold">₹${order.total || 0}</span>
                                     </div>
-                                    <div class="flex justify-between text-white/50 text-xs font-black uppercase tracking-widest">
+                                    <div class="flex justify-between text-gray-500 text-xs font-black uppercase tracking-widest">
                                         <span>Advance Payment</span>
-                                        <span class="text-emerald-400 font-bold">- ₹${order.advance || 0}</span>
+                                        <span class="text-emerald-600 font-bold">- ₹${order.advance || 0}</span>
                                     </div>
-                                    <div class="h-px bg-white/10 my-1"></div>
+                                    <div class="h-px bg-gray-300 my-1"></div>
                                     <div class="flex justify-between items-end">
                                         <div class="flex flex-col">
                                             <span class="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mb-1">Total Balance Due</span>
-                                            <span class="text-3xl font-black text-white tracking-tighter">COD Payable</span>
+                                            <span class="text-3xl font-black text-gray-800 tracking-tighter">COD Payable</span>
                                         </div>
                                         <span class="text-4xl font-black text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">₹${order.codAmount || 0}</span>
                                     </div>
@@ -241,24 +241,24 @@ async function viewOrder(orderId) {
                         </div>
 
                         <!-- Professional Footer Meta -->
-                        <div class="bg-gray-800 p-8 rounded-[40px] border border-gray-700 shadow-xl flex flex-col md:flex-row gap-6 items-center justify-between text-white">
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-[40px] border border-blue-100 shadow-lg flex flex-col md:flex-row gap-6 items-center justify-between">
                             <div class="flex items-center gap-4">
-                               <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-xl backdrop-blur-sm">👨‍💻</div>
+                               <div class="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-xl">👨‍💻</div>
                                <div class="flex flex-col">
-                                   <span class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Created By</span>
-                                   <span class="font-black text-lg text-emerald-400 capitalize">${order.employee || 'Admin'} <span class="text-gray-500 font-mono text-sm">(${order.employeeId || 'N/A'})</span></span>
+                                   <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Created By</span>
+                                   <span class="font-black text-lg text-blue-600 capitalize">${order.employee || 'Admin'} <span class="text-gray-500 font-mono text-sm">(${order.employeeId || 'N/A'})</span></span>
                                </div>
                             </div>
                             <div class="flex gap-4">
                                 ${order.verifiedBy ? `
-                                <div class="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 flex flex-col">
-                                    <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Verified</span>
-                                    <span class="text-sm font-black text-blue-400">${order.verifiedBy}</span>
+                                <div class="bg-white px-6 py-3 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
+                                    <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Verified</span>
+                                    <span class="text-sm font-black text-emerald-600">${order.verifiedBy}</span>
                                 </div>` : ''}
                                 ${order.dispatchedBy ? `
-                                <div class="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 flex flex-col">
-                                    <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Dispatched</span>
-                                    <span class="text-sm font-black text-purple-400">${order.dispatchedBy}</span>
+                                <div class="bg-white px-6 py-3 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
+                                    <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Dispatched</span>
+                                    <span class="text-sm font-black text-purple-600">${order.dispatchedBy}</span>
                                 </div>` : ''}
                             </div>
                         </div>
@@ -402,7 +402,7 @@ window.submitModalManualDispatch = async (orderId) => {
         document.getElementById('loadingDispatch')?.remove();
 
         if (data.success) {
-            showSuccessPopup('Dispatched!', `Manual dispatch successful\\nCourier: ${courier}\\nAWB: ${awb}`, '✅', '#10b981');
+            showSuccessPopup('Dispatched!', `Courier: ${courier} | AWB: ${awb}`, '🚚', '#10b981');
             // Reload orders
             if (typeof loadDeptOrders === 'function') loadDeptOrders();
             if (typeof loadDispatchedOrders === 'function') loadDispatchedOrders();

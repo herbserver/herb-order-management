@@ -21,46 +21,130 @@ function showSuccessPopup(title, msg, icon = '✅', color = '#10b981', whatsappD
     const existing = document.getElementById('successPopup');
     if (existing) existing.remove();
 
-    const popup = document.createElement('div');
-    popup.id = 'successPopup';
-    popup.style.cssText = `
-        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        background: white; border-radius: 20px; padding: 30px;
-        box-shadow: 0 25px 50px rgba(0,0,0,0.3); z-index: 99999;
-        text-align: center; min-width: 300px; animation: popIn 0.3s ease;
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'successPopup';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 99999; padding: 20px;
+        animation: fadeIn 0.2s ease-out;
     `;
+
+    // Determine gradient based on color
+    let gradient = 'linear-gradient(135deg, #10b981, #059669)';
+    if (color.includes('f59e0b') || color.includes('orange') || icon === '⚠️') {
+        gradient = 'linear-gradient(135deg, #f59e0b, #d97706)';
+    } else if (color.includes('ef4444') || color.includes('red') || icon === '❌') {
+        gradient = 'linear-gradient(135deg, #ef4444, #dc2626)';
+    } else if (color.includes('3b82f6') || color.includes('blue') || icon === '👋') {
+        gradient = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+    } else if (color.includes('9333ea') || color.includes('purple') || icon === '🚀') {
+        gradient = 'linear-gradient(135deg, #9333ea, #7c3aed)';
+    }
 
     let whatsappBtn = '';
     if (whatsappData) {
         whatsappBtn = `
             <button onclick="sendWhatsAppDirect('${whatsappData.type}', ${JSON.stringify(whatsappData.order).replace(/"/g, '&quot;')})"
-                style="background: #25D366; color: white; border: none; padding: 12px 24px; 
-                border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px;">
-                📱 Send WhatsApp
+                style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; border: none; 
+                padding: 14px 28px; border-radius: 14px; font-weight: 600; cursor: pointer; 
+                font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;
+                box-shadow: 0 4px 15px rgba(37,211,102,0.3); transition: all 0.2s ease;">
+                <span style="font-size: 18px;">📱</span> Send WhatsApp
             </button>
         `;
     }
 
-    popup.innerHTML = `
-        <div style="font-size: 60px; margin-bottom: 15px;">${icon}</div>
-        <h3 style="color: ${color}; margin-bottom: 10px; font-size: 20px;">${title}</h3>
-        <p style="color: #666; margin-bottom: 15px;">${msg}</p>
-        ${whatsappBtn}
-        <button onclick="this.parentElement.remove()" 
-            style="background: #f3f4f6; border: none; padding: 10px 20px; 
-            border-radius: 8px; cursor: pointer; margin-top: 10px;">
-            Close
-        </button>
+    overlay.innerHTML = `
+        <div style="
+            background: white; border-radius: 24px; 
+            max-width: 400px; width: 100%;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+        ">
+            <!-- Header with gradient -->
+            <div style="
+                background: ${gradient}; 
+                padding: 32px 24px;
+                text-align: center;
+            ">
+                <div style="
+                    width: 80px; height: 80px; 
+                    background: rgba(255,255,255,0.2); 
+                    border-radius: 50%; 
+                    display: flex; align-items: center; justify-content: center;
+                    margin: 0 auto 16px;
+                    font-size: 42px;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                ">${icon}</div>
+                <h3 style="
+                    color: white; 
+                    font-size: 22px; 
+                    font-weight: 700; 
+                    margin: 0;
+                    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                ">${title}</h3>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 24px; text-align: center;">
+                <p style="
+                    color: #4b5563; 
+                    font-size: 15px; 
+                    line-height: 1.6;
+                    margin: 0 0 20px 0;
+                    white-space: pre-line;
+                ">${msg}</p>
+                
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    ${whatsappBtn}
+                    <button onclick="document.getElementById('successPopup').remove()" 
+                        style="
+                            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+                            border: none; 
+                            padding: 14px 28px; 
+                            border-radius: 14px; 
+                            cursor: pointer; 
+                            font-weight: 600;
+                            font-size: 15px;
+                            color: #374151;
+                            transition: all 0.2s ease;
+                        ">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
     `;
 
-    document.body.appendChild(popup);
+    // Add animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    `;
+    if (!document.getElementById('popupAnimations')) {
+        style.id = 'popupAnimations';
+        document.head.appendChild(style);
+    }
 
-    // Auto close after 5 seconds
+    document.body.appendChild(overlay);
+
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    // Auto close after 6 seconds
     setTimeout(() => {
         if (document.getElementById('successPopup')) {
-            popup.remove();
+            overlay.remove();
         }
-    }, 5000);
+    }, 6000);
 }
 
 /**
@@ -86,30 +170,92 @@ function showErrorPopup(title, msg) {
  * @param {Array} missingFields - List of missing field names
  */
 function showValidationPopup(missingFields) {
+    // Remove existing popup
+    document.getElementById('validationPopup')?.remove();
+
     const popup = document.createElement('div');
-    popup.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
     popup.id = 'validationPopup';
+    popup.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 99999; padding: 20px;
+        animation: fadeIn 0.2s ease-out;
+    `;
 
     popup.innerHTML = `
-        <div class="bg-white rounded-2xl p-6 max-w-md mx-4 shadow-2xl">
-            <div class="text-center mb-4">
-                <div class="text-5xl mb-3">⚠️</div>
-                <h3 class="text-xl font-bold text-red-600">Missing Required Fields</h3>
+        <div style="
+            background: white; border-radius: 24px; 
+            max-width: 420px; width: 100%;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+        ">
+            <!-- Header with gradient -->
+            <div style="
+                background: linear-gradient(135deg, #ef4444, #dc2626); 
+                padding: 28px 24px;
+                text-align: center;
+            ">
+                <div style="
+                    width: 70px; height: 70px; 
+                    background: rgba(255,255,255,0.2); 
+                    border-radius: 50%; 
+                    display: flex; align-items: center; justify-content: center;
+                    margin: 0 auto 14px;
+                    font-size: 36px;
+                    backdrop-filter: blur(10px);
+                ">⚠️</div>
+                <h3 style="
+                    color: white; 
+                    font-size: 20px; 
+                    font-weight: 700; 
+                    margin: 0;
+                ">Required Fields Missing</h3>
             </div>
-            <div class="bg-red-50 rounded-lg p-4 mb-4">
-                <p class="text-sm text-red-700 mb-2">Please fill in the following:</p>
-                <ul class="list-disc list-inside text-red-600">
-                    ${missingFields.map(f => `<li>${f}</li>`).join('')}
-                </ul>
+            
+            <!-- Content -->
+            <div style="padding: 24px;">
+                <p style="color: #6b7280; font-size: 14px; margin: 0 0 16px 0; text-align: center;">
+                    Please fill in the following fields:
+                </p>
+                <div style="
+                    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+                    border-radius: 16px; 
+                    padding: 16px 20px;
+                    margin-bottom: 20px;
+                    border: 1px solid #fecaca;
+                ">
+                    <ul style="margin: 0; padding-left: 20px; color: #dc2626; font-size: 14px; line-height: 2;">
+                        ${missingFields.map(f => `<li style="font-weight: 500;">${f}</li>`).join('')}
+                    </ul>
+                </div>
+                <button onclick="document.getElementById('validationPopup').remove()"
+                    style="
+                        width: 100%;
+                        background: linear-gradient(135deg, #ef4444, #dc2626);
+                        color: white;
+                        border: none;
+                        padding: 15px;
+                        border-radius: 14px;
+                        font-weight: 600;
+                        font-size: 15px;
+                        cursor: pointer;
+                        box-shadow: 0 4px 15px rgba(239,68,68,0.3);
+                        transition: all 0.2s ease;
+                    ">
+                    OK, I'll Fix It
+                </button>
             </div>
-            <button onclick="document.getElementById('validationPopup').remove()"
-                class="w-full bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600">
-                OK, I'll Fix It
-            </button>
         </div>
     `;
 
     document.body.appendChild(popup);
+
+    // Close on overlay click
+    popup.addEventListener('click', (e) => {
+        if (e.target === popup) popup.remove();
+    });
 }
 
 /**

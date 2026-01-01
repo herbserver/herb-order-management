@@ -25,7 +25,7 @@ async function employeeLogin() {
             saveSession();
             showSuccessPopup(
                 'Login Successful! 🎉',
-                `Welcome ${data.employee.name}!\\n\\nAap Employee Panel mein aa gaye hain.`,
+                `Welcome, ${data.employee.name}!`,
                 '👋',
                 '#3b82f6'
             );
@@ -139,7 +139,7 @@ async function resetPassword() {
         if (data.success) {
             showSuccessPopup(
                 'Password Reset! 🔑',
-                'Password successfully reset ho gaya!\\n\\nAb login kar sakte ho.',
+                'Password successfully reset ho gaya!\n\nAb login kar sakte ho.',
                 '🔑',
                 '#10b981'
             );

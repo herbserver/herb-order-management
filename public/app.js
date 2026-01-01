@@ -2,6 +2,20 @@
 // If API_URL is defined in HTML, use it, else default
 var API_URL = typeof API_URL !== 'undefined' ? API_URL : (window.location.origin + '/api');
 
+// Toggle Password Visibility
+function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.querySelector('span').textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.querySelector('span').textContent = '👁️';
+    }
+}
+
 // Emoji constants for WhatsApp compatibility
 const E = {
     leaf: String.fromCodePoint(0x1F33F),

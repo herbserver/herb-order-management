@@ -908,7 +908,7 @@ window.finalDispatch = async (orderId, dim, courierId, modal) => {
         loading.remove();
 
         if (data.success) {
-            showSuccessPopup('Dispatched!', `AWB: ${data.awb}\nCourier: ${data.courier}`, '🚚', '#3b82f6');
+            showSuccessPopup('Dispatched!', `AWB: ${data.awb} | Courier: ${data.courier}`, '🚚', '#10b981');
             loadDeptOrders(); // Refresh list
         } else {
             alert('Shiprocket Error: ' + data.message);
@@ -1014,7 +1014,7 @@ window.submitManualDispatch = async (orderId, modal) => {
         loading.remove();
 
         if (data.success) {
-            showSuccessPopup('Dispatched!', `Manual dispatch successful\\nCourier: ${courier}\\nAWB: ${awb}`, '✅', '#10b981');
+            showSuccessPopup('Dispatched!', `Courier: ${courier} | AWB: ${awb}`, '🚚', '#10b981');
             loadDeptOrders();
             if (typeof loadDispatchedOrders === 'function') loadDispatchedOrders();
         } else {
