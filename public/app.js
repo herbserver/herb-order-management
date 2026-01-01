@@ -1633,8 +1633,33 @@ async function saveOrder() {
     try {
         const btn = document.querySelector('#orderForm button[onclick="saveOrder()"]');
         const originalText = btn.innerHTML;
-        btn.innerHTML = '⏳ Saving...';
+        btn.innerHTML = '⏳ Checking...';
         btn.disabled = true;
+
+        // ========== DUPLICATE CHECK (Only for new orders) ==========
+        if (!currentEditingOrderId) {
+            console.log('🔍 Checking duplicate for:', telNo);
+            const dupRes = await fetch(`${API_URL}/orders/check-duplicate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telNo: telNo, customerName: customerName })
+            });
+            const dupData = await dupRes.json();
+            console.log('🔍 Duplicate check response:', dupData);
+
+            if (dupData.success && dupData.isDuplicate) {
+                console.log('⚠️ DUPLICATE FOUND:', dupData.existingOrder);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+
+                // Show duplicate warning popup
+                showDuplicateOrderWarning(dupData.existingOrder, orderData, btn, originalText);
+                return;
+            }
+        }
+        // =============================================================
+
+        btn.innerHTML = '⏳ Saving...';
 
         const res = await fetch(url, {
             method: method,
@@ -1741,6 +1766,144 @@ async function saveOrder() {
         }
         showMessage('Server se connect nahi ho paya! Check karo server chal raha hai?', 'error', 'empMessage');
     }
+}
+
+// ========== DUPLICATE ORDER WARNING POPUP ==========
+function showDuplicateOrderWarning(existingOrder, newOrderData, btn, originalText) {
+    // Remove existing popup if any
+    document.getElementById('duplicateWarningModal')?.remove();
+
+    const createdDate = new Date(existingOrder.createdAt).toLocaleString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    const modal = document.createElement('div');
+    modal.id = 'duplicateWarningModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = `
+        <div style="background:white;border-radius:20px;max-width:450px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.3);overflow:hidden;animation:slideUp 0.3s ease-out;">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#f97316,#dc2626);padding:24px;color:white;">
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <span style="font-size:48px;">⚠️</span>
+                    <div>
+                        <h3 style="font-size:22px;font-weight:bold;margin-bottom:4px;">Duplicate Order Warning!</h3>
+                        <p style="font-size:14px;opacity:0.9;">Same mobile number ka order already hai</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Existing Order Details -->
+            <div style="padding:20px;background:#fff7ed;border-bottom:1px solid #fed7aa;">
+                <p style="font-size:12px;font-weight:bold;color:#c2410c;text-transform:uppercase;margin-bottom:12px;">📋 Existing Order Details:</p>
+                <div style="background:white;border-radius:12px;padding:16px;border:1px solid #fed7aa;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#6b7280;">Order ID:</span>
+                        <span style="font-weight:bold;color:#1f2937;">${existingOrder.orderId}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#6b7280;">Customer:</span>
+                        <span style="font-weight:bold;color:#1f2937;">${existingOrder.customerName}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#6b7280;">Mobile:</span>
+                        <span style="font-family:monospace;color:#1f2937;">${existingOrder.telNo}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#6b7280;">Status:</span>
+                        <span style="font-weight:bold;color:#2563eb;">${existingOrder.status}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#6b7280;">Amount:</span>
+                        <span style="font-weight:bold;color:#059669;">₹${existingOrder.total}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#6b7280;">Created:</span>
+                        <span style="color:#4b5563;font-size:13px;">${createdDate}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span style="color:#6b7280;">Created By:</span>
+                        <span style="color:#4b5563;">${existingOrder.employeeName || existingOrder.createdBy}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div style="padding:20px;">
+                <p style="font-size:14px;color:#6b7280;text-align:center;margin-bottom:16px;">Kya aap phir bhi naya order create karna chahte ho?</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <button onclick="document.getElementById('duplicateWarningModal').remove()" 
+                        style="background:#f3f4f6;color:#374151;font-weight:bold;padding:14px;border-radius:12px;border:none;cursor:pointer;font-size:15px;">
+                        ❌ Cancel
+                    </button>
+                    <button onclick="forceCreateOrderFromMain()" 
+                        style="background:linear-gradient(135deg,#22c55e,#059669);color:white;font-weight:bold;padding:14px;border-radius:12px;border:none;cursor:pointer;font-size:15px;">
+                        ✅ Create Anyway
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Store order data for force create
+    window._pendingOrderData = newOrderData;
+}
+
+// Force create order (after user confirms duplicate)
+async function forceCreateOrderFromMain() {
+    const orderData = window._pendingOrderData;
+    if (!orderData) return;
+
+    document.getElementById('duplicateWarningModal')?.remove();
+
+    const btn = document.querySelector('#orderForm button[onclick="saveOrder()"]');
+    if (btn) {
+        btn.innerHTML = '⏳ Saving...';
+        btn.disabled = true;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            const bookedOrder = {
+                orderId: data.orderId,
+                customerName: orderData.customerName,
+                total: orderData.total,
+                telNo: orderData.telNo
+            };
+
+            showSuccessPopup(
+                'Order Saved!',
+                'Order successfully Verification Department mein chala gaya',
+                '✅',
+                '#10b981',
+                { type: 'booked', order: bookedOrder }
+            );
+
+            document.getElementById('orderForm').reset();
+            initOrderForm();
+            switchEmpTab('tracking');
+            loadMyOrders();
+        } else {
+            showMessage(data.message || 'Order save nahi hua!', 'error', 'empMessage');
+        }
+    } catch (e) {
+        console.error('Force create error:', e);
+        showMessage('Server error!', 'error', 'empMessage');
+    }
+
+    if (btn) {
+        btn.innerHTML = '💾 SAVE ORDER';
+        btn.disabled = false;
+    }
+    window._pendingOrderData = null;
 }
 
 // Edit Order Function

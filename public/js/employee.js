@@ -212,9 +212,46 @@ async function saveOrder() {
     try {
         const btn = document.querySelector('button[onclick="saveOrder()"]');
         const originalText = btn.innerText;
-        btn.innerText = 'Saving...';
+        btn.innerText = 'Checking...';
         btn.disabled = true;
 
+        // ========== DUPLICATE CHECK ==========
+        console.log('🔍 Checking duplicate for:', orderData.telNo);
+        const dupRes = await fetch(`${API_URL}/orders/check-duplicate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telNo: orderData.telNo, customerName: orderData.customerName })
+        });
+        const dupData = await dupRes.json();
+        console.log('🔍 Duplicate check response:', dupData);
+
+        if (dupData.success && dupData.isDuplicate) {
+            console.log('⚠️ DUPLICATE FOUND:', dupData.existingOrder);
+            btn.innerText = originalText;
+            btn.disabled = false;
+
+            // Show duplicate warning popup
+            showDuplicateWarning(dupData.existingOrder, orderData);
+            return;
+        }
+        // =====================================
+
+        btn.innerText = 'Saving...';
+
+        // Proceed to create order
+        await createOrderRequest(orderData, btn, originalText, form);
+
+    } catch (e) {
+        console.error(e);
+        showWarningPopup('Connection Error', 'Server se connection nahi ho paya. Please retry karein.');
+        const btn = document.querySelector('button[onclick="saveOrder()"]');
+        if (btn) { btn.innerText = '💾 SAVE ORDER'; btn.disabled = false; }
+    }
+}
+
+// Helper function to actually create the order
+async function createOrderRequest(orderData, btn, originalText, form) {
+    try {
         const res = await fetch(`${API_URL}/orders`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -249,9 +286,115 @@ async function saveOrder() {
         btn.disabled = false;
     } catch (e) {
         console.error(e);
-        showWarningPopup('Connection Error', 'Server se connection nahi ho paya. Please retry karein.');
+        showWarningPopup('Connection Error', 'Server se connection nahi ho paya.');
+        btn.innerText = originalText;
+        btn.disabled = false;
     }
 }
+
+// Show duplicate order warning popup
+function showDuplicateWarning(existingOrder, newOrderData) {
+    // Remove existing popup if any
+    document.getElementById('duplicateWarningModal')?.remove();
+
+    const createdDate = new Date(existingOrder.createdAt).toLocaleString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    const modal = document.createElement('div');
+    modal.id = 'duplicateWarningModal';
+    modal.className = 'fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-scaleIn">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-orange-500 to-red-500 p-5 text-white">
+                <div class="flex items-center gap-3">
+                    <span class="text-4xl">⚠️</span>
+                    <div>
+                        <h3 class="text-xl font-bold">Duplicate Order Warning!</h3>
+                        <p class="text-white/80 text-sm">Same mobile number ka order already hai</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Existing Order Details -->
+            <div class="p-5 bg-orange-50 border-b border-orange-100">
+                <p class="text-xs font-bold text-orange-600 uppercase mb-3">Existing Order Details:</p>
+                <div class="bg-white rounded-xl p-4 border border-orange-200 space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Order ID:</span>
+                        <span class="font-bold text-gray-800">${existingOrder.orderId}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Customer:</span>
+                        <span class="font-bold text-gray-800">${existingOrder.customerName}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Mobile:</span>
+                        <span class="font-mono text-gray-800">${existingOrder.telNo}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Status:</span>
+                        <span class="font-bold text-blue-600">${existingOrder.status}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Amount:</span>
+                        <span class="font-bold text-green-600">₹${existingOrder.total}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Created:</span>
+                        <span class="text-gray-600 text-sm">${createdDate}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Created By:</span>
+                        <span class="text-gray-600">${existingOrder.employeeName || existingOrder.createdBy}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="p-5 space-y-3">
+                <p class="text-sm text-gray-600 text-center mb-4">Kya aap phir bhi naya order create karna chahte ho?</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="document.getElementById('duplicateWarningModal').remove()" 
+                        class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-all">
+                        ❌ Cancel
+                    </button>
+                    <button onclick="forceCreateOrder()" 
+                        class="bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all">
+                        ✅ Create Anyway
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Store order data for force create
+    window._pendingOrderData = newOrderData;
+}
+
+// Force create order (after user confirms duplicate)
+async function forceCreateOrder() {
+    const orderData = window._pendingOrderData;
+    if (!orderData) return;
+
+    document.getElementById('duplicateWarningModal')?.remove();
+
+    const form = document.getElementById('orderForm');
+    const btn = document.querySelector('button[onclick="saveOrder()"]');
+    const originalText = btn?.innerText || '💾 SAVE ORDER';
+
+    if (btn) {
+        btn.innerText = 'Saving...';
+        btn.disabled = true;
+    }
+
+    await createOrderRequest(orderData, btn, originalText, form);
+    window._pendingOrderData = null;
+}
+
+window.forceCreateOrder = forceCreateOrder;
 
 // ==================== AUTOCOMPLETE LOGIC (Condensed) ====================
 let districtTimeout;

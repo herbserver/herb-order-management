@@ -129,6 +129,23 @@ async function getOrdersByStatus(status) {
     return orders.filter(o => o.status === status);
 }
 
+// Fast duplicate check - direct database query (INSTANT)
+async function findOrderByMobile(telNo) {
+    if (mongoConnected) {
+        // Direct MongoDB query - very fast with index
+        return await Order.findOne({
+            $or: [{ telNo: telNo }, { mobileNumber: telNo }],
+            status: { $ne: 'Cancelled' }
+        }).sort({ timestamp: -1 });
+    }
+    // Fallback to JSON
+    const orders = readJSONFile(path.join(__dirname, 'data', 'orders.json'), []);
+    const filtered = orders.filter(o =>
+        (o.telNo === telNo || o.mobileNumber === telNo) && o.status !== 'Cancelled'
+    );
+    return filtered.length > 0 ? filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0] : null;
+}
+
 
 async function createOrder(orderData) {
     if (mongoConnected) {
@@ -292,6 +309,7 @@ module.exports = {
     getAllOrders,
     getOrderById,
     getOrdersByStatus,
+    findOrderByMobile,
     createOrder,
     updateOrder,
     deleteOrder,

@@ -43,6 +43,54 @@ function writeJSON(filePath, data) {
 }
 
 // Create Order
+// Check for Duplicate Order (by mobile number) - FAST DIRECT QUERY
+router.post('/check-duplicate', async (req, res) => {
+    console.log('\n🔍 ==== DUPLICATE CHECK API CALLED ====');
+    console.log('📥 Request body:', req.body);
+
+    try {
+        const { telNo, customerName } = req.body;
+        console.log('📱 Mobile to check:', telNo);
+
+        if (!telNo) {
+            console.log('❌ No mobile number provided');
+            return res.json({ success: true, isDuplicate: false });
+        }
+
+        // FAST: Direct database query instead of loading all orders
+        console.log('🔎 Searching for mobile:', telNo);
+        const existingOrder = await dataAccess.findOrderByMobile(telNo);
+        console.log('📦 Search result:', existingOrder ? `Found: ${existingOrder.orderId}` : 'Not found');
+
+        if (existingOrder) {
+            console.log(`⚠️ DUPLICATE FOUND! Order: ${existingOrder.orderId}, Customer: ${existingOrder.customerName}`);
+
+            return res.json({
+                success: true,
+                isDuplicate: true,
+                existingOrder: {
+                    orderId: existingOrder.orderId,
+                    customerName: existingOrder.customerName,
+                    telNo: existingOrder.telNo || existingOrder.mobileNumber,
+                    status: existingOrder.status,
+                    total: existingOrder.total,
+                    createdAt: existingOrder.timestamp,
+                    createdBy: existingOrder.employeeId,
+                    employeeName: existingOrder.employeeName || existingOrder.employee
+                }
+            });
+        }
+
+        console.log('✅ No duplicate found, new order allowed');
+        res.json({ success: true, isDuplicate: false });
+
+    } catch (error) {
+        console.error('❌ Check duplicate error:', error);
+        res.status(500).json({ success: false, message: 'Failed to check for duplicates' });
+    }
+});
+
+// Create Order
 router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
     try {
         const orderData = req.body;
