@@ -1416,28 +1416,42 @@ function selectPOFromPincode(poName) {
 }
 
 const PRODUCT_LIST = [
-    { name: "Vedic Vain's Liquid" },
-    { name: "Pain Snap Prash" },
-    { name: "Naskhol" },
-    { name: "Nadiyog" },
-    { name: "Oil" },
-    { name: "Spray Oil" },
-    { name: "Vedic-Tab" },
-    { name: "Vedic-Cap" },
-    { name: "Vena-V" },
-    { name: "Painover" },
-    { name: "Ostrich-Cap" },
-    { name: "Gaumutra" },
     { name: "Amlex" },
     { name: "Black pills" },
-    { name: "Tea-400" },
+    { name: "Blue & White capsule" },
+    { name: "Ess Oil" },
+    { name: "Ess. capsule" },
+    { name: "Gaumutra" },
+    { name: "H.O.S." },
+    { name: "Herb On Naturals Herbal Tea" },
+    { name: "Herb On Vedic Plus Capsule" },
+    { name: "HOS Powder" },
+    { name: "KamGold capsule" },
+    { name: "kamGold Oil" },
+    { name: "KamGold Prash" },
+    { name: "Mind Fresh Tea" },
+    { name: "Nadi Yog Capsule" },
+    { name: "Nadiyog" },
+    { name: "Naskhol" },
+    { name: "Naskhol Capsule" },
+    { name: "Oil" },
+    { name: "Ostrich-Cap" },
+    { name: "Ostrich-Red Oil" },
+    { name: "Pain Over Capsule" },
+    { name: "Pain Snap Prash" },
+    { name: "Painover" },
+    { name: "Pangasic Oil" },
+    { name: "Same Medicine" },
+    { name: "Slim fit kit" },
+    { name: "Spray Oil" },
     { name: "Tea-1500" },
     { name: "Tea-1800" },
-    { name: "Ostrich-Red Oil" },
-    { name: "HOS Powder" },
-    { name: "Mind Fresh Tea" },
-    { name: "H.O.S." },
-    { name: "Slim fit kit" }
+    { name: "Tea-400" },
+    { name: "Vedic Vain's Liquid" },
+    { name: "Vedic-Cap" },
+    { name: "Vedic-Tab" },
+    { name: "Vena-V" },
+    { name: "Yellow capsule" }
 ];
 
 function addItem() {
@@ -5529,7 +5543,7 @@ async function loadEmployees() {
     try {
         const res = await fetch(`${API_URL}/employees`);
         const data = await res.json();
-        const employees = data.employees || [];
+        const employees = (data.employees || []).sort((a, b) => a.name.localeCompare(b.name));
 
         if (employees.length === 0) {
             document.getElementById('adminEmployeesTab').innerHTML = `
@@ -5967,7 +5981,9 @@ async function loadAdminHistory() {
                             <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Employee</label>
                             <select id="adminHistoryEmployee" onchange="filterAdminHistory()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 bg-white">
                                 <option value="">All Employees</option>
-                                ${[...new Map(orders.filter(o => o.employeeId && o.employee).map(o => [o.employeeId, o.employee])).entries()].map(([id, name]) => `<option value="${id}">${name} (${id})</option>`).join('')}
+                                ${[...new Map(orders.filter(o => o.employeeId && o.employee).map(o => [o.employeeId, o.employee])).entries()]
+                .sort((a, b) => a[1].localeCompare(b[1]))
+                .map(([id, name]) => `<option value="${id}">${name} (${id})</option>`).join('')}
                             </select>
                         </div>
                         <div class="flex-1 min-w-[200px]">
@@ -8553,14 +8569,20 @@ function showBoxSizeSelection(orderId) {
                     <div style="background: white; padding: 30px; border-radius: 20px; max-width: 400px; width: 90%;">
                         <h3 style="font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #f97316;">📦 Select Box Size</h3>
                         <div style="display: grid; gap: 10px; margin-bottom: 20px;">
-                            <button onclick="selectBoxSizeAndFetchCouriers('${orderId}', 'small')" style="padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.borderColor='#f97316'; this.style.background='#fff7ed'" onmouseout="this.style.borderColor='#ddd'; this.style.background='white'">
-                                📦 Small (16×16×5 cm, 0.5 kg)
+                            <button onclick="selectBoxSizeAndFetchCouriers('${orderId}', 'box1')" style="padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.borderColor='#f97316'; this.style.background='#fff7ed'" onmouseout="this.style.borderColor='#ddd'; this.style.background='white'">
+                                📦 Box 1 (16×12×5 cm)
                             </button>
-                            <button onclick="selectBoxSizeAndFetchCouriers('${orderId}', 'medium')" style="padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.borderColor='#f97316'; this.style.background='#fff7ed'" onmouseout="this.style.borderColor='#ddd'; this.style.background='white'">
-                                📦 Medium (20×16×8 cm, 1 kg)
+                            <button onclick="selectBoxSizeAndFetchCouriers('${orderId}', 'box2')" style="padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.borderColor='#f97316'; this.style.background='#fff7ed'" onmouseout="this.style.borderColor='#ddd'; this.style.background='white'">
+                                📦 Box 2 (16×16×6 cm)
                             </button>
-                            <button onclick="selectBoxSizeAndFetchCouriers('${orderId}', 'large')" style="padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.borderColor='#f97316'; this.style.background='#fff7ed'" onmouseout="this.style.borderColor='#ddd'; this.style.background='white'">
-                                📦 Large (24×18×10 cm, 1.5 kg)
+                            <button onclick="selectBoxSizeAndFetchCouriers('${orderId}', 'box3')" style="padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.borderColor='#f97316'; this.style.background='#fff7ed'" onmouseout="this.style.borderColor='#ddd'; this.style.background='white'">
+                                📦 Box 3 (11×11×10 cm)
+                            </button>
+                            <button onclick="selectBoxSizeAndFetchCouriers('${orderId}', 'box4')" style="padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.borderColor='#f97316'; this.style.background='#fff7ed'" onmouseout="this.style.borderColor='#ddd'; this.style.background='white'">
+                                📦 Box 4 (17×11×10 cm)
+                            </button>
+                            <button onclick="selectBoxSizeAndFetchCouriers('${orderId}', 'box5')" style="padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.borderColor='#f97316'; this.style.background='#fff7ed'" onmouseout="this.style.borderColor='#ddd'; this.style.background='white'">
+                                📦 Box 5 (17×11×20 cm)
                             </button>
                         </div>
                         <button onclick="document.getElementById('boxSizePopup').remove()" style="width: 100%; padding: 12px; background: #e5e7eb; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;">Cancel</button>
@@ -8575,9 +8597,11 @@ window.selectBoxSizeAndFetchCouriers = async function (orderId, boxSize) {
     document.getElementById('boxSizePopup').remove();
 
     const boxSizes = {
-        small: { length: 16, breadth: 16, height: 5, weight: 0.5 },
-        medium: { length: 20, breadth: 16, height: 8, weight: 1.0 },
-        large: { length: 24, breadth: 18, height: 10, weight: 1.5 }
+        box1: { length: 16, breadth: 12, height: 5, weight: 0.5 },
+        box2: { length: 16, breadth: 16, height: 6, weight: 0.5 },
+        box3: { length: 11, breadth: 11, height: 10, weight: 0.5 },
+        box4: { length: 17, breadth: 11, height: 10, weight: 1.0 },
+        box5: { length: 17, breadth: 11, height: 20, weight: 2.0 }
     };
     const selectedDimensions = boxSizes[boxSize];
 

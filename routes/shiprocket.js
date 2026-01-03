@@ -74,23 +74,18 @@ router.post('/create-order', async (req, res) => {
 
         console.log(`   ✅ Shiprocket COD Total: ₹${finalAmount}`);
 
-        // Build address with landmark if available
-        let fullAddress = order.address || '';
-        if (order.landMark || order.landmark) {
-            fullAddress += `, Landmark: ${order.landMark || order.landmark}`;
-        }
 
         const payload = {
             order_id: order.orderId,
             order_date: new Date().toISOString().split('T')[0],
             pickup_location: "warehouse",
-            billing_customer_name: order.customerName.split(' ')[0],
-            billing_last_name: order.customerName.split(' ').slice(1).join(' ') || '.',
-            billing_address: fullAddress,
-            billing_address_2: order.landMark || order.landmark || '',  // Landmark
-            billing_city: order.distt || order.district || 'Delhi',
+            billing_customer_name: order.customerName.split(' ')[0].toUpperCase(),
+            billing_last_name: order.customerName.split(' ').slice(1).join(' ').toUpperCase() || '.',
+            billing_address: order.address.toUpperCase(),
+            billing_address_2: order.landMark || order.landmark ? `{${(order.landMark || order.landmark).toUpperCase()}}` : '',  // Landmark in braces
+            billing_city: (order.distt || order.district || 'Delhi').toUpperCase(),
             billing_pincode: order.pin || order.pincode,
-            billing_state: order.state || 'Delhi',
+            billing_state: (order.state || 'Delhi').toUpperCase(),
             billing_country: "India",
             billing_phone: order.telNo,
             billing_alternate_phone: order.altNo || '',  // Alternate number

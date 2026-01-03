@@ -813,11 +813,21 @@ async function dispatchWithShiprocket(orderId) {
         <div class="bg-white p-6 rounded-2xl w-96">
             <h3 class="text-xl font-bold mb-4">Select Box Size</h3>
             <div class="space-y-2">
-                ${['small', 'medium', 'large'].map(s => `
-                    <button onclick="selectBoxAndFetch('${orderId}', '${s}', this.closest('.fixed'))" class="w-full p-3 border rounded-xl hover:bg-orange-50 font-bold capitalize text-left">
-                        📦 ${s} Box
-                    </button>
-                `).join('')}
+                <button onclick="selectBoxAndFetch('${orderId}', 'box1', this.closest('.fixed'))" class="w-full p-3 border rounded-xl hover:bg-orange-50 font-bold text-left">
+                    📦 Box 1 (16x12x5)
+                </button>
+                <button onclick="selectBoxAndFetch('${orderId}', 'box2', this.closest('.fixed'))" class="w-full p-3 border rounded-xl hover:bg-orange-50 font-bold text-left">
+                    📦 Box 2 (16x16x6)
+                </button>
+                <button onclick="selectBoxAndFetch('${orderId}', 'box3', this.closest('.fixed'))" class="w-full p-3 border rounded-xl hover:bg-orange-50 font-bold text-left">
+                    📦 Box 3 (11x11x10)
+                </button>
+                <button onclick="selectBoxAndFetch('${orderId}', 'box4', this.closest('.fixed'))" class="w-full p-3 border rounded-xl hover:bg-orange-50 font-bold text-left">
+                    📦 Box 4 (17x11x10)
+                </button>
+                <button onclick="selectBoxAndFetch('${orderId}', 'box5', this.closest('.fixed'))" class="w-full p-3 border rounded-xl hover:bg-orange-50 font-bold text-left">
+                    📦 Box 5 (17x11x20)
+                </button>
             </div>
             <button onclick="this.closest('.fixed').remove()" class="mt-4 w-full p-2 bg-gray-100 rounded-lg">Cancel</button>
         </div>
@@ -836,9 +846,11 @@ window.selectBoxAndFetch = async (orderId, size, modal) => {
 
     try {
         const boxSizes = {
-            small: { length: 16, breadth: 16, height: 5, weight: 0.5 },
-            medium: { length: 20, breadth: 16, height: 8, weight: 1.0 },
-            large: { length: 24, breadth: 18, height: 10, weight: 1.5 }
+            box1: { length: 16, breadth: 12, height: 5, weight: 0.5 },
+            box2: { length: 16, breadth: 16, height: 6, weight: 0.5 },
+            box3: { length: 11, breadth: 11, height: 10, weight: 0.5 },
+            box4: { length: 17, breadth: 11, height: 10, weight: 1.0 },
+            box5: { length: 17, breadth: 11, height: 20, weight: 2.0 }
         };
         const dim = boxSizes[size];
 
