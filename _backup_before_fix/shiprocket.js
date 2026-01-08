@@ -38,214 +38,50 @@ class ShiprocketAPI {
             });
 
             const trackingData = response.data;
-            console.log('🔍 Shiprocket Raw Response for AWB', awbNumber, ':', JSON.stringify(trackingData, null, 2));
-
             if (trackingData && trackingData.tracking_data) {
-                const td = trackingData.tracking_data;
-                const shipmentTrack = td.shipment_track || [];
+                const shipmentTrack = trackingData.tracking_data.shipment_track || [];
+                const trackActivities = trackingData.tracking_data.shipment_track_activities || [];
                 const latestStatus = shipmentTrack.length > 0 ? shipmentTrack[0] : null;
-                const shipmentStatus = td.shipment_status;
-                const trackStatus = td.track_status || 0;
+                const shipmentStatus = trackingData.tracking_data.shipment_status;
 
-                // === COMPREHENSIVE SCAN EXTRACTION ===
-                // Look for activities in ALL possible locations
-                let allActivities = [];
+                // Extract courier name from response
+                const courierName = latestStatus?.courier_name ||
+                    trackingData.tracking_data.courier_name ||
+                    trackingData.tracking_data.courier_company_name ||
+                    (shipmentTrack[0]?.courier_company_name) ||
+                    'Courier Partner';
 
-                // 1. Check tracking_data.shipment_track_activities (most common)
-                if (td.shipment_track_activities && Array.isArray(td.shipment_track_activities)) {
-                    allActivities = [...allActivities, ...td.shipment_track_activities];
-                    console.log('📦 Found shipment_track_activities:', td.shipment_track_activities.length, 'items');
+                let currentStatus = latestStatus?.current_status || 'In Transit';
+                let delivered = (shipmentStatus === 7 || shipmentStatus === '7' || currentStatus.toLowerCase().includes('delivered'));
+
+                // Combine activities with track for complete timeline
+                let allScansData = shipmentTrack.map(scan => ({
+                    date: scan.date,
+                    activity: scan.activity,
+                    location: scan.location,
+                    status: scan.current_status
+                }));
+
+                // If activities available, use them as they're more detailed
+                if (trackActivities && trackActivities.length > 0) {
+                    allScansData = trackActivities.map(scan => ({
+                        date: scan.date,
+                        activity: scan.activity,
+                        location: scan.location,
+                        status: scan['sr-status-label'] || scan.activity
+                    }));
                 }
-
-                // 2. Check inside each shipment_track entry
-                shipmentTrack.forEach((track, idx) => {
-                    if (track.shipment_track_activities && Array.isArray(track.shipment_track_activities)) {
-                        allActivities = [...allActivities, ...track.shipment_track_activities];
-                        console.log(`📦 Found activities in shipment_track[${idx}]:`, track.shipment_track_activities.length, 'items');
-                    }
-                    if (track.scans && Array.isArray(track.scans)) {
-                        allActivities = [...allActivities, ...track.scans];
-                        console.log(`📦 Found scans in shipment_track[${idx}]:`, track.scans.length, 'items');
-                    }
-                });
-
-                // 3. Check tracking_data.scans
-                if (td.scans && Array.isArray(td.scans)) {
-                    allActivities = [...allActivities, ...td.scans];
-                    console.log('📦 Found td.scans:', td.scans.length, 'items');
-                }
-
-                // 4. Check tracking_data.track_activities
-                if (td.track_activities && Array.isArray(td.track_activities)) {
-                    allActivities = [...allActivities, ...td.track_activities];
-                    console.log('📦 Found track_activities:', td.track_activities.length, 'items');
-                }
-
-                // 5. If still empty, create entries from shipment_track status updates
-                if (allActivities.length === 0 && shipmentTrack.length > 0) {
-                    console.log('📦 No activities found, creating from shipment_track statuses');
-                    shipmentTrack.forEach(track => {
-                        allActivities.push({
-                            date: track.updated_time_stamp || track.date || '',
-                            activity: track.current_status || track.activity || 'Status Update',
-                            location: track.location || track.origin || 'N/A',
-                            status: track.current_status || ''
-                        });
-                    });
-                }
-
-                // Remove duplicates based on date + activity
-                const seen = new Set();
-                allActivities = allActivities.filter(item => {
-                    const key = `${item.date || ''}-${item.activity || ''}-${item.location || ''}`;
-                    if (seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
-                });
-
-                // Sort by date descending (newest first)
-                allActivities.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-
-                console.log('📦 Total unique activities:', allActivities.length);
-
-                // Shiprocket Status Code Mapping (Official)
-                const statusCodeMap = {
-                    1: 'AWB Assigned',
-                    2: 'Label Generated',
-                    3: 'Pickup Scheduled/Generated',
-                    4: 'Pickup Queued',
-                    5: 'Manifest Generated',
-                    6: 'Shipped',
-                    7: 'Delivered',
-                    8: 'Cancelled',
-                    9: 'RTO Initiated',
-                    10: 'RTO Delivered',
-                    11: 'Pending',
-                    12: 'Lost',
-                    13: 'Pickup Error',
-                    14: 'RTO Acknowledged',
-                    15: 'Pickup Rescheduled',
-                    16: 'Cancellation Requested',
-                    17: 'Out For Delivery',
-                    18: 'In Transit',
-                    19: 'Out For Pickup',
-                    20: 'Pickup Exception',
-                    21: 'Undelivered',
-                    22: 'Delayed',
-                    23: 'Partial Delivered',
-                    24: 'Destroyed',
-                    25: 'Damaged',
-                    26: 'Fulfilled',
-                    38: 'Reached at Destination',
-                    39: 'Misrouted',
-                    40: 'RTO_NDR',
-                    41: 'RTO_OFD',
-                    42: 'Picked Up',
-                    43: 'Self Fulfilled',
-                    44: 'DISPOSED_OFF',
-                    45: 'Cancelled Before Dispatched',
-                    46: 'RTO In Transit',
-                    47: 'QC Failed',
-                    48: 'Reached Warehouse',
-                    49: 'Custom Cleared',
-                    50: 'In Flight',
-                    51: 'Handover to Courier',
-                    52: 'Shipment Booked'
-                };
-
-                // Get current status from multiple sources (prioritize API codes)
-                let currentStatus = '';
-
-                // Priority 1: Use shipment_status code from API
-                if (shipmentStatus && statusCodeMap[shipmentStatus]) {
-                    currentStatus = statusCodeMap[shipmentStatus];
-                }
-                // Priority 2: Use track_status code
-                else if (trackStatus && statusCodeMap[trackStatus]) {
-                    currentStatus = statusCodeMap[trackStatus];
-                }
-                // Priority 3: Use current_status from shipment_track
-                else if (latestStatus?.current_status) {
-                    currentStatus = latestStatus.current_status;
-                }
-                // Priority 4: Use sr-status-label from latest activity
-                else if (allActivities.length > 0 && allActivities[0]['sr-status-label']) {
-                    currentStatus = allActivities[0]['sr-status-label'];
-                }
-                // Priority 5: Use activity description
-                else if (allActivities.length > 0 && allActivities[0].activity) {
-                    currentStatus = allActivities[0].activity;
-                }
-                // Fallback
-                else {
-                    currentStatus = td.current_status || 'In Transit';
-                }
-
-                console.log('📊 Status from API - shipment_status:', shipmentStatus, '| track_status:', trackStatus, '| Resolved:', currentStatus);
-
-                let delivered = (shipmentStatus === 7 || shipmentStatus === '7' ||
-                    trackStatus === 7 ||
-                    currentStatus.toLowerCase().includes('delivered'));
-
-                // Courier name - Multiple fallbacks
-                let courierName = latestStatus?.courier_name || td.courier_name || 'Shiprocket';
-                let edd = latestStatus?.edd || td.edd || td.etd || '';
-
-                // Origin & Destination - Check multiple sources
-                let origin = latestStatus?.origin || td.pickup_location || '';
-                let destination = latestStatus?.destination || td.destination || '';
-
-                // Try to extract from activities if still empty
-                if ((!origin || origin === 'N/A') && allActivities.length > 0) {
-                    const lastActivity = allActivities[allActivities.length - 1];
-                    origin = lastActivity?.location || '';
-                }
-                if ((!destination || destination === 'N/A') && allActivities.length > 0) {
-                    destination = allActivities[0]?.location || '';
-                }
-
-                // Weight and Packages
-                let weight = latestStatus?.weight || td.weight || '';
-                let packages = latestStatus?.packages || td.packages || 1;
-
-                // Current location from latest activity
-                let location = allActivities.length > 0
-                    ? allActivities[0].location
-                    : (latestStatus?.location || latestStatus?.current_status_location || 'In Transit');
 
                 return {
                     success: true,
                     awb: awbNumber,
                     courierName: courierName,
                     currentStatus: delivered ? 'Delivered' : currentStatus,
-                    lastUpdate: allActivities.length > 0
-                        ? allActivities[0].date
-                        : (latestStatus?.updated_time_stamp || latestStatus?.date || td.updated_at || 'No updates'),
-                    location: location,
-                    edd: edd,
+                    lastUpdate: latestStatus ? `${latestStatus.date || ''} - ${latestStatus.activity || ''}`.trim() : 'No updates',
+                    location: latestStatus?.location || 'N/A',
                     delivered: delivered,
-                    // Comprehensive Details
-                    origin: origin || 'N/A',
-                    destination: destination || 'N/A',
-                    pickupDate: latestStatus?.pickup_date || td.pickup_date || '',
-                    deliveredDate: latestStatus?.delivered_date || td.delivered_date || '',
-                    weight: weight,
-                    packages: packages,
-                    deliveredTo: latestStatus?.delivered_to || td.delivered_to || '',
-                    podStatus: latestStatus?.pod_status || td.pod_status || '',
-
-                    // Return all scan activities
-                    allScans: allActivities.length > 0 ? allActivities.map(scan => ({
-                        date: scan.date || scan.updated_at || '',
-                        activity: scan.activity || scan['sr-status'] || 'Update',
-                        location: scan.location || 'N/A',
-                        status: scan['sr-status-label'] || scan.status || scan.activity || currentStatus
-                    })) : shipmentTrack.map(scan => ({
-                        date: scan.updated_time_stamp || scan.date || '',
-                        activity: scan.activity || scan.current_status || 'Update',
-                        location: scan.location || scan.origin || 'N/A',
-                        status: scan.current_status || ''
-                    }))
+                    etd: latestStatus?.edd || trackingData.tracking_data.expected_delivery_date || null,
+                    allScans: allScansData
                 };
             }
             return { success: false, message: 'No tracking data found' };
@@ -254,6 +90,7 @@ class ShiprocketAPI {
             return { success: false, message: 'Tracking failed' };
         }
     }
+
 
     async getShipmentDetails(shipmentId) {
         try {

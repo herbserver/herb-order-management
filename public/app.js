@@ -2,6 +2,38 @@
 // If API_URL is defined in HTML, use it, else default
 var API_URL = typeof API_URL !== 'undefined' ? API_URL : (window.location.origin + '/api');
 
+// Global Date Filter for Delivery Tabs
+var deliveryDateFilter = ''; // Format: YYYY-MM-DD
+
+// Set date filter and refresh current tab
+function setDeliveryDateFilter(dateValue) {
+    deliveryDateFilter = dateValue || '';
+    console.log('📅 Date filter set to:', deliveryDateFilter || 'All dates');
+
+    // Refresh the active tab
+    if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
+    if (typeof loadOFDOrders === 'function') loadOFDOrders();
+    if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
+    if (typeof loadRTOOrders === 'function') loadRTOOrders();
+}
+
+// Helper: Filter orders by selected date
+function filterOrdersByDate(orders, dateField = 'timestamp') {
+    if (!deliveryDateFilter) return orders; // No filter = return all
+
+    const filterDate = new Date(deliveryDateFilter).toDateString();
+    return orders.filter(order => {
+        const orderDate = new Date(order[dateField] || order.timestamp).toDateString();
+        return orderDate === filterDate;
+    });
+}
+
+// Clear date filter
+function clearDeliveryDateFilter() {
+    document.getElementById('deliveryDateFilter')?.value && (document.getElementById('deliveryDateFilter').value = '');
+    setDeliveryDateFilter('');
+}
+
 // Toggle Password Visibility
 function togglePassword(inputId, btn) {
     const input = document.getElementById(inputId);
@@ -246,7 +278,8 @@ function showMessage(msg, type, elementId) {
 }
 
 function closeModal(id) {
-    document.getElementById(id).classList.add('hidden');
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add('hidden');
 }
 
 function copyTracking(text) {
@@ -423,7 +456,7 @@ function showDepartmentPanel() {
             document.getElementById('deliveryDeptContent').classList.remove('hidden');
         }
 
-        switchDeliveryTab('outfordelivery');
+        switchDeliveryTab('onway');
     }
 
     loadDeptOrders();
@@ -2864,25 +2897,30 @@ function switchDispatchTab(tab) {
 
 // Delivery Department Tab Switching
 function switchDeliveryTab(tab) {
-    document.getElementById('deliveryRequestsTab').classList.add('hidden');
-    document.getElementById('deliveryOutForDeliveryTab').classList.add('hidden');
-    document.getElementById('deliveryDeliveredTab').classList.add('hidden');
-    document.getElementById('deliveryRTOTab').classList.add('hidden');
+    document.getElementById('deliveryRequestsTab')?.classList.add('hidden');
+    document.getElementById('deliveryOnWayTab')?.classList.add('hidden');
+    document.getElementById('deliveryOFDTab')?.classList.add('hidden');
+    document.getElementById('deliveryDeliveredTab')?.classList.add('hidden');
+    document.getElementById('deliveryRTOTab')?.classList.add('hidden');
 
     if (tab === 'requests') {
-        document.getElementById('deliveryRequestsTab').classList.remove('hidden');
+        document.getElementById('deliveryRequestsTab')?.classList.remove('hidden');
         setActiveDeptTab('deptTabRequests');
         loadDeliveryRequests();
-    } else if (tab === 'outfordelivery') {
-        document.getElementById('deliveryOutForDeliveryTab').classList.remove('hidden');
-        setActiveDeptTab('deptTabOutForDelivery');
-        loadDeliveryOrders();
+    } else if (tab === 'onway') {
+        document.getElementById('deliveryOnWayTab')?.classList.remove('hidden');
+        setActiveDeptTab('deptTabOnWay');
+        if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
+    } else if (tab === 'ofd') {
+        document.getElementById('deliveryOFDTab')?.classList.remove('hidden');
+        setActiveDeptTab('deptTabOFD');
+        if (typeof loadOFDOrders === 'function') loadOFDOrders();
     } else if (tab === 'delivered') {
-        document.getElementById('deliveryDeliveredTab').classList.remove('hidden');
+        document.getElementById('deliveryDeliveredTab')?.classList.remove('hidden');
         setActiveDeptTab('deptTabDelivered');
         loadDeliveredOrders();
     } else if (tab === 'rto') {
-        document.getElementById('deliveryRTOTab').classList.remove('hidden');
+        document.getElementById('deliveryRTOTab')?.classList.remove('hidden');
         setActiveDeptTab('deptTabRTO');
         loadRTOOrders();
     }
@@ -2914,37 +2952,306 @@ async function loadDeliveryOrders() {
     }
 }
 
-// Track specific Shiprocket order (Manual)
+// Load On Way Orders (Delivery Panel - On Way Tab)
+async function loadOnWayOrders() {
+    try {
+        const res = await fetch(`${API_URL}/orders/dispatched`);
+        const data = await res.json();
+        let orders = data.orders || [];
+
+        // Filter: On Way = Dispatched BUT NOT OFD
+        orders = orders.filter(o => {
+            const s = (o.tracking?.currentStatus || '').toLowerCase();
+            return !s.includes('out for delivery') && !s.includes('ofd');
+        });
+
+        // Apply date filter
+        orders = filterOrdersByDate(orders);
+
+        const container = document.getElementById('onWayOrdersList');
+        if (!container) return;
+
+        if (orders.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi On Way order nahi hai</p>';
+            return;
+        }
+
+        let html = '';
+        orders.forEach(order => {
+            html += renderDeliveryCardModern(order);
+        });
+        container.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// Load OFD Orders (Delivery Panel - OFD Tab)
+async function loadOFDOrders() {
+    try {
+        const res = await fetch(`${API_URL}/orders/dispatched`);
+        const data = await res.json();
+        let orders = data.orders || [];
+
+        // Filter: OFD = ONLY OFD
+        orders = orders.filter(o => {
+            const s = (o.tracking?.currentStatus || '').toLowerCase();
+            return s.includes('out for delivery') || s.includes('ofd');
+        });
+
+        // Apply date filter
+        orders = filterOrdersByDate(orders);
+
+        const container = document.getElementById('ofdOrdersList');
+        if (!container) return;
+
+        if (orders.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi OFD order nahi hai</p>';
+            return;
+        }
+
+        let html = '';
+        orders.forEach(order => {
+            html += renderDeliveryCardModern(order);
+        });
+        container.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// Track specific Shiprocket order (Manual) - Shows Modal Popup
 async function trackShiprocketOrder(orderId, awb) {
+    // Get all elements first
+    const $ = id => document.getElementById(id);
+
+    // Show modal with loading state
+    $('trackingOrderId').textContent = `Order: ${orderId}`;
+    $('trackingAWB').textContent = awb || '-';
+    $('trackingCourier').textContent = 'Loading...';
+    $('trackingStatusIcon').textContent = '⏳';
+    $('trackingStatusText').textContent = 'Fetching...';
+    $('trackingLocation').textContent = 'Loading...';
+    $('trackingLastUpdate').textContent = '';
+    $('trackingCount').textContent = '';
+    $('trackingTimeline').innerHTML = '<p class="text-gray-400 text-center py-4">Loading...</p>';
+    $('trackingModal').classList.remove('hidden');
+
     try {
         const res = await fetch(`${API_URL}/shiprocket/track/${awb}`);
         const data = await res.json();
+        console.log('📦 API Response:', data);
 
         if (data.success && data.tracking) {
-            const tracking = data.tracking;
-            let statusText = 'Status: Unknown';
-            let updates = 'No tracking updates available';
+            const t = data.tracking;
 
-            if (tracking.tracking_data && tracking.tracking_data.shipment_track) {
-                const track = tracking.tracking_data.shipment_track[0];
-                statusText = `Status: ${track.current_status || 'In Transit'}`;
+            // Status icon based on status
+            let icon = '📦';
+            // Determine Progress Step & Theme
+            let step = 1;
+            let theme = { header: 'from-blue-600 to-indigo-600', text: 'text-blue-700', line: 'bg-blue-500' };
+            const s = (t.currentStatus || '').toLowerCase();
 
-                if (track.shipment_track_activities && track.shipment_track_activities.length > 0) {
-                    updates = track.shipment_track_activities.slice(0, 5).map(a =>
-                        `📍 ${a.activity} - ${a.location || 'N/A'}\n   ${a.date}`
-                    ).join('\n\n');
+            if (s.includes('delivered')) {
+                step = 4;
+                icon = '✅';
+                theme = { header: 'from-emerald-600 to-teal-500', text: 'text-emerald-700', line: 'bg-emerald-500' };
+            } else if (s.includes('out for')) {
+                step = 3;
+                icon = '🚚';
+                theme = { header: 'from-purple-600 to-fuchsia-500', text: 'text-purple-700', line: 'bg-purple-500' };
+            } else if (s.includes('shipped') || s.includes('transit') || s.includes('arrived') || s.includes('pickup')) {
+                step = 2;
+                icon = '🚛';
+                theme = { header: 'from-indigo-600 to-blue-500', text: 'text-indigo-700', line: 'bg-indigo-500' };
+            } else if (s.includes('return') || s.includes('rto') || s.includes('cancel')) {
+                step = 1;
+                icon = '↩️';
+                theme = { header: 'from-red-600 to-orange-500', text: 'text-red-700', line: 'bg-red-500' };
+            }
+
+            // Update Header Gradient based on status
+            const header = $('trackingHeader');
+            if (header) {
+                header.className = `bg-gradient-to-r ${theme.header} p-5 flex justify-between items-center`;
+            }
+
+            // Update Progress Stepper
+            const validStep = Math.min(Math.max(step, 1), 4);
+            const progressWidths = ['0%', '33%', '66%', '100%'];
+            const progressLine = $('trackingProgressLine');
+            if (progressLine) {
+                progressLine.style.width = progressWidths[validStep - 1] || '0%';
+                progressLine.className = `absolute top-5 left-8 h-1 rounded-full transition-all duration-1000 ${theme.line}`;
+            }
+
+            // Update Step Indicators
+            for (let i = 1; i <= 4; i++) {
+                const ind = $(`stepIndicator${i}`);
+                if (ind) {
+                    if (i <= validStep) {
+                        ind.className = `w-10 h-10 rounded-full flex items-center justify-center text-xl transition-all text-white ${theme.line}`;
+                    } else {
+                        ind.className = `w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-xl transition-all`;
+                    }
                 }
             }
 
-            alert(`🚀 Tracking: ${orderId}\nAWB: ${awb}\n${statusText}\n\n${updates}`);
+            // Update modal with data
+            $('trackingAWB').textContent = t.awb || awb;
+            $('trackingCourier').textContent = t.courierName || 'Shiprocket';
+            $('trackingStatusIcon').textContent = icon;
 
-            // Refresh the list to show updated status
-            loadDeliveryOrders();
+            // Comprehensive Details
+            $('trackingOrigin').textContent = t.origin || '-';
+            $('trackingDestination').textContent = t.destination || '-';
+            $('trackingWeight').textContent = t.weight ? `${t.weight} kg` : '-';
+            $('trackingPieces').textContent = t.packages || '-';
+            $('trackingPickupDate').textContent = t.pickupDate || '-';
+            $('trackingPOD').textContent = t.podStatus || '-';
+
+            // Show Status
+            $('trackingStatusText').textContent = t.currentStatus || 'In Transit';
+
+            // Show EDD separately
+            const eddEl = $('trackingEDD');
+            if (eddEl) {
+                if (t.edd) {
+                    const eddDate = new Date(t.edd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                    eddEl.textContent = eddDate !== 'Invalid Date' ? eddDate : t.edd;
+                } else {
+                    eddEl.textContent = '-';
+                }
+            }
+
+            $('trackingLocation').textContent = t.location || 'In Transit';
+            $('trackingLastUpdate').textContent = t.lastUpdate ? `Updated: ${t.lastUpdate}` : '';
+
+            // Build timeline from allScans
+            let html = '';
+            if (t.allScans && t.allScans.length > 0) {
+                $('trackingCount').textContent = `${t.allScans.length} updates`;
+                html = t.allScans.map((scan, i) => {
+                    // Determine status badge color based on status text
+                    const statusLower = (scan.status || '').toLowerCase();
+                    let statusColor = 'bg-slate-100 text-slate-600 border-slate-200';
+                    let dotColor = 'bg-slate-400';
+
+                    if (statusLower.includes('delivered') && !statusLower.includes('undelivered')) {
+                        statusColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                        dotColor = 'bg-emerald-500';
+                    } else if (statusLower.includes('out for delivery') || statusLower.includes('ofd')) {
+                        statusColor = 'bg-purple-50 text-purple-700 border-purple-200';
+                        dotColor = 'bg-purple-500';
+                    } else if (statusLower.includes('transit') || statusLower.includes('shipped') || statusLower.includes('arrived') || statusLower.includes('reached')) {
+                        statusColor = 'bg-blue-50 text-blue-700 border-blue-200';
+                        dotColor = 'bg-blue-500';
+                    } else if (statusLower.includes('picked') || statusLower.includes('pickup') || statusLower.includes('dispatched')) {
+                        statusColor = 'bg-amber-50 text-amber-700 border-amber-200';
+                        dotColor = 'bg-amber-500';
+                    } else if (statusLower.includes('pending') || statusLower.includes('booked') || statusLower.includes('manifest') || statusLower.includes('awb')) {
+                        statusColor = 'bg-gray-50 text-gray-600 border-gray-200';
+                        dotColor = 'bg-gray-400';
+                    } else if (statusLower.includes('rto') || statusLower.includes('return') || statusLower.includes('cancel') || statusLower.includes('undelivered')) {
+                        statusColor = 'bg-red-50 text-red-700 border-red-200';
+                        dotColor = 'bg-red-500';
+                    } else if (statusLower.includes('exception') || statusLower.includes('delay') || statusLower.includes('failed')) {
+                        statusColor = 'bg-orange-50 text-orange-700 border-orange-200';
+                        dotColor = 'bg-orange-500';
+                    }
+
+                    // Format date and time separately
+                    let dateStr = '';
+                    let timeStr = '';
+                    if (scan.date) {
+                        const d = new Date(scan.date);
+                        if (!isNaN(d.getTime())) {
+                            dateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                            timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+                        } else {
+                            // If date parsing fails, use as-is
+                            const parts = scan.date.split(' ');
+                            dateStr = parts[0] || scan.date;
+                            timeStr = parts[1] || '';
+                        }
+                    }
+
+                    return `
+                    <div class="relative pl-12 pb-6 ${i === t.allScans.length - 1 ? '' : 'border-l-2 border-slate-100'}" style="margin-left: 12px; animation: fadeInUp 0.3s ease ${i * 60}ms both;">
+                        
+                        <!-- Timeline Dot -->
+                        <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full ${i === 0 ? 'ring-4 ring-offset-2 ring-blue-200 ' + dotColor : dotColor} ${i === 0 ? 'scale-125' : ''}"></div>
+                        
+                        <!-- Content Card -->
+                        <div class="bg-white rounded-lg border ${i === 0 ? 'border-blue-200 shadow-md' : 'border-slate-100 shadow-sm'} p-3 ml-2 hover:shadow-md transition-shadow">
+                            
+                            <!-- Status Badge -->
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border ${statusColor}">
+                                    ${scan.status || 'Update'}
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-medium whitespace-nowrap">${timeStr}</span>
+                            </div>
+                            
+                            <!-- Activity Description -->
+                            <p class="text-sm font-semibold text-slate-800 leading-relaxed mb-2">
+                                ${scan.activity || scan.status || 'Status Update'}
+                            </p>
+                            
+                            <!-- Location & Date -->
+                            <div class="flex items-center gap-4 text-xs text-slate-500">
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    <span class="font-medium">${scan.location || 'N/A'}</span>
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    <span>${dateStr}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `}).join('');
+            } else {
+                // No scans - show current status
+                $('trackingCount').textContent = '1 update';
+                html = `
+                    <div class="relative pl-8 py-4 animate-fadeInUp">
+                        <div class="absolute left-0 top-5 w-6 h-6 ${theme.line.replace('bg-', 'ring-2 ring-opacity-30 ring-').replace('text-', '')} rounded-full border-4 border-white shadow-sm flex items-center justify-center">
+                            <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                        </div>
+                        <div>
+                            <p class="text-base font-bold ${theme.text}">${t.currentStatus || 'In Transit'}</p>
+                            <p class="text-xs text-slate-500 mt-1">📍 ${t.location || 'In Transit'}</p>
+                            <p class="text-[10px] text-slate-400 font-mono mt-0.5">AWB: ${t.awb || awb}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            $('trackingTimeline').innerHTML = html;
+
+            // Set external link
+            const links = {
+                'DTDC': `https://www.dtdc.in/tracking.asp?strCnno=${awb}`,
+                'DTDC Surface': `https://www.dtdc.in/tracking.asp?strCnno=${awb}`,
+                'Delhivery': `https://www.delhivery.com/track/package/${awb}`,
+                'Xpressbees': `https://www.xpressbees.com/track/${awb}`,
+                'BlueDart': `https://www.bluedart.com/tracking/${awb}`,
+                'Ecom Express': `https://www.ecomexpress.in/tracking/?awb_field=${awb}`
+            };
+            $('trackingExternalLink').href = links[t.courierName] || `https://shiprocket.co/tracking/${awb}`;
+
         } else {
-            alert('❌ Tracking not available yet');
+            $('trackingStatusIcon').textContent = '❌';
+            $('trackingStatusText').textContent = 'Not Available';
+            $('trackingLocation').textContent = '-';
+            $('trackingTimeline').innerHTML = '<p class="text-red-400 text-center py-6">❌ Tracking not available</p>';
         }
     } catch (e) {
-        alert('❌ Error: ' + e.message);
+        console.error('Track error:', e);
+        $('trackingStatusIcon').textContent = '⚠️';
+        $('trackingStatusText').textContent = 'Error';
+        $('trackingTimeline').innerHTML = `<p class="text-red-400 text-center py-6">❌ ${e.message}</p>`;
     }
 }
 
@@ -3040,6 +3347,34 @@ async function markAsDelivered(orderId) {
     }
 }
 
+// Mark order as Out For Delivery (OFD)
+async function markAsOFD(orderId) {
+    if (!confirm('Mark this order as Out For Delivery (OFD)?')) return;
+
+    try {
+        const res = await fetch(`${API_URL}/orders/update-tracking`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                orderId,
+                tracking: { currentStatus: 'Out For Delivery' }
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showSuccessPopup('Order Marked OFD! 🚚', `${orderId} is now Out For Delivery!`, '🚚', '#8b5cf6');
+            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+            if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
+            if (typeof loadOFDOrders === 'function') loadOFDOrders();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (e) {
+        alert('❌ Error: ' + e.message);
+    }
+}
+
 async function markAsRTO(orderId) {
     const reason = prompt('RTO ka kaaran batayein (Reason for RTO):');
     if (reason === null) return; // Cancelled
@@ -3068,12 +3403,74 @@ async function markAsRTO(orderId) {
     }
 }
 
+// Revert Delivered Order back to On Way
+async function revertToOnWay(orderId) {
+    if (!confirm('Kya aap sure hain? Is order ko wapas "On Way" mein move karein?')) return;
+
+    try {
+        const res = await fetch(`${API_URL}/orders/revert-delivered`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                orderId,
+                newStatus: 'On Way',
+                revertedBy: currentUser?.name || 'Admin'
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showSuccessPopup('Order Reverted! ↩️', `${orderId} wapas On Way mein move ho gaya!`, '↩️', '#3b82f6');
+            if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
+            if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
+            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+        } else {
+            alert('❌ ' + (data.message || 'Revert failed'));
+        }
+    } catch (e) {
+        alert('❌ Error: ' + e.message);
+    }
+}
+
+// Mark Delivered Order as RTO (from Delivered tab)
+async function markDeliveredAsRTO(orderId) {
+    const reason = prompt('RTO ka kaaran batayein (Reason for RTO):');
+    if (reason === null) return;
+
+    try {
+        const res = await fetch(`${API_URL}/orders/revert-delivered`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                orderId,
+                newStatus: 'RTO',
+                rtoReason: reason,
+                revertedBy: currentUser?.name || 'Admin'
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showSuccessPopup('Order RTO! ↩️', `${orderId} RTO mein move ho gaya!`, '↩️', '#ef4444');
+            if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
+            if (typeof loadRTOOrders === 'function') loadRTOOrders();
+        } else {
+            alert('❌ ' + (data.message || 'RTO failed'));
+        }
+    } catch (e) {
+        alert('❌ Error: ' + e.message);
+    }
+}
+
 // Load RTO Orders (Global)
 async function loadRTOOrders() {
     try {
         const res = await fetch(`${API_URL}/orders/rto`);
         const data = await res.json();
-        const orders = data.orders || [];
+        let orders = data.orders || [];
+
+        // Apply date filter
+        orders = filterOrdersByDate(orders);
 
         // Try to find both containers (Admin and Dept)
         const deptContainer = document.getElementById('rtoOrdersList');
@@ -3083,7 +3480,7 @@ async function loadRTOOrders() {
 
         let html = '';
         if (orders.length === 0) {
-            html = '<p class="text-center text-gray-500 py-8">Koi RTO orders nahi hain</p>';
+            html = `<p class="text-center text-gray-500 py-8">${deliveryDateFilter ? 'Is date pe koi RTO orders nahi hain' : 'Koi RTO orders nahi hain'}</p>`;
         } else {
             orders.forEach(order => {
                 if (typeof renderDeliveryCardModern === 'function') {
@@ -3115,10 +3512,13 @@ async function loadDeliveredOrders() {
     try {
         const res = await fetch(`${API_URL}/orders/delivered`);
         const data = await res.json();
-        const orders = data.orders || [];
+        let orders = data.orders || [];
+
+        // Apply date filter
+        orders = filterOrdersByDate(orders);
 
         if (orders.length === 0) {
-            document.getElementById('deliveredOrdersList').innerHTML = '<p class="text-center text-gray-500 py-8">Koi delivered order nahi hai</p>';
+            document.getElementById('deliveredOrdersList').innerHTML = `<p class="text-center text-gray-500 py-8">${deliveryDateFilter ? 'Is date pe koi delivered order nahi hai' : 'Koi delivered order nahi hai'}</p>`;
             return;
         }
 
@@ -3288,8 +3688,24 @@ function renderOrderCard(order, borderColor = 'gray') {
                 <div class="p-4 border-t border-gray-100 bg-gradient-to-r from-gray-50 to-white flex gap-2">
                     <button type="button" onclick="viewOrder('${order.orderId}')"
                         class="flex-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 group">
-                        <span class="group-hover:scale-110 transition-transform">👁️</span> View Details
+                        <span class="group-hover:scale-110 transition-transform">👁️</span> View
                     </button>
+                    ${(order.shiprocket && order.shiprocket.awb) ?
+            `<button type="button" onclick="trackShiprocketOrder('${order.orderId}', '${order.shiprocket.awb}')" 
+                            class="bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 px-3 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-1 group">
+                            <span class="group-hover:scale-110 transition-transform">🔍</span> Track
+                        </button>`
+            : ''}
+                    ${borderColor === 'green' ? `
+                        <button type="button" onclick="revertToOnWay('${order.orderId}')" 
+                            class="bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 px-3 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-1 group" title="Revert to On Way">
+                            <span class="group-hover:scale-110 transition-transform">↩️</span> On Way
+                        </button>
+                        <button type="button" onclick="markDeliveredAsRTO('${order.orderId}')" 
+                            class="bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 px-3 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-1 group" title="Mark as RTO">
+                            <span class="group-hover:scale-110 transition-transform">🔄</span> RTO
+                        </button>
+                    ` : ''}
                 </div>
             </div>`;
 }

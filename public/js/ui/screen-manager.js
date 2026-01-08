@@ -99,7 +99,7 @@ function showDepartmentPanel() {
             document.getElementById('deliveryDeptContent').classList.remove('hidden');
         }
 
-        switchDeliveryTab('outfordelivery');
+        switchDeliveryTab('onway');
     }
 
     loadDeptOrders();

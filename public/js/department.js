@@ -81,7 +81,8 @@ function switchDeliveryTab(tab) {
     // Hide all tabs
     [
         'deliveryRequestsTab',
-        'deliveryOutForDeliveryTab',
+        'deliveryOnWayTab',
+        'deliveryOFDTab',
         'deliveryDeliveredTab',
         'deliveryRTOTab'
     ].forEach(id => {
@@ -92,13 +93,13 @@ function switchDeliveryTab(tab) {
     // Set active button (using IDs from index.html)
     const activeBtnMap = {
         'requests': 'deptTabRequests',
-        'outfordelivery': 'deptTabOutForDelivery',
-        'out': 'deptTabOutForDelivery',
+        'onway': 'deptTabOnWay',
+        'ofd': 'deptTabOFD',
         'delivered': 'deptTabDelivered',
         'rto': 'deptTabRTO'
     };
 
-    const tabId = activeBtnMap[tab] || 'deptTabOutForDelivery';
+    const tabId = activeBtnMap[tab] || 'deptTabOnWay';
     if (typeof setActiveDeptTab === 'function') {
         setActiveDeptTab(tabId);
     }
@@ -107,9 +108,12 @@ function switchDeliveryTab(tab) {
     if (tab === 'requests') {
         document.getElementById('deliveryRequestsTab').classList.remove('hidden');
         loadDeliveryRequests();
-    } else if (tab === 'out' || tab === 'outfordelivery') {
-        document.getElementById('deliveryOutForDeliveryTab').classList.remove('hidden');
-        if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+    } else if (tab === 'onway') {
+        document.getElementById('deliveryOnWayTab').classList.remove('hidden');
+        if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
+    } else if (tab === 'ofd') {
+        document.getElementById('deliveryOFDTab').classList.remove('hidden');
+        if (typeof loadOFDOrders === 'function') loadOFDOrders();
     } else if (tab === 'delivered') {
         document.getElementById('deliveryDeliveredTab').classList.remove('hidden');
         if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
@@ -272,24 +276,30 @@ async function loadDispatchHistory(page = null) {
     } catch (e) { console.error(e); }
 }
 
-// 4. Out For Delivery (Delivery Panel)
-async function loadDeliveryOrders(page = null) {
+// 4. On Way Orders (In Transit) - Delivery Panel
+async function loadOnWayOrders(page = null) {
     try {
         const res = await fetch(`${API_URL}/orders/dispatched`);
         const data = await res.json();
         let orders = data.orders || [];
 
+        // Filter for In Transit / On Way status (not yet Out For Delivery)
+        orders = orders.filter(o => {
+            const trackingStatus = o.tracking?.currentStatus?.toLowerCase() || '';
+            return !trackingStatus.includes('out for delivery') && !trackingStatus.includes('ofd');
+        });
+
         // Pagination
-        if (page !== null) deptPagination.deliveryOut = page;
-        const currentPage = deptPagination.deliveryOut || 1;
+        if (page !== null) deptPagination.deliveryOnWay = page;
+        const currentPage = deptPagination.deliveryOnWay || 1;
         const totalPages = Math.ceil(orders.length / DEPT_ITEMS_PER_PAGE) || 1;
         const paginated = orders.slice((currentPage - 1) * DEPT_ITEMS_PER_PAGE, currentPage * DEPT_ITEMS_PER_PAGE);
 
-        const container = document.getElementById('outForDeliveryList');
+        const container = document.getElementById('onWayOrdersList');
         if (!container) return;
 
         if (orders.length === 0) {
-            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi order out for delivery nahi hai</p>';
+            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi On Way order nahi hai</p>';
             return;
         }
 
@@ -298,7 +308,44 @@ async function loadDeliveryOrders(page = null) {
             html += renderDeliveryCardModern(order);
         });
         container.innerHTML = html;
-        renderPaginationControls(container, currentPage, totalPages, 'loadDeliveryOrders');
+        renderPaginationControls(container, currentPage, totalPages, 'loadOnWayOrders');
+
+    } catch (e) { console.error(e); }
+}
+
+// 4b. OFD (Out For Delivery) Orders - Delivery Panel
+async function loadOFDOrders(page = null) {
+    try {
+        const res = await fetch(`${API_URL}/orders/dispatched`);
+        const data = await res.json();
+        let orders = data.orders || [];
+
+        // Filter for Out For Delivery status
+        orders = orders.filter(o => {
+            const trackingStatus = o.tracking?.currentStatus?.toLowerCase() || '';
+            return trackingStatus.includes('out for delivery') || trackingStatus.includes('ofd');
+        });
+
+        // Pagination
+        if (page !== null) deptPagination.deliveryOFD = page;
+        const currentPage = deptPagination.deliveryOFD || 1;
+        const totalPages = Math.ceil(orders.length / DEPT_ITEMS_PER_PAGE) || 1;
+        const paginated = orders.slice((currentPage - 1) * DEPT_ITEMS_PER_PAGE, currentPage * DEPT_ITEMS_PER_PAGE);
+
+        const container = document.getElementById('ofdOrdersList');
+        if (!container) return;
+
+        if (orders.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi OFD (Out For Delivery) order nahi hai</p>';
+            return;
+        }
+
+        let html = '';
+        paginated.forEach(order => {
+            html += renderDeliveryCardModern(order);
+        });
+        container.innerHTML = html;
+        renderPaginationControls(container, currentPage, totalPages, 'loadOFDOrders');
 
     } catch (e) { console.error(e); }
 }
@@ -381,8 +428,13 @@ function renderOrderCard(order, borderColor = 'gray') {
                     <p class="text-sm text-gray-600">📍 ${order.address || 'N/A'}</p>
                     <p class="text-xs text-gray-400">📅 ${order.timestamp ? new Date(order.timestamp).toLocaleString() : 'N/A'}</p>
                  </div>
-                 <div class="bg-gray-50 p-2 rounded-lg mt-2 flex justify-between">
-                     <span class="font-bold text-${borderColor}-600">Total: ₹${order.total}</span>
+                 <div class="bg-gray-50 p-2 rounded-lg mt-2 flex justify-between items-center">
+                     <div>
+                         <span class="font-bold text-${borderColor}-600">Total: ₹${order.total}</span>
+                         ${(order.shiprocket && order.shiprocket.awb) ?
+            `<button onclick="trackShiprocketOrder('${order.orderId}', '${order.shiprocket.awb}')" class="ml-2 bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold hover:bg-blue-200">🔍 Track</button>`
+            : ''}
+                     </div>
                      <span class="text-xs text-gray-500 font-bold">${order.status}</span>
                  </div>
             </div>`;
@@ -464,7 +516,8 @@ window.loadDeptOrders = loadDeptOrders;
 window.loadDeliveryRequests = loadDeliveryRequests;
 window.loadDispatchedOrders = loadDispatchedOrders;
 window.loadDispatchHistory = loadDispatchHistory;
-window.loadDeliveryOrders = loadDeliveryOrders;
+window.loadOnWayOrders = loadOnWayOrders;
+window.loadOFDOrders = loadOFDOrders;
 window.loadDeliveredOrders = loadDeliveredOrders;
 window.loadFailedDeliveries = loadFailedDeliveries;
 window.loadDeliveryPerformance = loadDeliveryPerformance;

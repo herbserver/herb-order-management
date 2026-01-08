@@ -357,6 +357,74 @@ router.post('/rto', async (req, res) => {
     }
 });
 
+// Revert Delivered Order (Back to On Way or RTO)
+router.post('/revert-delivered', async (req, res) => {
+    try {
+        const { orderId, newStatus, rtoReason, revertedBy } = req.body;
+        console.log(`\n🔙 [REVERT DELIVERED] Order: ${orderId} → ${newStatus}`);
+
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        // Validate current status
+        if (order.status !== 'Delivered') {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot revert order with status "${order.status}". Only Delivered orders can be reverted.`
+            });
+        }
+
+        // Validate new status
+        const validStatuses = ['On Way', 'Dispatched', 'RTO'];
+        if (!validStatuses.includes(newStatus)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid status "${newStatus}". Must be one of: ${validStatuses.join(', ')}`
+            });
+        }
+
+        const updates = {
+            status: newStatus === 'On Way' ? 'Dispatched' : newStatus, // On Way = Dispatched status
+            revertInfo: {
+                revertedAt: new Date().toISOString(),
+                revertedBy: revertedBy || 'Admin',
+                previousStatus: 'Delivered',
+                revertReason: newStatus === 'RTO' ? (rtoReason || 'Reverted from Delivered') : 'Reverted from Delivered'
+            },
+            // Clear delivered data
+            deliveredAt: null,
+            deliveredBy: null,
+            updatedAt: new Date().toISOString()
+        };
+
+        // If reverting to RTO, add RTO fields
+        if (newStatus === 'RTO') {
+            updates.rtoAt = new Date().toISOString();
+            updates.rtoBy = revertedBy || 'Admin';
+            updates.rtoReason = rtoReason || 'Reverted from Delivered';
+        }
+
+        const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+
+        if (updatedOrder) {
+            console.log(`✅ Success: Order ${orderId} reverted from Delivered → ${newStatus}`);
+            console.log(`   By: ${revertedBy || 'Admin'}`);
+            res.json({
+                success: true,
+                message: `Order reverted to ${newStatus} successfully!`,
+                order: updatedOrder
+            });
+        } else {
+            res.status(404).json({ success: false, message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error('❌ Revert delivered error:', error.message);
+        res.status(500).json({ success: false, message: 'Failed to revert order' });
+    }
+});
+
 // Get Employee Orders
 router.get('/employee/:empId', async (req, res) => {
     try {

@@ -70,15 +70,20 @@ function renderDeliveryCardModern(o) {
                     class="bg-blue-50 text-blue-600 font-bold py-3 rounded-xl hover:bg-blue-100 transition-all border-2 border-blue-100 shadow-sm flex items-center justify-center gap-2 text-xs">
                     <span>🔍</span> Track
                 </button>
-                ` : `
+                ` : ''}
+                
                 <button onclick="viewOrder('${o.orderId}')" 
-                    class="bg-blue-50 text-blue-600 font-bold py-3 rounded-xl hover:bg-blue-100 transition-all border-2 border-blue-100 shadow-sm flex items-center justify-center gap-2 text-xs">
+                    class="bg-slate-50 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-100 transition-all border-2 border-slate-200 shadow-sm flex items-center justify-center gap-2 text-xs">
                     <span>👁️</span> View
                 </button>
-                `}
+
                 <button onclick="markAsRTO('${o.orderId}')" 
                     class="bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-all border-2 border-rose-100 shadow-sm flex items-center justify-center gap-2 text-xs">
                     <span>↩️</span> RTO
+                </button>
+                <button onclick="markAsOFD('${o.orderId}')" 
+                    class="bg-purple-50 text-purple-600 font-bold py-3 rounded-xl hover:bg-purple-100 transition-all border-2 border-purple-100 shadow-sm flex items-center justify-center gap-2 text-xs">
+                    <span>🚚</span> OFD
                 </button>
             </div>
             <button onclick="markAsDelivered('${o.orderId}')" 

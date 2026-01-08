@@ -613,10 +613,15 @@
                                 <span id="requestsCountDept"
                                     class="absolute right-3 bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">0</span>
                             </button>
-                            <button onclick="switchDeliveryTab('outfordelivery')" id="deptTabOutForDelivery"
+                            <button onclick="switchDeliveryTab('onway')" id="deptTabOnWay"
                                 class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all">
                                 <span class="text-lg">🚚</span>
-                                <span class="flex-1 text-left">Pending</span>
+                                <span class="flex-1 text-left">On Way</span>
+                            </button>
+                            <button onclick="switchDeliveryTab('ofd')" id="deptTabOFD"
+                                class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all">
+                                <span class="text-lg">📦</span>
+                                <span class="flex-1 text-left">OFD</span>
                             </button>
                             <button onclick="switchDeliveryTab('delivered')" id="deptTabDelivered"
                                 class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all">
@@ -1111,37 +1116,96 @@
                                 </div>
                             </div>
 
-                            <!-- OUT FOR DELIVERY TAB -->
-                            <div id="deliveryOutForDeliveryTab" class="hidden animate-fadeIn">
+                            <!-- ON WAY TAB -->
+                            <div id="deliveryOnWayTab" class="hidden animate-fadeIn">
                                 <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
-                                    <div class="flex justify-between items-center px-2">
+                                    <div class="flex flex-col md:flex-row justify-between items-center gap-3 px-2">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                            <span class="w-2 h-8 bg-orange-400 rounded-full block"></span>
-                                            Out for Delivery
+                                            <span class="w-2 h-8 bg-blue-500 rounded-full block"></span>
+                                            On Way (In Transit)
                                         </h2>
-                                        <button type="button" onclick="loadDeliveryOrders()"
-                                            class="text-orange-500 hover:bg-orange-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
-                                            🔄 Refresh
-                                        </button>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <input type="date" id="onWayDateFilter"
+                                                class="border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-blue-500 outline-none">
+                                            <button type="button"
+                                                onclick="setDeliveryDateFilter(document.getElementById('onWayDateFilter').value)"
+                                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors">
+                                                🔍 Filter
+                                            </button>
+                                            <button type="button"
+                                                onclick="clearDeliveryDateFilter(); document.getElementById('onWayDateFilter').value=''"
+                                                class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-red-50">
+                                                ✕
+                                            </button>
+                                            <button type="button" onclick="loadOnWayOrders()"
+                                                class="text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
+                                                🔄 Refresh
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div id="outForDeliveryList"
-                                    class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                <div id="onWayOrdersList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                </div>
+                            </div>
+
+                            <!-- OFD (Out For Delivery) TAB -->
+                            <div id="deliveryOFDTab" class="hidden animate-fadeIn">
+                                <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
+                                    <div class="flex flex-col md:flex-row justify-between items-center gap-3 px-2">
+                                        <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                            <span class="w-2 h-8 bg-orange-500 rounded-full block"></span>
+                                            Out For Delivery (OFD)
+                                        </h2>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <input type="date" id="ofdDateFilter"
+                                                class="border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-orange-500 outline-none">
+                                            <button type="button"
+                                                onclick="setDeliveryDateFilter(document.getElementById('ofdDateFilter').value)"
+                                                class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors">
+                                                🔍 Filter
+                                            </button>
+                                            <button type="button"
+                                                onclick="clearDeliveryDateFilter(); document.getElementById('ofdDateFilter').value=''"
+                                                class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-red-50">
+                                                ✕
+                                            </button>
+                                            <button type="button" onclick="loadOFDOrders()"
+                                                class="text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
+                                                🔄 Refresh
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="ofdOrdersList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                                 </div>
                             </div>
 
                             <!-- DELIVERED TAB -->
                             <div id="deliveryDeliveredTab" class="hidden animate-fadeIn">
                                 <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
-                                    <div class="flex justify-between items-center px-2">
+                                    <div class="flex flex-col md:flex-row justify-between items-center gap-3 px-2">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <span class="w-2 h-8 bg-teal-500 rounded-full block"></span>
                                             Successfully Delivered
                                         </h2>
-                                        <button type="button" onclick="loadDeliveredOrders()"
-                                            class="text-green-600 hover:bg-green-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
-                                            🔄 Refresh
-                                        </button>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <input type="date" id="deliveredDateFilter"
+                                                class="border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-green-500 outline-none">
+                                            <button type="button"
+                                                onclick="setDeliveryDateFilter(document.getElementById('deliveredDateFilter').value)"
+                                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors">
+                                                🔍 Filter
+                                            </button>
+                                            <button type="button"
+                                                onclick="clearDeliveryDateFilter(); document.getElementById('deliveredDateFilter').value=''"
+                                                class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-red-50">
+                                                ✕
+                                            </button>
+                                            <button type="button" onclick="loadDeliveredOrders()"
+                                                class="text-green-600 hover:bg-green-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
+                                                🔄 Refresh
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div id="deliveredOrdersList"
@@ -1152,15 +1216,29 @@
                             <!-- RTO TAB -->
                             <div id="deliveryRTOTab" class="hidden animate-fadeIn">
                                 <div class="bg-white -mx-8 px-8 pb-8 pt-4 shadow-lg mb-0">
-                                    <div class="flex justify-between items-center px-2">
+                                    <div class="flex flex-col md:flex-row justify-between items-center gap-3 px-2">
                                         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <span class="w-2 h-8 bg-indigo-500 rounded-full block"></span>
                                             Return to Origin (RTO)
                                         </h2>
-                                        <button type="button" onclick="loadRTOOrders()"
-                                            class="text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
-                                            🔄 Refresh
-                                        </button>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <input type="date" id="rtoDateFilter"
+                                                class="border-2 rounded-xl px-3 py-2 text-sm font-medium focus:border-indigo-500 outline-none">
+                                            <button type="button"
+                                                onclick="setDeliveryDateFilter(document.getElementById('rtoDateFilter').value)"
+                                                class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors">
+                                                🔍 Filter
+                                            </button>
+                                            <button type="button"
+                                                onclick="clearDeliveryDateFilter(); document.getElementById('rtoDateFilter').value=''"
+                                                class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-red-50">
+                                                ✕
+                                            </button>
+                                            <button type="button" onclick="loadRTOOrders()"
+                                                class="text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
+                                                🔄 Refresh
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div id="rtoOrdersList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -2415,6 +2493,153 @@
                     <span>💾</span> Save Changes
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- TRACKING MODAL - NEW CLEAN DESIGN -->
+    <div id="trackingModal"
+        class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+        <div
+            class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl animate-fadeIn overflow-hidden flex flex-col max-h-[90vh]">
+
+            <!-- Header - Dynamic Color Based on Status -->
+            <div id="trackingHeader"
+                class="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <div id="trackingStatusIcon"
+                        class="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center text-3xl">
+                        📦
+                    </div>
+                    <div>
+                        <p id="trackingOrderId" class="text-white/80 text-sm font-medium"></p>
+                        <h2 id="trackingStatusText" class="text-white font-black text-2xl">Loading...</h2>
+                        <p id="trackingLastUpdate" class="text-white/60 text-xs mt-1"></p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('trackingModal').classList.add('hidden')"
+                    class="bg-white/20 hover:bg-white/30 w-10 h-10 rounded-lg flex items-center justify-center transition-all text-white text-xl font-bold">
+                    &times;
+                </button>
+            </div>
+
+            <!-- Quick Info Bar -->
+            <div class="bg-slate-50 border-b border-slate-200 p-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">AWB Number</p>
+                        <p id="trackingAWB" class="font-mono font-black text-slate-800 text-sm mt-1">-</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Courier</p>
+                        <p id="trackingCourier" class="font-bold text-slate-800 text-sm mt-1">-</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Current Location</p>
+                        <p id="trackingLocation" class="font-bold text-slate-800 text-sm mt-1 truncate">-</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">EDD</p>
+                        <p id="trackingEDD" class="font-bold text-emerald-600 text-sm mt-1">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Stepper -->
+            <div class="bg-white border-b border-slate-100 p-4">
+                <div class="flex justify-between items-center max-w-md mx-auto relative">
+                    <div class="absolute top-5 left-8 right-8 h-1 bg-slate-200 rounded-full"></div>
+                    <div id="trackingProgressLine"
+                        class="absolute top-5 left-8 h-1 bg-blue-500 rounded-full transition-all duration-1000"
+                        style="width: 0%;"></div>
+
+                    <div class="relative z-10 flex flex-col items-center">
+                        <div id="stepIndicator1"
+                            class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-xl transition-all">
+                            📦</div>
+                        <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase">Booked</span>
+                    </div>
+                    <div class="relative z-10 flex flex-col items-center">
+                        <div id="stepIndicator2"
+                            class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-xl transition-all">
+                            🚛</div>
+                        <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase">Shipped</span>
+                    </div>
+                    <div class="relative z-10 flex flex-col items-center">
+                        <div id="stepIndicator3"
+                            class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-xl transition-all">
+                            🛵</div>
+                        <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase">OFD</span>
+                    </div>
+                    <div class="relative z-10 flex flex-col items-center">
+                        <div id="stepIndicator4"
+                            class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-xl transition-all">
+                            ✅</div>
+                        <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase">Delivered</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="flex-1 overflow-hidden flex flex-col md:flex-row">
+
+                <!-- Left: Details -->
+                <div class="w-full md:w-72 bg-slate-50 p-4 border-r border-slate-200 overflow-y-auto shrink-0">
+                    <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wide mb-3">📋 Details</h4>
+
+                    <div class="space-y-2">
+                        <div class="bg-white rounded-lg p-3 border border-slate-100">
+                            <p class="text-[9px] text-slate-400 font-bold uppercase mb-1">Route</p>
+                            <div class="flex items-center gap-2 text-sm">
+                                <span id="trackingOrigin" class="font-bold text-slate-700">-</span>
+                                <span class="text-slate-300">→</span>
+                                <span id="trackingDestination" class="font-bold text-slate-700">-</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-white rounded-lg p-2 border border-slate-100">
+                                <p class="text-[9px] text-slate-400 font-bold uppercase">Weight</p>
+                                <p id="trackingWeight" class="font-bold text-slate-700 text-sm">-</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-2 border border-slate-100">
+                                <p class="text-[9px] text-slate-400 font-bold uppercase">Pieces</p>
+                                <p id="trackingPieces" class="font-bold text-slate-700 text-sm">-</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-white rounded-lg p-2 border border-slate-100">
+                                <p class="text-[9px] text-slate-400 font-bold uppercase">Pickup</p>
+                                <p id="trackingPickupDate" class="font-bold text-slate-700 text-sm">-</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-2 border border-slate-100">
+                                <p class="text-[9px] text-slate-400 font-bold uppercase">POD</p>
+                                <p id="trackingPOD" class="font-bold text-slate-700 text-sm">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a id="trackingExternalLink" href="#" target="_blank"
+                        class="mt-4 block bg-blue-600 hover:bg-blue-700 text-white text-center font-bold py-3 rounded-lg transition-all text-sm">
+                        🔗 Track on Website
+                    </a>
+                </div>
+
+                <!-- Right: Timeline -->
+                <div class="flex-1 flex flex-col bg-white overflow-hidden">
+                    <div class="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <h4 class="font-bold text-slate-700 text-sm flex items-center gap-2">📍 History</h4>
+                        <span id="trackingCount"
+                            class="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-bold"></span>
+                    </div>
+
+                    <div id="trackingTimeline" class="p-4 overflow-y-auto flex-1">
+                        <p class="text-center text-slate-400 py-8">Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="trackingHeroCard" class="hidden"></div>
         </div>
     </div>
 
