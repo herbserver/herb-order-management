@@ -140,6 +140,13 @@ const orderSchema = new mongoose.Schema({
     collection: 'orders'
 });
 
+// Indexes for Performance
+orderSchema.index({ timestamp: -1 }); // For default sorting
+orderSchema.index({ employeeId: 1, timestamp: -1 }); // For Employee History
+orderSchema.index({ status: 1, timestamp: -1 }); // For Department Panels
+orderSchema.index({ orderType: 1 }); // For Stats
+
+
 // Department Schema
 const departmentSchema = new mongoose.Schema({
     departmentId: { type: String, required: true, unique: true, index: true },

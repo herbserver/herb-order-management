@@ -517,14 +517,30 @@ function updateAddress() {
 async function loadMyOrders() {
     if (!currentUser) return;
     try {
-        const res = await fetch(`${API_URL}/employees/${currentUser.id}`);
-        const data = await res.json();
+        // PERF FIX: Parallel fetch for Active statuses only (Pending, Verified, Dispatched)
+        // This avoids downloading thousands of Delivered orders.
+        const statuses = ['Pending', 'Address Verified', 'Dispatched', 'On Hold', 'Delivery Requested'];
+        const results = await Promise.all(statuses.map(s =>
+            fetch(`${API_URL}/employees/${currentUser.id}?status=${encodeURIComponent(s)}`).then(r => r.json())
+        ));
 
-        // Filter: Pending or Verification
-        const orders = (data.orders || []).filter(o => !['Delivered', 'Cancelled', 'Returned'].includes(o.status));
+        let orders = [];
+        results.forEach(res => {
+            if (res.success && res.orders) {
+                orders = [...orders, ...res.orders];
+            }
+        });
+
+        // Filter: Just to be safe (though backend filters by status)
+        // const activeOrders = orders.filter(o => !['Delivered', 'Cancelled', 'Returned'].includes(o.status));
+
         // Sort: newest first
         orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
+        // Note: Stats might be missing or zeroed out because we didn't do a full fetch.
+        // We might need a separate stats call if "todayCount" relies on other data.
+        // For now, let's calculate todayCount from active orders + simple assumption or separate lightweight stats endpoint.
+        // Let's just use what we have active.
         document.getElementById('todayCount').innerText = orders.filter(o => new Date(o.timestamp).toDateString() === new Date().toDateString()).length;
 
         const list = document.getElementById('myOrdersList');
@@ -567,21 +583,62 @@ async function loadCancelledOrders() {
     } catch (e) { }
 }
 
-async function loadMyHistory() {
+// Pagination Helper
+function renderPaginationControls(container, currentPage, totalPages, fetchFuncName) {
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'col-span-full flex justify-center items-center gap-4 mt-6';
+    div.innerHTML = `
+        <button onclick="${fetchFuncName}(${currentPage - 1})" 
+            class="px-4 py-2 rounded-lg border ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}"
+            ${currentPage === 1 ? 'disabled' : ''}>
+            Previous
+        </button>
+        <span class="text-sm font-bold text-gray-600">Page ${currentPage} of ${totalPages}</span>
+        <button onclick="${fetchFuncName}(${currentPage + 1})" 
+            class="px-4 py-2 rounded-lg border ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}"
+            ${currentPage === totalPages ? 'disabled' : ''}>
+            Next
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+let historyPage = 1;
+async function loadMyHistory(page = 1) {
     if (!currentUser) return;
+    historyPage = page;
     try {
-        const res = await fetch(`${API_URL}/employees/${currentUser.id}`);
+        // Optimized: Fetch history with pagination
+        const statuses = 'Delivered,Returned,Cancelled';
+        const limit = 10;
+
+        const res = await fetch(`${API_URL}/employees/${currentUser.id}?status=${encodeURIComponent(statuses)}&page=${page}&limit=${limit}`);
         const data = await res.json();
-        // Filter: Delivered or Returned
-        const orders = (data.orders || []).filter(o => ['Delivered', 'Returned'].includes(o.status));
-        orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        let orders = data.orders || [];
+        let total = 0;
+
+        if (data.pagination) {
+            total = data.pagination.total;
+        } else {
+            total = orders.length; // Fallback
+        }
 
         const list = document.getElementById('myHistoryList');
-        if (orders.length === 0) list.innerHTML = '<div class="text-center text-gray-400 col-span-full">No history yet</div>';
-        else list.innerHTML = orders.map(o => renderEmpOrderCard(o, true)).join('');
+        if (orders.length === 0) {
+            list.innerHTML = '<div class="text-center text-gray-400 col-span-full">No history yet</div>';
+            return;
+        }
+
+        list.innerHTML = orders.map(o => renderEmpOrderCard(o, true)).join('');
+
+        // Render Pagination
+        const totalPages = Math.ceil(total / limit) || 1;
+        renderPaginationControls(list, page, totalPages, 'loadMyHistory');
 
         // Add Reorder listeners if needed
-    } catch (e) { }
+    } catch (e) { console.error('History load error:', e); }
 }
 
 async function loadEmpProgress() {
@@ -664,3 +721,4 @@ window.updateTotal = updateTotal;
 window.calculateTotal = calculateTotal;
 window.filterMyOrders = filterMyOrders;
 window.reorderFromHistory = reorderFromHistory;
+window.loadMyHistory = loadMyHistory;

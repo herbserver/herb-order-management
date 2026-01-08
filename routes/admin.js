@@ -25,10 +25,16 @@ function readJSON(filePath, defaultValue = []) {
 router.get('/history', async (req, res) => {
     try {
         let orders = [];
-        try {
-            orders = await dataAccess.getAllOrders();
-        } catch (e) {
-            orders = readJSON(ORDERS_FILE, []);
+
+        // Optimization: Use efficient lookup if status is provided
+        if (req.query.status) {
+            orders = await dataAccess.getOrdersByStatus(req.query.status);
+        } else {
+            try {
+                orders = await dataAccess.getAllOrders();
+            } catch (e) {
+                orders = readJSON(ORDERS_FILE, []);
+            }
         }
 
         let filteredOrders = [...orders];
@@ -44,13 +50,27 @@ router.get('/history', async (req, res) => {
             filteredOrders = filteredOrders.filter(o => o.employeeId === req.query.employee.toUpperCase());
         }
 
-        if (req.query.status) {
-            filteredOrders = filteredOrders.filter(o => o.status === req.query.status);
+        // Status filter is already applied if we used the optimized path, 
+        // but if we fell back (no status provided but filtered later? No, req.query.status is the switch)
+        // If we didn't use optimized path, we need to filter.
+        // If we DID use optimized path, filteredOrders already has only that status.
+        // Double filtering is safe but redundant.
+        if (!req.query.status && req.query.status) {
+            // This block is unreachable logically based on above if-else, 
+            // but if we had complex logic, we'd check.
+            // Actually, if we fetch all, we MUST filter by status if it was somehow skipped (impossible here).
         }
+
+        // Wait, if I fetched by status, I don't need to filter by status again.
+        // But if I fetched ALL (else block), I verified req.query.status is falsy.
+        // So no status filter needed in else block either? 
+        // Ah, what if req.query.status is NOT provided? Then we fetch ALL.
+        // AND we don't filter by status. Correct.
 
         filteredOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         res.json({ success: true, orders: filteredOrders });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

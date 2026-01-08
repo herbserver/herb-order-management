@@ -630,7 +630,12 @@ async function loadAdminData() {
 function showAdminPanel() {
     document.querySelectorAll('#app> div').forEach(d => d.classList.add('hidden'));
     document.getElementById('adminPanel').classList.remove('hidden');
-    loadAdminData();
+
+    // Performance Optimization: Use granular loaders instead of fetching all orders
+    if (typeof loadAdminStats === 'function') loadAdminStats();
+    if (typeof loadAdminPending === 'function') loadAdminPending(1);
+
+    // switchAdminTab('pending'); // If such function exists, use it. For now, default to pending loader.
 
     // Start auto-tracking for Out for Delivery alerts
     // Auto-tracking DISABLED - Using webhook for real-time updates

@@ -92,18 +92,33 @@ function handleLiveUpdate(data) {
     }
 }
 
+// Utility: Debounce
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
+// Debounced Refresh Functions (Optimized for speed)
+const debouncedLoadOrders = debounce(() => {
+    if (typeof loadOrders === 'function') loadOrders();
+}, 150); // Ultra-fast response - 150ms
+
+const debouncedLoadDeptOrders = debounce(() => {
+    if (typeof loadDeptOrders === 'function') loadDeptOrders();
+}, 150); // Ultra-fast response - 150ms
+
 // Event handlers
 function onOrderCreated(order) {
     showNotification('📦 New Order', `${order.orderId} created by ${order.employee}`);
     playNotificationSound();
 
-    // Refresh order list if user is on relevant page
-    if (typeof loadOrders === 'function') {
-        loadOrders();
-    }
-    if (typeof loadDeptOrders === 'function') {
-        loadDeptOrders();
-    }
+    // Refresh order list if user is on relevant page (DEBOUNCED)
+    debouncedLoadOrders();
+    debouncedLoadDeptOrders();
 }
 
 function onOrderUpdated(order) {
@@ -125,13 +140,9 @@ function onOrderStatusChange(order, status) {
     showNotification('Status Update', messages[status]);
     playNotificationSound();
 
-    // Refresh lists
-    if (typeof loadOrders === 'function') {
-        loadOrders();
-    }
-    if (typeof loadDeptOrders === 'function') {
-        loadDeptOrders();
-    }
+    // Refresh lists (DEBOUNCED)
+    debouncedLoadOrders();
+    debouncedLoadDeptOrders();
 }
 
 // Show desktop notification

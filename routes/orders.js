@@ -166,51 +166,76 @@ router.put('/:orderId', async (req, res) => {
     }
 });
 
-// Get All Orders
+// Get All Orders (Modified to support status filter and pagination)
 router.get('/', async (req, res) => {
     try {
-        let orders = await dataAccess.getAllOrders();
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
 
-        // Add isReorder flags
-        orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        const seen = new Set();
-        orders.forEach(o => {
-            const mobile = o.telNo || o.mobileNumber;
-            if (seen.has(mobile)) o.isReorder = true;
-            else { o.isReorder = false; if (mobile) seen.add(mobile); }
+        let result;
+        // Optimization: Server-side filtering
+        if (req.query.status) {
+            result = await dataAccess.getOrdersByStatus(req.query.status, page, limit);
+        } else {
+            result = await dataAccess.getAllOrders(page, limit);
+        }
+
+        // Handle Pagination Response vs Full List
+        let orders = [];
+        let total = 0;
+
+        if (limit > 0 && result.orders) {
+            orders = result.orders;
+            total = result.total;
+        } else {
+            orders = result;
+            total = orders.length; // Approximate for non-paginated
+        }
+
+        // Remove dynamic isReorder calculation (expensive and unsafe for pagination)
+        // We rely on order.orderType which is saved at creation.
+
+        res.json({
+            success: true,
+            orders,
+            pagination: limit > 0 ? {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            } : null
         });
-
-        res.json({ success: true, orders });
     } catch (error) {
         console.error('❌ Get orders error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-// Helper to add isReorder status
-const addReorderFlags = (orders) => {
-    // Sort by date asc
-    orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    const seen = new Set();
-    orders.forEach(o => {
-        const mobile = o.telNo || o.mobileNumber;
-        if (seen.has(mobile)) {
-            o.isReorder = true;
-        } else {
-            o.isReorder = false;
-            if (mobile) seen.add(mobile);
-        }
-    });
-    return orders; // Returns sorted orders with flags
-};
-
 // Get Pending Orders
 router.get('/pending', async (req, res) => {
     try {
-        let orders = await dataAccess.getAllOrders();
-        addReorderFlags(orders); // sorting and flagging
-        const pending = orders.filter(o => o.status === 'Pending');
-        res.json({ success: true, orders: pending });
+        const page = parseInt(req.query.page) || 1;
+        // Default to no limit if not specified to avoid breaking existing clients, 
+        // or default to 10 if we want to enforce pagination. 
+        // Best to default to 0 (all) unless requested, but for PERF we want frontend to request it.
+        const limit = parseInt(req.query.limit) || 0;
+
+        const result = await dataAccess.getOrdersByStatus('Pending', page, limit);
+        let orders = [], total = 0;
+
+        if (limit > 0 && result.orders) {
+            orders = result.orders;
+            total = result.total;
+        } else {
+            orders = result;
+            total = orders.length;
+        }
+
+        res.json({
+            success: true,
+            orders,
+            pagination: limit > 0 ? { total, page, limit, totalPages: Math.ceil(total / limit) } : null
+        });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
@@ -219,10 +244,19 @@ router.get('/pending', async (req, res) => {
 // Get Verified Orders
 router.get('/verified', async (req, res) => {
     try {
-        let orders = await dataAccess.getAllOrders();
-        addReorderFlags(orders);
-        const verified = orders.filter(o => o.status === 'Address Verified');
-        res.json({ success: true, orders: verified });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
+        const result = await dataAccess.getOrdersByStatus('Address Verified', page, limit);
+
+        // Helper to extract orders/total
+        const orders = (limit > 0 && result.orders) ? result.orders : result;
+        const total = (limit > 0 && result.total) ? result.total : orders.length;
+
+        res.json({
+            success: true,
+            orders,
+            pagination: limit > 0 ? { total, page, limit, totalPages: Math.ceil(total / limit) } : null
+        });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
@@ -231,10 +265,14 @@ router.get('/verified', async (req, res) => {
 // Get Dispatched Orders
 router.get('/dispatched', async (req, res) => {
     try {
-        let orders = await dataAccess.getAllOrders();
-        addReorderFlags(orders);
-        const dispatched = orders.filter(o => o.status === 'Dispatched');
-        res.json({ success: true, orders: dispatched });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
+        const result = await dataAccess.getOrdersByStatus('Dispatched', page, limit);
+
+        const orders = (limit > 0 && result.orders) ? result.orders : result;
+        const total = (limit > 0 && result.total) ? result.total : orders.length;
+
+        res.json({ success: true, orders, pagination: limit > 0 ? { total, page, limit, totalPages: Math.ceil(total / limit) } : null });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Server error', error: e.message });
     }
@@ -243,10 +281,14 @@ router.get('/dispatched', async (req, res) => {
 // Get Delivered Orders
 router.get('/delivered', async (req, res) => {
     try {
-        let orders = await dataAccess.getAllOrders();
-        addReorderFlags(orders);
-        const delivered = orders.filter(o => o.status === 'Delivered');
-        res.json({ success: true, orders: delivered });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
+        const result = await dataAccess.getOrdersByStatus('Delivered', page, limit);
+
+        const orders = (limit > 0 && result.orders) ? result.orders : result;
+        const total = (limit > 0 && result.total) ? result.total : orders.length;
+
+        res.json({ success: true, orders, pagination: limit > 0 ? { total, page, limit, totalPages: Math.ceil(total / limit) } : null });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
@@ -255,10 +297,14 @@ router.get('/delivered', async (req, res) => {
 // Get Cancelled Orders
 router.get('/cancelled', async (req, res) => {
     try {
-        let orders = await dataAccess.getAllOrders();
-        addReorderFlags(orders);
-        const cancelled = orders.filter(o => o.status === 'Cancelled');
-        res.json({ success: true, orders: cancelled });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
+        const result = await dataAccess.getOrdersByStatus('Cancelled', page, limit);
+
+        const orders = (limit > 0 && result.orders) ? result.orders : result;
+        const total = (limit > 0 && result.total) ? result.total : orders.length;
+
+        res.json({ success: true, orders, pagination: limit > 0 ? { total, page, limit, totalPages: Math.ceil(total / limit) } : null });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
@@ -267,10 +313,14 @@ router.get('/cancelled', async (req, res) => {
 // Get RTO Orders
 router.get('/rto', async (req, res) => {
     try {
-        let orders = await dataAccess.getAllOrders();
-        addReorderFlags(orders);
-        const rto = orders.filter(o => o.status === 'RTO');
-        res.json({ success: true, orders: rto });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
+        const result = await dataAccess.getOrdersByStatus('RTO', page, limit);
+
+        const orders = (limit > 0 && result.orders) ? result.orders : result;
+        const total = (limit > 0 && result.total) ? result.total : orders.length;
+
+        res.json({ success: true, orders, pagination: limit > 0 ? { total, page, limit, totalPages: Math.ceil(total / limit) } : null });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
@@ -279,10 +329,14 @@ router.get('/rto', async (req, res) => {
 // Get On Hold Orders
 router.get('/onhold', async (req, res) => {
     try {
-        let orders = await dataAccess.getAllOrders();
-        addReorderFlags(orders);
-        const onhold = orders.filter(o => o.status === 'On Hold');
-        res.json({ success: true, orders: onhold });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
+        const result = await dataAccess.getOrdersByStatus('On Hold', page, limit);
+
+        const orders = (limit > 0 && result.orders) ? result.orders : result;
+        const total = (limit > 0 && result.total) ? result.total : orders.length;
+
+        res.json({ success: true, orders, pagination: limit > 0 ? { total, page, limit, totalPages: Math.ceil(total / limit) } : null });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
@@ -291,10 +345,16 @@ router.get('/onhold', async (req, res) => {
 // Get Delivery Requests (Employees requesting delivery confirmation)
 router.get('/delivery-requests', async (req, res) => {
     try {
-        const orders = await dataAccess.getAllOrders();
-        const requests = orders.filter(o => o.status === 'Delivery Requested');
-        console.log(`📬 [DELIVERY REQUESTS] Found ${requests.length} delivery requests`);
-        res.json({ success: true, requests: requests });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
+        // Optimized: Use getOrdersByStatus
+        const result = await dataAccess.getOrdersByStatus('Delivery Requested', page, limit);
+
+        const requests = (limit > 0 && result.orders) ? result.orders : result;
+        const total = (limit > 0 && result.total) ? result.total : requests.length;
+
+        // console.log(`📬 [DELIVERY REQUESTS] Found ${requests.length} delivery requests`);
+        res.json({ success: true, requests, pagination: limit > 0 ? { total, page, limit, totalPages: Math.ceil(total / limit) } : null });
     } catch (e) {
         console.error('❌ Get delivery requests error:', e);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -425,14 +485,32 @@ router.post('/revert-delivered', async (req, res) => {
     }
 });
 
-// Get Employee Orders
+// Get Employee Orders (OPTIMIZED - Direct Query)
 router.get('/employee/:empId', async (req, res) => {
     try {
         const empId = req.params.empId.toUpperCase();
-        const orders = await dataAccess.getAllOrders();
-        const empOrders = orders.filter(o => o.employeeId === empId);
-        res.json({ success: true, orders: empOrders });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
+        const status = req.query.status; // Optional: filter by status
+
+        // OPTIMIZED: Direct query instead of loading all orders
+        const result = await dataAccess.getEmployeeOrders(empId, status, page, limit);
+
+        const orders = (limit > 0 && result.orders) ? result.orders : result;
+        const total = (limit > 0 && result.total) ? result.total : (Array.isArray(orders) ? orders.length : 0);
+
+        res.json({
+            success: true,
+            orders,
+            pagination: limit > 0 ? {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            } : null
+        });
     } catch (e) {
+        console.error('❌ Get employee orders error:', e);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

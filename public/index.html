@@ -4,14 +4,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌿 Herb On Naturals -</title>
-    <script src="https://apis.mappls.com/advancedmaps/v1/f4c410f517ad05591fbebd88cb3742fa/map_load?v=1.5"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <title>🌿 Herb On Naturals - Order Management</title>
+
+    <!-- DNS Prefetch for External Domains (Faster DNS Resolution) -->
+    <link rel="dns-prefetch" href="https://apis.mappls.com">
+    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+
+    <!-- Preload Critical Resources for Faster Loading -->
+    <link rel="preload" href="app.js?v=3.6" as="script">
+    <link rel="preload" href="styles.css" as="style">
+    <link rel="preload" href="js/core/config.js" as="script">
+    <link rel="preload" href="js/core/session.js" as="script">
+
+    <!-- Critical: Tailwind CSS (needed for styling) -->
+    <script src="https://cdn.tailwindcss.com" defer></script>
+
+    <!-- Fonts (async loading) -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"
+        media="print" onload="this.media='all'">
+
+    <!-- Non-Critical Heavy Libraries (async - load in parallel, execute when ready) -->
+    <script src="https://apis.mappls.com/advancedmaps/v1/f4c410f517ad05591fbebd88cb3742fa/map_load?v=1.5"
+        async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js" async></script>
+
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -2648,40 +2669,41 @@
          ======================================== -->
 
     <!-- CORE MODULES (Load First) -->
-    <script src="js/core/config.js"></script>
-    <script src="js/core/session.js"></script>
-    <script src="js/core/utils.js"></script>
+    <script src="js/core/config.js" defer></script>
+    <script src="js/core/session.js" defer></script>
+    <script src="js/core/utils.js" defer></script>
 
     <!-- UI UTILITIES -->
-    <script src="js/ui/messages.js"></script>
-    <script src="js/ui/navigation.js"></script>
-    <script src="js/ui/popups.js"></script>
-    <script src="js/ui/modals.js"></script>
-    <script src="js/ui/screen-manager.js"></script>
+    <script src="js/ui/messages.js" defer></script>
+    <script src="js/ui/navigation.js" defer></script>
+    <script src="js/ui/popups.js" defer></script>
+    <script src="js/ui/modals.js" defer></script>
+    <script src="js/ui/screen-manager.js" defer></script>
 
     <!-- CARD RENDERERS -->
-    <script src="js/cards/verification-card.js"></script>
-    <script src="js/cards/dispatch-card.js"></script>
-    <script src="js/cards/delivery-card.js"></script>
+    <script src="js/cards/verification-card.js" defer></script>
+    <script src="js/cards/dispatch-card.js" defer></script>
+    <script src="js/cards/delivery-card.js" defer></script>
 
     <!-- AUTHENTICATION -->
-    <script src="js/auth/login.js"></script>
+    <script src="js/auth/login.js" defer></script>
 
     <!-- WHATSAPP FEATURES -->
-    <script src="js/features/whatsapp/templates.js"></script>
+    <script src="js/features/whatsapp/templates.js" defer></script>
 
     <!-- MAIN APPLICATION (Monolith - Will gradually phase out) -->
-    <script src="app.js?v=3.4"></script>
+    <script src="app.js?v=3.6" defer></script>
 
     <!-- EXISTING STANDALONE MODULES -->
-    <script src="analytics-dashboard.js"></script>
-    <script src="employee-performance.js"></script>
-    <script src="auto-tracking.js"></script>
-    <script src="order-notifications.js"></script>
-    <script src="whatsapp-notifications.js"></script>
+    <script src="analytics-dashboard.js" defer></script>
+    <script src="employee-performance.js" defer></script>
+    <script src="auto-tracking.js" defer></script>
+    <script src="order-notifications.js" defer></script>
+    <script src="whatsapp-notifications.js" defer></script>
+    <script src="js/admin.js" defer></script>
 
     <!-- APPLICATION INIT (Load Last) -->
-    <script src="js/init.js"></script>
+    <script src="js/init.js" defer></script>
 
 </body>
 

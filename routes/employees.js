@@ -127,28 +127,37 @@ router.get('/:empId', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Employee not found!' });
         }
 
-        const orders = await dataAccess.getAllOrders();
-        const empOrders = orders.filter(o => o.employeeId === id);
-        empOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        // Optimization: Use getEmployeeOrders
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0; // Default to all if not specified (legacy)
+
+        let result;
+        if (req.query.status) {
+            result = await dataAccess.getEmployeeOrders(id, req.query.status, page, limit);
+        } else {
+            result = await dataAccess.getEmployeeOrders(id, null, page, limit);
+        }
+
+        let empOrders, total = 0;
+        if (limit > 0 && result.orders) {
+            empOrders = result.orders;
+            total = result.total;
+        } else {
+            empOrders = result;
+            total = empOrders.length;
+        }
 
         res.json({
             success: true,
             employee: foundEmployee,
             orders: empOrders,
-            stats: {
-                total: empOrders.length,
-                pending: empOrders.filter(o => o.status === 'Pending').length,
-                verified: empOrders.filter(o => o.status === 'Address Verified').length,
-                dispatched: empOrders.filter(o => o.status === 'Dispatched').length,
-                delivered: empOrders.filter(o => o.status === 'Delivered').length,
-                cancelled: empOrders.filter(o => o.status === 'Cancelled').length,
-                onHold: empOrders.filter(o => o.status === 'On Hold').length,
-                thisMonth: empOrders.filter(o => {
-                    const orderDate = new Date(o.timestamp);
-                    const now = new Date();
-                    return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-                }).length
-            }
+            pagination: limit > 0 ? {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            } : null,
+            stats: null // Removed expensive stats calculation as it's unused
         });
     } catch (e) {
         console.error('Get employee detail error:', e);
