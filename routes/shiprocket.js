@@ -257,6 +257,9 @@ router.post('/track-order/:orderId', async (req, res) => {
                 updates.status = 'Delivered';
                 updates.deliveredAt = new Date().toISOString();
                 console.log(`✅ Order ${orderId} marked as DELIVERED`);
+            } else if (trackingData.currentStatus.toLowerCase().includes('out for delivery') && order.status !== 'Out For Delivery') {
+                updates.status = 'Out For Delivery';
+                console.log(`🚚 Order ${orderId} marked as OUT FOR DELIVERY`);
             }
 
             await dataAccess.updateOrder(orderId, updates);
@@ -414,6 +417,9 @@ router.post('/auto-track', async (req, res) => {
                         updates.deliveredAt = new Date().toISOString();
                         delivered++;
                         console.log(`✅ Order ${order.orderId} marked as DELIVERED`);
+                    } else if (trackingData.currentStatus.toLowerCase().includes('out for delivery') && order.status !== 'Out For Delivery') {
+                        updates.status = 'Out For Delivery';
+                        console.log(`🚚 Order ${order.orderId} marked as OUT FOR DELIVERY`);
                     }
 
                     await dataAccess.updateOrder(order.orderId, updates);

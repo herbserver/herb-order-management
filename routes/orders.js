@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
 const path = require('path');
 const xlsx = require('xlsx');
 const rateLimit = require('express-rate-limit');
 const dataAccess = require('../dataAccess');
 const { validateOrderCreation } = require('../validators');
+const { readJSON, writeJSON } = require('../utils/fileHelpers');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
@@ -18,29 +18,7 @@ const apiLimiter = rateLimit({
     message: { success: false, message: 'Too many requests. Please slow down.' }
 });
 
-// Helper Functions for JSON (Fallback)
-function readJSON(filePath, defaultValue = []) {
-    try {
-        if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf8');
-            return JSON.parse(data);
-        }
-        return defaultValue;
-    } catch (error) {
-        console.error(`Error reading ${filePath}:`, error);
-        return defaultValue;
-    }
-}
-
-function writeJSON(filePath, data) {
-    try {
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-        return true;
-    } catch (error) {
-        console.error(`Error writing ${filePath}:`, error);
-        return false;
-    }
-}
+// Note: Using centralized fileHelpers module for JSON operations
 
 // Create Order
 // Check for Duplicate Order (by mobile number) - FAST DIRECT QUERY
@@ -515,6 +493,55 @@ router.get('/employee/:empId', async (req, res) => {
     }
 });
 
+// Update Order Tracking (for OFD marking) - MUST be before /:orderId route
+router.post('/update-tracking', async (req, res) => {
+    try {
+        const { orderId, tracking } = req.body;
+
+        if (!orderId) {
+            return res.status(400).json({ success: false, message: 'Order ID is required' });
+        }
+
+        console.log(`📦 [UPDATE TRACKING] Order: ${orderId}`);
+        console.log(`📦 Tracking data:`, tracking);
+
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+
+        const updates = {
+            updatedAt: new Date().toISOString()
+        };
+
+        if (tracking) {
+            updates.tracking = {
+                ...(order.tracking || {}),
+                ...tracking,
+                lastUpdate: new Date().toISOString()
+            };
+
+            if (tracking.currentStatus === 'Out For Delivery') {
+                updates.status = 'Out For Delivery';
+                updates.ofdAt = new Date().toISOString();
+                console.log(`🚚 Order ${orderId} marked as Out For Delivery`);
+            }
+        }
+
+        const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+
+        if (updatedOrder) {
+            console.log(`✅ Tracking updated for ${orderId}`);
+            res.json({ success: true, message: 'Tracking updated!', order: updatedOrder });
+        } else {
+            res.status(404).json({ success: false, message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error('❌ Update tracking error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // Get Single Order
 router.get('/:orderId', async (req, res) => {
     try {
@@ -760,32 +787,59 @@ router.put('/:orderId/hold', async (req, res) => {
     }
 });
 
-// Excel Export
-router.get('/export', (req, res) => {
+// Excel Export - Download all orders or filter by status
+router.get('/export', async (req, res) => {
     try {
-        const orders = readJSON(ORDERS_FILE, []);
+        console.log('📊 Export request received');
+
+        // Get status filter if provided
+        const statusFilter = req.query.status;
+        let orders;
+
+        if (statusFilter) {
+            console.log(`📊 Exporting orders with status: ${statusFilter}`);
+            const result = await dataAccess.getOrdersByStatus(statusFilter, 1, 0); // Get all matching orders
+            orders = Array.isArray(result) ? result : (result.orders || []);
+        } else {
+            console.log('📊 Exporting ALL orders');
+            const result = await dataAccess.getAllOrders(1, 0); // Get all orders (limit=0)
+            orders = Array.isArray(result) ? result : (result.orders || []);
+        }
+
+        console.log(`📦 Found ${orders.length} orders to export`);
+
         const exportData = orders.map((order, index) => {
             let address = order.address || '';
             if (typeof address === 'object' && address !== null) {
                 address = `${address.houseNo || ''}, ${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''}`;
             }
+
             let productNames = '';
             if (Array.isArray(order.items)) {
-                productNames = order.items.map(i => i && i.description ? i.description : '').join(', ');
+                productNames = order.items.map(i => i && i.product ? i.product : (i.description || '')).join(', ');
             } else if (typeof order.items === 'string') {
                 productNames = order.items;
             }
 
             return {
                 "S.No": index + 1,
+                "Order ID": order.orderId || '',
                 "Customer Name": order.customerName || '',
-                "Mobile Number": order.mobileNumber || '',
+                "Mobile Number": order.telNo || order.mobileNumber || '',
                 "Address": address,
+                "Pincode": order.pin || '',
+                "Products": productNames,
                 "Order Date": order.timestamp ? new Date(order.timestamp).toLocaleDateString('en-GB') : '',
-                "Delivery Status": order.status || '',
+                "Status": order.status || '',
                 "Amount Rs.": order.total || 0,
-                "Agent": order.employee || '',
-                "AWB Number": order.tracking ? (order.tracking.trackingId || '') : ''
+                "COD Amount": order.codAmount || order.cod || 0,
+                "Advance Paid": order.advance || 0,
+                "Agent": order.employee || order.employeeName || '',
+                "Employee ID": order.employeeId || '',
+                "AWB Number": order.shiprocket?.awb || (order.tracking ? (order.tracking.trackingId || '') : ''),
+                "Courier": order.shiprocket?.courier || (order.tracking ? (order.tracking.courier || '') : ''),
+                "Dispatched At": order.dispatchedAt ? new Date(order.dispatchedAt).toLocaleDateString('en-GB') : '',
+                "Delivered At": order.deliveredAt ? new Date(order.deliveredAt).toLocaleDateString('en-GB') : ''
             };
         });
 
@@ -794,12 +848,18 @@ router.get('/export', (req, res) => {
         xlsx.utils.book_append_sheet(wb, ws, "Orders");
         const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-        res.setHeader('Content-Disposition', `attachment; filename="HerbOrders_${new Date().toISOString().split('T')[0]}.xlsx"`);
+        const fileName = statusFilter
+            ? `HerbOrders_${statusFilter.replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
+            : `HerbOrders_ALL_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(buf);
+
+        console.log(`✅ Export successful: ${orders.length} orders exported`);
     } catch (e) {
         console.error('❌ Export Error:', e);
-        res.status(500).json({ success: false, message: 'Export failed' });
+        res.status(500).json({ success: false, message: 'Export failed', error: e.message });
     }
 });
 

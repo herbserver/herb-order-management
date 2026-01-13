@@ -1,17 +1,10 @@
 /**
- * ============================================
- * CORE CONFIG - API & Constants
- * ============================================
- * This file contains all configuration variables 
- * and constants used across the application.
- * 
- * If API not working → Check API_URL here
- * If courier links broken → Check COURIER_TRACKING here
+ * Global Configuration
+ * Core settings and constants used across the application
  */
 
-// API Configuration
-// If API_URL is defined in HTML, use it, else default
-var API_URL = typeof API_URL !== 'undefined' ? API_URL : (window.location.origin + '/api');
+// API Configuration - using var to allow redeclaration
+var API_URL = API_URL || (window.location.origin + '/api');
 
 console.log('Connecting to API at:', API_URL);
 

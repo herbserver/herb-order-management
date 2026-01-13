@@ -37,8 +37,26 @@ body {
     scroll-behavior: smooth;
 }
 
+/* Panel Z-Index Layering */
+#loginScreen {
+    z-index: 10;
+    position: relative;
+}
+
+#loginScreen.hidden {
+    display: none !important;
+}
+
+#employeePanel,
+#departmentPanel,
+#adminPanel {
+    z-index: 20;
+    position: relative;
+}
+
 /* Accelerated Hardware Transitions */
 .glass-card,
+.glass-panel,
 .btn-primary,
 .order-card,
 button,
@@ -51,11 +69,10 @@ select {
     will-change: transform, box-shadow;
 }
 
-.glass-card {
+.glass-card,
+.glass-panel {
     background: rgba(255, 255, 255, 0.85);
-    /* Slightly more transparent for depth */
     backdrop-filter: blur(12px);
-    /* Increased blur */
     -webkit-backdrop-filter: blur(12px);
     border-radius: 1.5rem;
     box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
@@ -116,11 +133,17 @@ button:active {
 }
 
 .tab-active {
-    background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-blue-light) 100%);
-    color: white;
-    box-shadow: 0 3px 10px rgba(90, 159, 212, 0.25);
-    transform: scale(1.05);
-    /* Pop effect */
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+    transform: scale(1.02);
+}
+
+/* Employee Panel Tab Buttons */
+.emp-tab-btn.tab-active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
 }
 
 .order-card {
@@ -150,6 +173,16 @@ button:active {
     will-change: opacity, transform;
 }
 
+/* Bouncy Sidebar Transition */
+.sidebar-bouncy {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* Backdrop Fade Transition */
+.backdrop-fade {
+    transition: opacity 0.4s ease, backdrop-filter 0.4s ease !important;
+}
+
 /* Mobile Responsive Tabs with Hide Scrollbar */
 .scrollable-tabs {
     overflow-x: auto;
@@ -157,7 +190,6 @@ button:active {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     padding-bottom: 2px;
-    /* Fix clipping */
     mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent);
     -webkit-mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent);
 }
@@ -183,7 +215,6 @@ button:active {
 
 .animate-blob {
     animation: blob 8s infinite ease-in-out;
-    /* Slower, smoother */
     will-change: transform;
 }
 
@@ -236,13 +267,11 @@ button:active {
 @media (max-width: 768px) {
     .animate-blob {
         animation-duration: 12s;
-        /* Even slower on mobile */
         filter: blur(50px);
     }
 
     .glass-card {
         padding: 1rem !important;
-        /* Reduce padding on mobile */
     }
 }
 

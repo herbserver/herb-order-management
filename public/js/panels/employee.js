@@ -53,6 +53,19 @@ function switchEmpTab(tab) {
         btn.classList.remove('text-gray-500');
         btn.querySelector('span')?.classList.add('scale-110');
     }
+
+    // Auto-close sidebar on mobile after tab selection
+    if (window.innerWidth < 1024) {
+        const sidebar = document.getElementById('empSidebar');
+        const backdrop = document.getElementById('empSidebarBackdrop');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.add('-translate-x-full');
+            if (backdrop) {
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+                backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            }
+        }
+    }
 }
 
 // ==================== ORDER FORM LOGIC ====================
@@ -514,40 +527,50 @@ function updateAddress() {
 }
 
 // ==================== LIST LOADING ====================
-async function loadMyOrders() {
+
+const EMP_ITEMS_PER_PAGE = 12; // Limit per page
+let empMyOrdersPage = 1;
+
+async function loadMyOrders(page = null) {
     if (!currentUser) return;
     try {
-        // PERF FIX: Parallel fetch for Active statuses only (Pending, Verified, Dispatched)
-        // This avoids downloading thousands of Delivered orders.
-        const statuses = ['Pending', 'Address Verified', 'Dispatched', 'On Hold', 'Delivery Requested'];
-        const results = await Promise.all(statuses.map(s =>
-            fetch(`${API_URL}/employees/${currentUser.id}?status=${encodeURIComponent(s)}`).then(r => r.json())
-        ));
+        // Update page if provided
+        if (page !== null) empMyOrdersPage = page;
+        const currentPage = empMyOrdersPage;
 
-        let orders = [];
-        results.forEach(res => {
-            if (res.success && res.orders) {
-                orders = [...orders, ...res.orders];
-            }
-        });
+        // OPTIMIZED: Fetch with pagination limit
+        const statuses = 'Pending,Dispatched,Out For Delivery,On Hold';
+        const res = await fetch(`${API_URL}/orders/employee/${currentUser.id}?status=${encodeURIComponent(statuses)}&page=${currentPage}&limit=${EMP_ITEMS_PER_PAGE}`);
+        const data = await res.json();
 
-        // Filter: Just to be safe (though backend filters by status)
-        // const activeOrders = orders.filter(o => !['Delivered', 'Cancelled', 'Returned'].includes(o.status));
+        if (!data.success) {
+            console.error('Failed to load orders');
+            return;
+        }
 
-        // Sort: newest first
-        orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const orders = data.orders || [];
+        const totalItems = data.pagination ? data.pagination.total : orders.length;
+        const totalPages = Math.ceil(totalItems / EMP_ITEMS_PER_PAGE) || 1;
 
-        // Note: Stats might be missing or zeroed out because we didn't do a full fetch.
-        // We might need a separate stats call if "todayCount" relies on other data.
-        // For now, let's calculate todayCount from active orders + simple assumption or separate lightweight stats endpoint.
-        // Let's just use what we have active.
-        document.getElementById('todayCount').innerText = orders.filter(o => new Date(o.timestamp).toDateString() === new Date().toDateString()).length;
+        // Update today count (from all orders, might need separate API call for accurate count)
+        const todayOrders = orders.filter(o => new Date(o.timestamp).toDateString() === new Date().toDateString());
+        document.getElementById('todayCount').innerText = todayOrders.length;
 
         const list = document.getElementById('myOrdersList');
-        if (orders.length === 0) { list.innerHTML = '<div class="col-span-full text-center text-gray-400">No active orders</div>'; return; }
+        if (!list) return;
+
+        if (orders.length === 0) {
+            list.innerHTML = '<div class="col-span-full text-center text-gray-400">No active orders</div>';
+            return;
+        }
 
         list.innerHTML = orders.map(o => renderEmpOrderCard(o)).join('');
-    } catch (e) { console.error(e); }
+
+        // Add pagination controls
+        renderPaginationControls(list, currentPage, totalPages, 'loadMyOrders');
+    } catch (e) {
+        console.error('Error loading my orders:', e);
+    }
 }
 
 async function loadCancelledOrders() {
@@ -557,14 +580,14 @@ async function loadCancelledOrders() {
         const data = await res.json();
         const orders = (data.orders || []).filter(o => o.status === 'Cancelled');
 
-        const list = document.getElementById('cancelledOrdersList');
+        const list = document.getElementById('empCancelledList');
         if (orders.length === 0) {
             list.innerHTML = '<div class="col-span-full text-center py-12 bg-red-50 rounded-2xl border-dashed border-2 border-red-100"><p class="text-4xl mb-3">✅</p><p class="text-gray-500">No cancelled orders found</p></div>';
             return;
         }
 
         list.innerHTML = orders.map(o => `
-             <div class="bg-white border border-red-100 rounded-xl overflow-hidden hover:shadow-lg transition-all group">
+             <div class="bg-white border border-red-100 rounded-xl overflow-hidden hover:shadow-lg transition-all group" data-mobile="${o.telNo}">
                 <div class="h-1 bg-red-500 w-full"></div>
                 <div class="p-5">
                     <div class="flex justify-between items-start mb-4">
@@ -583,26 +606,113 @@ async function loadCancelledOrders() {
     } catch (e) { }
 }
 
-// Pagination Helper
+// Pagination Helper with Items Per Page Selector (Clean Style)
 function renderPaginationControls(container, currentPage, totalPages, fetchFuncName) {
     if (!container) return;
+
+    // Get current items per page from config
+    const currentLimit = typeof paginationConfig !== 'undefined' ? paginationConfig.getItemsPerPage() : EMP_ITEMS_PER_PAGE;
+
     const div = document.createElement('div');
-    div.className = 'col-span-full flex justify-center items-center gap-4 mt-6';
+    div.className = 'col-span-full mt-8';
+
     div.innerHTML = `
-        <button onclick="${fetchFuncName}(${currentPage - 1})" 
-            class="px-4 py-2 rounded-lg border ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}"
-            ${currentPage === 1 ? 'disabled' : ''}>
-            Previous
-        </button>
-        <span class="text-sm font-bold text-gray-600">Page ${currentPage} of ${totalPages}</span>
-        <button onclick="${fetchFuncName}(${currentPage + 1})" 
-            class="px-4 py-2 rounded-lg border ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}"
-            ${currentPage === totalPages ? 'disabled' : ''}>
-            Next
-        </button>
+        <!-- Dropdown for items per page -->
+        <div class="flex justify-center mb-4">
+            <div class="flex items-center gap-2 text-sm">
+                <label class="text-gray-600 font-medium">Items per page:</label>
+                <select 
+                    onchange="handleEmpItemsChange('${fetchFuncName}')"
+                    class="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 outline-none bg-white cursor-pointer">
+                    <option value="10" ${currentLimit === 10 ? 'selected' : ''}>10</option>
+                    <option value="25" ${currentLimit === 25 ? 'selected' : ''}>25</option>
+                    <option value="50" ${currentLimit === 50 ? 'selected' : ''}>50</option>
+                    <option value="100" ${currentLimit === 100 ? 'selected' : ''}>100</option>
+                    <option value="0" ${currentLimit === 0 ? 'selected' : ''}>All</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Pagination buttons -->
+        <div class="flex justify-center items-center gap-2">
+            <button 
+                onclick="${fetchFuncName}(${currentPage - 1})" 
+                ${currentPage === 1 ? 'disabled' : ''}
+                class="px-4 py-2 text-sm font-medium rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}">
+                ← Previous
+            </button>
+            
+            ${generatePageNumbers(currentPage, totalPages, fetchFuncName)}
+            
+            <button 
+                onclick="${fetchFuncName}(${currentPage + 1})" 
+                ${currentPage === totalPages ? 'disabled' : ''}
+                class="px-4 py-2 text-sm font-medium rounded-md ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}">
+                Next →
+            </button>
+        </div>
+        
+        <!-- Info text -->
+        <div class="text-center text-sm text-gray-500 mt-3">
+            Showing ${((currentPage - 1) * currentLimit) + 1}-${Math.min(currentPage * currentLimit, currentLimit > 0 ? currentLimit * totalPages : 999)} orders
+        </div>
     `;
+
     container.appendChild(div);
 }
+
+// Generate page number buttons
+function generatePageNumbers(currentPage, totalPages, fetchFuncName) {
+    let pages = [];
+    const maxVisible = 3; // Show max 3 page numbers
+
+    let startPage = Math.max(1, currentPage - 1);
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    // Adjust if at the end
+    if (endPage - startPage < maxVisible - 1) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        pages.push(`
+            <button 
+                onclick="${fetchFuncName}(${i})" 
+                class="w-10 h-10 text-sm font-medium rounded-md ${isActive ? 'bg-emerald-500 text-white' : 'text-gray-700 hover:bg-gray-50'}">
+                ${i}
+            </button>
+        `);
+    }
+
+    return pages.join('');
+}
+
+// Handle items per page change for employee
+function handleEmpItemsChange(fetchFuncName) {
+    const select = event.target;
+    const newLimit = parseInt(select.value);
+
+    // Update global constant
+    window.EMP_ITEMS_PER_PAGE = newLimit;
+
+    // Save to localStorage
+    if (typeof paginationConfig !== 'undefined') {
+        paginationConfig.setItemsPerPage(newLimit);
+    } else {
+        localStorage.setItem('emp_items_per_page', newLimit.toString());
+    }
+
+    console.log(`📊 Employee items per page: ${newLimit === 0 ? 'ALL' : newLimit}`);
+
+    // Reload with page 1
+    if (typeof window[fetchFuncName] === 'function') {
+        window[fetchFuncName](1);
+    }
+}
+
+window.handleEmpItemsChange = handleEmpItemsChange;
+window.generatePageNumbers = generatePageNumbers;
 
 let historyPage = 1;
 async function loadMyHistory(page = 1) {
@@ -649,11 +759,25 @@ async function loadEmpProgress() {
 }
 
 function renderEmpOrderCard(o, isHistory = false) {
-    const statusColor = o.status === 'Verification Pending' ? 'text-orange-500 bg-orange-50' :
+    const statusColor = o.status === 'Pending' ? 'text-orange-500 bg-orange-50' :
         o.status === 'Dispatched' ? 'text-blue-500 bg-blue-50' :
-            o.status === 'Delivered' ? 'text-green-500 bg-green-50' : 'text-gray-500 bg-gray-50';
+            o.status === 'Out For Delivery' ? 'text-purple-500 bg-purple-50' :
+                o.status === 'Delivered' ? 'text-green-500 bg-green-50' : 'text-gray-500 bg-gray-50';
+
+    const hasTracking = (o.shiprocket && o.shiprocket.awb) || (o.tracking && o.tracking.trackingId);
+    const trackingId = (o.shiprocket && o.shiprocket.awb) || (o.tracking && o.tracking.trackingId) || '';
 
     let actionBtn = `<button onclick="viewOrder('${o.orderId}')" class="text-blue-500 text-xs font-bold hover:bg-blue-50 px-3 py-2 rounded-lg">View</button>`;
+
+    if (hasTracking) {
+        actionBtn = `
+            <button onclick="trackShiprocketOrder('${o.orderId}', '${trackingId}')" class="text-orange-600 text-xs font-bold hover:bg-orange-50 px-3 py-2 rounded-lg mr-1">
+                🔍 Track
+            </button>
+            ${actionBtn}
+        `;
+    }
+
     if (isHistory) {
         actionBtn += `<button onclick='reorderFromHistory(${JSON.stringify(o).replace(/'/g, "&#39;")})' class="text-green-600 text-xs font-bold hover:bg-green-50 px-3 py-2 rounded-lg ml-2">🔄 Reorder</button>`;
     }
@@ -684,12 +808,71 @@ function renderEmpOrderCard(o, isHistory = false) {
     </div>`;
 }
 
-// Search utility
+// Search utility - searches by mobile, name, order ID, and address
 function filterMyOrders(q) {
-    document.querySelectorAll('#myOrdersList > div').forEach(c => {
-        const m = c.dataset.mobile || '';
-        if (m.includes(q) || c.innerText.toLowerCase().includes(q.toLowerCase())) c.style.display = '';
-        else c.style.display = 'none';
+    const query = (q || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('#myOrdersList [data-mobile]');
+
+    if (!query) {
+        // Show all cards if search is empty
+        cards.forEach(c => c.style.display = '');
+        return;
+    }
+
+    cards.forEach(c => {
+        const mobile = (c.dataset.mobile || '').toLowerCase();
+        const text = (c.innerText || '').toLowerCase();
+
+        // Search in mobile number or any text content (includes name, ID, address)
+        if (mobile.includes(query) || text.includes(query)) {
+            c.style.display = '';
+        } else {
+            c.style.display = 'none';
+        }
+    });
+}
+
+// Search function for History tab
+function filterMyHistory(q) {
+    const query = (q || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('#myHistoryList [data-mobile]');
+
+    if (!query) {
+        cards.forEach(c => c.style.display = '');
+        return;
+    }
+
+    cards.forEach(c => {
+        const mobile = (c.dataset.mobile || '').toLowerCase();
+        const text = (c.innerText || '').toLowerCase();
+
+        if (mobile.includes(query) || text.includes(query)) {
+            c.style.display = '';
+        } else {
+            c.style.display = 'none';
+        }
+    });
+}
+
+// Search function for Cancelled Orders tab
+function filterMyCancelledOrders(q) {
+    const query = (q || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('#empCancelledList [data-mobile]');
+
+    if (!query) {
+        cards.forEach(c => c.style.display = '');
+        return;
+    }
+
+    cards.forEach(c => {
+        const mobile = (c.dataset.mobile || '').toLowerCase();
+        const text = (c.innerText || '').toLowerCase();
+
+        if (mobile.includes(query) || text.includes(query)) {
+            c.style.display = '';
+        } else {
+            c.style.display = 'none';
+        }
     });
 }
 
@@ -720,5 +903,8 @@ window.addItem = addItem;
 window.updateTotal = updateTotal;
 window.calculateTotal = calculateTotal;
 window.filterMyOrders = filterMyOrders;
+window.filterMyHistory = filterMyHistory;
+window.filterMyCancelledOrders = filterMyCancelledOrders;
 window.reorderFromHistory = reorderFromHistory;
 window.loadMyHistory = loadMyHistory;
+

@@ -77,14 +77,29 @@ function renderDeliveryCardModern(o) {
                     <span>👁️</span> View
                 </button>
 
+                ${(o.status === 'RTO' || o.status === 'Out For Delivery') ? `
+                <button onclick="markAsOnWay('${o.orderId}')" 
+                    class="bg-amber-50 text-amber-600 font-bold py-3 rounded-xl hover:bg-amber-100 transition-all border-2 border-amber-100 shadow-sm flex items-center justify-center gap-2 text-xs">
+                    <span>🚛</span> On Way
+                </button>
+                ` : `
                 <button onclick="markAsRTO('${o.orderId}')" 
                     class="bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-all border-2 border-rose-100 shadow-sm flex items-center justify-center gap-2 text-xs">
                     <span>↩️</span> RTO
                 </button>
+                `}
+                
+                ${o.status !== 'Out For Delivery' ? `
                 <button onclick="markAsOFD('${o.orderId}')" 
                     class="bg-purple-50 text-purple-600 font-bold py-3 rounded-xl hover:bg-purple-100 transition-all border-2 border-purple-100 shadow-sm flex items-center justify-center gap-2 text-xs">
                     <span>🚚</span> OFD
                 </button>
+                ` : `
+                <button onclick="markAsRTO('${o.orderId}')" 
+                    class="bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-all border-2 border-rose-100 shadow-sm flex items-center justify-center gap-2 text-xs">
+                    <span>↩️</span> RTO
+                </button>
+                `}
             </div>
             <button onclick="markAsDelivered('${o.orderId}')" 
                 class="bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold py-4 rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transform active:scale-95 flex items-center justify-center gap-2 text-base">

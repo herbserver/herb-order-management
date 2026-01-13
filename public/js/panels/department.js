@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // We reuse switch func but we might need to hide irrelevant tabs based on type
     setupDeptUI(type);
     loadDeptOrders();
+
+    // Update badges if delivery department
+    if (type === 'delivery' && typeof updateDeliveryBadges === 'function') {
+        updateDeliveryBadges();
+    }
 });
 
 let currentDeptType = 'verification';
@@ -75,6 +80,19 @@ function switchDispatchTab(tab) {
         document.getElementById('deptDispatchHistoryTab').classList.remove('hidden');
         loadDispatchHistory();
     }
+
+    // Auto-close sidebar on mobile after selection
+    if (window.innerWidth < 1024) {
+        const sidebar = document.getElementById('deptSidebar');
+        const backdrop = document.getElementById('deptSidebarBackdrop');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.add('-translate-x-full');
+            if (backdrop) {
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+                backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            }
+        }
+    }
 }
 
 function switchDeliveryTab(tab) {
@@ -121,19 +139,43 @@ function switchDeliveryTab(tab) {
         document.getElementById('deliveryRTOTab').classList.remove('hidden');
         loadRTOOrders();
     }
+
+    // Auto-close sidebar on mobile after selection
+    if (window.innerWidth < 1024) {
+        const sidebar = document.getElementById('deptSidebar');
+        const backdrop = document.getElementById('deptSidebarBackdrop');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.add('-translate-x-full');
+            if (backdrop) {
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+                backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            }
+        }
+    }
 }
 
-async function loadRTOOrders() {
+async function loadRTOOrders(page = null) {
     try {
-        const res = await fetch(`${API_URL}/orders/rto`);
+        if (page !== null) deptPagination.deliveryRTO = page;
+        const currentPage = deptPagination.deliveryRTO || 1;
+
+        const res = await fetch(`${API_URL}/orders/rto?page=${currentPage}&limit=${DEPT_ITEMS_PER_PAGE}`);
         const data = await res.json();
         const orders = data.orders || [];
+        const totalItems = data.pagination ? data.pagination.total : orders.length;
+        const totalPages = Math.ceil(totalItems / DEPT_ITEMS_PER_PAGE) || 1;
 
         const container = document.getElementById('rtoOrdersList');
         if (!container) return;
 
         if (orders.length === 0) {
-            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi RTO orders nahi hain</p>';
+            container.innerHTML = `
+                <div class="col-span-full text-center py-8">
+                    <p class="text-gray-500 mb-4">Koi RTO orders nahi hain</p>
+                    <button onclick="syncOFDStatus()" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-200">
+                        🔄 Force Sync Status
+                    </button>
+                </div>`;
             return;
         }
 
@@ -142,6 +184,7 @@ async function loadRTOOrders() {
             html += renderDeliveryCardModern(o);
         });
         container.innerHTML = html;
+        renderPaginationControls(container, currentPage, totalPages, 'loadRTOOrders');
     } catch (e) {
         console.error(e);
     }
@@ -345,41 +388,71 @@ async function loadOnWayOrders(page = null) {
 
 // 4b. OFD (Out For Delivery) Orders - Delivery Panel
 async function loadOFDOrders(page = null) {
+    console.log('🔍 loadOFDOrders called, page:', page);
     try {
         if (page !== null) deptPagination.deliveryOFD = page;
         const currentPage = deptPagination.deliveryOFD || 1;
+        console.log('📄 Current page:', currentPage);
 
-        // Same issue as OnWay - need backend filter for OFD.
-        // For now, fetching Dispatched orders.
-        // Users might see non-OFD orders here if we don't filter.
-        // BUT strict performance requirement means we must paginate.
+        // Fetch orders with 'Out For Delivery' status specifically
+        const url = `${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}&page=${currentPage}&limit=${DEPT_ITEMS_PER_PAGE}`;
+        console.log('🌐 Fetching from:', url);
 
-        const res = await fetch(`${API_URL}/orders/dispatched?page=${currentPage}&limit=${DEPT_ITEMS_PER_PAGE}`);
+        const res = await fetch(url);
         const data = await res.json();
-        // Here we ideally filter for OFD.
-        // If we filter client side, we reduce the page size.
-        let orders = data.orders || [];
-        // orders = orders.filter(...)
+        console.log('📦 Response data:', data);
 
-        const totalItems = data.pagination ? data.pagination.total : orders.length; // This total includes ALL dispatched
+        let orders = data.orders || [];
+        console.log('📋 Orders array length:', orders.length);
+
+        const totalItems = data.pagination ? data.pagination.total : orders.length;
         const totalPages = Math.ceil(totalItems / DEPT_ITEMS_PER_PAGE) || 1;
+        console.log('📊 Total items:', totalItems, 'Total pages:', totalPages);
 
         const container = document.getElementById('ofdOrdersList');
-        if (!container) return;
-
-        if (orders.length === 0) {
-            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi OFD (Out For Delivery) order nahi hai</p>';
+        console.log('🎯 Container element:', container ? 'Found' : 'NOT FOUND');
+        if (!container) {
+            console.error('❌ ofdOrdersList container not found!');
             return;
         }
 
-        let html = '';
+        if (orders.length === 0) {
+            console.log('⚠️ No OFD orders found');
+            container.innerHTML = `
+                <div class="col-span-full text-center py-8">
+                    <p class="text-gray-500 mb-4">Koi OFD (Out For Delivery) order nahi hai</p>
+                    <button onclick="syncOFDStatus()" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-200">
+                        🔄 Sync with Shiprocket
+                    </button>
+                    <p class="text-xs text-gray-400 mt-2">Agar order OFD hai par yahan nahi dikh raha, toh Sync button dabayein.</p>
+                </div>
+            `;
+            return;
+        }
+
+        console.log('✅ Rendering', orders.length, 'orders');
+        // Add Sync Button at top if orders exist
+        const syncBtnHtml = `
+            <div class="col-span-full mb-4 flex justify-end">
+                 <button onclick="syncOFDStatus()" class="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-100 border border-blue-200 flex items-center gap-1">
+                    🔄 Sync Status
+                </button>
+            </div>
+        `;
+
+        let html = syncBtnHtml || '';
         orders.forEach(order => {
+            console.log('🎨 Rendering card for:', order.orderId);
             html += renderDeliveryCardModern(order);
         });
         container.innerHTML = html;
+        console.log('✅ Container updated with HTML');
         renderPaginationControls(container, currentPage, totalPages, 'loadOFDOrders');
+        console.log('✅ Pagination controls rendered');
 
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error('❌ Error in loadOFDOrders:', e);
+    }
 }
 
 // 5. Delivered Orders (Delivery Panel)
@@ -540,6 +613,42 @@ async function revertDispatch(orderId) {
     } catch (e) { console.error(e); }
 }
 
+async function syncOFDStatus() {
+    if (!confirm('Shiprocket se status sync karna hai? Isme 10-20 seconds lag sakte hain.')) return;
+
+    // Find button - since event might not be available directly in async call if not passed
+    let btn = document.querySelector('button[onclick="syncOFDStatus()"]');
+    // If multiple, try to find the one that triggered (event.target fallback if possible)
+    if (typeof event !== 'undefined' && event.target) btn = event.target;
+
+    const originalText = btn ? btn.innerHTML : 'Sync';
+    if (btn) {
+        btn.innerHTML = '⏳ Syncing...';
+        btn.disabled = true;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/shiprocket/auto-track`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+            alert(`Sync Complete!\nTracked: ${data.tracked}\nDelivered: ${data.delivered}`);
+            loadOFDOrders(); // Refresh OFD list
+            loadOnWayOrders(); // Refresh On Way list
+        } else {
+            alert('Sync failed: ' + (data.message || 'Unknown error'));
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Server connection failed during sync.');
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+}
+
 // Attach globals
 window.switchDispatchTab = switchDispatchTab;
 window.switchDeliveryTab = switchDeliveryTab;
@@ -554,6 +663,7 @@ window.loadFailedDeliveries = loadFailedDeliveries;
 window.loadDeliveryPerformance = loadDeliveryPerformance;
 window.revertDispatch = revertDispatch;
 window.approveDelivery = approveDelivery;
+window.syncOFDStatus = syncOFDStatus;
 window.generateOrderCardHTML = generateOrderCardHTML;
 window.renderOrderCard = renderOrderCard;
 
@@ -566,7 +676,10 @@ let deptPagination = {
     dispatchDispatched: 1,
     dispatchHistory: 1,
     deliveryOut: 1,
+    deliveryOnWay: 1,        // Added for On Way tab
+    deliveryOFD: 1,          // Added for OFD tab
     deliveryDelivered: 1,
+    deliveryRTO: 1,          // Added for RTO tab
     deliveryFailed: 1,
     deliveryPerf: 1
 };
@@ -578,15 +691,15 @@ async function loadDeptOrders(page = null) {
         let pageKey = 'verification';
 
         if (currentDeptType === 'verification') {
-            statusFilter = 'Verification Pending';
+            statusFilter = 'Pending'; // MongoDB has 'Pending' status
             pageKey = 'verification';
         }
         else if (currentDeptType === 'dispatch') {
-            statusFilter = 'Verified'; // Ready for dispatch
+            statusFilter = 'Dispatched'; // Orders ready for dispatch (in MongoDB)
             pageKey = 'dispatchReady';
         }
         else if (currentDeptType === 'delivery') {
-            statusFilter = 'Dispatched';
+            statusFilter = 'Out For Delivery'; // MongoDB has 'Out For Delivery'
             pageKey = 'deliveryOut';
         }
 
@@ -629,26 +742,110 @@ async function loadDeptOrders(page = null) {
 }
 
 function renderPaginationControls(container, currentPage, totalPages, fetchFuncName) {
-    // Always show pagination controls for consistency
-    // if (totalPages <= 1) return;  // Commented out to always show
+    if (!container) return;
+
+    // Get current items per page
+    const currentLimit = typeof paginationConfig !== 'undefined' ? paginationConfig.getItemsPerPage() : DEPT_ITEMS_PER_PAGE;
 
     const controls = document.createElement('div');
-    controls.className = 'col-span-full flex justify-center items-center gap-4 mt-6';
+    controls.className = 'col-span-full mt-8';
+
     controls.innerHTML = `
-        <button onclick="${fetchFuncName}(${currentPage - 1})" 
-            class="px-4 py-2 rounded-lg border ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}"
-            ${currentPage === 1 ? 'disabled' : ''}>
-            Previous
-        </button>
-        <span class="text-sm font-bold text-gray-600">Page ${currentPage} of ${totalPages}</span>
-        <button onclick="${fetchFuncName}(${currentPage + 1})" 
-            class="px-4 py-2 rounded-lg border ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'}"
-            ${currentPage === totalPages ? 'disabled' : ''}>
-            Next
-        </button>
+        <!-- Dropdown for items per page -->
+        <div class="flex justify-center mb-4">
+            <div class="flex items-center gap-2 text-sm">
+                <label class="text-gray-600 font-medium">Items per page:</label>
+                <select 
+                    onchange="handleDeptItemsChange('${fetchFuncName}')"
+                    class="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-200 outline-none bg-white cursor-pointer">
+                    <option value="10" ${currentLimit === 10 ? 'selected' : ''}>10</option>
+                    <option value="25" ${currentLimit === 25 ? 'selected' : ''}>25</option>
+                    <option value="50" ${currentLimit === 50 ? 'selected' : ''}>50</option>
+                    <option value="100" ${currentLimit === 100 ? 'selected' : ''}>100</option>
+                    <option value="0" ${currentLimit === 0 ? 'selected' : ''}>All</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Pagination buttons -->
+        <div class="flex justify-center items-center gap-2">
+            <button 
+                onclick="${fetchFuncName}(${currentPage - 1})" 
+                ${currentPage === 1 ? 'disabled' : ''}
+                class="px-4 py-2 text-sm font-medium rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}">
+                ← Previous
+            </button>
+            
+            ${generateDeptPageNumbers(currentPage, totalPages, fetchFuncName)}
+            
+            <button 
+                onclick="${fetchFuncName}(${currentPage + 1})" 
+                ${currentPage === totalPages ? 'disabled' : ''}
+                class="px-4 py-2 text-sm font-medium rounded-md ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}">
+                Next →
+            </button>
+        </div>
+        
+        <!-- Info text -->
+        <div class="text-center text-sm text-gray-500 mt-3">
+            Showing ${((currentPage - 1) * currentLimit) + 1}-${Math.min(currentPage * currentLimit, currentLimit > 0 ? currentLimit * totalPages : 999)} orders
+        </div>
     `;
+
     container.appendChild(controls);
 }
+
+// Generate page number buttons for department
+function generateDeptPageNumbers(currentPage, totalPages, fetchFuncName) {
+    let pages = [];
+    const maxVisible = 3;
+
+    let startPage = Math.max(1, currentPage - 1);
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        pages.push(`
+            <button 
+                onclick="${fetchFuncName}(${i})" 
+                class="w-10 h-10 text-sm font-medium rounded-md ${isActive ? 'bg-purple-500 text-white' : 'text-gray-700 hover:bg-gray-50'}">
+                ${i}
+            </button>
+        `);
+    }
+
+    return pages.join('');
+}
+
+// Handle items per page change for department
+function handleDeptItemsChange(fetchFuncName) {
+    const select = event.target;
+    const newLimit = parseInt(select.value);
+
+    // Update global constant
+    window.DEPT_ITEMS_PER_PAGE = newLimit;
+
+    // Save to localStorage
+    if (typeof paginationConfig !== 'undefined') {
+        paginationConfig.setItemsPerPage(newLimit);
+    } else {
+        localStorage.setItem('dept_items_per_page', newLimit.toString());
+    }
+
+    console.log(`📊 Department items per page: ${newLimit === 0 ? 'ALL' : newLimit}`);
+
+    // Reload with page 1
+    if (typeof window[fetchFuncName] === 'function') {
+        window[fetchFuncName](1);
+    }
+}
+
+window.handleDeptItemsChange = handleDeptItemsChange;
+window.generateDeptPageNumbers = generateDeptPageNumbers;
 
 // ==================== VERIFICATION FUNCTIONS ====================
 function renderVerificationCard(o) {
@@ -1130,3 +1327,104 @@ window.loadDeptOrders = loadDeptOrders;
 window.switchDispatchTab = switchDispatchTab;
 window.switchDeliveryTab = switchDeliveryTab;
 window.loadRTOOrders = loadRTOOrders;
+
+// ==================== DELIVERY BADGE UPDATES ====================
+async function updateDeliveryBadges() {
+    try {
+        // Fetch all delivery-related status counts
+        const [onwayRes, ofdRes, deliveredRes, rtoRes] = await Promise.all([
+            fetch(`${API_URL}/orders/dispatched`),
+            fetch(`${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}`),
+            fetch(`${API_URL}/orders/delivered`),
+            fetch(`${API_URL}/orders?status=RTO`)
+        ]);
+
+        const onwayData = await onwayRes.json();
+        const ofdData = await ofdRes.json();
+        const deliveredData = await deliveredRes.json();
+        const rtoData = await rtoRes.json();
+
+        const onwayCount = onwayData.orders ? onwayData.orders.length : 0;
+        const ofdCount = ofdData.orders ? ofdData.orders.length : 0;
+        const deliveredCount = deliveredData.orders ? deliveredData.orders.length : 0;
+        const rtoCount = rtoData.orders ? rtoData.orders.length : 0;
+
+        // Update badge elements (IDs should match your HTML)
+        const badges = {
+            'deliveryOnWayCount': onwayCount,
+            'deliveryOFDCount': ofdCount,
+            'deliveryDeliveredCount': deliveredCount,
+            'deliveryRTOCount': rtoCount
+        };
+
+        Object.entries(badges).forEach(([id, count]) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = count;
+                // Add visual feedback if count > 0
+                if (count > 0) {
+                    el.classList.add('animate-pulse');
+                    setTimeout(() => el.classList.remove('animate-pulse'), 1000);
+                }
+            }
+        });
+
+        // Create/update badges dynamically
+        if (typeof createDeliveryBadges === 'function') {
+            createDeliveryBadges({
+                onway: onwayCount,
+                ofd: ofdCount,
+                delivered: deliveredCount,
+                rto: rtoCount
+            });
+        }
+
+        console.log('✅ Delivery badges updated:', badges);
+        console.log(`📊 COUNTS: On Way=${onwayCount} OFD=${ofdCount} Delivered=${deliveredCount} RTO=${rtoCount}`);
+    } catch (e) {
+        console.error('❌ Badge update failed:', e);
+    }
+}
+
+// Expose to window
+window.updateDeliveryBadges = updateDeliveryBadges;
+
+// Auto-update badges every 30 seconds if on delivery panel
+if (typeof currentDeptType !== 'undefined' && currentDeptType === 'delivery') {
+    updateDeliveryBadges();
+    setInterval(updateDeliveryBadges, 30000);
+}
+
+// Function to add/update badges on delivery tabs
+function createDeliveryBadges(counts) {
+    const tabs = [
+        { id: 'deptTabOnWay', countId: 'deliveryOnWayCount', count: counts.onway },
+        { id: 'deptTabOFD', countId: 'deliveryOFDCount', count: counts.ofd },
+        { id: 'deptTabDelivered', countId: 'deliveryDeliveredCount', count: counts.delivered },
+        { id: 'deptTabRTO', countId: 'deliveryRTOCount', count: counts.rto }
+    ];
+
+    tabs.forEach(tab => {
+        const tabElement = document.getElementById(tab.id) ||
+            document.querySelector(`[onclick*="switchDeliveryTab('${tab.id.replace('deptTab', '').toLowerCase()}')"]`);
+
+        if (tabElement) {
+            // Remove old badge if exists
+            const oldBadge = document.getElementById(tab.countId);
+            if (oldBadge) oldBadge.remove();
+
+            // Create new badge
+            const badge = document.createElement('span');
+            badge.id = tab.countId;
+            badge.className = 'ml-auto px-2 py-1 text-xs font-bold rounded-full bg-red-500 text-white';
+            badge.textContent = tab.count;
+            badge.style.cssText = 'margin-left: auto; min-width: 22px; text-align: center;';
+
+            // Append badge
+            tabElement.appendChild(badge);
+        }
+    });
+}
+
+// Expose globally
+window.createDeliveryBadges = createDeliveryBadges;

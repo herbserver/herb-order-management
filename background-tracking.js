@@ -91,10 +91,26 @@ async function syncAllTrackingStatuses() {
                 }
 
                 // 3. Handle "Out for Delivery" Alert
-                if (currentStatus.toLowerCase().includes('out for delivery') && !notifiedOrders.has(order.orderId)) {
-                    console.log(`🚚 OUT FOR DELIVERY ALERT: ${order.orderId}`);
-                    notifiedOrders.add(order.orderId);
-                    // We don't change overall status to a new state here, just update tracking info
+                if (currentStatus.toLowerCase().includes('out for delivery')) {
+                    console.log(`🚚 OUT FOR DELIVERY: ${order.orderId} - Updating status...`);
+
+                    if (order.status !== 'Out For Delivery') {
+                        await Order.findOneAndUpdate(
+                            { orderId: order.orderId },
+                            {
+                                status: 'Out For Delivery',
+                                tracking: {
+                                    trackingId: order.tracking?.trackingId || awb,
+                                    courier: order.tracking?.courier || 'Shiprocket',
+                                    currentStatus: currentStatus,
+                                    lastUpdate: tracking.lastUpdate,
+                                    lastUpdatedAt: new Date().toISOString()
+                                }
+                            }
+                        );
+                        notifiedOrders.add(order.orderId);
+                        continue; // Status updated, move to next
+                    }
                 }
 
                 // Generic Tracking Info Update (keeps it fresh)
@@ -176,15 +192,15 @@ async function startTracking(alreadyConnected = false) {
     }
 
     // Run initial checks
-    syncAllTrackingStatuses();
-    checkHoldOrderReminders();
+    // syncAllTrackingStatuses(); // Disabled auto-run on start
+    // checkHoldOrderReminders();
 
-    // Schedule intervals - Reduced frequency to avoid rate limiting
-    setInterval(syncAllTrackingStatuses, 30 * 60 * 1000); // 30 min (webhook is primary)
-    setInterval(checkHoldOrderReminders, 60 * 60 * 1000); // 1 hour
+    // Schedule intervals - DISABLED as per user request (Manual Mode only)
+    // setInterval(syncAllTrackingStatuses, 30 * 60 * 1000); // 30 min (webhook is primary)
+    // setInterval(checkHoldOrderReminders, 60 * 60 * 1000); // 1 hour
 
-    console.log('⏰ Tracking Service active (30m sync backup, 1h reminders)');
-    console.log('📡 Primary tracking via Shiprocket webhook');
+    console.log('⏰ Tracking Service started in MANUAL MODE (Auto-sync disabled)');
+    console.log('📡 Primary tracking via Manual Sync or Webhook');
 }
 
 // Support running as standalone script

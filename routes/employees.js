@@ -1,36 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
 const path = require('path');
 const dataAccess = require('../dataAccess');
+const { readJSON, writeJSON } = require('../utils/fileHelpers');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const EMPLOYEES_FILE = path.join(DATA_DIR, 'employees.json');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 
-// Helper Functions for JSON (Fallback)
-function readJSON(filePath, defaultValue = []) {
-    try {
-        if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf8');
-            return JSON.parse(data);
-        }
-        return defaultValue;
-    } catch (error) {
-        console.error(`Error reading ${filePath}:`, error);
-        return defaultValue;
-    }
-}
-
-function writeJSON(filePath, data) {
-    try {
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-        return true;
-    } catch (error) {
-        console.error(`Error writing ${filePath}:`, error);
-        return false;
-    }
-}
+// Note: Using centralized fileHelpers module for JSON operations
 
 // Helper function to sync all employees to MongoDB
 async function syncAllEmployeesToMongo(employees) {

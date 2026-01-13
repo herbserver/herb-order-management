@@ -3,7 +3,7 @@
  * Handles user session storage, retrieval, and clearing
  */
 
-// Session variables
+// Session variables - using var to allow redeclaration across scripts
 var currentUser = currentUser || null;
 var currentUserType = currentUserType || null;
 var currentDeptType = currentDeptType || 'verification';

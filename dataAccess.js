@@ -3,9 +3,9 @@
 // Falls back to JSON files if MongoDB is not connected
 // NOW WITH IN-MEMORY CACHING FOR PERFORMANCE
 
-const fs = require('fs');
 const path = require('path');
 const { Order, Department, ShiprocketConfig } = require('./models');
+const { readJSON: readJSONFile, writeJSONAsync: writeJSONFileAsync } = require('./utils/fileHelpers');
 
 // Track MongoDB connection status
 let mongoConnected = false;
@@ -402,38 +402,8 @@ async function getEmployeeOrders(empId, status = null, page = 1, limit = 0) {
     return filtered;
 }
 
-// ==================== HELPER FUNCTIONS ====================
-
-function readJSONFile(filePath, defaultValue = []) {
-    try {
-        if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf8');
-            return JSON.parse(data);
-        }
-        return defaultValue;
-    } catch (error) {
-        console.error(`Error reading ${filePath}:`, error.message);
-        return defaultValue;
-    }
-}
-
-// Async write to prevent blocking main thread
-function writeJSONFileAsync(filePath, data) {
-    fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8', (err) => {
-        if (err) console.error(`Error writing ${filePath}:`, err.message);
-    });
-}
-
-// Keeping sync version for internal use if strictly needed, but replaced usage above
-function writeJSONFile(filePath, data) {
-    try {
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-        return true;
-    } catch (error) {
-        console.error(`Error writing ${filePath}:`, error.message);
-        return false;
-    }
-}
+// Note: Using centralized fileHelpers module
+// readJSONFile and writeJSONFileAsync are imported from utils/fileHelpers
 
 module.exports = {
     setMongoStatus,

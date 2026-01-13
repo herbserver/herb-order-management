@@ -1,25 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
 const path = require('path');
 const dataAccess = require('../dataAccess');
+const { readJSON } = require('../utils/fileHelpers');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 
-// Helper Function for JSON (Fallback)
-function readJSON(filePath, defaultValue = []) {
-    try {
-        if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf8');
-            return JSON.parse(data);
-        }
-        return defaultValue;
-    } catch (error) {
-        console.error(`Error reading ${filePath}:`, error);
-        return defaultValue;
-    }
-}
+// Note: Using centralized fileHelpers module for JSON operations
 
 // Get Order History (with filters)
 router.get('/history', async (req, res) => {

@@ -527,6 +527,7 @@ async function viewOrder(orderId) {
 
 // Global Exports
 window.viewOrder = viewOrder;
+window.viewOrderDetails = viewOrder; // Legacy Support Alias
 window.sendWhatsAppDirect = sendWhatsAppDirect;
 window.showSuccessPopup = showSuccessPopup;
 window.showWarningPopup = showWarningPopup;

@@ -1,36 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
 const path = require('path');
 const dataAccess = require('../dataAccess');
+const { readJSON, writeJSON } = require('../utils/fileHelpers');
 const { hashPassword, comparePassword, generateToken } = require('../auth');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const DEPARTMENTS_FILE = path.join(DATA_DIR, 'departments.json');
 
-// Helper Functions for JSON (Fallback)
-function readJSON(filePath, defaultValue = []) {
-    try {
-        if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf8');
-            return JSON.parse(data);
-        }
-        return defaultValue;
-    } catch (error) {
-        console.error(`Error reading ${filePath}:`, error);
-        return defaultValue;
-    }
-}
-
-function writeJSON(filePath, data) {
-    try {
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-        return true;
-    } catch (error) {
-        console.error(`Error writing ${filePath}:`, error);
-        return false;
-    }
-}
+// Note: Using centralized fileHelpers module for JSON operations
 
 // Register Department
 router.post('/register', async (req, res) => {

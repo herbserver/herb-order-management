@@ -214,9 +214,11 @@ function generateAdminOrderCard(o) {
         'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
         'Address Verified': 'bg-blue-100 text-blue-800 border-blue-200',
         'Dispatched': 'bg-purple-100 text-purple-800 border-purple-200',
+        'Out For Delivery': 'bg-orange-100 text-orange-800 border-orange-200',
         'Delivered': 'bg-green-100 text-green-800 border-green-200',
         'Cancelled': 'bg-red-100 text-red-800 border-red-200',
-        'RTO': 'bg-orange-100 text-orange-800 border-orange-200'
+        'RTO': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+        'On Hold': 'bg-amber-100 text-amber-800 border-amber-200'
     };
     const badgeClass = statusColors[o.status] || 'bg-gray-100 text-gray-800';
 
@@ -254,6 +256,9 @@ function generateAdminOrderCard(o) {
     </div>
     `;
 }
+
+// Expose to window for use in app.js loadAdminOFD
+window.generateAdminOrderCard = generateAdminOrderCard;
 
 async function loadAdminOrdersGeneric(status, containerId, pageKey, page) {
     try {
@@ -302,8 +307,41 @@ async function loadAdminOrdersGeneric(status, containerId, pageKey, page) {
 
 // Wrapper functions matching HTML calls
 window.loadAdminPending = (page = null) => loadAdminOrdersGeneric('Pending', 'adminPendingList', 'pending', page);
-window.loadAdminVerified = (page = null) => loadAdminOrdersGeneric('Address Verified', 'adminVerifiedList', 'verified', page);
+// Note: 'Verified' tab removed as status doesn't exist in MongoDB
 window.loadAdminDispatched = (page = null) => loadAdminOrdersGeneric('Dispatched', 'adminDispatchedList', 'dispatched', page);
+// OFD needs special handling because of space in status name
+window.loadAdminOFD = async (page = null) => {
+    try {
+        if (page !== null) adminPagination['ofd'] = page;
+        const currentPage = adminPagination['ofd'] || 1;
+
+        let url = `${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}&page=${currentPage}&limit=${ADMIN_ITEMS_PER_PAGE}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const container = document.getElementById('adminOfdList');
+        if (!container) {
+            console.error('adminOfdList container not found');
+            return;
+        }
+
+        let orders = data.orders || [];
+        const totalItems = data.pagination ? data.pagination.total : orders.length;
+        const totalPages = Math.ceil(totalItems / ADMIN_ITEMS_PER_PAGE) || 1;
+
+        if (orders.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400">No Out For Delivery orders found</div>';
+            return;
+        }
+
+        container.innerHTML = orders.map(generateAdminOrderCard).join('');
+        renderPaginationControls(container, currentPage, totalPages, 'loadAdminOFD');
+
+    } catch (e) {
+        console.error('Error loading OFD orders:', e);
+    }
+};
 window.loadAdminDelivered = (page = null) => loadAdminOrdersGeneric('Delivered', 'adminDeliveredList', 'delivered', page);
 
 // ==================== FILTERS & EXPORT ====================
@@ -319,6 +357,7 @@ window.resetAdminFilters = function (tab) {
     if (tab === 'pending') loadAdminPending(1);
     if (tab === 'verified') loadAdminVerified(1);
     if (tab === 'dispatched') loadAdminDispatched(1);
+    if (tab === 'ofd') loadAdminOFD(1);
     if (tab === 'delivered') loadAdminDelivered(1);
 };
 

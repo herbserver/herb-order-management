@@ -285,6 +285,7 @@ async function viewOrder(orderId) {
 
 // Export to window
 window.viewOrder = viewOrder;
+window.viewOrderDetails = viewOrder; // Legacy Support Alias
 
 /**
  * Show Dispatch Modal (Manual AWB Entry)
@@ -614,9 +615,10 @@ async function openLabelPrintModal(orderId, orderData = null, trackingNo = '', c
                                 <div class="customer-name">${order.customerName || 'Customer Name'}</div>
                                 <div class="address-text">
                                     ${fullAddress}<br>
+                                    ${order.landMark ? `<strong>Landmark:</strong> ${order.landMark}<br>` : ''}
                                     <strong style="font-size: 15px; color: #000;">${order.pin || ''}</strong>
                                 </div>
-                                <div class="mobile-no"><strong>MOBILE NO</strong> – ${order.telNo || 'N/A'}</div>
+                                <div class="mobile-no"><strong>MOBILE NO</strong> – ${order.telNo || 'N/A'}${order.altNo ? ` / ${order.altNo}` : ''}</div>
                             </div>
                             <div class="barcode-block">
                                 <svg id="labelBarcode"></svg>
@@ -722,8 +724,13 @@ function printSpeedPostLabel() {
         return;
     }
 
-    // Trigger print
-    window.print();
+    // Regenerate label with latest inputs before printing
+    generateSpeedPostLabel();
+
+    // Small delay to ensure barcode renders
+    setTimeout(() => {
+        window.print();
+    }, 100);
 }
 
 /**

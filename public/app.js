@@ -188,14 +188,15 @@ _Team Herb On Naturals_`
 }
 
 console.log('Connecting to API at:', API_URL);
-const ADMIN_PASS = 'admin123';
+var ADMIN_PASS = ADMIN_PASS || 'admin123';
 
-// Session variables
-let currentUser = null;
-let currentUserType = null;
-let currentDeptType = 'verification';
-let currentEditingOrderId = null; // Track order being edited
-let currentDispatchOrder = null; // Track order being dispatched
+// ============ GLOBAL STATE (Shared across old and new modules) ============
+// Using var instead of let/const to allow redeclaration across multiple scripts
+var currentUser = currentUser || null;
+var currentUserType = currentUserType || null;
+var currentDeptType = currentDeptType || 'verification';
+var currentEditingOrderId = currentEditingOrderId || null;
+var currentDispatchOrder = currentDispatchOrder || null; // Track order being dispatched
 
 // Courier tracking URLs
 const COURIER_URLS = {
@@ -382,22 +383,63 @@ function showResetScreen() {
 }
 
 function showEmployeePanel() {
-    document.querySelectorAll('#app> div').forEach(d => d.classList.add('hidden'));
-    document.getElementById('employeePanel').classList.remove('hidden');
+    // Hide all main panels first
+    document.querySelectorAll('#app > div').forEach(d => d.classList.add('hidden'));
+
+    // Specifically ensure Admin and Dept Panels are hidden (Redundant safety)
+    const adminPanel = document.getElementById('adminPanel');
+    const deptPanel = document.getElementById('departmentPanel');
+    if (adminPanel) adminPanel.classList.add('hidden');
+    if (deptPanel) deptPanel.classList.add('hidden');
+
+    // Show Employee Panel
+    const empPanel = document.getElementById('employeePanel');
+    if (empPanel) empPanel.classList.remove('hidden');
+
+    // Ensure Employee Sidebar is visible and others are hidden
+    const empSidebar = document.getElementById('empSidebar');
+    const adminSidebar = document.getElementById('adminSidebar');
+    const deptSidebar = document.getElementById('deptSidebar');
+
+    if (empSidebar) empSidebar.classList.remove('hidden'); // Ensure own sidebar is active
+    // Note: Sidebars are usually children of panels, but if they are global, hide them:
+    if (adminSidebar && adminSidebar.parentElement === document.body) adminSidebar.classList.add('hidden');
+    if (deptSidebar && deptSidebar.parentElement === document.body) deptSidebar.classList.add('hidden');
+
     document.getElementById('empNameDisplay').textContent = currentUser.name + ' (' + currentUser.id + ')';
+
+    // Reset State
     initOrderForm();
     loadMyOrders();
 
-    // Start auto-tracking for Out for Delivery alerts (employee's own orders)
-    // Auto-tracking DISABLED - Using webhook for real-time updates
-    // if (typeof initializeAutoTracking === 'function') {
-    //     initializeAutoTracking();
-    // }
+    // Resize trigger for highcharts or layout
+    window.dispatchEvent(new Event('resize'));
 }
 
 function showDepartmentPanel() {
+    // Hide all main panels first
     document.querySelectorAll('#app > div').forEach(d => d.classList.add('hidden'));
-    document.getElementById('departmentPanel').classList.remove('hidden');
+
+    // Specifically ensure Admin and Employee Panels are hidden
+    const adminPanel = document.getElementById('adminPanel');
+    const empPanel = document.getElementById('employeePanel');
+    if (adminPanel) adminPanel.classList.add('hidden');
+    if (empPanel) empPanel.classList.add('hidden');
+
+    // Show Department Panel
+    const deptPanel = document.getElementById('departmentPanel');
+    if (deptPanel) deptPanel.classList.remove('hidden');
+
+    // Ensure Department Sidebar is visible and others are hidden
+    const deptSidebar = document.getElementById('deptSidebar');
+    const adminSidebar = document.getElementById('adminSidebar');
+    const empSidebar = document.getElementById('empSidebar');
+
+    if (deptSidebar) deptSidebar.classList.remove('hidden');
+    if (adminSidebar && adminSidebar.parentElement === document.body) adminSidebar.classList.add('hidden');
+    if (empSidebar && empSidebar.parentElement === document.body) empSidebar.classList.add('hidden');
+
+
     document.getElementById('deptIdDisplay').textContent = currentUser.id;
 
     const exportBtn = document.getElementById('deptExportBtn');
@@ -464,7 +506,19 @@ function showDepartmentPanel() {
 
 function toggleDeptSidebar() {
     const sidebar = document.getElementById('deptSidebar');
-    if (sidebar) sidebar.classList.toggle('-translate-x-full');
+    const backdrop = document.getElementById('deptSidebarBackdrop');
+    if (sidebar) {
+        const isHidden = sidebar.classList.toggle('-translate-x-full');
+        if (backdrop) {
+            if (isHidden) {
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+                backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            } else {
+                backdrop.classList.remove('opacity-0', 'pointer-events-none');
+                backdrop.classList.add('opacity-100', 'pointer-events-auto');
+            }
+        }
+    }
 }
 
 function setActiveDeptTab(tabId) {
@@ -483,8 +537,13 @@ function setActiveDeptTab(tabId) {
     // Auto-close sidebar on mobile after selection
     if (window.innerWidth < 1024) {
         const sidebar = document.getElementById('deptSidebar');
+        const backdrop = document.getElementById('deptSidebarBackdrop');
         if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
             sidebar.classList.add('-translate-x-full');
+            if (backdrop) {
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+                backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            }
         }
     }
 }
@@ -534,16 +593,29 @@ async function loadAdminData() {
             }
         });
 
-        // Calculate statistics
+        // Calculate statistics - EXCLUDE Cancelled and On Hold from Total Orders
+        const pendingOrders = orders.filter(o => o.status === 'Pending').length;
+        const verifiedOrders = orders.filter(o => o.status === 'Address Verified').length;
+        const dispatchedOrders = orders.filter(o => o.status === 'Dispatched').length;
+        const deliveredOrders = orders.filter(o => o.status === 'Delivered').length;
+        const cancelledOrders = orders.filter(o => o.status === 'Cancelled').length;
+        const onHoldOrders = orders.filter(o => o.status === 'On Hold').length;
+        const rtoOrders = orders.filter(o => o.status === 'RTO').length;
+
+        // Total Orders = All orders EXCEPT Cancelled and On Hold
+        const totalActiveOrders = pendingOrders + verifiedOrders + dispatchedOrders + deliveredOrders + rtoOrders;
+
         const stats = {
-            totalOrders: orders.length,
+            totalOrders: totalActiveOrders, // Changed: Excludes Cancelled & On Hold
             totalRevenue: orders.reduce((sum, o) => sum + (o.total || 0), 0),
             avgOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + (o.total || 0), 0) / orders.length : 0,
-            pendingOrders: orders.filter(o => o.status === 'Pending').length,
-            verifiedOrders: orders.filter(o => o.status === 'Address Verified').length,
-            dispatchedOrders: orders.filter(o => o.status === 'Dispatched').length,
-            deliveredOrders: orders.filter(o => o.status === 'Delivered').length,
-            rtoOrders: orders.filter(o => o.status === 'RTO').length,
+            pendingOrders,
+            verifiedOrders,
+            dispatchedOrders,
+            deliveredOrders,
+            rtoOrders,
+            cancelledOrders, // Separate stat
+            onHoldOrders,    // Separate stat
             totalEmployees: employees.length,
             totalFresh,
             totalReorder,
@@ -580,6 +652,8 @@ async function loadAdminData() {
         updateElement('dispatchedCount', stats.dispatchedOrders);
         updateElement('deliveredCount', stats.deliveredOrders);
         updateElement('rtoCount', stats.rtoOrders);
+        updateElement('cancelledCount', stats.cancelledOrders);
+        updateElement('onHoldCount', stats.onHoldOrders);
         updateElement('totalEmployees', stats.totalEmployees);
 
         // Update Fresh/Reorder stats in Total Orders card
@@ -616,7 +690,8 @@ async function loadAdminData() {
 
         // Also log to console for manual checking
         console.log('📊 Admin Panel Stats:');
-        console.log(`  Total Orders: ${stats.totalOrders} (Fresh: ${stats.totalFresh}, Reorder: ${stats.totalReorder})`);
+        console.log(`  Active Orders: ${stats.totalOrders} (Fresh: ${stats.totalFresh}, Reorder: ${stats.totalReorder})`);
+        console.log(`  Cancelled: ${stats.cancelledOrders} | On Hold: ${stats.onHoldOrders}`);
         console.log(`  Total Revenue: ₹${stats.totalRevenue} (Fresh: ₹${stats.freshRevenue}, Reorder: ₹${stats.reorderRevenue})`);
         console.log(`  Pending: ${stats.pendingOrders} | Verified: ${stats.verifiedOrders}`);
         console.log(`  Dispatched: ${stats.dispatchedOrders} | Delivered: ${stats.deliveredOrders}`);
@@ -628,8 +703,28 @@ async function loadAdminData() {
 }
 
 function showAdminPanel() {
-    document.querySelectorAll('#app> div').forEach(d => d.classList.add('hidden'));
-    document.getElementById('adminPanel').classList.remove('hidden');
+    // Hide all main panels first
+    document.querySelectorAll('#app > div').forEach(d => d.classList.add('hidden'));
+
+    // Specifically ensure Employee and Department Panels are hidden
+    const empPanel = document.getElementById('employeePanel');
+    const deptPanel = document.getElementById('departmentPanel');
+    if (empPanel) empPanel.classList.add('hidden');
+    if (deptPanel) deptPanel.classList.add('hidden');
+
+    // Show Admin Panel
+    const adminPanel = document.getElementById('adminPanel');
+    if (adminPanel) adminPanel.classList.remove('hidden');
+
+    // Ensure Admin Sidebar is visible and others are hidden
+    const adminSidebar = document.getElementById('adminSidebar');
+    const empSidebar = document.getElementById('empSidebar');
+    const deptSidebar = document.getElementById('deptSidebar');
+
+    if (adminSidebar) adminSidebar.classList.remove('hidden');
+    if (empSidebar && empSidebar.parentElement === document.body) empSidebar.classList.add('hidden');
+    if (deptSidebar && deptSidebar.parentElement === document.body) deptSidebar.classList.add('hidden');
+
 
     // Performance Optimization: Use granular loaders instead of fetching all orders
     if (typeof loadAdminStats === 'function') loadAdminStats();
@@ -831,46 +926,78 @@ function logout() {
 }
 
 // ==================== EMPLOYEE PANEL ====================
+// Toggle Employee Sidebar (Mobile)
+function toggleEmpSidebar() {
+    const sidebar = document.getElementById('empSidebar');
+    const backdrop = document.getElementById('empSidebarBackdrop');
+    if (sidebar) {
+        const isHidden = sidebar.classList.toggle('-translate-x-full');
+        if (backdrop) {
+            if (isHidden) {
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+                backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            } else {
+                backdrop.classList.remove('opacity-0', 'pointer-events-none');
+                backdrop.classList.add('opacity-100', 'pointer-events-auto');
+            }
+        }
+    }
+}
+
+// Employee Panel Tab Switching
 function switchEmpTab(tab) {
     document.getElementById('empOrderTab').classList.add('hidden');
     document.getElementById('empTrackingTab').classList.add('hidden');
     document.getElementById('empHistoryTab').classList.add('hidden');
     document.getElementById('empProgressTab').classList.add('hidden');
+    document.getElementById('empOfdTab').classList.add('hidden');
     document.getElementById('empCancelledTab').classList.add('hidden');
 
-    document.querySelectorAll('[id^="empTab"]').forEach(b => {
-        b.classList.remove('tab-active');
-        b.classList.add('bg-white', 'text-gray-600');
+    // Update sidebar button states
+    ['empSidebarOrder', 'empSidebarTracking', 'empSidebarHistory', 'empSidebarProgress', 'empSidebarOfd', 'empSidebarCancelled'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.classList.remove('sidebar-active');
+        }
     });
 
     if (tab === 'order') {
         document.getElementById('empOrderTab').classList.remove('hidden');
-        document.getElementById('empTabOrder').classList.add('tab-active');
+        document.getElementById('empSidebarOrder')?.classList.add('sidebar-active');
         initOrderForm();
-    }
-
-    else if (tab === 'tracking') {
+    } else if (tab === 'tracking') {
         document.getElementById('empTrackingTab').classList.remove('hidden');
-        document.getElementById('empTabTracking').classList.add('tab-active');
+        document.getElementById('empSidebarTracking')?.classList.add('sidebar-active');
         loadMyOrders();
-    }
-
-    else if (tab === 'history') {
+    } else if (tab === 'history') {
         document.getElementById('empHistoryTab').classList.remove('hidden');
-        document.getElementById('empTabHistory').classList.add('tab-active');
+        document.getElementById('empSidebarHistory')?.classList.add('sidebar-active');
         loadMyHistory();
-    }
-
-    else if (tab === 'progress') {
+    } else if (tab === 'progress') {
         document.getElementById('empProgressTab').classList.remove('hidden');
-        document.getElementById('empTabProgress').classList.add('tab-active');
+        document.getElementById('empSidebarProgress')?.classList.add('sidebar-active');
         loadEmpProgress();
+    } else if (tab === 'ofd') {
+        document.getElementById('empOfdTab').classList.remove('hidden');
+        document.getElementById('empSidebarOfd')?.classList.add('sidebar-active');
+        loadMyOfdOrders();
+    } else if (tab === 'cancelled') {
+        document.getElementById('empCancelledTab').classList.remove('hidden');
+        document.getElementById('empSidebarCancelled')?.classList.add('sidebar-active');
+        loadMyCancelledOrders();
     }
 
-    else if (tab === 'cancelled') {
-        document.getElementById('empCancelledTab').classList.remove('hidden');
-        document.getElementById('empTabCancelled').classList.add('tab-active');
-        loadMyCancelledOrders();
+    // Auto-close sidebar on mobile after tab selection
+    if (window.innerWidth < 1024) {
+        const sidebar = document.getElementById('empSidebar');
+        const backdrop = document.getElementById('empSidebarBackdrop');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.add('-translate-x-full');
+            if (backdrop) {
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+                backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            }
+        }
     }
 }
 
@@ -2105,37 +2232,37 @@ async function loadMyOrders() {
             hold: orders.filter(o => o.status === 'On Hold').length
         };
 
-        // Render Stats
+        // Render Stats (Compact Modern Design)
         document.getElementById('myOrdersStats').innerHTML = `
-            <div class="glass-card p-3 flex flex-col items-center justify-center text-center border-b-4 border-blue-500 shadow-sm hover:scale-105 transition-transform">
-                <span class="text-2xl mb-1">📦</span>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total</span>
-                <span class="text-xl font-bold text-gray-800">${stats.total}</span>
+            <div class="glass-card p-2 flex flex-col items-center justify-center text-center border-b-2 border-blue-500 bg-white shadow-sm">
+                <span class="text-lg mb-0.5">📦</span>
+                <span class="text-[7px] font-black text-gray-400 uppercase tracking-tighter">Total</span>
+                <span class="text-sm font-black text-slate-800">${stats.total}</span>
             </div>
-             <div class="glass-card p-3 flex flex-col items-center justify-center text-center border-b-4 border-yellow-500 shadow-sm hover:scale-105 transition-transform">
-                <span class="text-2xl mb-1">⏳</span>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Pending</span>
-                <span class="text-xl font-bold text-gray-800">${stats.pending}</span>
+            <div class="glass-card p-2 flex flex-col items-center justify-center text-center border-b-2 border-yellow-500 bg-white shadow-sm">
+                <span class="text-lg mb-0.5">⏳</span>
+                <span class="text-[7px] font-black text-gray-400 uppercase tracking-tighter">Pending</span>
+                <span class="text-sm font-black text-slate-800">${stats.pending}</span>
             </div>
-             <div class="glass-card p-3 flex flex-col items-center justify-center text-center border-b-4 border-orange-500 shadow-sm hover:scale-105 transition-transform">
-                <span class="text-2xl mb-1">⏸️</span>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">On Hold</span>
-                <span class="text-xl font-bold text-gray-800">${stats.hold}</span>
+            <div class="glass-card p-2 flex flex-col items-center justify-center text-center border-b-2 border-orange-500 bg-white shadow-sm">
+                <span class="text-lg mb-0.5">⏸️</span>
+                <span class="text-[7px] font-black text-gray-400 uppercase tracking-tighter">Hold</span>
+                <span class="text-sm font-black text-slate-800">${stats.hold}</span>
             </div>
-             <div class="glass-card p-3 flex flex-col items-center justify-center text-center border-b-4 border-emerald-500 shadow-sm hover:scale-105 transition-transform">
-                <span class="text-2xl mb-1">✅</span>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Verified</span>
-                <span class="text-xl font-bold text-gray-800">${stats.verified}</span>
+            <div class="glass-card p-2 flex flex-col items-center justify-center text-center border-b-2 border-emerald-500 bg-white shadow-sm">
+                <span class="text-lg mb-0.5">✅</span>
+                <span class="text-[7px] font-black text-gray-400 uppercase tracking-tighter">Verified</span>
+                <span class="text-sm font-black text-slate-800">${stats.verified}</span>
             </div>
-             <div class="glass-card p-3 flex flex-col items-center justify-center text-center border-b-4 border-indigo-500 shadow-sm hover:scale-105 transition-transform">
-                <span class="text-2xl mb-1">🚚</span>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Dispatched</span>
-                <span class="text-xl font-bold text-gray-800">${stats.dispatched}</span>
+            <div class="glass-card p-2 flex flex-col items-center justify-center text-center border-b-2 border-indigo-500 bg-white shadow-sm">
+                <span class="text-lg mb-0.5">🚚</span>
+                <span class="text-[7px] font-black text-gray-400 uppercase tracking-tighter">Dispatch</span>
+                <span class="text-sm font-black text-slate-800">${stats.dispatched}</span>
             </div>
-             <div class="glass-card p-3 flex flex-col items-center justify-center text-center border-b-4 border-green-500 shadow-sm hover:scale-105 transition-transform">
-                <span class="text-2xl mb-1">🎉</span>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Delivered</span>
-                <span class="text-xl font-bold text-gray-800">${stats.delivered}</span>
+            <div class="glass-card p-2 flex flex-col items-center justify-center text-center border-b-2 border-green-500 bg-white shadow-sm">
+                <span class="text-lg mb-0.5">🎉</span>
+                <span class="text-[7px] font-black text-gray-400 uppercase tracking-tighter">Done</span>
+                <span class="text-sm font-black text-slate-800">${stats.delivered}</span>
             </div>
         `;
 
@@ -2143,9 +2270,9 @@ async function loadMyOrders() {
 
         if (orders.length === 0) {
             list.innerHTML = `
-                 <div class="col-span-full text-center py-12 bg-white/50 rounded-2xl border-2 border-dashed border-gray-200">
-                    <p class="text-4xl mb-3">📭</p>
-                    <p class="text-gray-500 font-medium">No active orders</p>
+                 <div class="col-span-full text-center py-10 bg-white/50 rounded-2xl border-2 border-dashed border-gray-100">
+                    <p class="text-3xl mb-2">📭</p>
+                    <p class="text-[10px] text-gray-500 font-black uppercase tracking-widest">No active orders</p>
                 </div>`;
             return;
         }
@@ -2256,8 +2383,8 @@ async function loadMyOrders() {
                         <span>✏️</span> Edit Order
                     </button>
                     ` : ''}
-                    ${order.tracking && order.tracking.trackingId ? `
-                     <button type="button" onclick="trackOrder('${order.orderId}')" 
+                    ${(order.tracking && order.tracking.trackingId) || (order.shiprocket && order.shiprocket.awb) ? `
+                     <button type="button" onclick="trackShiprocketOrder('${order.orderId}', '${(order.shiprocket && order.shiprocket.awb) || order.tracking.trackingId}')" 
                         class="w-full bg-indigo-500 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2">
                         <span>🛰️</span> Track Package
                     </button>
@@ -2422,6 +2549,94 @@ function filterMyCancelledOrders(query) {
         const text = card.textContent.toLowerCase();
         card.style.display = text.includes(q) ? '' : 'none';
     });
+}
+
+// ==================== OFD TAB (EMPLOYEE) ====================
+var allMyOfdOrders = []; // Global cache for search
+
+async function loadMyOfdOrders() {
+    try {
+        const res = await fetch(`${API_URL}/orders/employee/${currentUser.id}`);
+        const data = await res.json();
+
+        // Filter ONLY Out For Delivery orders
+        allMyOfdOrders = (data.orders || []).filter(o => o.status === 'Out For Delivery')
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        renderOfdOrders(allMyOfdOrders);
+    } catch (error) {
+        console.error('Error loading OFD orders:', error);
+    }
+}
+
+function renderOfdOrders(orders) {
+    const list = document.getElementById('empOfdList');
+    if (!list) return;
+
+    if (orders.length === 0) {
+        list.innerHTML = `
+            <div class="col-span-full text-center py-12 bg-white/50 rounded-2xl border-2 border-dashed border-gray-200">
+                <p class="text-4xl mb-3">🚚</p>
+                <p class="text-gray-500 font-medium">No orders currently Out For Delivery</p>
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = orders.map(order => `
+        <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group ring-2 ring-orange-500/20 bg-white shadow-md">
+            <div class="p-4 border-b border-orange-50 bg-orange-50/50 flex justify-between items-center">
+                <span class="text-xs font-black text-orange-600 tracking-wider">${order.orderId}</span>
+                <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold rounded-md uppercase border border-orange-200">OFD</span>
+            </div>
+            <div class="p-4">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center text-lg shadow-lg shadow-orange-100 text-white">📦</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-slate-800 truncate">${order.customerName}</p>
+                        <p class="text-[10px] text-slate-500 font-semibold">${order.mobile}</p>
+                    </div>
+                </div>
+                <div class="bg-slate-50 rounded-2xl p-4 mb-4 space-y-2.5 border border-slate-100">
+                    <div class="flex justify-between items-center text-[11px]">
+                        <span class="text-slate-500 font-medium">Order Amount:</span>
+                        <span class="text-slate-900 font-bold">₹${order.total || 0}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-[11px]">
+                        <span class="text-slate-500 font-medium tracking-tight">CASH TO COLLECT (COD):</span>
+                        <span class="text-orange-600 font-black text-xs">₹${order.codAmount || order.cod || 0}</span>
+                    </div>
+                    <div class="pt-2 border-t border-slate-200/50">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1">
+                            <span>📍</span> Delivery Address
+                        </p>
+                        <p class="text-[11px] text-slate-700 font-medium line-clamp-2 leading-relaxed">
+                            ${order.address || 'No address provided'}
+                        </p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="viewOrder('${order.orderId}')" 
+                        class="py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 border border-slate-200 shadow-sm">
+                        <span>👁️</span> Details
+                    </button>
+                    <button onclick="trackShiprocketOrder('${order.orderId}', '${order.shiprocket?.awb || (order.tracking && order.tracking.trackingId) || ''}')" 
+                        class="py-2.5 bg-orange-600 text-white rounded-xl text-xs font-bold hover:bg-orange-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-200">
+                        <span>🔍</span> Track
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterMyOfdOrders(query) {
+    const q = query.toLowerCase();
+    const filtered = allMyOfdOrders.filter(o =>
+        o.orderId.toLowerCase().includes(q) ||
+        o.customerName.toLowerCase().includes(q) ||
+        o.mobile.includes(q)
+    );
+    renderOfdOrders(filtered);
 }
 
 async function requestDelivery(orderId) {
@@ -2595,12 +2810,68 @@ async function loadVerificationCancelled() {
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
         const container = document.getElementById('verificationCancelledList');
+        if (!container) return;
+
         if (cancelled.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-center col-span-full py-8">No cancelled orders</p>';
+            container.innerHTML = `
+                <div class="col-span-full text-center py-12 bg-red-50 rounded-2xl border-2 border-dashed border-red-200">
+                    <p class="text-4xl mb-3">🚫</p>
+                    <p class="text-red-700 font-medium">No cancelled orders found</p>
+                </div>`;
             return;
         }
 
-        container.innerHTML = cancelled.map(order => generateOrderCardHTML(order)).join('');
+        container.innerHTML = cancelled.map(o => `
+            <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-red-100 flex flex-col h-full bg-white">
+                <!-- Card Header -->
+                <div class="p-5 border-b border-red-50 bg-gradient-to-r from-red-50/50 to-white relative">
+                     <div class="absolute top-0 right-0 w-24 h-24 bg-red-400 rounded-bl-full opacity-5 pointer-events-none"></div>
+                    <div class="flex justify-between items-start relative z-10">
+                        <div>
+                             <div class="flex items-center gap-2 mb-1">
+                                <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-md border border-red-200 uppercase tracking-wide">
+                                    ${o.orderId}
+                                </span>
+                            </div>
+                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${o.customerName}">
+                                ${o.customerName}
+                            </h3>
+                        </div>
+                        <div class="text-right">
+                             <p class="text-xl font-black text-gray-800 tracking-tight">₹${o.total}</p>
+                             <span class="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 mt-1">
+                                ❌ Cancelled
+                             </span>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- Card Body -->
+                <div class="p-5 space-y-4 flex-grow bg-white/60">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 flex-shrink-0">
+                            ⚠️
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Cancellation Reason</p>
+                            <p class="text-sm font-semibold text-gray-700 font-mono italic">"${o.cancellationReason || 'Reason not specified'}"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
+                        <span class="text-xs text-gray-400">📅 ${o.timestamp ? new Date(o.timestamp).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="p-4 bg-red-50/30 border-t border-red-100 grid grid-cols-1 gap-2">
+                    <button type="button" onclick="viewOrder('${o.orderId}')" 
+                        class="bg-white border border-red-200 text-red-700 hover:bg-red-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1">
+                        👁️ View Details
+                    </button>
+                </div>
+            </div>`).join('');
+
     } catch (e) {
         console.error('Load verification cancelled error:', e);
     }
@@ -2734,27 +3005,6 @@ let deptPagination = {
     deliveryPerf: 1
 };
 
-// Helper needed for tab switching
-function setActiveDeptTab(tabId) {
-    // Remove active class from all tabs
-    const tabs = ['deptTabReady', 'deptTabRequests', 'deptTabDispatched', 'deptTabDispatchHistory',
-        'deptTabOutForDelivery', 'deptTabDelivered', 'deptTabFailed', 'deptTabPerformance'];
-
-    tabs.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.classList.remove('bg-indigo-100', 'text-indigo-700');
-            el.classList.add('text-gray-500', 'hover:bg-gray-50');
-        }
-    });
-
-    // Add active class to current
-    const activeEl = document.getElementById(tabId);
-    if (activeEl) {
-        activeEl.classList.remove('text-gray-500', 'hover:bg-gray-50');
-        activeEl.classList.add('bg-indigo-100', 'text-indigo-700');
-    }
-}
 
 async function loadDeliveryRequests(page = null) {
     try {
@@ -2902,32 +3152,50 @@ function switchDispatchTab(tab) {
 
 // Delivery Department Tab Switching
 function switchDeliveryTab(tab) {
-    document.getElementById('deliveryRequestsTab')?.classList.add('hidden');
-    document.getElementById('deliveryOnWayTab')?.classList.add('hidden');
-    document.getElementById('deliveryOFDTab')?.classList.add('hidden');
-    document.getElementById('deliveryDeliveredTab')?.classList.add('hidden');
-    document.getElementById('deliveryRTOTab')?.classList.add('hidden');
+    // Hide all tabs
+    ['deliveryRequestsTab', 'deliveryOnWayTab', 'deliveryOFDTab', 'deliveryDeliveredTab', 'deliveryRTOTab'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
 
+    // Set active button
+    const activeBtnMap = {
+        'requests': 'deptTabRequests',
+        'onway': 'deptTabOnWay',
+        'ofd': 'deptTabOFD',
+        'delivered': 'deptTabDelivered',
+        'rto': 'deptTabRTO'
+    };
+
+    const tabId = activeBtnMap[tab] || 'deptTabOnWay';
+    if (typeof setActiveDeptTab === 'function') {
+        setActiveDeptTab(tabId);
+    }
+
+    // Show content
     if (tab === 'requests') {
-        document.getElementById('deliveryRequestsTab')?.classList.remove('hidden');
-        setActiveDeptTab('deptTabRequests');
+        document.getElementById('deliveryRequestsTab').classList.remove('hidden');
         loadDeliveryRequests();
     } else if (tab === 'onway') {
-        document.getElementById('deliveryOnWayTab')?.classList.remove('hidden');
-        setActiveDeptTab('deptTabOnWay');
+        document.getElementById('deliveryOnWayTab').classList.remove('hidden');
         if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
     } else if (tab === 'ofd') {
-        document.getElementById('deliveryOFDTab')?.classList.remove('hidden');
-        setActiveDeptTab('deptTabOFD');
+        document.getElementById('deliveryOFDTab').classList.remove('hidden');
         if (typeof loadOFDOrders === 'function') loadOFDOrders();
     } else if (tab === 'delivered') {
-        document.getElementById('deliveryDeliveredTab')?.classList.remove('hidden');
-        setActiveDeptTab('deptTabDelivered');
-        loadDeliveredOrders();
+        document.getElementById('deliveryDeliveredTab').classList.remove('hidden');
+        if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
     } else if (tab === 'rto') {
-        document.getElementById('deliveryRTOTab')?.classList.remove('hidden');
-        setActiveDeptTab('deptTabRTO');
+        document.getElementById('deliveryRTOTab').classList.remove('hidden');
         loadRTOOrders();
+    }
+
+    // Auto-close sidebar on mobile after tab switch
+    if (window.innerWidth < 1024) {
+        const sidebar = document.getElementById('deptSidebar');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.add('-translate-x-full');
+        }
     }
 }
 
@@ -2993,35 +3261,43 @@ async function loadOnWayOrders() {
 
 // Load OFD Orders (Delivery Panel - OFD Tab)
 async function loadOFDOrders() {
+    console.log('🔍 loadOFDOrders called from app.js');
     try {
-        const res = await fetch(`${API_URL}/orders/dispatched`);
+        // Fetch orders with "Out For Delivery" status
+        const url = `${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}`;
+        console.log('🌐 Fetching from:', url);
+
+        const res = await fetch(url);
         const data = await res.json();
-        let orders = data.orders || [];
+        console.log('📦 Response:', data);
 
-        // Filter: OFD = ONLY OFD
-        orders = orders.filter(o => {
-            const s = (o.tracking?.currentStatus || '').toLowerCase();
-            return s.includes('out for delivery') || s.includes('ofd');
-        });
-
-        // Apply date filter
-        orders = filterOrdersByDate(orders);
+        const orders = data.orders || [];
+        console.log('📋 Orders count:', orders.length);
 
         const container = document.getElementById('ofdOrdersList');
-        if (!container) return;
+        console.log('🎯 Container:', container ? 'Found' : 'NOT FOUND');
 
-        if (orders.length === 0) {
-            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi OFD order nahi hai</p>';
+        if (!container) {
+            console.error('❌ ofdOrdersList container not found!');
             return;
         }
 
+        if (orders.length === 0) {
+            console.log('⚠️ No OFD orders');
+            container.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-gray-500">Koi OFD order nahi hai</p></div>';
+            return;
+        }
+
+        console.log('✅ Rendering', orders.length, 'orders');
         let html = '';
         orders.forEach(order => {
+            console.log('🎨 Rendering:', order.orderId);
             html += renderDeliveryCardModern(order);
         });
         container.innerHTML = html;
+        console.log('✅ Container updated!');
     } catch (e) {
-        console.error(e);
+        console.error('❌ Error in loadOFDOrders:', e);
     }
 }
 
@@ -3407,6 +3683,36 @@ async function markAsRTO(orderId) {
         alert('❌ Error: ' + e.message);
     }
 }
+
+// Mark order as On Way (move back from RTO/OFD to Dispatched)
+async function markAsOnWay(orderId) {
+    if (!confirm('Is order ko wapas "On Way" (Dispatched) mein move karein?')) return;
+
+    try {
+        const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 'Dispatched',
+                employee: currentUser?.name || 'Delivery Dept'
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showSuccessPopup('Order On Way! 🚛', `${orderId} wapas On Way mein move ho gaya!`, '🚛', '#f59e0b');
+            if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
+            if (typeof loadOFDOrders === 'function') loadOFDOrders();
+            if (typeof loadRTOOrders === 'function') loadRTOOrders();
+            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (e) {
+        alert('❌ Error: ' + e.message);
+    }
+}
+window.markAsOnWay = markAsOnWay;
 
 // Revert Delivered Order back to On Way
 async function revertToOnWay(orderId) {
@@ -5525,6 +5831,7 @@ function switchAdminTab(tab) {
     if (tab === 'pending') loadAdminPending();
     if (tab === 'verified') loadAdminVerified();
     if (tab === 'dispatched') loadAdminDispatched();
+    if (tab === 'ofd') loadAdminOFD();
     if (tab === 'delivered') loadAdminDelivered();
     if (tab === 'cancelled') loadAdminCancelled();
     if (tab === 'onhold') loadAdminOnHold();
@@ -5532,11 +5839,81 @@ function switchAdminTab(tab) {
     updateAdminBadges();
 }
 
+// ==================== LOAD OFD ORDERS ====================
+window.loadAdminOFD = async function (page = null) {
+    try {
+        const ADMIN_ITEMS_PER_PAGE = 6;
+        if (!window.adminPagination) window.adminPagination = {};
+        if (!window.adminPagination.ofd) window.adminPagination.ofd = 1;
+
+        if (page !== null) window.adminPagination.ofd = page;
+        const currentPage = window.adminPagination.ofd;
+
+        const url = `${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}&page=${currentPage}&limit=${ADMIN_ITEMS_PER_PAGE}`;
+        console.log('🟠 Loading OFD orders:', url);
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const container = document.getElementById('adminOfdList');
+        if (!container) {
+            console.error('❌ adminOfdList container not found');
+            return;
+        }
+
+        let orders = data.orders || [];
+        const totalItems = data.pagination ? data.pagination.total : orders.length;
+        const totalPages = Math.ceil(totalItems / ADMIN_ITEMS_PER_PAGE) || 1;
+
+        console.log(`✅ Loaded ${orders.length} OFD orders`);
+
+        if (orders.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400">No Out For Delivery orders found</div>';
+            return;
+        }
+
+        // Use generateAdminOrderCard if available (from admin.js), otherwise use fallback
+        if (typeof generateAdminOrderCard === 'function') {
+            container.innerHTML = orders.map(generateAdminOrderCard).join('');
+        } else {
+            // Fallback if admin.js not loaded yet
+            container.innerHTML = orders.map(o => `
+                <div class="bg-white border rounded-xl p-4">
+                    <span class="text-xs font-bold px-2 py-1 rounded-full bg-orange-100 text-orange-800">${o.status}</span>
+                    <h4 class="font-bold mt-2">${o.customerName}</h4>
+                    <p class="text-xs text-gray-500">${o.orderId}</p>
+                    <p class="font-bold text-emerald-600">₹${o.total}</p>
+                    <button onclick="viewOrder('${o.orderId}')" class="mt-2 w-full bg-white border text-sm font-bold py-2 rounded-lg">View</button>
+                </div>
+            `).join('');
+        }
+
+        // Add pagination
+        if (typeof renderPaginationControls === 'function' && totalPages > 1) {
+            renderPaginationControls(container, currentPage, totalPages, 'loadAdminOFD');
+        } else if (totalPages > 1) {
+            container.innerHTML += `
+                <div class="col-span-full flex justify-center gap-4 mt-6">
+                    <button onclick="loadAdminOFD(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-4 py-2 rounded-lg border ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}">Previous</button>
+                    <span class="text-sm font-bold">Page ${currentPage} of ${totalPages}</span>
+                    <button onclick="loadAdminOFD(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="px-4 py-2 rounded-lg border ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}">Next</button>
+                </div>
+            `;
+        }
+    } catch (e) {
+        console.error('❌ Error loading OFD orders:', e);
+        const container = document.getElementById('adminOfdList');
+        if (container) container.innerHTML = '<div class="col-span-full text-center py-12 text-red-500">Error: ' + e.message + '</div>';
+    }
+};
+console.log('✅ loadAdminOFD defined in app.js');
+
 async function updateAdminBadges() {
     try {
         const pending = await (await fetch(`${API_URL}/orders/pending`)).json();
         const verified = await (await fetch(`${API_URL}/orders/verified`)).json();
         const dispatched = await (await fetch(`${API_URL}/orders/dispatched`)).json();
+        const ofd = await (await fetch(`${API_URL}/orders?status=Out For Delivery`)).json();
         const delivered = await (await fetch(`${API_URL}/orders/delivered`)).json();
         const cancelled = await (await fetch(`${API_URL}/orders/cancelled`)).json();
         const onhold = await (await fetch(`${API_URL}/orders/onhold`)).json();
@@ -5545,6 +5922,7 @@ async function updateAdminBadges() {
         const pendingCount = pending.orders ? pending.orders.length : 0;
         const verifiedCount = verified.orders ? verified.orders.length : 0;
         const dispatchedCount = dispatched.orders ? dispatched.orders.length : 0;
+        const ofdCount = ofd.orders ? ofd.orders.length : 0;
         const deliveredCount = delivered.orders ? delivered.orders.length : 0;
         const cancelledCount = cancelled.orders ? cancelled.orders.length : 0;
         const onholdCount = onhold.orders ? onhold.orders.length : 0;
@@ -5554,6 +5932,7 @@ async function updateAdminBadges() {
         if (document.getElementById('pendingCount')) document.getElementById('pendingCount').textContent = pendingCount;
         if (document.getElementById('verifiedCount')) document.getElementById('verifiedCount').textContent = verifiedCount;
         if (document.getElementById('dispatchedCount')) document.getElementById('dispatchedCount').textContent = dispatchedCount;
+        if (document.getElementById('ofdCount')) document.getElementById('ofdCount').textContent = ofdCount;
         if (document.getElementById('deliveredCount')) document.getElementById('deliveredCount').textContent = deliveredCount;
         if (document.getElementById('cancelledCount')) document.getElementById('cancelledCount').textContent = cancelledCount;
         if (document.getElementById('onholdCount')) document.getElementById('onholdCount').textContent = onholdCount;
