@@ -1666,6 +1666,18 @@
                             </svg>
                         </button>
 
+                        <!-- Admin Global Search Bar -->
+                        <div class="hidden md:flex flex-1 max-w-lg relative mx-4">
+                            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" placeholder="Search any order (Mobile, ID, Quantity)..."
+                                class="w-full pl-11 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400"
+                                onkeypress="if(event.key==='Enter') globalSearchOrder(this.value)">
+                        </div>
+
                         <!-- Quick Stats Pills -->
                         <div class="hidden md:flex items-center gap-2 ml-auto">
                             <div
@@ -2282,32 +2294,7 @@
                 <!-- END Scrollable Content Area -->
             </div>
             <!-- END MAIN CONTENT AREA -->
-            <!--====================MODALS====================-->
-            <!-- Order Details Modal -->
-            <div id="orderModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <div
-                        class="sticky top-0 bg-emerald-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
-                        <h3 class="font-bold text-lg">📋 Order Details</h3><button type="button"
-                            onclick="closeModal('orderModal')"
-                            class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
-                    </div>
-                    <div id="orderModalContent" class="p-6"></div>
-                </div>
-            </div>
-            <!-- Edit Order Modal -->
-            <div id="editOrderModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-                    <div
-                        class="sticky top-0 bg-orange-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
-                        <h3 class="font-bold text-lg">✏️ Edit Order - <span id="editOrderIdDisplay"></span>
-                        </h3>
-                        <button type="button" onclick="closeModal('editOrderModal')"
-                            class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
-                    </div>
-                    <div id="editOrderModalContent" class="p-6"></div>
-                </div>
-            </div>
+
         </div>
         <!-- Register Department Modal -->
         <div id="registerDeptModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -2954,6 +2941,33 @@
 
     <!-- CRITICAL: Common.js loads LAST to ensure viewOrder is available -->
     <script src="js/common.js"></script>
+
+    <!-- MOVED MODALS TO END OF BODY FOR PROPER Z-INDEX STACKING -->
+    <!-- Order Details Modal -->
+    <div id="orderModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4"
+        style="z-index: 10000;">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-emerald-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold text-lg">📋 Order Details</h3><button type="button"
+                    onclick="closeModal('orderModal')"
+                    class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
+            </div>
+            <div id="orderModalContent" class="p-6"></div>
+        </div>
+    </div>
+    <!-- Edit Order Modal -->
+    <div id="editOrderModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4"
+        style="z-index: 10001;">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-orange-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold text-lg">✏️ Edit Order - <span id="editOrderIdDisplay"></span>
+                </h3>
+                <button type="button" onclick="closeModal('editOrderModal')"
+                    class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
+            </div>
+            <div id="editOrderModalContent" class="p-6"></div>
+        </div>
+    </div>
 
 </body>
 

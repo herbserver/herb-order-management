@@ -6,6 +6,8 @@ const rateLimit = require('express-rate-limit');
 const dataAccess = require('../dataAccess');
 const { validateOrderCreation } = require('../validators');
 const { readJSON, writeJSON } = require('../utils/fileHelpers');
+const { trackSpeedPost } = require('../utils/speedpost-tracker');
+const { trackBlueDart } = require('../utils/bluedart-tracker');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
@@ -542,6 +544,163 @@ router.post('/update-tracking', async (req, res) => {
     }
 });
 
+// Track India Post Order via Scraping
+router.post('/track-indiapost/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        console.log(`📡 [INDIA POST TRACKING] Request for: ${orderId}`);
+
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        const awb = order.tracking?.trackingId || (order.shiprocket?.awb);
+        if (!awb) {
+            return res.status(400).json({ success: false, message: 'No tracking ID found for this order' });
+        }
+
+        // Perform scraping
+        const trackData = await trackSpeedPost(awb);
+
+        if (trackData.success) {
+            const updates = {
+                'tracking.currentStatus': trackData.status,
+                'tracking.lastUpdate': trackData.lastUpdate,
+                'tracking.location': trackData.location,
+                'tracking.allScans': trackData.allScans,
+                updatedAt: new Date().toISOString()
+            };
+
+            // Auto-update status if OFD
+            if (trackData.status.toLowerCase().includes('out for delivery')) {
+                updates.status = 'Out For Delivery';
+                updates.ofdAt = new Date().toISOString();
+                console.log(`🚚 Order ${orderId} marked as OFD via India Post tracking`);
+            } else if (trackData.status.toLowerCase().includes('delivered')) {
+                updates.status = 'Delivered';
+                updates.deliveredAt = new Date().toISOString();
+                console.log(`✅ Order ${orderId} marked as Delivered via India Post tracking`);
+            }
+
+            await dataAccess.updateOrder(orderId, updates);
+
+            res.json({
+                success: true,
+                status: trackData.status,
+                location: trackData.location,
+                lastUpdate: trackData.lastUpdate,
+                allScans: trackData.allScans,
+                delivered: trackData.status.toLowerCase().includes('delivered')
+            });
+        } else {
+            // Fallback: If scraper fails but we have previous tracking data, return it
+            if (order.tracking && order.tracking.currentStatus) {
+                console.log(`⚠️ Scraper failed for ${orderId}, returning cached data.`);
+
+                // Construct a better location if tracking location is missing or N/A
+                const fallbackLocation = order.city || order.distt || order.state || 'N/A';
+                const trackingLocation = (order.tracking.location && order.tracking.location !== 'N/A')
+                    ? order.tracking.location
+                    : fallbackLocation;
+
+                return res.json({
+                    success: true,
+                    cached: true,
+                    status: order.tracking.currentStatus || 'Dispatched',
+                    location: trackingLocation,
+                    destination: order.city || order.distt || order.state || 'N/A',
+                    lastUpdate: order.tracking.lastUpdate || 'N/A',
+                    allScans: order.tracking.allScans || [],
+                    message: trackData.message || 'Tracking site unavailable. Showing last known status.'
+                });
+            }
+            res.status(404).json({ success: false, message: trackData.message || 'Tracking failed' });
+        }
+    } catch (error) {
+        console.error('❌ India Post Tracking Route Error:', error);
+        res.status(500).json({ success: false, message: 'Server error during tracking' });
+    }
+});
+
+// Track BlueDart Order via Scraping
+router.post('/track-bluedart/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        console.log(`📡 [BLUEDART TRACKING] Request for: ${orderId}`);
+
+        const order = await dataAccess.getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        const awb = order.tracking?.trackingId || (order.shiprocket?.awb);
+        if (!awb) {
+            return res.status(400).json({ success: false, message: 'No tracking ID found for this order' });
+        }
+
+        // Perform scraping
+        const trackData = await trackBlueDart(awb);
+
+        if (trackData.success) {
+            const updates = {
+                'tracking.currentStatus': trackData.status,
+                'tracking.lastUpdate': trackData.lastUpdate,
+                'tracking.location': trackData.location,
+                'tracking.allScans': trackData.allScans,
+                updatedAt: new Date().toISOString()
+            };
+
+            // Auto-update status if OFD
+            if (trackData.status.toLowerCase().includes('out for delivery')) {
+                updates.status = 'Out For Delivery';
+                updates.ofdAt = new Date().toISOString();
+                console.log(`🚚 Order ${orderId} marked as OFD via BlueDart tracking`);
+            } else if (trackData.status.toLowerCase().includes('delivered')) {
+                updates.status = 'Delivered';
+                updates.deliveredAt = new Date().toISOString();
+                console.log(`✅ Order ${orderId} marked as Delivered via BlueDart tracking`);
+            }
+
+            await dataAccess.updateOrder(orderId, updates);
+
+            res.json({
+                success: true,
+                status: trackData.status,
+                location: trackData.location,
+                lastUpdate: trackData.lastUpdate,
+                allScans: trackData.allScans,
+                delivered: trackData.status.toLowerCase().includes('delivered')
+            });
+        } else {
+            // Fallback: If scraper fails but we have previous tracking data, return it
+            if (order.tracking && order.tracking.currentStatus) {
+                console.log(`⚠️ Scraper failed for ${orderId}, returning cached data.`);
+
+                const fallbackLocation = order.city || order.distt || order.state || 'N/A';
+                const trackingLocation = (order.tracking.location && order.tracking.location !== 'N/A')
+                    ? order.tracking.location
+                    : fallbackLocation;
+
+                return res.json({
+                    success: true,
+                    cached: true,
+                    status: order.tracking.currentStatus || 'Dispatched',
+                    location: trackingLocation,
+                    destination: order.city || order.distt || order.state || 'N/A',
+                    lastUpdate: order.tracking.lastUpdate || 'N/A',
+                    allScans: order.tracking.allScans || [],
+                    message: trackData.message || 'Tracking site unavailable. Showing last known status.'
+                });
+            }
+            res.status(404).json({ success: false, message: trackData.message || 'Tracking failed' });
+        }
+    } catch (error) {
+        console.error('❌ BlueDart Tracking Route Error:', error);
+        res.status(500).json({ success: false, message: 'Server error during tracking' });
+    }
+});
+
 // Get Single Order
 router.get('/:orderId', async (req, res) => {
     try {
@@ -814,11 +973,53 @@ router.get('/export', async (req, res) => {
                 address = `${address.houseNo || ''}, ${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''}`;
             }
 
+            // Aggregate items logic (Reliably handles Arrays, Comma-strings, and mixed data)
             let productNames = '';
+
+            // Helper to aggregate dict
+            const aggregateItems = (list) => {
+                const counts = {};
+                list.forEach(item => {
+                    // Normalize item to arrays of product names/objects
+                    if (typeof item === 'string') {
+                        // Handle "Product A, Product B" string inside array or standalone
+                        const parts = item.split(',').map(s => s.trim()).filter(s => s);
+                        parts.forEach(part => {
+                            if (counts[part]) counts[part]++;
+                            else counts[part] = 1;
+                        });
+                    } else if (typeof item === 'object' && item !== null) {
+                        const name = (item.product || item.description || 'Unknown').trim();
+                        const qty = parseInt(item.quantity || item.qty || 1) || 1;
+
+                        if (counts[name]) counts[name] += qty;
+                        else counts[name] = qty;
+                    }
+                });
+                return counts;
+            };
+
             if (Array.isArray(order.items)) {
-                productNames = order.items.map(i => i && i.product ? i.product : (i.description || '')).join(', ');
-            } else if (typeof order.items === 'string') {
-                productNames = order.items;
+                const itemCounts = aggregateItems(order.items);
+                // User requested format: "Spray Oil (x3), Painover (x1)"
+                productNames = Object.entries(itemCounts)
+                    .map(([name, count]) => `${name} (x${count})`)
+                    .join(', ');
+
+            } else if (typeof order.items === 'string' && order.items.trim().length > 0) {
+                // Handling pure string case (just in case)
+                const parts = order.items.split(',').map(s => s.trim()).filter(s => s);
+                const itemCounts = {};
+                parts.forEach(part => {
+                    if (itemCounts[part]) itemCounts[part]++;
+                    else itemCounts[part] = 1;
+                });
+
+                productNames = Object.entries(itemCounts)
+                    .map(([name, count]) => `${name} (x${count})`)
+                    .join(', ');
+            } else {
+                productNames = '';
             }
 
             return {

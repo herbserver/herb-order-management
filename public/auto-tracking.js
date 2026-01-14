@@ -51,29 +51,50 @@ async function checkForOutForDelivery() {
                 break;
             }
 
-            if (order.shiprocket && order.shiprocket.awb) {
-                const awb = order.shiprocket.awb;
+            const awb = order.shiprocket?.awb || order.tracking?.trackingId;
+            const courier = order.tracking?.courier || order.shiprocket?.courierName || 'Shiprocket';
 
+            if (awb) {
                 // Skip if already notified
                 if (window.notifiedOrders.has(order.orderId)) {
                     continue;
                 }
 
                 try {
-                    // Get latest tracking
-                    const trackRes = await fetch(`${API_URL}/shiprocket/track/${awb}`);
+                    let trackRes;
+                    let trackData;
 
-                    // Check for rate limiting
-                    if (trackRes.status === 429) {
+                    if (courier.toLowerCase().includes('india post') || courier.toLowerCase().includes('speed post')) {
+                        console.log(`📮 Scraping India Post for ${order.orderId} (${awb})`);
+                        trackRes = await fetch(`${API_URL}/orders/track-indiapost/${order.orderId}`, { method: 'POST' });
+                        trackData = await trackRes.json();
+                    } else if (courier.toLowerCase().includes('blue') || courier.toLowerCase().includes('bluedart') || courier.toLowerCase().includes('blue dart')) {
+                        console.log(`📦 Scraping BlueDart for ${order.orderId} (${awb})`);
+                        trackRes = await fetch(`${API_URL}/orders/track-bluedart/${order.orderId}`, { method: 'POST' });
+                        trackData = await trackRes.json();
+                    } else {
+                        // Standard Shiprocket tracking
+                        trackRes = await fetch(`${API_URL}/shiprocket/track/${awb}`);
+                        const resJson = await trackRes.json();
+                        if (resJson.success && resJson.tracking) {
+                            trackData = {
+                                success: true,
+                                status: resJson.tracking.currentStatus,
+                                location: resJson.tracking.location,
+                                tracking: resJson.tracking
+                            };
+                        }
+                    }
+
+                    // Check for rate limiting (only for Shiprocket)
+                    if (trackRes && trackRes.status === 429) {
                         console.warn('⚠️ Rate limit hit. Stopping batch and will retry next cycle.');
                         break;
                     }
 
-                    const trackData = await trackRes.json();
-                    requestCount++;
-
-                    if (trackData.success && trackData.tracking) {
-                        const status = trackData.tracking.currentStatus || '';
+                    if (trackData && trackData.success) {
+                        const status = trackData.status || '';
+                        requestCount++;
 
                         // Check if Out for Delivery
                         if (status.toLowerCase().includes('out for delivery')) {
@@ -81,22 +102,24 @@ async function checkForOutForDelivery() {
                             window.notifiedOrders.add(order.orderId);
 
                             // Show alert
-                            showOutForDeliveryAlert(order, trackData.tracking);
+                            showOutForDeliveryAlert(order, trackData);
 
-                            // Update order in background
-                            await fetch(`${API_URL}/orders/${order.orderId}/update-tracking`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ awb: awb })
-                            });
+                            // Status is already updated in the track-indiapost route, but for Shiprocket we might need it
+                            if (!courier.toLowerCase().includes('india post')) {
+                                await fetch(`${API_URL}/orders/${order.orderId}/update-tracking`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ tracking: { currentStatus: status, location: trackData.location } })
+                                });
+                            }
                         }
                     }
                 } catch (trackError) {
                     console.error(`Error tracking ${order.orderId}:`, trackError.message);
                 }
 
-                // Longer delay to avoid rate limiting (3 seconds between requests)
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                // Wait between requests to be gentle
+                await new Promise(resolve => setTimeout(resolve, courier.toLowerCase().includes('india post') ? 5000 : 3000));
             }
         }
 

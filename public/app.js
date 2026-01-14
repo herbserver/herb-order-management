@@ -2582,7 +2582,12 @@ function renderOfdOrders(orders) {
         return;
     }
 
-    list.innerHTML = orders.map(order => `
+    list.innerHTML = orders.map(order => {
+        const trackingId = order.shiprocket?.awb || order.tracking?.trackingId;
+        const courierName = (order.tracking?.courier || order.shiprocket?.courierName || 'Manual');
+        const isIndiaPost = courierName.toLowerCase().includes('india post');
+
+        return `
         <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group ring-2 ring-orange-500/20 bg-white shadow-md">
             <div class="p-4 border-b border-orange-50 bg-orange-50/50 flex justify-between items-center">
                 <span class="text-xs font-black text-orange-600 tracking-wider">${order.orderId}</span>
@@ -2593,9 +2598,23 @@ function renderOfdOrders(orders) {
                     <div class="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center text-lg shadow-lg shadow-orange-100 text-white">📦</div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-bold text-slate-800 truncate">${order.customerName}</p>
-                        <p class="text-[10px] text-slate-500 font-semibold">${order.mobile}</p>
+                        <p class="text-[10px] text-slate-500 font-semibold">${order.mobile || order.telNo || 'N/A'}</p>
                     </div>
                 </div>
+
+                ${trackingId ? `
+                <div class="${isIndiaPost ? 'bg-blue-50 border-blue-100' : 'bg-indigo-50 border-indigo-100'} border rounded-xl p-3 mb-4 flex justify-between items-center">
+                    <div>
+                        <p class="text-[9px] font-bold ${isIndiaPost ? 'text-blue-500' : 'text-indigo-500'} uppercase mb-0.5">${isIndiaPost ? '📮 India Post' : '📦 ' + courierName}</p>
+                        <p class="text-[11px] font-mono font-bold text-slate-700">${trackingId}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Status</p>
+                        <p class="text-[10px] font-bold text-slate-600">${order.tracking?.currentStatus || 'In Transit'}</p>
+                    </div>
+                </div>
+                ` : ''}
+
                 <div class="bg-slate-50 rounded-2xl p-4 mb-4 space-y-2.5 border border-slate-100">
                     <div class="flex justify-between items-center text-[11px]">
                         <span class="text-slate-500 font-medium">Order Amount:</span>
@@ -2619,14 +2638,15 @@ function renderOfdOrders(orders) {
                         class="py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 border border-slate-200 shadow-sm">
                         <span>👁️</span> Details
                     </button>
-                    <button onclick="trackShiprocketOrder('${order.orderId}', '${order.shiprocket?.awb || (order.tracking && order.tracking.trackingId) || ''}')" 
-                        class="py-2.5 bg-orange-600 text-white rounded-xl text-xs font-bold hover:bg-orange-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-200">
+                    <button onclick="trackShiprocketOrder('${order.orderId}', '${trackingId || ''}')" 
+                        class="py-2.5 bg-orange-600 text-white rounded-xl text-xs font-bold hover:bg-orange-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-200 ${!trackingId ? 'opacity-50 cursor-not-allowed' : ''}" ${!trackingId ? 'disabled' : ''}>
                         <span>🔍</span> Track
                     </button>
                 </div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function filterMyOfdOrders(query) {
@@ -3306,25 +3326,74 @@ async function trackShiprocketOrder(orderId, awb) {
     // Get all elements first
     const $ = id => document.getElementById(id);
 
+    // Fetch order details first to get courier info
+    let courierName = '';
+    try {
+        const orderRes = await fetch(`${API_URL}/orders/${orderId}`);
+        const orderData = await orderRes.json();
+        if (orderData.success && orderData.order) {
+            courierName = (orderData.order.tracking?.courier || orderData.order.shiprocket?.courierName || '').toLowerCase();
+        }
+    } catch (e) {
+        console.warn('Could not fetch order details for courier detection:', e);
+    }
+
+    // Detect courier type
+    const isIndiaPostPattern = /^[A-Z]{2}\d{9}IN$/i.test(awb);
+    const isIndiaPost = isIndiaPostPattern || courierName.includes('india post') || courierName.includes('speed post');
+    const isBlueDart = courierName.includes('blue') || courierName.includes('bluedart') || courierName.includes('blue dart');
+
+    // Determine display courier name
+    let displayCourier = 'Shiprocket';
+    if (isIndiaPost) displayCourier = 'India Post';
+    else if (isBlueDart) displayCourier = 'BlueDart';
+
     // Show modal with loading state
     $('trackingOrderId').textContent = `Order: ${orderId}`;
     $('trackingAWB').textContent = awb || '-';
-    $('trackingCourier').textContent = 'Loading...';
+    $('trackingCourier').textContent = displayCourier;
     $('trackingStatusIcon').textContent = '⏳';
     $('trackingStatusText').textContent = 'Fetching...';
-    $('trackingLocation').textContent = 'Loading...';
+    $('trackingLocation').textContent = 'Fetching...';
     $('trackingLastUpdate').textContent = '';
     $('trackingCount').textContent = '';
-    $('trackingTimeline').innerHTML = '<p class="text-gray-400 text-center py-4">Loading...</p>';
+    $('trackingTimeline').innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
+            <p class="text-sm font-medium animate-pulse">Contacting ${displayCourier}...</p>
+        </div>
+    `;
     $('trackingModal').classList.remove('hidden');
 
     try {
-        const res = await fetch(`${API_URL}/shiprocket/track/${awb}`);
+        let res;
+        if (isIndiaPost) {
+            console.log(`📮 Detected India Post AWB: ${awb}. Fetching via scraping...`);
+            res = await fetch(`${API_URL}/orders/track-indiapost/${orderId}`, { method: 'POST' });
+        } else if (isBlueDart) {
+            console.log(`📦 Detected BlueDart AWB: ${awb}. Fetching via scraping...`);
+            res = await fetch(`${API_URL}/orders/track-bluedart/${orderId}`, { method: 'POST' });
+        } else {
+            res = await fetch(`${API_URL}/shiprocket/track/${awb}`);
+        }
+
         const data = await res.json();
         console.log('📦 API Response:', data);
 
-        if (data.success && data.tracking) {
-            const t = data.tracking;
+        if (data.success && (data.tracking || data.allScans)) {
+            const t = data.tracking || {
+                awb: awb,
+                courierName: displayCourier,
+                currentStatus: data.status,
+                location: data.location || (data.allScans && data.allScans[0]?.location) || 'In Transit',
+                lastUpdate: data.lastUpdate,
+                allScans: (data.allScans || []).map(s => ({
+                    status: s.activity, // Map activity to status for timeline coloring
+                    activity: s.activity,
+                    location: s.location,
+                    date: s.date
+                }))
+            };
 
             // Status icon based on status
             let icon = '📦';
@@ -3337,15 +3406,15 @@ async function trackShiprocketOrder(orderId, awb) {
                 step = 4;
                 icon = '✅';
                 theme = { header: 'from-emerald-600 to-teal-500', text: 'text-emerald-700', line: 'bg-emerald-500' };
-            } else if (s.includes('out for')) {
+            } else if (s.includes('out for') || s.includes('ofd')) {
                 step = 3;
                 icon = '🚚';
                 theme = { header: 'from-purple-600 to-fuchsia-500', text: 'text-purple-700', line: 'bg-purple-500' };
-            } else if (s.includes('shipped') || s.includes('transit') || s.includes('arrived') || s.includes('pickup')) {
+            } else if (s.includes('shipped') || s.includes('transit') || s.includes('arrived') || s.includes('pickup') || s.includes('received') || s.includes('dispatched') || s.includes('on the way')) {
                 step = 2;
                 icon = '🚛';
                 theme = { header: 'from-indigo-600 to-blue-500', text: 'text-indigo-700', line: 'bg-indigo-500' };
-            } else if (s.includes('return') || s.includes('rto') || s.includes('cancel')) {
+            } else if (s.includes('return') || s.includes('rto') || s.includes('cancel') || s.includes('undelivered')) {
                 step = 1;
                 icon = '↩️';
                 theme = { header: 'from-red-600 to-orange-500', text: 'text-red-700', line: 'bg-red-500' };
@@ -3385,14 +3454,20 @@ async function trackShiprocketOrder(orderId, awb) {
 
             // Comprehensive Details
             $('trackingOrigin').textContent = t.origin || '-';
-            $('trackingDestination').textContent = t.destination || '-';
+            $('trackingDestination').textContent = t.destination || data.destination || '-';
             $('trackingWeight').textContent = t.weight ? `${t.weight} kg` : '-';
             $('trackingPieces').textContent = t.packages || '-';
             $('trackingPickupDate').textContent = t.pickupDate || '-';
             $('trackingPOD').textContent = t.podStatus || '-';
 
             // Show Status
-            $('trackingStatusText').textContent = t.currentStatus || 'In Transit';
+            $('trackingStatusText').textContent = (data.cached ? '[CACHED] ' : '') + (t.currentStatus && t.currentStatus !== 'Status Update' ? t.currentStatus : 'In Transit');
+            if (data.cached) {
+                console.log('⚠️ Showing cached tracking data');
+                $('trackingLastUpdate').innerHTML = `<span class="text-orange-500 font-bold text-[10px]">⚠️ Site Offline - Last Update</span><br>${t.lastUpdate && t.lastUpdate !== 'N/A' ? 'Updated: ' + t.lastUpdate : ''}`;
+            } else {
+                $('trackingLastUpdate').textContent = t.lastUpdate && t.lastUpdate !== 'N/A' ? `Updated: ${t.lastUpdate}` : '';
+            }
 
             // Show EDD separately
             const eddEl = $('trackingEDD');
@@ -3406,6 +3481,8 @@ async function trackShiprocketOrder(orderId, awb) {
             }
 
             $('trackingLocation').textContent = t.location || 'In Transit';
+
+            // ... rest of timeline logic ...
             $('trackingLastUpdate').textContent = t.lastUpdate ? `Updated: ${t.lastUpdate}` : '';
 
             // Build timeline from allScans
@@ -3518,22 +3595,84 @@ async function trackShiprocketOrder(orderId, awb) {
                 'Delhivery': `https://www.delhivery.com/track/package/${awb}`,
                 'Xpressbees': `https://www.xpressbees.com/track/${awb}`,
                 'BlueDart': `https://www.bluedart.com/tracking/${awb}`,
-                'Ecom Express': `https://www.ecomexpress.in/tracking/?awb_field=${awb}`
+                'Ecom Express': `https://www.ecomexpress.in/tracking/?awb_field=${awb}`,
+                'India Post': `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx?consignmentid=${awb}`
             };
             $('trackingExternalLink').href = links[t.courierName] || `https://shiprocket.co/tracking/${awb}`;
 
         } else {
-            $('trackingStatusIcon').textContent = '❌';
-            $('trackingStatusText').textContent = 'Not Available';
-            $('trackingLocation').textContent = '-';
-            $('trackingTimeline').innerHTML = '<p class="text-red-400 text-center py-6">❌ Tracking not available</p>';
+            // Success call but no data, use local fallback
+            await showLocalTrackingFallback(orderId, awb, data.message || 'No tracking information found');
         }
     } catch (e) {
         console.error('Track error:', e);
-        $('trackingStatusIcon').textContent = '⚠️';
-        $('trackingStatusText').textContent = 'Error';
-        $('trackingTimeline').innerHTML = `<p class="text-red-400 text-center py-6">❌ ${e.message}</p>`;
+        await showLocalTrackingFallback(orderId, awb, e.message);
     }
+}
+
+async function showLocalTrackingFallback(orderId, awb, errorMessage) {
+    try {
+        const orderRes = await fetch(`${API_URL}/orders/${orderId}`);
+        const orderData = await orderRes.json();
+
+        if (orderData.success && orderData.order) {
+            const o = orderData.order;
+            $('trackingAWB').textContent = awb || (o.tracking?.trackingId) || '-';
+            $('trackingCourier').textContent = o.tracking?.courier || (o.shiprocket?.awb ? 'Shiprocket' : 'India Post');
+            $('trackingStatusIcon').textContent = 'ℹ️';
+            $('trackingStatusText').textContent = 'Status: ' + (o.status || 'Dispatched');
+            $('trackingDestination').textContent = o.city || o.state || '-';
+            $('trackingLocation').textContent = o.city || 'In Transit';
+
+            // Set External Link for India Post/Shiprocket
+            const isIP = (awb || '').toUpperCase().endsWith('IN');
+            const externalLink = isIP
+                ? `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx?consignmentid=${awb}`
+                : `https://shiprocket.co/tracking/${awb}`;
+            $('trackingExternalLink').href = externalLink;
+
+            $('trackingTimeline').innerHTML = `
+                <div class="p-6 text-center">
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                        <p class="text-amber-700 font-bold text-sm mb-1">⚠️ External Tracking Unavailable</p>
+                        <p class="text-amber-600 text-[11px] leading-relaxed">The tracking service is currently not responding. Showing information from our system records.</p>
+                    </div>
+                    
+                    <div class="text-left bg-white border border-slate-100 shadow-sm rounded-xl p-4">
+                        <div class="mb-4">
+                            <p class="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Destination Address</p>
+                            <p class="text-sm font-bold text-slate-800">${o.address}${o.pin ? ', ' + o.pin : ''}</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Last System Status</p>
+                                <p class="text-sm font-black text-blue-600">${o.status || 'Dispatched'}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Phone</p>
+                                <p class="text-sm font-bold text-slate-800">${o.telNo || o.mobile || '-'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+    } catch (err) {
+        console.error('Local fallback failed:', err);
+    }
+
+    $('trackingStatusIcon').textContent = '❌';
+    $('trackingStatusText').textContent = 'Error';
+    $('trackingTimeline').innerHTML = `
+        <div class="p-10 text-center">
+            <p class="text-red-500 font-bold mb-1">❌ Tracking Not Available</p>
+            <p class="text-slate-400 text-xs">${errorMessage || 'Unknown Error'}</p>
+            <button onclick="trackShiprocketOrder('${orderId}', '${awb}')" class="mt-4 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs hover:bg-blue-100 transition-colors">
+                🔄 Try Refreshing
+            </button>
+        </div>
+    `;
 }
 
 // Auto-refresh tracking every 5 minutes
@@ -7897,11 +8036,53 @@ async function exportDispatchedOrdersFiltered(event) {
 
             const fullAddress = landmark ? `${address} {${landmark}}` : address;
 
+            // Aggregate items logic (Reliably handles Arrays, Comma-strings, and mixed data)
             let productNames = '';
+
+            // Helper to aggregate dict
+            const aggregateItems = (list) => {
+                const counts = {};
+                list.forEach(item => {
+                    // Normalize item to arrays of product names/objects
+                    if (typeof item === 'string') {
+                        // Handle "Product A, Product B" string inside array or standalone
+                        const parts = item.split(',').map(s => s.trim()).filter(s => s);
+                        parts.forEach(part => {
+                            if (counts[part]) counts[part]++;
+                            else counts[part] = 1;
+                        });
+                    } else if (typeof item === 'object' && item !== null) {
+                        const name = (item.description || item.product || item.name || 'Unknown').trim();
+                        const qty = parseInt(item.quantity || item.qty || 1) || 1;
+
+                        if (counts[name]) counts[name] += qty;
+                        else counts[name] = qty;
+                    }
+                });
+                return counts;
+            };
+
             if (Array.isArray(order.items)) {
-                productNames = order.items.map(i => i && i.description ? i.description : '').join(', ');
-            } else if (typeof order.items === 'string') {
-                productNames = order.items;
+                const itemCounts = aggregateItems(order.items);
+                // Format: "Spray Oil (x3), Painover (x1)"
+                productNames = Object.entries(itemCounts)
+                    .map(([name, count]) => `${name} (x${count})`)
+                    .join(', ');
+
+            } else if (typeof order.items === 'string' && order.items.trim().length > 0) {
+                // Handling pure string case (just in case)
+                const parts = order.items.split(',').map(s => s.trim()).filter(s => s);
+                const itemCounts = {};
+                parts.forEach(part => {
+                    if (itemCounts[part]) itemCounts[part]++;
+                    else itemCounts[part] = 1;
+                });
+
+                productNames = Object.entries(itemCounts)
+                    .map(([name, count]) => `${name} (x${count})`)
+                    .join(', ');
+            } else {
+                productNames = '';
             }
 
             const formatDate = (dateStr) => {

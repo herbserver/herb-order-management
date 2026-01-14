@@ -271,12 +271,23 @@ function exportToCSV() {
     }
 
     const headers = ['Order Date', 'Customer Name', 'Phone', 'Address', 'Items', 'Amount', 'Status', 'Agent'];
+    // Helper to format items string "A, A, B" -> "A (x2), B (x1)"
+    const formatItemsForExport = (itemsStr) => {
+        if (!itemsStr) return '';
+        const counts = {};
+        itemsStr.split(',').forEach(s => {
+            const name = s.trim();
+            if (name) counts[name] = (counts[name] || 0) + 1;
+        });
+        return Object.entries(counts).map(([name, count]) => `${name} (x${count})`).join(', ');
+    };
+
     const rows = filteredData.map(o => [
         `"${o.date}"`,
         `"${o.customerName}"`,
         `"${o.phone}"`,
         `"${o.address}"`,
-        `"${o.items}"`,
+        `"${formatItemsForExport(o.items)}"`,
         o.amount,
         `"${o.status}"`,
         `"${o.agent}"`

@@ -62,7 +62,8 @@ function displaySearchResults(orders, query) {
 
     const modal = document.createElement('div');
     modal.id = 'globalSearchModal';
-    modal.className = 'fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4 animate-fadeIn';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center p-4 animate-fadeIn';
+    modal.style.zIndex = '9000';
 
     modal.innerHTML = `
         <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-slideUp">
@@ -99,40 +100,56 @@ function displaySearchResults(orders, query) {
 
 // Render individual order card in search results
 function renderSearchResultCard(order) {
-    const statusColors = {
-        'Pending': 'bg-orange-100 text-orange-700 border-orange-300',
-        'Address Verified': 'bg-blue-100 text-blue-700 border-blue-300',
-        'Dispatched': 'bg-purple-100 text-purple-700 border-purple-300',
-        'Out For Delivery': 'bg-indigo-100 text-indigo-700 border-indigo-300',
-        'Delivered': 'bg-green-100 text-green-700 border-green-300',
-        'Cancelled': 'bg-red-100 text-red-700 border-red-300',
-        'RTO': 'bg-gray-100 text-gray-700 border-gray-300',
-        'On Hold': 'bg-yellow-100 text-yellow-700 border-yellow-300'
-    };
+    // 1. Determine Status & Colors
+    const status = order.status || 'Pending';
+    let statusColor = 'bg-gray-100 text-gray-700 border-gray-300';
+    let statusIcon = '📦';
 
-    const statusClass = statusColors[order.status] || 'bg-gray-100 text-gray-700 border-gray-300';
+    if (status === 'Pending') { statusColor = 'bg-orange-100 text-orange-700 border-orange-200'; statusIcon = '⏳'; }
+    else if (status === 'Address Verified') { statusColor = 'bg-blue-100 text-blue-700 border-blue-200'; statusIcon = '✅'; }
+    else if (status === 'Dispatched') { statusColor = 'bg-purple-100 text-purple-700 border-purple-200'; statusIcon = '🚚'; }
+    else if (status === 'Out For Delivery') { statusColor = 'bg-indigo-100 text-indigo-700 border-indigo-200'; statusIcon = '📦'; }
+    else if (status === 'Delivered') { statusColor = 'bg-green-100 text-green-700 border-green-200'; statusIcon = '🎉'; }
+    else if (status === 'Cancelled') { statusColor = 'bg-red-100 text-red-700 border-red-200'; statusIcon = '❌'; }
+    else if (status === 'RTO') { statusColor = 'bg-rose-100 text-rose-700 border-rose-200'; statusIcon = '↩️'; }
+    else if (status === 'On Hold') { statusColor = 'bg-yellow-100 text-yellow-700 border-yellow-200'; statusIcon = '⏸️'; }
+
+    // 2. Format Date
     const createdDate = new Date(order.timestamp || order.createdAt).toLocaleString('en-IN', {
         day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
 
+    // 3. Tracking Info Logic
+    const hasShiprocket = order.shiprocket && order.shiprocket.awb;
+    const trackingId = order.shiprocket?.awb || order.tracking?.trackingId;
+    const carrier = order.tracking?.courier || order.shiprocket?.courierName || '';
+    const currentStatus = order.tracking?.currentStatus || order.shiprocket?.currentStatus || '';
+
+    // Tracking Badge Color
+    let trackingBadgeColor = 'text-blue-600 bg-blue-50 border-blue-200';
+    const sLower = (currentStatus || '').toLowerCase();
+    if (sLower.includes('delivered')) trackingBadgeColor = 'text-green-600 bg-green-50 border-green-200';
+    else if (sLower.includes('out for delivery')) trackingBadgeColor = 'text-purple-600 bg-purple-50 border-purple-200';
+    else if (sLower.includes('rto')) trackingBadgeColor = 'text-red-600 bg-red-50 border-red-200';
+
     return `
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all">
             <!-- Order Header -->
-            <div class="bg-gradient-to-r from-gray-50 to-blue-50 p-4 border-b border-gray-200">
+            <div class="bg-gradient-to-r from-gray-50 to-slate-50 p-4 border-b border-gray-200">
                 <div class="flex justify-between items-start">
                     <div>
                         <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">Order ID</span>
                         <h3 class="text-lg font-black text-gray-800">${order.orderId}</h3>
                     </div>
-                    <span class="px-3 py-1 rounded-full text-xs font-bold border ${statusClass}">
-                        ${order.status}
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1 ${statusColor}">
+                        <span>${statusIcon}</span> ${status}
                     </span>
                 </div>
             </div>
             
             <!-- Order Details Grid -->
             <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Customer Info -->
+                <!-- Customer Info (Left) -->
                 <div class="space-y-3">
                     <div class="flex items-start gap-2">
                         <span class="text-gray-400 text-sm">👤</span>
@@ -155,12 +172,12 @@ function renderSearchResultCard(order) {
                         <span class="text-gray-400 text-sm">📍</span>
                         <div>
                             <p class="text-xs text-gray-500 uppercase">Address</p>
-                            <p class="text-sm text-gray-700 leading-relaxed">${order.address || 'N/A'}</p>
+                            <p class="text-sm text-gray-700 leading-relaxed line-clamp-2">${order.address || 'N/A'} ${order.pin ? '- ' + order.pin : ''}</p>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Order Info -->
+                <!-- Order Info (Right) -->
                 <div class="space-y-3">
                     <div class="flex items-start gap-2">
                         <span class="text-gray-400 text-sm">💰</span>
@@ -172,33 +189,59 @@ function renderSearchResultCard(order) {
                     </div>
                     
                     <div class="flex items-start gap-2">
-                        <span class="text-gray-400 text-sm">👨‍💼</span>
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase">Created By</p>
-                            <p class="font-semibold text-gray-800">${order.employeeName || order.employee || 'N/A'}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start gap-2">
                         <span class="text-gray-400 text-sm">📅</span>
                         <div>
                             <p class="text-xs text-gray-500 uppercase">Created On</p>
                             <p class="text-sm text-gray-700">${createdDate}</p>
                         </div>
                     </div>
-                    
-                    ${order.tracking?.trackingId ? `
-                        <div class="flex items-start gap-2">
+
+                    <!-- Integrated Tracking Details -->
+                    ${(trackingId || carrier) ? `
+                        <div class="flex items-start gap-2 pt-2 border-t border-dashed border-gray-200">
                             <span class="text-gray-400 text-sm">📦</span>
-                            <div>
-                                <p class="text-xs text-gray-500 uppercase">Tracking ID</p>
-                                <p class="font-mono text-sm font-bold text-blue-600">${order.tracking.trackingId}</p>
-                                ${order.tracking.currentStatus ? `<p class="text-xs text-gray-600 mt-1">${order.tracking.currentStatus}</p>` : ''}
+                            <div class="flex-1">
+                                <p class="text-xs text-gray-500 uppercase flex justify-between">
+                                    Tracking Info
+                                    ${currentStatus ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${trackingBadgeColor}">${currentStatus}</span>` : ''}
+                                </p>
+                                <p class="text-xs font-bold text-gray-800 mt-0.5">${carrier}</p>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <p class="font-mono text-xs text-blue-600 font-medium">${trackingId}</p>
+                                    ${trackingId ? (hasShiprocket ? `
+                                        <button onclick="trackShiprocketOrder('${order.orderId}', '${trackingId}')" class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-200 hover:bg-blue-100 font-bold">
+                                            Track
+                                        </button>
+                                    ` : `
+                                        <button onclick="window.open('${getTrackingLink(carrier, trackingId)}', '_blank')" class="text-[10px] bg-gray-50 text-gray-600 px-2 py-0.5 rounded border border-gray-200 hover:bg-gray-100">
+                                            ↗
+                                        </button>
+                                    `) : ''}
+                                </div>
                             </div>
                         </div>
                     ` : ''}
                 </div>
             </div>
+
+            <!-- Reasons Section -->
+            ${status === 'RTO' ? `
+                <div class="px-5 pb-4">
+                     <div class="bg-red-50 border border-red-100 rounded-xl p-3">
+                        <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">↩️ RTO Reason</p>
+                        <p class="text-xs font-bold text-red-700 italic">"${order.rtoReason || 'No reason provided'}"</p>
+                    </div>
+                </div>
+            ` : ''}
+
+            ${status === 'Cancelled' ? `
+                <div class="px-5 pb-4">
+                     <div class="bg-red-50 border border-red-100 rounded-xl p-3">
+                        <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">❌ Cancellation Reason</p>
+                        <p class="text-xs font-bold text-red-700 italic">"${order.cancelReason || 'No reason provided'}"</p>
+                    </div>
+                </div>
+            ` : ''}
             
             <!-- Actions Footer -->
             <div class="bg-gray-50 p-4 border-t border-gray-200 flex justify-end gap-2">
@@ -215,6 +258,15 @@ function renderSearchResultCard(order) {
             </div>
         </div>
     `;
+}
+
+// Helper to get tracking link (reused from other files if possible, but safe duplicated here for standalone search)
+function getTrackingLink(courier, id) {
+    const c = (courier || '').toLowerCase();
+    if (c.includes('blue dart') || c.includes('bluedart')) return `https://www.bluedart.com/track?handler=trakDetails&trackId=${id}`;
+    if (c.includes('india post') || c.includes('speed post')) return `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`;
+    if (c.includes('delhivery')) return `https://www.delhivery.com/track/package/${id}`;
+    return `https://www.google.com/search?q=${courier}+tracking+${id}`;
 }
 
 // Close search modal

@@ -97,7 +97,9 @@ const orderSchema = new mongoose.Schema({
         currentStatus: String,
         lastUpdate: String,
         lastUpdatedAt: String,
-        dispatchedAt: String
+        location: String,
+        dispatchedAt: String,
+        allScans: [mongoose.Schema.Types.Mixed]
     },
 
     // Hold Order Details

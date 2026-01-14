@@ -317,6 +317,11 @@ async function viewOrder(orderId) {
             modalContent = document.getElementById('orderModalContent');
         }
 
+        // Force High Z-Index to stay above Global Search
+        if (modalElement) {
+            modalElement.style.zIndex = '10001'; // Increased slightly just in case
+        }
+
         if (!modalElement || !modalContent) {
             console.error('CRITICAL: No order modal found in DOM (tried orderDetailModal and orderModal)');
             alert('System Error: View Modal not found. Please refresh.');

@@ -8,15 +8,20 @@
 
 function renderDeliveryCardModern(o) {
     const hasShiprocket = o.shiprocket && o.shiprocket.awb;
+    const courierName = (o.tracking?.courier || o.shiprocket?.courierName || '').toLowerCase();
+    const isIndiaPost = courierName.includes('india post');
+    const trackingId = o.shiprocket?.awb || o.tracking?.trackingId;
+    const hasTracking = !!trackingId;
 
     // Get tracking status badge
     let statusBadge = '';
     if (o.tracking && o.tracking.currentStatus) {
         const status = o.tracking.currentStatus;
+        const sLower = status.toLowerCase();
         let badgeColor = 'bg-blue-500';
-        if (status.includes('Delivered')) badgeColor = 'bg-green-500';
-        else if (status.includes('Out for Delivery')) badgeColor = 'bg-purple-500';
-        else if (status.includes('Transit')) badgeColor = 'bg-yellow-500';
+        if (sLower.includes('delivered')) badgeColor = 'bg-green-500';
+        else if (sLower.includes('out for delivery')) badgeColor = 'bg-purple-500';
+        else if (sLower.includes('transit')) badgeColor = 'bg-yellow-500';
         statusBadge = `<span class="${badgeColor} text-white text-[10px] px-2 py-0.5 rounded-full font-bold">${status}</span>`;
     }
 
@@ -43,7 +48,17 @@ function renderDeliveryCardModern(o) {
             </div>
             <p class="text-[10px] text-gray-500 font-medium">Courier: <span class="text-gray-800 font-bold">${o.shiprocket.courierName || 'N/A'}</span></p>
         </div>
-        ` : ''}
+        ` : (hasTracking ? `
+        <div class="${isIndiaPost ? 'bg-blue-50 border-blue-200' : 'bg-indigo-50 border-indigo-200'} border p-3 rounded-xl mb-4 relative z-10">
+            <div class="flex items-center justify-between mb-1">
+                <span class="${isIndiaPost ? 'text-blue-600' : 'text-indigo-600'} font-bold text-[10px] uppercase">
+                    ${isIndiaPost ? '📮 via India Post' : '📦 via ' + (o.tracking?.courier || 'Manual')}
+                </span>
+                <span class="${isIndiaPost ? 'text-blue-700' : 'text-indigo-700'} font-mono font-bold text-[10px]">${trackingId}</span>
+            </div>
+            <p class="text-[10px] text-gray-500 font-medium">Status: <span class="text-gray-800 font-bold">${o.tracking?.currentStatus || 'Dispatched'}</span></p>
+        </div>
+        ` : '')}
         
         ${o.status === 'RTO' ? `
         <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-xl mb-4 relative z-10">
@@ -65,8 +80,8 @@ function renderDeliveryCardModern(o) {
         
         <div class="grid grid-cols-1 gap-3 relative z-10">
             <div class="grid grid-cols-2 gap-3">
-                ${hasShiprocket ? `
-                <button onclick="trackShiprocketOrder('${o.orderId}', '${o.shiprocket.awb}')" 
+                ${hasTracking ? `
+                <button onclick="trackShiprocketOrder('${o.orderId}', '${trackingId}')" 
                     class="bg-blue-50 text-blue-600 font-bold py-3 rounded-xl hover:bg-blue-100 transition-all border-2 border-blue-100 shadow-sm flex items-center justify-center gap-2 text-xs">
                     <span>🔍</span> Track
                 </button>

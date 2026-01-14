@@ -72,6 +72,11 @@ async function viewOrder(orderId) {
             modalContent = document.getElementById('orderModalContent');
         }
 
+        // Force High Z-Index to stay above Global Search
+        if (modalElement) {
+            modalElement.style.zIndex = '10001';
+        }
+
         if (!modalElement || !modalContent) {
             console.error('CRITICAL: No order modal found in DOM (tried orderDetailModal and orderModal)');
             alert('System Error: View Modal not found. Please refresh.');
@@ -173,6 +178,41 @@ async function viewOrder(orderId) {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Tracking Details Card (NEW) -->
+                        ${(order.shiprocket?.awb || order.tracking?.trackingId) ? `
+                        <div class="bg-white border-2 border-gray-50 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                            <div class="absolute top-0 right-0 bg-indigo-600 text-white px-5 py-1.5 rounded-bl-3xl text-[10px] font-black uppercase tracking-widest shadow-md">TRACKING</div>
+                            <div class="flex items-center justify-between mb-6">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 text-2xl shadow-inner">🚚</div>
+                                    <h5 class="text-xl font-black text-gray-900 leading-none">Shipment Details</h5>
+                                </div>
+                                <button type="button" onclick="trackShiprocketOrder('${order.orderId}', '${order.shiprocket?.awb || order.tracking?.trackingId || ''}')" 
+                                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-2xl text-xs font-black transition-all border border-indigo-500 flex items-center gap-2 shadow-lg uppercase tracking-widest">
+                                    🔍 Track Now
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Courier</p>
+                                    <p class="text-sm font-black text-gray-800">${order.shiprocket?.courierName || order.tracking?.courier || 'Manual'}</p>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Tracking ID</p>
+                                    <p class="text-sm font-mono font-black text-indigo-600">${order.shiprocket?.awb || order.tracking?.trackingId || 'N/A'}</p>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Status</p>
+                                    <p class="text-sm font-black text-gray-800">${order.tracking?.currentStatus || order.status || 'Pending'}</p>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Dispatched On</p>
+                                    <p class="text-sm font-black text-gray-800">${order.dispatchedAt ? new Date(order.dispatchedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
 
                         <!-- Order Items Section -->
                         <div class="bg-white border-2 border-gray-50 rounded-[40px] shadow-sm overflow-hidden">
