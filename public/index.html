@@ -261,7 +261,7 @@
              ║  Contains: New Order Form, My Orders, History, Cancelled, Progress                ║
              ║  Functions: switchEmpTab(), saveOrder(), loadMyOrders(), loadMyHistory()          ║
              ╚═══════════════════════════════════════════════════════════════════════════════════╝ -->
-        <div id="employeePanel" class="hidden animate-fadeIn font-['Poppins']">
+        <div id="employeePanel" class="hidden font-['Poppins']">
             <div class="flex min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 relative">
 
                 <!-- EMPLOYEE SIDEBAR BACKDROP (Mobile) -->
@@ -271,7 +271,7 @@
 
                 <!-- EMPLOYEE SIDEBAR -->
                 <aside id="empSidebar"
-                    class="w-64 bg-white border-r border-slate-200 fixed inset-y-0 left-0 z-[60] transform -translate-x-full lg:translate-x-0 sidebar-bouncy shadow-2xl lg:shadow-none flex flex-col h-[100dvh] overflow-hidden">
+                    class="w-64 bg-white border-r border-slate-200 fixed inset-y-0 left-0 z-[60] transform -translate-x-full lg:translate-x-0 sidebar-bouncy shadow-2xl lg:shadow-none flex flex-col h-[100dvh] overflow-y-auto overflow-x-hidden">
 
                     <!-- Logo Header -->
                     <div
@@ -339,7 +339,7 @@
                 </aside>
 
                 <!-- Main Content Area -->
-                <main class="flex-1 lg:ml-64 overflow-x-hidden">
+                <main class="flex-1 lg:ml-64 overflow-x-hidden animate-fadeIn">
 
                     <!-- Top Bar (Mobile) -->
                     <div
@@ -2245,7 +2245,23 @@
                     </div>
 
                     <!-- OTHER TABS -->
-                    <div id="adminEmployeesTab" class="hidden animate-fadeIn space-y-6"></div>
+                    <div id="adminEmployeesTab" class="hidden animate-fadeIn space-y-6">
+                        <div class="glass-card p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-2xl font-black text-gray-800 flex items-center gap-3">
+                                    <span class="text-3xl">👥</span> Employee Management
+                                </h2>
+                                <button
+                                    onclick="document.getElementById('editEmployeeModal').classList.remove('hidden')"
+                                    class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-colors">
+                                    + Add Employee
+                                </button>
+                            </div>
+                            <div id="employeeList" class="space-y-3">
+                                <!-- Employee items will be injected here by loadAllEmployees() -->
+                            </div>
+                        </div>
+                    </div>
                     <div id="adminDepartmentsTab" class="hidden animate-fadeIn space-y-6"></div>
                     <div id="adminHistoryTab" class="hidden animate-fadeIn space-y-6"></div>
 
@@ -2922,11 +2938,13 @@
     <script src="js/ui/navigation.js" defer></script>
 
     <!-- Employee Panel -->
-    <script src="js/panels/employee.js" defer></script>
+
 
     <!-- MAIN APPLICATION (Monolith - Will gradually phase out) -->
-    <script src="js/admin.js" defer></script>
+    <script src="js/panels/admin.js" defer></script>
     <script src="app.js?v=3.11" defer></script>
+    <!-- Employee Panel (Moved after app.js to override legacy functions) -->
+    <script src="js/panels/employee.js?v=2" defer></script>
 
     <!-- EXISTING STANDALONE MODULES -->
     <!-- Temporarily disabled - causing 404 errors -->
@@ -2935,6 +2953,9 @@
     <!-- <script src="auto-tracking.js" defer></script> -->
     <!-- <script src="order-notifications.js" defer></script> -->
     <!-- <script src="whatsapp-notifications.js" defer></script> -->
+
+    <!-- Global Search (Added explicitly for fix) -->
+    <script src="js/global-search.js?v=FIX_MOBILE_SIDEBAR" defer></script>
 
     <!-- APPLICATION INIT (Load Last) -->
     <script src="js/init.js" defer></script>

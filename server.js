@@ -87,7 +87,7 @@ app.use('/api', authRoutes);
 app.use('/api', locationRoutes);
 
 // Page Routing (MPA)
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public/admin.html')));
+app.get('/admin', (req, res) => res.redirect('/'));
 app.get('/employee', (req, res) => res.sendFile(path.join(__dirname, 'public/employee.html')));
 app.get('/dispatch', (req, res) => res.sendFile(path.join(__dirname, 'public/dispatch.html')));
 app.get('/verification', (req, res) => res.sendFile(path.join(__dirname, 'public/verification.html')));

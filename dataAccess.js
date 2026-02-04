@@ -146,19 +146,52 @@ async function deleteDepartment(departmentId) {
 // ==================== ORDERS ====================
 
 // Pagination Support
-async function getAllOrders(page = 1, limit = 0) {
+// Pagination Support with Date Range
+async function getAllOrders(page = 1, limit = 0, startDate = null, endDate = null) {
+    // Date Filter Construction
+    let dateQuery = {};
+    if (startDate || endDate) {
+        dateQuery.timestamp = {};
+        if (startDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            dateQuery.timestamp.$gte = start.toISOString();
+        }
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            dateQuery.timestamp.$lte = end.toISOString();
+        }
+    }
+
     if (mongoConnected) {
+        let query = {};
+        if (Object.keys(dateQuery).length > 0) Object.assign(query, dateQuery);
+
         if (limit > 0) {
             const skip = (page - 1) * limit;
-            const orders = await Order.find({}).sort({ timestamp: -1 }).skip(skip).limit(limit);
-            const total = await Order.countDocuments({});
+            const orders = await Order.find(query).sort({ timestamp: -1 }).skip(skip).limit(limit);
+            const total = await Order.countDocuments(query);
             return { orders, total };
         }
         // Legacy/Export: Return array directly
-        return await Order.find({}).sort({ timestamp: -1 });
+        return await Order.find(query).sort({ timestamp: -1 });
     }
     // Fallback to JSON (Cached)
     let orders = loadCache('orders', path.join(__dirname, 'data', 'orders.json'), []);
+
+    // Date Filtering for JSON
+    if (startDate || endDate) {
+        const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+        const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+
+        orders = orders.filter(o => {
+            const oDate = new Date(o.timestamp).getTime();
+            if (start && oDate < start) return false;
+            if (end && oDate > end) return false;
+            return true;
+        });
+    }
 
     if (limit > 0) {
         // Sort first if needed, though JSON implies chronological usually. 
@@ -356,8 +389,8 @@ async function updateShiprocketConfig(updates) {
     return updated;
 }
 
-// Optimized Employee Order Fetch
-async function getEmployeeOrders(empId, status = null, page = 1, limit = 0) {
+// Optimized Employee Order Fetch with Date Range
+async function getEmployeeOrders(empId, status = null, page = 1, limit = 0, startDate = null, endDate = null) {
     empId = empId.toUpperCase();
 
     // Check if status is multiple (comma separated)
@@ -370,9 +403,26 @@ async function getEmployeeOrders(empId, status = null, page = 1, limit = 0) {
         }
     }
 
+    // Date Filter Construction
+    let dateQuery = {};
+    if (startDate || endDate) {
+        dateQuery.timestamp = {};
+        if (startDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            dateQuery.timestamp.$gte = start.toISOString();
+        }
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            dateQuery.timestamp.$lte = end.toISOString();
+        }
+    }
+
     if (mongoConnected) {
         const query = { employeeId: empId };
         if (statusFilter) query.status = statusFilter;
+        if (Object.keys(dateQuery).length > 0) Object.assign(query, dateQuery);
 
         if (limit > 0) {
             const skip = (page - 1) * limit;
@@ -390,6 +440,19 @@ async function getEmployeeOrders(empId, status = null, page = 1, limit = 0) {
     if (status) {
         const statuses = status.split(',').map(s => s.trim());
         filtered = filtered.filter(o => statuses.includes(o.status));
+    }
+
+    // Date Filtering for JSON
+    if (startDate || endDate) {
+        const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+        const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+
+        filtered = filtered.filter(o => {
+            const oDate = new Date(o.timestamp).getTime();
+            if (start && oDate < start) return false;
+            if (end && oDate > end) return false;
+            return true;
+        });
     }
 
     if (limit > 0) {

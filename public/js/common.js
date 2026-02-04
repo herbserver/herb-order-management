@@ -162,15 +162,21 @@ function checkAuth(requiredRole) {
 
     // Role Redirects
     if (requiredRole && session.type !== requiredRole) {
-        if (session.type === 'admin') window.location.href = '/admin';
-        else if (session.type === 'employee') window.location.href = '/employee';
-        else if (session.type === 'department') window.location.href = '/department';
+        if (session.type === 'admin') {
+            if (window.location.pathname !== '/') window.location.href = '/';
+        }
+        else if (session.type === 'employee') {
+            if (window.location.pathname !== '/employee') window.location.href = '/employee';
+        }
+        else if (session.type === 'department') {
+            if (window.location.pathname !== '/department') window.location.href = '/department';
+        }
         return false;
     }
 
     // If on login page but already logged in, redirect
     if (window.location.pathname.includes('/login')) {
-        if (session.type === 'admin') window.location.href = '/admin';
+        if (session.type === 'admin') window.location.href = '/';
         else if (session.type === 'employee') window.location.href = '/employee';
         else if (session.type === 'department') window.location.href = '/department';
     }

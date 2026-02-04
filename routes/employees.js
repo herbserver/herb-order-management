@@ -43,12 +43,33 @@ router.get('/', async (req, res) => {
         // Read employees directly from JSON file
         const employees = readJSON(EMPLOYEES_FILE, {});
         console.log(`📂 Loaded ${Object.keys(employees).length} employees from JSON file`);
+
+        const startDate = req.query.startDate || null;
+        const endDate = req.query.endDate || null;
+
         let orders = [];
         try {
-            orders = await dataAccess.getAllOrders();
+            // Pass date filters to getAllOrders
+            orders = await dataAccess.getAllOrders(1, 0, startDate, endDate);
         } catch (mongoError) {
             console.warn('⚠️ MongoDB orders failed, using JSON fallback:', mongoError.message);
+            // On fallback, re-read and apply filter manually (though updated getAllOrders handles fallback logic too, 
+            // but the catch block implies something went wrong INSIDE it or connection issue).
+            // Actually updated getAllOrders safely handles fallback internally if mongoConnected is false,
+            // so this catch block is for unexpected errors.
             orders = readJSON(ORDERS_FILE, []);
+
+            // Manual filter if fallback raw read happens here
+            if (startDate || endDate) {
+                const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+                const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+                orders = orders.filter(o => {
+                    const oDate = new Date(o.timestamp).getTime();
+                    if (start && oDate < start) return false;
+                    if (end && oDate > end) return false;
+                    return true;
+                });
+            }
         }
 
         const employeeList = Object.entries(employees).map(([id, data]) => {
@@ -108,12 +129,14 @@ router.get('/:empId', async (req, res) => {
         // Optimization: Use getEmployeeOrders
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 0; // Default to all if not specified (legacy)
+        const startDate = req.query.startDate || null;
+        const endDate = req.query.endDate || null;
 
         let result;
         if (req.query.status) {
-            result = await dataAccess.getEmployeeOrders(id, req.query.status, page, limit);
+            result = await dataAccess.getEmployeeOrders(id, req.query.status, page, limit, startDate, endDate);
         } else {
-            result = await dataAccess.getEmployeeOrders(id, null, page, limit);
+            result = await dataAccess.getEmployeeOrders(id, null, page, limit, startDate, endDate);
         }
 
         let empOrders, total = 0;
@@ -123,6 +146,34 @@ router.get('/:empId', async (req, res) => {
         } else {
             empOrders = result;
             total = empOrders.length;
+        }
+
+        // Calculate Stats on the fly based on the FILTERED orders
+        // Note: If paginated, stats might only reflect the page unless we fetch all for stats.
+        // For accurate stats with filters, we usually need a separate aggregation query.
+        // But for now, if limit=0 (default for this view usually), it's fine.
+        // If paginated, this will only show stats for the current page which is WRONG.
+        // We need ALL orders for checks stats if dates are applied.
+
+        let statsObject = { total: 0, pending: 0, verified: 0, dispatched: 0, delivered: 0, cancelled: 0, hold: 0, rto: 0 };
+
+        // Helper to fetch full list for stats if we are paginating
+        let allOrdersForStats = empOrders;
+        if (limit > 0) {
+            // If paginating, we need to fetch ALL matching orders to calculate correct stats totals
+            // This is a bit expensive but necessary for correct numbers with date filters
+            allOrdersForStats = await dataAccess.getEmployeeOrders(id, req.query.status || null, 1, 0, startDate, endDate);
+        }
+
+        if (allOrdersForStats && allOrdersForStats.length > 0) {
+            statsObject.total = allOrdersForStats.length;
+            statsObject.pending = allOrdersForStats.filter(o => o.status === 'Pending').length;
+            statsObject.verified = allOrdersForStats.filter(o => o.status === 'Address Verified').length;
+            statsObject.dispatched = allOrdersForStats.filter(o => o.status === 'Dispatched').length;
+            statsObject.delivered = allOrdersForStats.filter(o => o.status === 'Delivered').length;
+            statsObject.cancelled = allOrdersForStats.filter(o => o.status === 'Cancelled').length;
+            statsObject.hold = allOrdersForStats.filter(o => o.status === 'On Hold' || o.status === 'Hold').length;
+            statsObject.rto = allOrdersForStats.filter(o => o.status === 'RTO').length;
         }
 
         res.json({
@@ -135,7 +186,7 @@ router.get('/:empId', async (req, res) => {
                 limit,
                 totalPages: Math.ceil(total / limit)
             } : null,
-            stats: null // Removed expensive stats calculation as it's unused
+            stats: statsObject
         });
     } catch (e) {
         console.error('Get employee detail error:', e);

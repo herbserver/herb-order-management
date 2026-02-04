@@ -150,8 +150,13 @@ async function loadAllEmployees() {
                         <p class="font-bold text-gray-800">${e.name}</p>
                         <p class="text-xs text-gray-500">${e.employeeId}</p>
                     </div>
-                    <div class="text-right">
-                         <button onclick="removeEmployee('${e._id}')" class="text-red-500 text-xs font-bold hover:bg-red-50 px-3 py-1 rounded">Remove</button>
+                    <div class="text-right flex items-center gap-2">
+                         <button onclick="viewEmployeeProfile('${e.employeeId}', '', '')" class="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1">
+                            <span>📊</span> Stats
+                         </button>
+                         <button onclick="removeEmployee('${e._id}')" class="text-red-500 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1">
+                            <span>🗑️</span> Remove
+                         </button>
                     </div>
                 </div>
             `).join('');
@@ -375,4 +380,79 @@ window.exportOrdersByStatus = function (status) {
 function capitalize(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+// ==================== MISSING LOADERS (ADDED BY AI) ====================
+window.loadAdminVerified = (page = null) => loadAdminOrdersGeneric('Address Verified', 'adminVerifiedList', 'verified', page);
+window.loadAdminCancelled = (page = null) => loadAdminOrdersGeneric('Cancelled', 'adminCancelledList', 'cancelled', page);
+window.loadAdminOnHold = (page = null) => loadAdminOrdersGeneric('On Hold', 'adminOnholdList', 'onhold', page);
+window.loadAdminRTO = (page = null) => loadAdminOrdersGeneric('RTO', 'adminRTOList', 'rto', page);
+
+// Expose loadAllEmployees globally just in case
+window.loadAllEmployees = loadAllEmployees;
+
+// ==================== ADMIN TAB SWITCHING ====================
+window.switchAdminTab = function (tabName) {
+    // 1. Deactivate all sidebar items
+    document.querySelectorAll('#adminSidebar .sidebar-nav-item').forEach(btn => {
+        btn.classList.remove('bg-indigo-50', 'text-indigo-600', 'border-r-4', 'border-indigo-600');
+        btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+    });
+
+    // 2. Activate clicked item
+    // ID convention: adminTab<CapitalizedTabName>
+    // Special handling for RTO and OFD capitalization
+    let idSuffix = capitalize(tabName);
+    if (tabName === 'rto') idSuffix = 'Rto'; // ID is adminTabRto
+    if (tabName === 'ofd') idSuffix = 'Ofd'; // ID is adminTabOfd
+
+    const btnId = `adminTab${idSuffix}`;
+    const btn = document.getElementById(btnId);
+    if (btn) {
+        btn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+        btn.classList.add('bg-indigo-50', 'text-indigo-600', 'border-r-4', 'border-indigo-600');
+    }
+
+    // 3. Hide all tabs
+    const allTabs = [
+        'adminPendingTab', 'adminVerifiedTab', 'adminDispatchedTab', 'adminOfdTab',
+        'adminDeliveredTab', 'adminCancelledTab', 'adminOnholdTab', 'adminRTOTab',
+        'adminEmployeesTab', 'adminDepartmentsTab', 'adminHistoryTab', 'adminProgressTab'
+    ];
+    allTabs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+
+    // 4. Show selected tab
+    // Map tabName to ID
+    let tabId = '';
+    if (tabName === 'rto') tabId = 'adminRTOTab';
+    else if (tabName === 'ofd') tabId = 'adminOfdTab';
+    else tabId = `admin${capitalize(tabName)}Tab`;
+
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) {
+        targetTab.classList.remove('hidden');
+        targetTab.classList.add('animate-fadeIn');
+    } else {
+        console.warn(`Tab container with ID ${tabId} not found!`);
+    }
+
+    // 5. Load specific data for the tab
+    if (tabName === 'pending') loadAdminPending();
+    else if (tabName === 'verified') loadAdminVerified();
+    else if (tabName === 'dispatched') loadAdminDispatched();
+    else if (tabName === 'ofd') loadAdminOFD();
+    else if (tabName === 'delivered') loadAdminDelivered();
+    else if (tabName === 'cancelled') loadAdminCancelled();
+    else if (tabName === 'onhold') loadAdminOnHold();
+    else if (tabName === 'rto') loadAdminRTO();
+    else if (tabName === 'employees') loadAllEmployees();
+    else if (tabName === 'departments') {
+        if (window.loadAllDepartments) window.loadAllDepartments();
+    }
+    else if (tabName === 'progress') {
+        if (window.loadAdminProgress) window.loadAdminProgress();
+    }
+};
 
