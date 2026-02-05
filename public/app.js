@@ -7701,17 +7701,40 @@ function renderAnalyticsEmployees(orders) {
                 cancelled: 0,
                 hold: 0,
                 dispatched: 0,
-                rto: 0
+                rto: 0,
+                revenue: 0,
+                deliveredRev: 0,
+                cancelledRev: 0,
+                holdRev: 0,
+                dispatchedRev: 0,
+                rtoRev: 0
             };
         }
 
+        const amt = (o.total || 0);
         empStats[empName].total++;
+        empStats[empName].revenue += amt;
 
-        if (o.status === 'Delivered') empStats[empName].delivered++;
-        else if (o.status === 'Cancelled') empStats[empName].cancelled++;
-        else if (o.status === 'Hold' || o.status === 'On Hold') empStats[empName].hold++;
-        else if (o.status === 'Dispatched') empStats[empName].dispatched++;
-        else if (o.status === 'RTO') empStats[empName].rto++;
+        if (o.status === 'Delivered') {
+            empStats[empName].delivered++;
+            empStats[empName].deliveredRev += amt;
+        }
+        else if (o.status === 'Cancelled') {
+            empStats[empName].cancelled++;
+            empStats[empName].cancelledRev += amt;
+        }
+        else if (o.status === 'Hold' || o.status === 'On Hold') {
+            empStats[empName].hold++;
+            empStats[empName].holdRev += amt;
+        }
+        else if (o.status === 'Dispatched') {
+            empStats[empName].dispatched++;
+            empStats[empName].dispatchedRev += amt;
+        }
+        else if (o.status === 'RTO') {
+            empStats[empName].rto++;
+            empStats[empName].rtoRev += amt;
+        }
     });
 
     // Sort by Total Orders Descending
@@ -7735,6 +7758,7 @@ function renderAnalyticsEmployees(orders) {
                     <th class="px-4 py-4 text-center text-emerald-600">Delivered</th>
                     <th class="px-4 py-4 text-center text-indigo-600">RTO</th>
                     <th class="px-4 py-4 text-center text-rose-600">Cancelled</th>
+                    <th class="px-4 py-4 text-center text-blue-600">Total Revenue</th>
                     <th class="px-4 py-4 text-right">Performance</th>
                 </tr>
             </thead>
@@ -7765,22 +7789,43 @@ function renderAnalyticsEmployees(orders) {
                     </div>
                 </td>
                 <td class="px-4 py-4 text-center">
-                    <span class="font-black text-slate-800 bg-slate-100 px-2 py-1 rounded-lg">${stats.total}</span>
+                    <div class="flex flex-col items-center">
+                        <span class="font-black text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg mb-1">${stats.total}</span>
+                        <span class="text-[9px] font-bold text-gray-400">Items</span>
+                    </div>
                 </td>
                 <td class="px-4 py-4 text-center">
-                    <span class="font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">${stats.hold}</span>
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100 mb-1">${stats.hold}</span>
+                        <span class="text-[9px] font-black text-yellow-700">₹${stats.holdRev.toLocaleString()}</span>
+                    </div>
                 </td>
                 <td class="px-4 py-4 text-center">
-                    <span class="font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-lg border border-purple-100">${stats.dispatched}</span>
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100 mb-1">${stats.dispatched}</span>
+                        <span class="text-[9px] font-black text-purple-700">₹${stats.dispatchedRev.toLocaleString()}</span>
+                    </div>
                 </td>
                 <td class="px-4 py-4 text-center">
-                    <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">${stats.delivered}</span>
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 mb-1">${stats.delivered}</span>
+                        <span class="text-[9px] font-black text-emerald-700">₹${stats.deliveredRev.toLocaleString()}</span>
+                    </div>
                 </td>
                 <td class="px-4 py-4 text-center">
-                     <span class="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">${stats.rto}</span>
+                    <div class="flex flex-col items-center">
+                         <span class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 mb-1">${stats.rto}</span>
+                         <span class="text-[9px] font-black text-indigo-700">₹${stats.rtoRev.toLocaleString()}</span>
+                    </div>
                 </td>
                 <td class="px-4 py-4 text-center">
-                    <span class="font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100">${stats.cancelled}</span>
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100 mb-1">${stats.cancelled}</span>
+                        <span class="text-[9px] font-black text-rose-700">₹${stats.cancelledRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <span class="font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100 whitespace-nowrap shadow-sm">₹${stats.revenue.toLocaleString()}</span>
                 </td>
                 <td class="px-4 py-4 text-right">
                     <div class="flex flex-col items-end gap-1">
