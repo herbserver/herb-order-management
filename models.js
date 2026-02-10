@@ -71,10 +71,12 @@ const orderSchema = new mongoose.Schema({
     // Dispatch Info
     dispatchedBy: String,
     dispatchedAt: String,
+    ofdAt: String,
 
     // Delivery Info
     deliveredBy: String,
     deliveredAt: String,
+    rtoAt: String,
     deliveryRequested: Boolean,
     deliveryRequestedBy: {
         employeeId: String,

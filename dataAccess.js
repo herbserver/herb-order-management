@@ -215,25 +215,95 @@ async function getOrderById(orderId) {
     return orders.find(o => o.orderId === orderId);
 }
 
-// Optimized: Filter in memory with Pagination
-async function getOrdersByStatus(status, page = 1, limit = 0) {
+// Optimized: Filter in memory with Pagination and Date Range
+async function getOrdersByStatus(status, page = 1, limit = 0, startDate = null, endDate = null) {
+    // Map status to its corresponding date field
+    const statusDateFieldMap = {
+        'Pending': 'timestamp',
+        'Address Verified': 'verifiedAt',
+        'Dispatched': 'dispatchedAt',
+        'Out For Delivery': 'ofdAt',
+        'Delivered': 'deliveredAt',
+        'Cancelled': 'cancellationInfo.cancelledAt',
+        'On Hold': 'holdDetails.holdAt',
+        'RTO': 'rtoAt'
+    };
+    const dateField = statusDateFieldMap[status] || 'timestamp';
+
+    // Date Filter Construction
+    let dateQuery = { status: status };
+    if (startDate || endDate) {
+        if (startDate === endDate && startDate) {
+            // Optimization for single day search (Today/Yesterday)
+            // Use Regex to match start of ISO string: ^2026-02-09
+            dateQuery[dateField] = { $regex: `^${startDate}` };
+        } else {
+            dateQuery[dateField] = {};
+            if (startDate) {
+                const start = new Date(startDate);
+                start.setHours(0, 0, 0, 0);
+                dateQuery[dateField].$gte = start.toISOString();
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                dateQuery[dateField].$lte = end.toISOString();
+            }
+        }
+    }
+
     if (mongoConnected) {
         // Use status as-is - MongoDB has proper case: 'Pending', 'Address Verified', etc.
         if (limit > 0) {
             const skip = (page - 1) * limit;
-            const orders = await Order.find({ status: status }).sort({ timestamp: -1 }).skip(skip).limit(limit);
-            const total = await Order.countDocuments({ status: status });
+            const orders = await Order.find(dateQuery).sort({ [dateField]: -1 }).skip(skip).limit(limit);
+            const total = await Order.countDocuments(dateQuery);
             return { orders, total };
         }
-        return await Order.find({ status: status }).sort({ timestamp: -1 });
+        return await Order.find(dateQuery).sort({ [dateField]: -1 });
     }
     // Fallback to JSON
     const orders = loadCache('orders', path.join(__dirname, 'data', 'orders.json'), []);
     // Simple in-memory filter
     let filtered = orders.filter(o => o.status === status);
 
+    // Date Filtering for JSON
+    if (startDate || endDate) {
+        const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+        const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+
+        filtered = filtered.filter(o => {
+            // Support nested fields like cancellationInfo.cancelledAt
+            let dateValue;
+            if (dateField.includes('.')) {
+                const parts = dateField.split('.');
+                dateValue = o[parts[0]] ? o[parts[0]][parts[1]] : null;
+            } else {
+                dateValue = o[dateField];
+            }
+
+            if (!dateValue) return false;
+
+            const oDate = new Date(dateValue).getTime();
+            if (start && oDate < start) return false;
+            if (end && oDate > end) return false;
+            return true;
+        });
+    }
+
     if (limit > 0) {
-        filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        filtered.sort((a, b) => {
+            let valA, valB;
+            if (dateField.includes('.')) {
+                const parts = dateField.split('.');
+                valA = a[parts[0]] ? a[parts[0]][parts[1]] : null;
+                valB = b[parts[0]] ? b[parts[0]][parts[1]] : null;
+            } else {
+                valA = a[dateField];
+                valB = b[dateField];
+            }
+            return new Date(valB || 0) - new Date(valA || 0);
+        });
         const total = filtered.length;
         const start = (page - 1) * limit;
         const sliced = filtered.slice(start, start + limit);

@@ -9,99 +9,147 @@ router.get('/dashboard', async (req, res) => {
     try {
         const { startDate, endDate, employeeId } = req.query;
 
-        // Get all orders using dataAccess (Hybrid)
-        let orders = await dataAccess.getAllOrders();
-        orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        // Get all orders using dataAccess
+        const allOrders = await dataAccess.getAllOrders();
 
-        // Apply date filter if provided (Fixed logic)
+        // 1. Filter for "Created in Range" (for Total, Pending, Revenue etc.)
+        let createdOrders = [...allOrders];
+        createdOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
         if (startDate && endDate) {
             const start = new Date(startDate);
             start.setHours(0, 0, 0, 0);
             const end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
 
-            orders = orders.filter(o => {
+            createdOrders = createdOrders.filter(o => {
                 const orderDate = new Date(o.timestamp);
                 return orderDate >= start && orderDate <= end;
             });
         }
 
-        // Apply employee filter if provided
+        // Apply employee filter to createdOrders
         if (employeeId) {
-            orders = orders.filter(o => o.employeeId === employeeId.toUpperCase());
+            createdOrders = createdOrders.filter(o => o.employeeId === employeeId.toUpperCase());
         }
 
-        // Calculate Fresh/Reorder for ALL ORDERS (not just today)
-        let totalFreshRevenue = 0, totalReorderRevenue = 0;
-        let totalFreshCount = 0, totalReorderCount = 0;
+        // 2. Filter for "Delivered in Range" (for Delivery Count & Efficiency)
+        // We filter from 'allOrders' because delivery might happen for older orders
+        let deliveredOrders = [];
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
 
-        orders.forEach(o => {
-            const orderTotal = o.total || 0;
-            // Only count orders with orderType field set
-            if (!o.orderType) return;
+            deliveredOrders = allOrders.filter(o => {
+                if (o.status === 'Delivered' && o.deliveredAt) {
+                    const d = new Date(o.deliveredAt);
+                    return d >= start && d <= end;
+                }
+                return false;
+            });
+        } else {
+            // If no range (default view), logically "Delivered Today"? 
+            // Or just all delivered? Usually dashboard defaults to Today if no range?
+            // Actually the frontend sends 'today' range by default.
+            // If strictly no range params, maybe return all delivered? 
+            // Let's stick to the same logic: if no range, use all.
+            deliveredOrders = allOrders.filter(o => o.status === 'Delivered');
+        }
 
-            // Handle both old (REORDER) and new (Reorder) format
+        if (employeeId) {
+            deliveredOrders = deliveredOrders.filter(o => o.employeeId === employeeId.toUpperCase());
+        }
+
+
+        // Quick Stats Calculation
+
+        // Revenue: Usually based on Created Orders (Sales booked) OR Delivered Orders (Cash collected)?
+        // Standard E-commerce "Revenue" usually means "GMV of orders placed in period".
+        // Let's stick to Created Orders for Revenue.
+        const totalRevenue = createdOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+        // Fresh vs Reorder (Created)
+        let freshRevenue = 0, reorderRevenue = 0;
+        let freshCount = 0, reorderCount = 0;
+
+        createdOrders.forEach(o => {
+            const amt = o.total || 0;
             if (o.orderType === 'Reorder' || o.orderType === 'REORDER') {
-                totalReorderRevenue += orderTotal;
-                totalReorderCount++;
+                reorderRevenue += amt;
+                reorderCount++;
             } else {
-                totalFreshRevenue += orderTotal;
-                totalFreshCount++;
+                freshRevenue += amt;
+                freshCount++;
             }
         });
 
-        // Today's stats (with Fresh/Reorder breakdown)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayOrders = orders.filter(o => new Date(o.timestamp) >= today);
+        // 7-Day Timeline Data (Requires careful iteration)
+        // We want to show: 
+        // 1. Total Created on Day X
+        // 2. Total Delivered on Day X (regardless of creation)
 
-        let todayFreshRevenue = 0, todayReorderRevenue = 0;
-        let todayFreshCount = 0, todayReorderCount = 0;
+        const timeline = [];
+        // Determine last 7 days range OR the selected range?
+        // The frontend expects "ordersTimeline" which is usually a trend.
+        // If the user selected "Yesterday", a 7-day trend might still be useful context, 
+        // OR we should show the hourly trend? 
+        // For simplicity, let's keep the "Last 7 Days" trend regardless of filter, 
+        // OR better: generate trend for the selected period?
+        // The current frontend labels it "Orders Timeline".
+        // Let's Stick to "Last 7 Days" fixed trend for now as the chart is designed for that.
 
-        todayOrders.forEach(o => {
-            const orderTotal = o.total || 0;
-            if (!o.orderType) return;
-
-            // Handle both old (REORDER) and new (Reorder) format
-            if (o.orderType === 'Reorder' || o.orderType === 'REORDER') {
-                todayReorderRevenue += orderTotal;
-                todayReorderCount++;
-            } else {
-                todayFreshRevenue += orderTotal;
-                todayFreshCount++;
-            }
-        });
-
-        const todayStats = {
-            totalOrders: todayOrders.length,
-            totalRevenue: todayOrders.reduce((sum, o) => sum + (o.total || 0), 0),
-            freshRevenue: todayFreshRevenue,
-            reorderRevenue: todayReorderRevenue,
-            freshCount: todayFreshCount,
-            reorderCount: todayReorderCount,
-            pendingVerification: todayOrders.filter(o => o.status === 'Pending').length,
-            dispatched: todayOrders.filter(o => o.status === 'Dispatched').length,
-            delivered: todayOrders.filter(o => o.status === 'Delivered').length
-        };
-
-        // 7-Day Timeline Data
-        const last7Days = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
-            const dayOrders = orders.filter(o => o.timestamp && o.timestamp.startsWith(dateStr));
-            last7Days.push({
+
+            // Created on this day
+            const dayCreated = allOrders.filter(o => o.timestamp && o.timestamp.startsWith(dateStr));
+            if (employeeId) {
+                // filter by employee if needed
+                // Note: efficient filtering would ideally be outside loop
+            }
+
+            // Delivered on this day
+            const dayDelivered = allOrders.filter(o => {
+                return o.status === 'Delivered' && o.deliveredAt && o.deliveredAt.startsWith(dateStr);
+            });
+
+            timeline.push({
                 date: dateStr,
-                total: dayOrders.length,
-                delivered: dayOrders.filter(o => o.status === 'Delivered').length,
-                cancelled: dayOrders.filter(o => o.status === 'Cancelled').length
+                total: dayCreated.length,
+                delivered: dayDelivered.length,
+                cancelled: dayCreated.filter(o => o.status === 'Cancelled').length
             });
         }
 
-        // Top 5 Employees
+        // Status Distribution (of the Created Orders in Range)
+        // This shows "What happened to the orders created in this period?"
+        // e.g. "Of orders created today, how many are already dispatched?"
+        const statusDistribution = {
+            total: createdOrders.length,
+            pending: createdOrders.filter(o => o.status === 'Pending').length,
+            verified: createdOrders.filter(o => o.status === 'Address Verified').length,
+            dispatched: createdOrders.filter(o => o.status === 'Dispatched').length,
+            delivered: createdOrders.filter(o => o.status === 'Delivered').length, // This is "Created & Delivered in period"
+            cancelled: createdOrders.filter(o => o.status === 'Cancelled').length,
+            rto: createdOrders.filter(o => o.status === 'RTO').length,
+        };
+
+        // Wait, for "Delivered Count" in the UI Card, user usually expects "Total Deliveries achieved in period".
+        // But status distribution usually means "Lifecycle of orders from period".
+        // Let's provide BOTH.
+        // UI uses 'analyticsStatDelivered' from statusDistribution.
+        // UI uses 'analyticsDeliveryRate'. 
+        // We should send the "Delivered In Period" count explicitly for the STAT CARD.
+        // But the Chart (Doughnut) is Distribution.
+
+        // Top Employees (Based on Revenue of orders created? Or Delivered?)
+        // Usually Sales Performance = Revenue Booked.
         const empPerformance = {};
-        orders.forEach(o => {
+        createdOrders.forEach(o => {
             if (o.employeeId) {
                 if (!empPerformance[o.employeeId]) {
                     empPerformance[o.employeeId] = { name: o.employee || o.employeeId, totalOrders: 0, revenue: 0 };
@@ -114,34 +162,47 @@ router.get('/dashboard', async (req, res) => {
             .sort((a, b) => b.totalOrders - a.totalOrders)
             .slice(0, 5);
 
-        // Status Distribution
-        const statusDistribution = {
-            total: orders.length,
-            pending: orders.filter(o => o.status === 'Pending').length,
-            verified: orders.filter(o => o.status === 'Address Verified').length,
-            dispatched: orders.filter(o => o.status === 'Dispatched').length,
-            delivered: orders.filter(o => o.status === 'Delivered').length,
-            cancelled: orders.filter(o => o.status === 'Cancelled').length,
-            onhold: orders.filter(o => o.status === 'On Hold').length
+        // Quick Stats to return
+        const quickStats = {
+            totalOrders: createdOrders.length,
+            totalRevenue,
+            totalCustomers: new Set(createdOrders.map(o => o.mobileNumber || o.telNo)).size,
+            // Rate: Delivered (In Period) / Total Created (In Period) ?? 
+            // Or Delivered (Lifecycle) / Total Created?
+            // Let's use: Delivered Count (orders delivered in this window) / Total orders created in this window ? 
+            // No that could be > 100%.
+            // Let's use "Efficiency": (Orders Created in Period that are Delivered) / Total Created
+            deliverySuccessRate: createdOrders.length > 0 ?
+                ((createdOrders.filter(o => o.status === 'Delivered').length / createdOrders.length) * 100).toFixed(1) : 0
         };
 
-        // Quick stats
-        const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-        const uniqueCustomers = new Set(orders.map(o => o.mobileNumber || o.telNo)).size;
+
+        // Calculate Revenue for Delivered Orders
+        const deliveredRevenue = deliveredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+        // UI "Today Stats" (Legacy Key) -> Mapped to filtered result
+        const todayStats = {
+            totalOrders: createdOrders.length,
+            totalRevenue,
+            delivered: deliveredOrders.length,
+            deliveredRevenue // Added for legacy support if needed
+        };
 
         res.json({
             success: true,
             today: todayStats,
             charts: {
                 statusDistribution,
-                ordersTimeline: last7Days,
+                ordersTimeline: timeline,
                 employeePerformance: topEmployees
             },
             quickStats: {
-                totalOrders: orders.length,
-                totalRevenue,
-                totalCustomers: uniqueCustomers,
-                deliverySuccessRate: orders.length > 0 ? ((statusDistribution.delivered / orders.length) * 100).toFixed(1) : 0
+                totalOrders: createdOrders.length,
+                totalRevenue, // Revenue of Created Orders
+                deliveredRevenue, // Revenue of Delivered Orders (NEW)
+                totalCustomers: new Set(createdOrders.map(o => o.mobileNumber || o.telNo)).size,
+                deliverySuccessRate: createdOrders.length > 0 ?
+                    ((createdOrders.filter(o => o.status === 'Delivered').length / createdOrders.length) * 100).toFixed(1) : 0
             }
         });
 

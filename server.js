@@ -106,6 +106,9 @@ app.get('/*.html', (req, res) => {
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
 
 // ==================== START SERVER ====================
+const http = require('http');
+const socketManager = require('./socket-manager');
+
 async function startServer() {
     const dbConnected = await connectDatabase();
     if (dbConnected) {
@@ -118,11 +121,19 @@ async function startServer() {
         console.warn('⚠️ Running without MongoDB - Data will not persist!');
     }
 
-    app.listen(PORT, '0.0.0.0', () => {
+    // Create HTTP Server for Socket.io
+    const server = http.createServer(app);
+
+    // Initialize Socket.io
+    const io = socketManager.init(server, allowedOrigins);
+    console.log('🔌 Socket.io initialized');
+
+    server.listen(PORT, '0.0.0.0', () => {
         console.log('╔═══════════════════════════════════════════════════════════╗');
         console.log('║       🌿 HERB ON NATURALS MODULAR SERVER STARTED 🌿       ║');
         console.log(`║  Port:     ${PORT}                                            ║`);
         console.log(`║  Status:   ${dbConnected ? '🟢 MongoDB Connected' : '🔴 JSON Mode'}           ║`);
+        console.log(`║  Realtime: 🟢 Socket.io Active                                ║`);
         console.log('╚═══════════════════════════════════════════════════════════╝');
     });
 }

@@ -8,6 +8,7 @@ const { validateOrderCreation } = require('../validators');
 const { readJSON, writeJSON } = require('../utils/fileHelpers');
 const { trackSpeedPost } = require('../utils/speedpost-tracker');
 const { trackBlueDart } = require('../utils/bluedart-tracker');
+const socketManager = require('../socket-manager'); // Import Socket Manager
 
 const DATA_DIR = path.join(__dirname, '../data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
@@ -114,6 +115,14 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
 
         await dataAccess.createOrder(newOrder);
         console.log(`📦 New Order: ${orderId} (${orderType}) by ${orderData.employee} (${orderData.employeeId})`);
+
+        // Emit Real-time Event
+        try {
+            const io = socketManager.getIo();
+            io.emit('order-created', newOrder);
+            io.emit('dashboard-update'); // Trigger dashboard refresh
+        } catch (e) { console.error('Socket emit error:', e.message); }
+
         res.json({ success: true, message: 'Order saved!', orderId });
     } catch (error) {
         console.error('❌ Create order error:', error.message);
@@ -139,6 +148,14 @@ router.put('/:orderId', async (req, res) => {
 
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
         console.log(`✏️ Order Updated: ${req.params.orderId}`);
+
+        // Emit Real-time Event
+        try {
+            const io = socketManager.getIo();
+            io.emit('order-updated', updated);
+            io.emit('dashboard-update');
+        } catch (e) { console.error('Socket emit error:', e.message); }
+
         res.json({ success: true, message: 'Order updated!', order: updated });
     } catch (error) {
         console.error('❌ Update order error:', error);
@@ -151,13 +168,15 @@ router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 0;
+        const startDate = req.query.startDate;
+        const endDate = req.query.endDate;
 
         let result;
         // Optimization: Server-side filtering
         if (req.query.status) {
-            result = await dataAccess.getOrdersByStatus(req.query.status, page, limit);
+            result = await dataAccess.getOrdersByStatus(req.query.status, page, limit, startDate, endDate);
         } else {
-            result = await dataAccess.getAllOrders(page, limit);
+            result = await dataAccess.getAllOrders(page, limit, startDate, endDate);
         }
 
         // Handle Pagination Response vs Full List
@@ -358,6 +377,14 @@ router.post('/deliver', async (req, res) => {
 
         if (updatedOrder) {
             console.log(`✅ Success: Order ${orderId} is now marked as Delivered.`);
+
+            // Emit Real-time Event
+            try {
+                const io = socketManager.getIo();
+                io.emit('order-updated', updatedOrder);
+                io.emit('dashboard-update');
+            } catch (e) { console.error('Socket emit error:', e.message); }
+
             res.json({ success: true, message: 'Order marked as delivered successfully', order: updatedOrder });
         } else {
             console.warn(`⚠️ Warning: Order ${orderId} not found for delivery update.`);
@@ -387,6 +414,14 @@ router.post('/rto', async (req, res) => {
 
         if (updatedOrder) {
             console.log(`✅ Success: Order ${orderId} is now marked as RTO.`);
+
+            // Emit Real-time Event
+            try {
+                const io = socketManager.getIo();
+                io.emit('order-updated', updatedOrder);
+                io.emit('dashboard-update');
+            } catch (e) { console.error('Socket emit error:', e.message); }
+
             res.json({ success: true, message: 'Order marked as RTO successfully', order: updatedOrder });
         } else {
             res.status(404).json({ success: false, message: 'Order not found' });
@@ -721,6 +756,14 @@ router.put('/:orderId/status', async (req, res) => {
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
         if (!updated) return res.status(404).json({ success: false, message: 'Order not found!' });
         console.log(`🔄 Status Update: ${req.params.orderId} -> ${status} (${employee || 'Unknown'})`);
+
+        // Emit Real-time Event
+        try {
+            const io = socketManager.getIo();
+            io.emit('order-updated', updated);
+            io.emit('dashboard-update');
+        } catch (e) { console.error('Socket emit error:', e.message); }
+
         res.json({ success: true, message: 'Status updated!', order: updated });
     } catch (error) {
         console.error('❌ Status update error:', error);

@@ -11,9 +11,128 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth('admin');
     if (!user) return; // Redirects handled
 
+    console.log('🚀 Admin Panel v2.1 Loaded - Refined Date Filtering Active');
     loadAdminStats();
     loadAllEmployees();
+
+    // Initialize Socket.io for Real-time Updates
+    // Initialize Socket.io for Real-time Updates
+    if (typeof io !== 'undefined') {
+        const socket = io();
+        console.log('🔌 Socket.io Client Initialized');
+
+        // Status UI Elements
+        const statusDot = document.getElementById('serverStatusDot');
+        const statusText = document.getElementById('serverStatusText');
+
+        const setOnline = () => {
+            if (statusDot) {
+                statusDot.classList.remove('bg-red-500', 'bg-amber-500');
+                statusDot.classList.add('bg-emerald-500');
+            }
+            if (statusText) statusText.innerText = 'Online';
+        };
+
+        const setOffline = () => {
+            if (statusDot) {
+                statusDot.classList.remove('bg-emerald-500', 'bg-amber-500');
+                statusDot.classList.add('bg-red-500');
+            }
+            if (statusText) statusText.innerText = 'Offline';
+        };
+
+        socket.on('connect', () => {
+            console.log('🟢 Connected to Real-time Server');
+            setOnline();
+        });
+
+        socket.on('disconnect', () => {
+            console.log('🔴 Disconnected from Server');
+            setOffline();
+        });
+
+        socket.on('connect_error', () => {
+            setOffline();
+        });
+
+        // Heartbeat Listener
+        let heartbeatTimeout;
+        socket.on('server-heartbeat', (data) => {
+            // console.log('💓 Heartbeat received', data.timestamp);
+            setOnline();
+
+            // If we don't hear back for 45s, mark as offline/laggy
+            clearTimeout(heartbeatTimeout);
+            heartbeatTimeout = setTimeout(() => {
+                if (statusDot) {
+                    statusDot.classList.remove('bg-emerald-500');
+                    statusDot.classList.add('bg-amber-500');
+                }
+                if (statusText) statusText.innerText = 'Slow Connection';
+            }, 45000);
+        });
+
+        // Listen for Order Updates
+
+        // Listen for Order Updates
+        socket.on('order-updated', (data) => {
+            console.log('🔔 Real-time Update Received:', data.orderId);
+
+            // Refresh based on current view
+            // activeTab is global from app.js (or we check UI state)
+            const activeTab = document.querySelector('.sidebar-btn.active')?.dataset.tab;
+
+            if (activeTab === 'orders' || activeTab === 'pending' || activeTab === 'dispatch') {
+                // If on specific order list, refresh it
+                // Ideally we should just update the specific row, but for MVP we refresh list
+                // Debounce refresh to avoid spam
+                debouncedRefresh();
+            } else if (activeTab === 'analytics') {
+                loadAdminProgress(); // Refresh analytics
+            }
+
+            // Always refresh stats counters in sidebar/header
+            loadAdminStats(true);
+        });
+
+        socket.on('order-created', (data) => {
+            console.log('🔔 New Order Received:', data.orderId);
+            showToast(`New Order Received: ${data.orderId}`);
+            loadAdminStats(true);
+            debouncedRefresh();
+        });
+
+        socket.on('dashboard-update', () => {
+            if (document.getElementById('adminProgressTab').classList.contains('hidden') === false) {
+                loadAdminProgress();
+            }
+        });
+    } else {
+        console.warn('⚠️ Socket.io not loaded');
+    }
 });
+
+// Debounce helper
+let refreshTimeout;
+function debouncedRefresh() {
+    clearTimeout(refreshTimeout);
+    refreshTimeout = setTimeout(() => {
+        // Determine which list to refresh
+        if (!document.getElementById('pendingOrdersTab').classList.contains('hidden')) loadPendingOrders();
+        else if (!document.getElementById('verifiedOrdersTab').classList.contains('hidden')) loadVerifiedOrders();
+        else if (!document.getElementById('dispatchedOrdersTab').classList.contains('hidden')) loadDispatchedOrders();
+        else if (!document.getElementById('allOrdersTab').classList.contains('hidden')) loadAdminOrders();
+    }, 500);
+}
+
+function showToast(message) {
+    // Simple toast notification
+    const div = document.createElement('div');
+    div.className = 'fixed top-5 right-5 bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-xl z-50 animate-bounce';
+    div.innerText = message;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 3000);
+}
 
 async function loadAdminStats(forceRefresh = false) {
     try {
@@ -30,12 +149,19 @@ async function loadAdminStats(forceRefresh = false) {
         const res = await fetch(`${API_URL}/admin/stats`);
         const data = await res.json();
 
+        // Also fetch department stats for Today/Yesterday counters
+        const depRes = await fetch(`${API_URL}/admin/department-stats`);
+        const depData = await depRes.json();
+
         if (data.success) {
             // Update cache
-            adminStatsCache.data = data;
+            adminStatsCache.data = { ...data, ...depData }; // Merge both
             adminStatsCache.timestamp = now;
 
             updateAdminStatsUI(data);
+            if (depData.success) {
+                updateAdminTodayStatsUI(depData.stats);
+            }
         }
     } catch (e) { console.error('Stats error', e); }
 }
@@ -111,6 +237,37 @@ function updateRevenueStats(status, freshRev, reorderRev) {
     // Update reorder revenue
     const reorderEl = document.getElementById(`statsAdmin${status}ReorderRev`);
     if (reorderEl) reorderEl.innerText = '₹' + reorderRev.toLocaleString();
+}
+
+function updateAdminTodayStatsUI(stats) {
+    if (!stats) return;
+
+    // Mapping of tab status names to department-stats keys
+    const mapping = {
+        'Pending': 'verification', // Using verification today counts for pending
+        'Dispatched': 'dispatch',
+        'Delivered': 'delivery'
+    };
+
+    Object.entries(mapping).forEach(([tabStatus, depKey]) => {
+        const depStats = stats[depKey];
+        if (!depStats) return;
+
+        // Today
+        const todayCount = (depStats.today.fresh || 0) + (depStats.today.reorder || 0);
+        const todayEl = document.getElementById(`statsAdmin${tabStatus}Today`);
+        if (todayEl) todayEl.innerText = todayCount;
+
+        // Yesterday
+        const yesterdayCount = (depStats.yesterday.fresh || 0) + (depStats.yesterday.reorder || 0);
+        const yesterdayEl = document.getElementById(`statsAdmin${tabStatus}Yesterday`);
+        if (yesterdayEl) yesterdayEl.innerText = yesterdayCount;
+
+        // Week
+        const weekCount = (depStats.last7Days.fresh || 0) + (depStats.last7Days.reorder || 0);
+        const weekEl = document.getElementById(`statsAdmin${tabStatus}Week`);
+        if (weekEl) weekEl.innerText = weekCount;
+    });
 }
 
 function updateCardStats(elementId, total, fresh, reorder) {
@@ -227,6 +384,29 @@ function generateAdminOrderCard(o) {
     };
     const badgeClass = statusColors[o.status] || 'bg-gray-100 text-gray-800';
 
+    // Determine relevant date for display
+    const statusDateFieldMap = {
+        'Pending': 'timestamp',
+        'Address Verified': 'verifiedAt',
+        'Dispatched': 'dispatchedAt',
+        'Out For Delivery': 'ofdAt',
+        'Delivered': 'deliveredAt',
+        'Cancelled': 'cancellationInfo.cancelledAt',
+        'On Hold': 'holdDetails.holdAt',
+        'RTO': 'rtoAt'
+    };
+    const dateField = statusDateFieldMap[o.status] || 'timestamp';
+    let displayDate = o.timestamp;
+
+    if (dateField.includes('.')) {
+        const parts = dateField.split('.');
+        displayDate = o[parts[0]] ? o[parts[0]][parts[1]] : o.timestamp;
+    } else {
+        displayDate = o[dateField] || o.timestamp;
+    }
+
+    const formattedDate = displayDate ? new Date(displayDate).toLocaleDateString() : 'N/A';
+
     return `
     <div class="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-lg transition-all group relative">
         <div class="flex justify-between items-start mb-2">
@@ -237,7 +417,7 @@ function generateAdminOrderCard(o) {
             </div>
             <div class="text-right">
                 <p class="font-bold text-emerald-600">₹${o.total}</p>
-                <p class="text-[10px] text-gray-400">${new Date(o.timestamp).toLocaleDateString()}</p>
+                <p class="text-[10px] text-gray-400">${formattedDate}</p>
             </div>
         </div>
         
@@ -279,8 +459,17 @@ async function loadAdminOrdersGeneric(status, containerId, pageKey, page) {
         const searchInput = document.getElementById(`admin${status.replace('Address ', '')}Search`) || document.getElementById(`admin${status}Search`);
         const searchQuery = searchInput ? searchInput.value : '';
 
+        const startDateInput = document.getElementById(`admin${status.replace('Address ', '')}StartDate`) || document.getElementById(`admin${status}StartDate`);
+        const startDate = startDateInput ? startDateInput.value : '';
+
+        const endDateInput = document.getElementById(`admin${status.replace('Address ', '')}EndDate`) || document.getElementById(`admin${status}EndDate`);
+        const endDate = endDateInput ? endDateInput.value : '';
+
         // Construct query
         let url = `${API_URL}/orders?status=${encodeURIComponent(status)}&page=${currentPage}&limit=${ADMIN_ITEMS_PER_PAGE}`;
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+        if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
         // Note: Our backend /orders currently doesn't support 'search' query param for filtering.
         // It supports 'status'.
         // If we want search, we need backend support OR fetch all (bad perf).
@@ -320,7 +509,19 @@ window.loadAdminOFD = async (page = null) => {
         if (page !== null) adminPagination['ofd'] = page;
         const currentPage = adminPagination['ofd'] || 1;
 
+        const searchInput = document.getElementById('adminOfdSearch');
+        const searchQuery = searchInput ? searchInput.value : '';
+
+        const startDateInput = document.getElementById('adminOfdStartDate');
+        const startDate = startDateInput ? startDateInput.value : '';
+
+        const endDateInput = document.getElementById('adminOfdEndDate');
+        const endDate = endDateInput ? endDateInput.value : '';
+
         let url = `${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}&page=${currentPage}&limit=${ADMIN_ITEMS_PER_PAGE}`;
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+        if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
 
         const res = await fetch(url);
         const data = await res.json();
@@ -367,9 +568,44 @@ window.resetAdminFilters = function (tab) {
 };
 
 window.applyQuickDateFilter = function (tabName, range) {
-    // Implement if needed, or just console log for now as backend needs date support
-    console.log('Quick date filter:', tabName, range);
-    // Ideally set start/end date inputs and trigger load
+    const status = tabName.replace('admin', ''); // e.g., 'Delivered'
+    const startDateInput = document.getElementById(`${tabName}StartDate`) || document.getElementById(`admin${status}StartDate`);
+    const endDateInput = document.getElementById(`${tabName}EndDate`) || document.getElementById(`admin${status}EndDate`);
+
+    if (!startDateInput || !endDateInput) return;
+
+    const today = new Date();
+    const formatDate = (date) => date.toISOString().split('T')[0];
+
+    let start, end;
+
+    if (range === 'today') {
+        start = today;
+        end = today;
+    } else if (range === 'yesterday') {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = yesterday;
+        end = yesterday;
+    } else if (range === 'week') {
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - 7);
+        start = weekStart;
+        end = today;
+    }
+
+    startDateInput.value = formatDate(start);
+    endDateInput.value = formatDate(end);
+
+    // Trigger load
+    const loadFuncName = `loadAdmin${capitalize(status)}`;
+    if (typeof window[loadFuncName] === 'function') {
+        window[loadFuncName](1);
+    } else if (status === 'OFD' && typeof window.loadAdminOFD === 'function') {
+        window.loadAdminOFD(1);
+    } else if (status === 'RTO' && typeof window.loadAdminRTO === 'function') {
+        window.loadAdminRTO(1);
+    }
 };
 
 window.exportOrdersByStatus = function (status) {
@@ -455,4 +691,276 @@ window.switchAdminTab = function (tabName) {
         if (window.loadAdminProgress) window.loadAdminProgress();
     }
 };
+
+// ==================== ANALYTICS DASHBOARD LOGIC (Consolidated into Admin Panel) ====================
+
+// Global state for analytics
+let analyticsState = {
+    dateRange: 'today', // today, yesterday, week, month
+    charts: {} // Store chart instances to destroy/update
+};
+
+// Check if Chart.js is available
+function checkChartJs() {
+    if (typeof Chart === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = () => console.log('✅ Chart.js loaded');
+        document.head.appendChild(script);
+    }
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', checkChartJs);
+
+// Main function called when tab is switched
+window.loadAdminProgress = async function () {
+    console.log('📊 Loading Analytics Dashboard...');
+
+    // 1. Ensure Chart.js is loaded
+    checkChartJs();
+
+    // 2. Load Data based on selected range
+    const rangeSelect = document.getElementById('analyticsDateRange');
+    if (rangeSelect) analyticsState.dateRange = rangeSelect.value;
+
+    await fetchAnalyticsData();
+}
+
+// Update dashboard when range changes
+window.updateAnalyticsDashboard = function () {
+    const rangeSelect = document.getElementById('analyticsDateRange');
+    if (rangeSelect) {
+        analyticsState.dateRange = rangeSelect.value;
+        fetchAnalyticsData();
+    }
+}
+
+// Fetch data from backend
+async function fetchAnalyticsData() {
+    try {
+        const { dateRange } = analyticsState;
+
+        // Calculate dates for filter
+        let startDate, endDate;
+        const today = new Date();
+        const formatDate = d => {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+
+        if (dateRange === 'today') {
+            startDate = formatDate(today);
+            endDate = formatDate(today);
+        } else if (dateRange === 'yesterday') {
+            const y = new Date(today); y.setDate(y.getDate() - 1);
+            startDate = formatDate(y);
+            endDate = formatDate(y);
+        } else if (dateRange === 'week') {
+            const w = new Date(today); w.setDate(w.getDate() - 6);
+            startDate = formatDate(w);
+            endDate = formatDate(today);
+        } else if (dateRange === 'month') {
+            const m = new Date(today); m.setDate(1);
+            startDate = formatDate(m);
+            endDate = formatDate(today);
+        }
+
+        console.log(`📊 Fetching analytics for ${dateRange}: ${startDate} to ${endDate}`);
+
+        const res = await fetch(`${API_URL}/analytics/dashboard?startDate=${startDate}&endDate=${endDate}`);
+        const data = await res.json();
+
+        if (data.success) {
+            updateAnalyticsUI(data);
+        } else {
+            console.error('Analytics load failed', data.message);
+        }
+
+        // Check for stuck orders
+        checkStuckOrders();
+
+    } catch (e) {
+        console.error('Analytics Error:', e);
+    }
+}
+
+// Update UI elements
+function updateAnalyticsUI(data) {
+    const { today, charts, quickStats } = data;
+
+    // Update Stats
+    animateValue('analyticsTotalOrders', quickStats.totalOrders);
+
+    // Revenue
+    document.getElementById('analyticsTotalRevenue').innerText = '₹' + (quickStats.totalRevenue || 0).toLocaleString();
+
+    // Delivery Rate
+    document.getElementById('analyticsDeliveryRate').innerText = (quickStats.deliverySuccessRate || 0) + '%';
+
+    // Delivered Revenue (Instead of Unique Customers)
+    const delRevEl = document.getElementById('analyticsDeliveredRevenue');
+    if (delRevEl) delRevEl.innerText = '₹' + (quickStats.deliveredRevenue || 0).toLocaleString();
+
+    // Render Charts
+    renderOrdersTimeline(charts.ordersTimeline);
+    renderStatusDistribution(charts.statusDistribution);
+
+    // Top Employees
+    renderTopEmployees(charts.employeePerformance);
+}
+
+// Render Timeline Chart
+function renderOrdersTimeline(data) {
+    const ctx = document.getElementById('ordersTimelineChart');
+    if (!ctx) return;
+
+    if (analyticsState.charts.timeline) analyticsState.charts.timeline.destroy();
+
+    const labels = data.map(d => d.date);
+    const totalData = data.map(d => d.total);
+    const deliveredData = data.map(d => d.delivered);
+
+    analyticsState.charts.timeline = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Total Orders',
+                    data: totalData,
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: 'Delivered',
+                    data: deliveredData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+// Render Doughnut Chart
+function renderStatusDistribution(data) {
+    const ctx = document.getElementById('statusDistributionChart');
+    if (!ctx) return;
+
+    if (analyticsState.charts.distribution) analyticsState.charts.distribution.destroy();
+
+    // Update Side Stats
+    const total = data.total || 1;
+    document.getElementById('analyticsStatDelivered').innerText = ((data.delivered / total * 100) || 0).toFixed(1) + '%';
+    document.getElementById('analyticsStatDispatched').innerText = ((data.dispatched / total * 100) || 0).toFixed(1) + '%';
+    document.getElementById('analyticsStatPending').innerText = ((data.pending / total * 100) || 0).toFixed(1) + '%';
+
+    analyticsState.charts.distribution = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Delivered', 'Dispatched', 'Pending', 'Cancelled', 'RTO'],
+            datasets: [{
+                data: [data.delivered, data.dispatched, data.pending, data.cancelled, data.rto || 0],
+                backgroundColor: ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            cutout: '70%'
+        }
+    });
+}
+
+function renderTopEmployees(employees) {
+    const list = document.getElementById('topEmployeesList');
+    if (!list) return;
+
+    if (employees.length === 0) {
+        list.innerHTML = '<div class="text-center text-gray-400 py-4">No data available</div>';
+        return;
+    }
+
+    list.innerHTML = employees.map((emp, i) => `
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                    #${i + 1}
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-slate-700">${emp.name}</p>
+                    <p class="text-[10px] text-slate-500">${emp.totalOrders} Orders</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-xs font-bold text-emerald-600">₹${(emp.revenue || 0).toLocaleString()}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function checkStuckOrders() {
+    try {
+        const res = await fetch(`${API_URL}/analytics/missing-orders`);
+        const data = await res.json();
+
+        const alertBox = document.getElementById('stuckOrdersAlert');
+        if (data.alert && data.totalStuck > 0) {
+            alertBox.classList.remove('hidden');
+            const countEl = document.getElementById('stuckOrdersCount');
+            if (countEl) countEl.innerText = data.totalStuck;
+
+            // Populate recent alerts
+            const alertsList = document.getElementById('analyticsRecentAlerts');
+            if (alertsList) {
+                // Determine top category
+                const topStatus = Object.keys(data.byStatus).sort((a, b) => data.byStatus[b].length - data.byStatus[a].length)[0];
+                alertsList.innerHTML = `
+                    <div class="p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-3">
+                        <span class="text-amber-500 text-lg">⚠️</span>
+                        <div>
+                            <p class="text-xs font-bold text-amber-800">Stuck Orders Detected</p>
+                            <p class="text-[10px] text-amber-600">${data.totalStuck} orders stuck (mostly ${topStatus})</p>
+                            <button onclick="viewStuckOrders()" class="text-[10px] font-bold underline mt-1 text-amber-700">View All</button>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            alertBox.classList.add('hidden');
+        }
+    } catch (e) { console.error(e); }
+}
+
+// Redirect to stuck orders view (e.g., filtered list)
+window.viewStuckOrders = function () {
+    alert('Feature coming soon: Direct link to filtered list.');
+}
+
+// Helper: Animate numbers
+function animateValue(id, end) {
+    const obj = document.getElementById(id);
+    if (!obj) return;
+
+    // Ensure end is number
+    const target = parseInt(end) || 0;
+    obj.innerText = target.toLocaleString();
+}
+
 
