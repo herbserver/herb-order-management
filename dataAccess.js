@@ -4,6 +4,7 @@
 // NOW WITH IN-MEMORY CACHING FOR PERFORMANCE
 
 const path = require('path');
+const fs = require('fs').promises; // Use promises for async file ops
 const { Order, Department, ShiprocketConfig } = require('./models');
 const { readJSON: readJSONFile, writeJSONAsync: writeJSONFileAsync } = require('./utils/fileHelpers');
 
@@ -23,8 +24,6 @@ const cache = {
 };
 
 const CACHE_TTL = 0; // 0 = Infinite for this session (files update via this process only)
-// If you have multiple processes, you'd need a short TTL or file watcher. 
-// Assuming single instance for now as per "server.js".
 
 function setMongoStatus(status) {
     mongoConnected = status;
@@ -37,14 +36,16 @@ function getMongoStatus() {
 // ==================== CACHE HELPERS ====================
 
 function loadCache(key, filePath, defaultValue) {
-    // If mongo is connected, we don't cache locally in this simple implementation
-    // because Mongo has its own internal buffering and we want fresh data.
-    // Ideally we would cache mongo too but let's focus on the JSON file bottleneck first.
     if (mongoConnected) return null;
 
     if (cache[key] === null) {
-        // console.log(`[CACHE] Loading ${key} from disk...`);
-        cache[key] = readJSONFile(filePath, defaultValue);
+        console.log(`[CACHE] Loading ${key} from disk...`);
+        try {
+            cache[key] = readJSONFile(filePath, defaultValue);
+        } catch (e) {
+            console.error(`[CACHE] Error loading ${key}:`, e);
+            cache[key] = defaultValue;
+        }
     }
     return cache[key];
 }
@@ -54,9 +55,8 @@ function updateCacheAndDisk(key, filePath, data) {
 
     cache[key] = data;
     // Write asynchronously to avoid blocking the event loop
-    // But for safety in this specific app which relied on sync, we'll keep it simple or use async file write
-    // For "Creating Order is slow", let's make the disk write ASYNC but return immediately.
-    writeJSONFileAsync(filePath, data);
+    // Using fire-and-forget for performance, but logging errors
+    writeJSONFileAsync(filePath, data).catch(err => console.error(`[DISK] Write failed for ${key}:`, err));
 }
 
 

@@ -428,6 +428,7 @@ function generateAdminOrderCard(o) {
             <div class="flex items-start gap-2 text-xs text-gray-600">
                 <span>📍</span> <span class="truncate line-clamp-1">${o.address}, ${o.city}</span>
             </div>
+             ${o.remark ? `<div class="mt-2 bg-yellow-50 border border-yellow-100 p-2 rounded-lg text-xs text-yellow-800"><strong>📝 Note:</strong> ${o.remark}</div>` : ''}
         </div>
 
         <div class="flex gap-2 mt-3">

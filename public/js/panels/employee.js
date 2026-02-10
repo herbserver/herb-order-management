@@ -854,6 +854,7 @@ function renderEmpOrderCard(o, isHistory = false) {
                 <p class="text-xs text-gray-400">${new Date(o.timestamp).toLocaleDateString()}</p>
             </div>
         </div>
+        ${o.remark ? `<div class="bg-yellow-50 border border-yellow-100 p-2 rounded-lg mb-3 text-xs text-yellow-800"><strong>📝 Remark:</strong> ${o.remark}</div>` : ''}
         <p class="text-xs text-gray-500 mb-3 truncate">📍 ${o.address}</p>
         <div class="flex justify-between items-center border-t border-gray-100 pt-3">
             <div class="flex items-center gap-2">
