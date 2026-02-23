@@ -1,0 +1,25 @@
+/* NUCLEAR OPTION - FORCE GRID SIDE BY SIDE */
+#readyDispatchList {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+    width: 100% !important;
+}
+
+#readyDispatchList>div,
+#readyDispatchList>.glass-card {
+    width: auto !important;
+    max-width: none !important;
+}
+
+@media (min-width: 1024px) {
+    #readyDispatchList {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+@media (min-width: 1280px) {
+    #readyDispatchList {
+        grid-template-columns: repeat(4, 1fr) !important;
+    }
+}
