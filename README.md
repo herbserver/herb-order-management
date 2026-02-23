@@ -1,3 +1,12 @@
+---
+title: Ordermanagement
+emoji: 🌿
+colorFrom: green
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # 🌿 Herb On Naturals - Order Management System
 
 **One-Click Deploy Ready! Local Server Solution**
