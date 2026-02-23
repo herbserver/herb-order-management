@@ -144,35 +144,107 @@ async function syncAllTrackingStatuses() {
 }
 
 /**
- * Check for Hold Order Dispatch Reminders
+ * Check for Stuck Orders (In Transit > 5 days without update)
  */
-async function checkHoldOrderReminders() {
+async function checkStuckOrders() {
     try {
-        const now = new Date();
-        const hour = now.getHours();
+        console.log('🕵️‍♂️ [AI Watchdog] Scanning for stuck orders...');
+        const fiveDaysAgo = new Date();
+        fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
-        // Alert only during working hours (9 AM - 7 PM)
-        if (hour < 9 || hour >= 19) return;
-
-        console.log('📅 Checking for hold order reminders...');
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const holdOrders = await Order.find({
-            'holdDetails.isOnHold': true,
-            'holdDetails.expectedDispatchDate': { $gte: today, $lt: tomorrow },
-            status: 'On Hold'
+        const stuckOrders = await Order.find({
+            status: { $in: ['Dispatched', 'In Transit', 'Shipped', 'Out For Delivery'] },
+            'tracking.lastUpdatedAt': { $lt: fiveDaysAgo.toISOString() },
+            'riskMetadata.stuckAlert': { $ne: true } // Don't alert twice
         });
 
-        if (holdOrders.length > 0) {
-            console.log(`🔔 REMINDER: ${holdOrders.length} hold orders due today!`);
+        if (stuckOrders.length > 0) {
+            console.log(`🚨 [AI Alert] Found ${stuckOrders.length} stuck orders!`);
+
+            for (const order of stuckOrders) {
+                // Mark as stuck in DB
+                await Order.updateOne(
+                    { _id: order._id },
+                    {
+                        $set: {
+                            'riskMetadata.stuckAlert': true,
+                            'riskMetadata.lastAiCheck': new Date()
+                        }
+                    }
+                );
+                console.log(`   - Marked Order #${order.orderId} as STUCK`);
+            }
+        } else {
+            console.log('✅ [AI Watchdog] No stuck orders found.');
         }
 
     } catch (error) {
-        console.error('❌ [Hold Reminders] Error:', error.message);
+        console.error('❌ [AI Watchdog] Error checking stuck orders:', error.message);
+    }
+}
+
+/**
+ * AI Risk Guard - Check RTO Probability based on customer history
+ */
+async function checkRiskFactors() {
+    console.log('🛡️ [AI Risk Guard] Scanning for high-risk orders...');
+    try {
+        // Find recent orders that haven't been risk-checked yet
+        // We check Pending and Verified orders (pre-dispatch)
+        const activeOrders = await Order.find({
+            status: { $in: ['Pending', 'Address Verified'] },
+            'riskMetadata.lastAiCheck': { $exists: false }
+        }).limit(50);
+
+        if (activeOrders.length === 0) {
+            console.log('✅ [AI Risk Guard] No new orders to analyze.');
+            return;
+        }
+
+        console.log(`🕵️‍♂️ Analyzing ${activeOrders.length} orders for risk factors...`);
+
+        for (const order of activeOrders) {
+            const mobile = order.mobile || order.telNo;
+            if (!mobile) {
+                await Order.updateOne({ _id: order._id }, { $set: { 'riskMetadata.lastAiCheck': new Date() } });
+                continue;
+            }
+
+            // Find all other orders for this customer (excluding current)
+            const history = await Order.find({
+                $or: [{ mobile: mobile }, { telNo: mobile }],
+                _id: { $ne: order._id }
+            });
+
+            if (history.length >= 2) { // Lowered to 2 for more proactive alerting in MVP
+                const total = history.length;
+                const badOrders = history.filter(o =>
+                    o.status === 'RTO' || o.status === 'Cancelled'
+                ).length;
+
+                const rtoRate = badOrders / total;
+
+                // If RTO rate is over 30% and they have at least 1 failed order
+                if (rtoRate >= 0.33 && badOrders > 0) {
+                    await Order.updateOne({ _id: order._id }, {
+                        $set: {
+                            'riskMetadata.isHighRisk': true,
+                            'riskMetadata.riskReason': `Customer RTO Rate: ${(rtoRate * 100).toFixed(0)}% (${badOrders}/${total} failed)`,
+                            'riskMetadata.lastAiCheck': new Date()
+                        }
+                    });
+                    console.log(`🚨 [AI Risk] Flagged Order #${order.orderId} - Risk Rate: ${(rtoRate * 100).toFixed(0)}%`);
+                } else {
+                    await Order.updateOne({ _id: order._id }, { $set: { 'riskMetadata.lastAiCheck': new Date() } });
+                }
+            } else {
+                // Not enough history, just mark as checked
+                await Order.updateOne({ _id: order._id }, { $set: { 'riskMetadata.lastAiCheck': new Date() } });
+            }
+        }
+        console.log('✅ [AI Risk Guard] Scan complete.');
+    } catch (error) {
+        console.error('❌ [AI Risk Guard] Error:', error.message);
     }
 }
 
@@ -195,11 +267,19 @@ async function startTracking(alreadyConnected = false) {
     // syncAllTrackingStatuses(); // Disabled auto-run on start
     // checkHoldOrderReminders();
 
+    // AI Checks (Safe to run on start)
+    checkStuckOrders();
+    checkRiskFactors();
+
     // Schedule intervals - DISABLED as per user request (Manual Mode only)
     // setInterval(syncAllTrackingStatuses, 30 * 60 * 1000); // 30 min (webhook is primary)
     // setInterval(checkHoldOrderReminders, 60 * 60 * 1000); // 1 hour
 
-    console.log('⏰ Tracking Service started in MANUAL MODE (Auto-sync disabled)');
+    // Schedule AI Watchdog & Risk Guard every 6 hours
+    setInterval(checkStuckOrders, 6 * 60 * 60 * 1000);
+    setInterval(checkRiskFactors, 6 * 60 * 60 * 1000);
+
+    console.log('⏰ Tracking Service & AI Watchdog started');
     console.log('📡 Primary tracking via Manual Sync or Webhook');
 }
 
@@ -214,4 +294,4 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-module.exports = { startTracking };
+module.exports = { startTracking, checkStuckOrders, checkRiskFactors };

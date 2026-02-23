@@ -311,6 +311,42 @@ function showGlobalSearchBar() {
         bar.classList.remove('hidden');
         document.getElementById('globalSearchInput').focus();
     }
+
+    // Auto-close sidebars on mobile
+    if (window.innerWidth < 1024) {
+        // Employee Sidebar
+        const empSidebar = document.getElementById('empSidebar');
+        const empBackdrop = document.getElementById('empSidebarBackdrop');
+        if (empSidebar) empSidebar.classList.add('-translate-x-full');
+        if (empBackdrop) {
+            empBackdrop.classList.add('opacity-0', 'pointer-events-none');
+            empBackdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        }
+
+        // Department Sidebar
+        const deptSidebar = document.getElementById('deptSidebar');
+        const deptBackdrop = document.getElementById('deptSidebarBackdrop');
+        if (deptSidebar) deptSidebar.classList.add('-translate-x-full');
+        if (deptBackdrop) {
+            deptBackdrop.classList.add('opacity-0', 'pointer-events-none');
+            deptBackdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        }
+
+        // Admin Sidebar
+        const adminSidebar = document.getElementById('adminSidebar');
+        const adminBackdrop = document.getElementById('adminSidebarBackdrop'); // Assuming ID based on pattern
+        if (adminSidebar) adminSidebar.classList.add('-translate-x-full');
+        if (adminBackdrop) { // Admin often uses a different backdrop structure, but applying safe check
+            adminBackdrop.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        // Generic: Hide any active backdrop
+        document.querySelectorAll('.backdrop-blur-sm').forEach(el => {
+            if (!el.classList.contains('hidden')) {
+                el.click(); // Trigger click to close using existing handlers if possible
+            }
+        });
+    }
 }
 window.showGlobalSearchBar = showGlobalSearchBar;
 

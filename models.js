@@ -71,10 +71,12 @@ const orderSchema = new mongoose.Schema({
     // Dispatch Info
     dispatchedBy: String,
     dispatchedAt: String,
+    ofdAt: String,
 
     // Delivery Info
     deliveredBy: String,
     deliveredAt: String,
+    rtoAt: String,
     deliveryRequested: Boolean,
     deliveryRequestedBy: {
         employeeId: String,
@@ -88,6 +90,14 @@ const orderSchema = new mongoose.Schema({
         courierName: String,
         shiprocketOrderId: String,
         dispatchedAt: String
+    },
+
+    // AI Agent Fields (Risk & Intelligence)
+    riskMetadata: {
+        isHighRisk: { type: Boolean, default: false },
+        riskReason: { type: String, default: '' }, // e.g., "Customer returned 2 previous orders"
+        stuckAlert: { type: Boolean, default: false }, // True if stuck in transit > 5 days
+        lastAiCheck: { type: Date }
     },
 
     // Tracking

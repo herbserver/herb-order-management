@@ -50,11 +50,19 @@ function writeJSON(filePath, data) {
  * @param {any} data - Data to write
  * @param {Function} callback - Optional callback(err)
  */
-function writeJSONAsync(filePath, data, callback) {
-    fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8', (err) => {
-        if (err) console.error(`Error writing ${filePath}:`, err.message);
-        if (callback) callback(err);
-    });
+/**
+ * Async write to JSON file (non-blocking)
+ * @param {string} filePath - Absolute path to JSON file
+ * @param {any} data - Data to write
+ * @returns {Promise<void>}
+ */
+async function writeJSONAsync(filePath, data) {
+    try {
+        await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+    } catch (err) {
+        console.error(`Error writing ${filePath}:`, err.message);
+        throw err;
+    }
 }
 
 module.exports = {

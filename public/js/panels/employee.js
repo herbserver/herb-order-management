@@ -752,10 +752,70 @@ async function loadMyHistory(page = 1) {
 }
 
 async function loadEmpProgress() {
-    // Similar to loadMyOrders but maybe aggregated stats? 
-    // For now, reuse same logic or placeholder
-    const list = document.getElementById('empProgressList');
-    list.innerHTML = '<div class="text-center text-gray-500">Progress Visualization Coming Soon (Use History Tab for now)</div>';
+    if (!currentUser) return;
+
+    const startDate = document.getElementById('empProgressStartDate')?.value || '';
+    const endDate = document.getElementById('empProgressEndDate')?.value || '';
+
+    const list = document.getElementById('empProgressStats');
+    if (!list) return;
+
+    list.innerHTML = '<div class="col-span-full text-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto"></div><p class="mt-2 text-gray-500">Loading stats...</p></div>';
+
+    try {
+        // Fetch stats from employee detail API
+        // Passing limit=0 to get ALL orders for correct stats calculation
+        let url = `${API_URL}/employees/${currentUser.id}?limit=0`;
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.success && data.stats) {
+            renderProgressCards(data.stats);
+            // Hide chart/table for now as requested only cards
+            document.getElementById('empProgressChart').innerHTML = '';
+            document.getElementById('empProgressTable').innerHTML = '';
+        } else {
+            list.innerHTML = '<div class="col-span-full text-center text-red-500">Failed to load statistics</div>';
+        }
+    } catch (e) {
+        console.error('Stats error:', e);
+        list.innerHTML = '<div class="col-span-full text-center text-red-500">Connection error</div>';
+    }
+}
+
+function renderProgressCards(stats) {
+    const list = document.getElementById('empProgressStats');
+    if (!list) return;
+
+    const cards = [
+        { label: 'Total Orders', value: stats.total || 0, color: 'blue', icon: '📝' },
+        { label: 'On Hold', value: stats.hold || 0, color: 'yellow', icon: 'qh' }, // custom icon code or emoj
+        { label: 'Cancelled', value: stats.cancelled || 0, color: 'red', icon: '❌' },
+        { label: 'Dispatched', value: stats.dispatched || 0, color: 'purple', icon: '📦' },
+        { label: 'Delivered', value: stats.delivered || 0, color: 'green', icon: '✅' },
+        { label: 'RTO', value: stats.rto || 0, color: 'rose', icon: '↩️' } // rose/pink for RTO
+    ];
+
+    // Map colors to tailwind classes
+    const colorMap = {
+        blue: 'bg-blue-50 text-blue-600 border-blue-100',
+        yellow: 'bg-yellow-50 text-yellow-600 border-yellow-100',
+        red: 'bg-red-50 text-red-600 border-red-100',
+        purple: 'bg-purple-50 text-purple-600 border-purple-100',
+        green: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+        rose: 'bg-rose-50 text-rose-600 border-rose-100'
+    };
+
+    list.innerHTML = cards.map(c => `
+        <div class="glass-card p-4 border ${colorMap[c.color] || 'bg-gray-50'} flex flex-col items-center justify-center text-center transition-transform hover:-translate-y-1">
+            <div class="text-3xl mb-2">${c.icon === 'qh' ? '⏸️' : c.icon}</div>
+            <div class="text-2xl font-bold mb-1">${c.value}</div>
+            <div class="text-xs font-bold uppercase tracking-wider opacity-80">${c.label}</div>
+        </div>
+    `).join('');
 }
 
 function renderEmpOrderCard(o, isHistory = false) {
@@ -794,6 +854,7 @@ function renderEmpOrderCard(o, isHistory = false) {
                 <p class="text-xs text-gray-400">${new Date(o.timestamp).toLocaleDateString()}</p>
             </div>
         </div>
+        ${o.remark ? `<div class="bg-yellow-50 border border-yellow-100 p-2 rounded-lg mb-3 text-xs text-yellow-800"><strong>📝 Remark:</strong> ${o.remark}</div>` : ''}
         <p class="text-xs text-gray-500 mb-3 truncate">📍 ${o.address}</p>
         <div class="flex justify-between items-center border-t border-gray-100 pt-3">
             <div class="flex items-center gap-2">
@@ -907,4 +968,84 @@ window.filterMyHistory = filterMyHistory;
 window.filterMyCancelledOrders = filterMyCancelledOrders;
 window.reorderFromHistory = reorderFromHistory;
 window.loadMyHistory = loadMyHistory;
+
+
+// ==================== AI AGENT LOGIC (Magic Paste) ====================
+function openAiPasteModal() {
+    const modal = document.getElementById('aiPasteModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.getElementById('aiPasteInput').focus();
+    }
+}
+
+function closeAiPasteModal() {
+    const modal = document.getElementById('aiPasteModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.getElementById('aiPasteInput').value = '';
+    }
+}
+
+function processAiPaste() {
+    const input = document.getElementById('aiPasteInput').value;
+    if (!input || !input.trim()) {
+        alert('Please paste some text first!');
+        return;
+    }
+
+    if (typeof SmartParser === 'undefined') {
+        alert('AI Parser is loading... please try again in a moment.');
+        return;
+    }
+
+    const data = SmartParser.parse(input);
+    if (!data) {
+        alert('Could not understand the text. Please try manually.');
+        return;
+    }
+
+    // Populate Form
+    const f = document.getElementById('orderForm');
+    if (!f) return;
+
+    // Helper to set value and trigger input event (for validation/updates)
+    const setVal = (name, val) => {
+        if (f[name] && val) {
+            f[name].value = val;
+            f[name].dispatchEvent(new Event('input'));
+        }
+    };
+
+    if (data.customerName) setVal('customerName', data.customerName);
+    if (data.mobile) setVal('telNo', data.mobile);
+    if (data.alternatMobile && f.alternatMobile) setVal('alternatMobile', data.alternatMobile);
+
+    // Address Fields
+    setVal('hNo', data.hNo);
+    // blockGaliNo is hard to parse, usually skip or map from address residue if needed
+    setVal('villColony', data.villColony);
+    setVal('landMark', data.landMark);
+    setVal('po', data.po);
+    setVal('tahTaluka', data.tahTaluka);
+    setVal('distt', data.distt);
+    setVal('state', data.state);
+    setVal('pin', data.pin);
+
+    // Force address update
+    if (window.updateAddress) updateAddress();
+
+    // Show Success Animation
+    closeAiPasteModal();
+    if (typeof showSuccessPopup === 'function') {
+        showSuccessPopup('AI Magic Applied! ✨', 'Form filled automatically. Please review details.', '🤖', '#8b5cf6');
+    } else {
+        alert('AI Form Filled! Please review.');
+    }
+}
+
+// Expose to window
+window.openAiPasteModal = openAiPasteModal;
+window.closeAiPasteModal = closeAiPasteModal;
+window.processAiPaste = processAiPaste;
 

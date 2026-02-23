@@ -25,12 +25,15 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-    : ['http://localhost:3000', 'https://herb-order-server.onrender.com'];
+    : ['*'];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // EMERGENCY FIX: Allow all origins for presentation demo
-        return callback(null, true);
+        // Allow all origins for easier migration/deployment
+        if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
     },
     credentials: true
 }));
@@ -87,7 +90,7 @@ app.use('/api', authRoutes);
 app.use('/api', locationRoutes);
 
 // Page Routing (MPA)
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public/admin.html')));
+app.get('/admin', (req, res) => res.redirect('/'));
 app.get('/employee', (req, res) => res.sendFile(path.join(__dirname, 'public/employee.html')));
 app.get('/dispatch', (req, res) => res.sendFile(path.join(__dirname, 'public/dispatch.html')));
 app.get('/verification', (req, res) => res.sendFile(path.join(__dirname, 'public/verification.html')));
@@ -106,6 +109,9 @@ app.get('/*.html', (req, res) => {
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
 
 // ==================== START SERVER ====================
+const http = require('http');
+const socketManager = require('./socket-manager');
+
 async function startServer() {
     const dbConnected = await connectDatabase();
     if (dbConnected) {
@@ -118,11 +124,19 @@ async function startServer() {
         console.warn('⚠️ Running without MongoDB - Data will not persist!');
     }
 
-    app.listen(PORT, '0.0.0.0', () => {
+    // Create HTTP Server for Socket.io
+    const server = http.createServer(app);
+
+    // Initialize Socket.io
+    const io = socketManager.init(server, allowedOrigins);
+    console.log('🔌 Socket.io initialized');
+
+    server.listen(PORT, '0.0.0.0', () => {
         console.log('╔═══════════════════════════════════════════════════════════╗');
         console.log('║       🌿 HERB ON NATURALS MODULAR SERVER STARTED 🌿       ║');
         console.log(`║  Port:     ${PORT}                                            ║`);
         console.log(`║  Status:   ${dbConnected ? '🟢 MongoDB Connected' : '🔴 JSON Mode'}           ║`);
+        console.log(`║  Realtime: 🟢 Socket.io Active                                ║`);
         console.log('╚═══════════════════════════════════════════════════════════╝');
     });
 }

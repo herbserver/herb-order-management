@@ -247,6 +247,15 @@ function clearSession() {
     currentUserType = null;
 }
 
+// ==================== GLOBAL EXPORTS ====================
+// Make functions available to HTML onclick handlers
+window.departmentLogin = departmentLogin;
+window.adminLogin = adminLogin;
+window.employeeLogin = employeeLogin;
+window.switchLoginTab = switchLoginTab;
+window.resetPassword = resetPassword;
+window.registerEmployee = registerEmployee;
+
 // ==================== UI HELPERS ====================
 function showMessage(msg, type, elementId) {
     const el = document.getElementById(elementId);
@@ -2898,116 +2907,93 @@ async function loadVerificationCancelled() {
 }
 
 async function loadEmpProgress() {
+    if (!currentUser) return;
+
     try {
         const res = await fetch(`${API_URL}/orders/employee/${currentUser.id}`);
         const data = await res.json();
         let orders = data.orders || [];
 
-        const startDate = document.getElementById('empProgressStartDate').value;
-        const endDate = document.getElementById('empProgressEndDate').value;
+        const startDate = document.getElementById('empProgressStartDate')?.value || '';
+        const endDate = document.getElementById('empProgressEndDate')?.value || '';
 
         if (startDate) orders = orders.filter(o => o.timestamp && o.timestamp >= startDate);
         if (endDate) orders = orders.filter(o => o.timestamp && o.timestamp <= endDate + 'T23:59:59');
 
-        const stats = {
-            total: orders.length,
-            pending: orders.filter(o => o.status === 'Pending').length,
-            dispatched: orders.filter(o => o.status === 'Dispatched').length,
-            delivered: orders.filter(o => o.status === 'Delivered').length
+        // Calculate stats with amounts
+        const calcStats = (statusFilter) => {
+            const filtered = statusFilter ? orders.filter(o => o.status === statusFilter) : orders;
+            return { count: filtered.length, amount: filtered.reduce((sum, o) => sum + (o.total || 0), 0) };
         };
 
-        const deliveryRate = stats.total > 0 ? ((stats.delivered / stats.total) * 100).toFixed(1) : 0;
-        const totalAmount = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+        const stats = {
+            total: calcStats(null),
+            hold: calcStats('On Hold'),
+            cancelled: calcStats('Cancelled'),
+            dispatched: calcStats('Dispatched'),
+            delivered: calcStats('Delivered'),
+            rto: calcStats('RTO')
+        };
 
-        document.getElementById('empProgressStats').innerHTML = `
-            <div class="glass-card bg-blue-50/50 border-b-4 border-blue-500 p-4 rounded-xl text-center shadow-sm">
-                <p class="text-3xl font-bold text-blue-600 mb-1">${stats.total}</p>
-                <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Total</p>
-            </div>
-             <div class="glass-card bg-yellow-50/50 border-b-4 border-yellow-500 p-4 rounded-xl text-center shadow-sm">
-                <p class="text-3xl font-bold text-yellow-600 mb-1">${stats.pending}</p>
-                <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Pending</p>
-            </div>
-             <div class="glass-card bg-purple-50/50 border-b-4 border-purple-500 p-4 rounded-xl text-center shadow-sm">
-                <p class="text-3xl font-bold text-purple-600 mb-1">${stats.dispatched}</p>
-                 <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Dispatched</p>
-            </div>
-             <div class="glass-card bg-green-50/50 border-b-4 border-green-500 p-4 rounded-xl text-center shadow-sm">
-                <p class="text-3xl font-bold text-green-600 mb-1">${stats.delivered}</p>
-                 <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Delivered</p>
-            </div>
-        `;
+        // Render 6 Cards with count + amount
+        const cards = [
+            { label: 'Total Orders', ...stats.total, color: 'blue', icon: '📝' },
+            { label: 'On Hold', ...stats.hold, color: 'yellow', icon: '⏸️' },
+            { label: 'Cancelled', ...stats.cancelled, color: 'red', icon: '❌' },
+            { label: 'Dispatched', ...stats.dispatched, color: 'purple', icon: '📦' },
+            { label: 'Delivered', ...stats.delivered, color: 'green', icon: '✅' },
+            { label: 'RTO', ...stats.rto, color: 'rose', icon: '↩️' }
+        ];
 
-        // Chart/Metrics Section
-        document.getElementById('empProgressChart').innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div class="glass-card p-6 shadow-sm flex flex-col justify-center">
-                    <div class="flex justify-between mb-2 items-center">
-                        <span class="text-sm font-bold text-gray-700">Delivery Success Rate</span>
-                        <span class="text-2xl font-bold text-green-600">${deliveryRate}%</span>
-                    </div>
-                    <div class="w-full bg-gray-100 rounded-full h-4 overflow-hidden shadow-inner">
-                        <div class="bg-gradient-to-r from-green-400 to-green-600 h-4 rounded-full transition-all duration-1000 shadow-sm" style="width: ${deliveryRate}%"></div>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-2 italic">Based on delivered orders vs total orders</p>
-                </div>
-                <div class="glass-card p-6 shadow-sm flex flex-col justify-center bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100">
-                    <p class="text-xs text-emerald-800 font-bold uppercase mb-2 tracking-wide">Total Revenue Generated</p>
-                    <div class="flex items-center gap-2">
-                         <span class="text-4xl font-black text-emerald-600 tracking-tight">₹${totalAmount.toFixed(2)}</span>
-                    </div>
-                </div>
+        const colorMap = {
+            blue: 'bg-blue-50 text-blue-600 border-blue-200',
+            yellow: 'bg-yellow-50 text-yellow-600 border-yellow-200',
+            red: 'bg-red-50 text-red-600 border-red-200',
+            purple: 'bg-purple-50 text-purple-600 border-purple-200',
+            green: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+            rose: 'bg-rose-50 text-rose-600 border-rose-200'
+        };
+
+        document.getElementById('empProgressStats').innerHTML = cards.map(c => `
+            <div class="glass-card p-4 border-2 ${colorMap[c.color]} flex flex-col items-center justify-center text-center rounded-xl transition-transform hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-2xl mb-1">${c.icon}</div>
+                <div class="text-2xl font-bold">${c.count}</div>
+                <div class="text-sm font-bold">₹${c.amount.toLocaleString()}</div>
+                <div class="text-[9px] font-bold uppercase tracking-wider opacity-70 mt-1">${c.label}</div>
             </div>
-        `;
+        `).join('');
 
-        // Orders Table (Improved)
-        if (orders.length > 0) {
-            let tableHtml = `
-            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mt-6">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 text-gray-500 font-bold uppercase text-xs border-b border-gray-200">
-                            <tr>
-                                <th class="px-6 py-4">Order ID</th>
-                                <th class="px-6 py-4">Customer</th>
-                                <th class="px-6 py-4 text-right">Amount</th>
-                                <th class="px-6 py-4 text-center">Status</th>
-                                <th class="px-6 py-4 text-right">Date</th>
-                            </tr>
-                        </thead>
-                    <tbody class="divide-y divide-gray-100">`;
+        // Clear chart section
+        const chartEl = document.getElementById('empProgressChart');
+        if (chartEl) chartEl.innerHTML = '';
 
-            orders.slice(0, 50).forEach(o => {
-                let statusClass = 'bg-gray-100 text-gray-600';
-                if (o.status === 'Pending') statusClass = 'bg-yellow-100 text-yellow-700';
-                else if (o.status === 'Address Verified') statusClass = 'bg-blue-100 text-blue-700';
-                else if (o.status === 'Dispatched') statusClass = 'bg-purple-100 text-purple-700';
-                else if (o.status === 'Delivered') statusClass = 'bg-green-100 text-green-700';
-
-                tableHtml += `
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 font-mono font-bold text-blue-600">${o.orderId}</td>
-                        <td class="px-6 py-4 font-medium text-gray-800">${o.customerName}</td>
-                        <td class="px-6 py-4 text-right font-bold text-gray-700">₹${o.total}</td>
-                        <td class="px-6 py-4 text-center">
-                            <span class="px-3 py-1 rounded-full text-xs font-bold ${statusClass}">${o.status}</span>
-                        </td>
-                        <td class="px-6 py-4 text-right text-gray-500 text-xs font-mono">
-                            ${o.timestamp ? new Date(o.timestamp).toLocaleDateString() : ''}
-                        </td>
-                    </tr>`;
+        // Orders Table
+        const tableEl = document.getElementById('empProgressTable');
+        if (tableEl && orders.length > 0) {
+            const statusColors = {
+                'Pending': 'bg-yellow-100 text-yellow-700',
+                'Address Verified': 'bg-blue-100 text-blue-700',
+                'On Hold': 'bg-orange-100 text-orange-700',
+                'Dispatched': 'bg-purple-100 text-purple-700',
+                'Delivered': 'bg-green-100 text-green-700',
+                'Cancelled': 'bg-red-100 text-red-700',
+                'RTO': 'bg-rose-100 text-rose-700'
+            };
+            let tableHtml = `<div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mt-4"><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-50 text-gray-500 font-bold uppercase text-xs border-b"><tr><th class="px-4 py-3">Order ID</th><th class="px-4 py-3">Customer</th><th class="px-4 py-3 text-right">Amount</th><th class="px-4 py-3 text-center">Status</th><th class="px-4 py-3 text-right">Date</th></tr></thead><tbody class="divide-y divide-gray-100">`;
+            orders.slice(0, 100).forEach(o => {
+                const sc = statusColors[o.status] || 'bg-gray-100 text-gray-600';
+                tableHtml += `<tr class="hover:bg-gray-50 cursor-pointer" onclick="viewOrder('${o.orderId}')"><td class="px-4 py-3 font-mono font-bold text-blue-600">${o.orderId}</td><td class="px-4 py-3 font-medium">${o.customerName}</td><td class="px-4 py-3 text-right font-bold">₹${o.total || 0}</td><td class="px-4 py-3 text-center"><span class="px-2 py-1 rounded-full text-xs font-bold ${sc}">${o.status}</span></td><td class="px-4 py-3 text-right text-xs text-gray-500">${o.timestamp ? new Date(o.timestamp).toLocaleDateString() : ''}</td></tr>`;
             });
             tableHtml += '</tbody></table></div></div>';
-            document.getElementById('empProgressTable').innerHTML = tableHtml;
-        } else {
-            document.getElementById('empProgressTable').innerHTML = `
-                <div class="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 mt-6">
-                    <p class="text-gray-400">No orders found for this period</p>
-                </div>`;
+            tableEl.innerHTML = tableHtml;
+        } else if (tableEl) {
+            tableEl.innerHTML = '<div class="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed mt-4"><p class="text-gray-400">No orders found</p></div>';
         }
+
     } catch (e) {
-        console.error(e);
-        document.getElementById('empProgressStats').innerHTML = '<p class="text-center text-red-500 py-4">Failed to load data</p>';
+        console.error('Progress load error:', e);
+        const statsEl = document.getElementById('empProgressStats');
+        if (statsEl) statsEl.innerHTML = '<p class="col-span-full text-center text-red-500 py-4">Failed to load data</p>';
     }
 }
 
@@ -6478,22 +6464,62 @@ function resetAdminFilters(type) {
     }
 }
 
-async function loadEmployees() {
+async function loadEmployees(startDate = '', endDate = '') {
     try {
-        const res = await fetch(`${API_URL}/employees`);
+        let url = `${API_URL}/employees`;
+        const params = new URLSearchParams();
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        if (params.toString()) url += `?${params.toString()}`;
+
+        const res = await fetch(url);
         const data = await res.json();
         const employees = (data.employees || []).sort((a, b) => a.name.localeCompare(b.name));
 
+        // FILTER UI HTML
+        const filterHtml = `
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold border border-indigo-200">
+                        👥
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-indigo-900">Employee Performance</h3>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="flex flex-col">
+                        <label class="text-[10px] uppercase font-bold text-indigo-400 mb-0.5">From</label>
+                        <input type="date" id="empDashStartDate" value="${startDate}" class="text-xs px-3 py-2 rounded-lg border border-indigo-200 outline-none focus:border-indigo-500 font-bold text-indigo-700 bg-white shadow-sm">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[10px] uppercase font-bold text-indigo-400 mb-0.5">To</label>
+                        <input type="date" id="empDashEndDate" value="${endDate}" class="text-xs px-3 py-2 rounded-lg border border-indigo-200 outline-none focus:border-indigo-500 font-bold text-indigo-700 bg-white shadow-sm">
+                    </div>
+                    <div class="flex items-end h-full pt-4 gap-2">
+                        <button onclick="loadEmployees(document.getElementById('empDashStartDate').value, document.getElementById('empDashEndDate').value)" 
+                            class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200">
+                            🔎
+                        </button>
+                        <button onclick="loadEmployees('', '')" 
+                            class="bg-white text-indigo-500 border border-indigo-200 p-2 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm text-xs font-bold px-3">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
         if (employees.length === 0) {
-            document.getElementById('adminEmployeesTab').innerHTML = `
+            document.getElementById('adminEmployeesTab').innerHTML = filterHtml + `
                         <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                             <p class="text-4xl mb-3">👥</p>
-                            <p class="text-gray-500 font-medium">No employees registered</p>
+                            <p class="text-gray-500 font-medium">No employees found matching criteria</p>
                         </div>`;
             return;
         }
 
-        let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
+        let html = filterHtml + '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
 
         employees.forEach(emp => {
             html += `
@@ -6542,7 +6568,8 @@ async function loadEmployees() {
                             class="flex-1 bg-orange-50 text-orange-600 font-bold py-2 rounded-xl text-xs hover:bg-orange-100 transition-colors flex items-center justify-center gap-2 border border-orange-100">
                             <span>✏️</span> Edit
                         </button>
-                        <button class="flex-[2] bg-indigo-50 text-indigo-600 font-bold py-2 rounded-xl text-xs hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
+                        <button onclick="event.stopPropagation(); viewEmployeeProfile('${emp.id}')" 
+                            class="flex-[2] bg-indigo-50 text-indigo-600 font-bold py-2 rounded-xl text-xs hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
                             <span>📊</span> Performance
                         </button>
                     </div>
@@ -6554,13 +6581,39 @@ async function loadEmployees() {
     } catch (e) { console.error(e); }
 }
 
-async function viewEmployeeProfile(empId) {
+async function viewEmployeeProfile(empId, startDate = '', endDate = '') {
     try {
-        const res = await fetch(`${API_URL}/employees/${empId}`);
+        // Show Modal with Loading State FIRST
+        const modal = document.getElementById('employeeProfileModal');
+        const content = document.getElementById('employeeProfileContent');
+
+        // Force Flex to ensure centering and visibility
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        if (content) content.innerHTML = `
+            <div class="flex flex-col items-center justify-center p-12">
+                <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                <p class="text-indigo-600 font-bold animate-pulse">Loading Profile...</p>
+                <button onclick="document.getElementById('employeeProfileModal').classList.add('hidden')" class="mt-6 text-gray-400 hover:text-gray-600 underline text-sm">Cancel</button>
+            </div>`;
+
+        let url = `${API_URL}/employees/${empId}`;
+        const params = new URLSearchParams();
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        if (params.toString()) url += `?${params.toString()}`;
+
+        const res = await fetch(url);
+
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
+
         const data = await res.json();
         const emp = data.employee;
         const orders = data.orders || [];
-        const stats = data.stats;
+        const stats = data.stats || { total: 0, pending: 0, verified: 0, dispatched: 0, delivered: 0, cancelled: 0, hold: 0, rto: 0 };
 
         // Improved Table Render
         let ordersHtml = '';
@@ -6569,7 +6622,7 @@ async function viewEmployeeProfile(empId) {
                         <tr>
                             <td colspan="5" class="px-6 py-8 text-center text-gray-500 bg-gray-50">
                                 <p class="text-xl mb-1">📭</p>
-                                No order history found
+                                No order history found for selected range
                             </td>
                         </tr>`;
         } else {
@@ -6579,12 +6632,15 @@ async function viewEmployeeProfile(empId) {
                 if (o.status === 'Address Verified') statusClass = 'bg-blue-100 text-blue-700';
                 if (o.status === 'Dispatched') statusClass = 'bg-purple-100 text-purple-700';
                 if (o.status === 'Delivered') statusClass = 'bg-green-100 text-green-700';
+                if (o.status === 'Cancelled') statusClass = 'bg-red-100 text-red-700';
+                if (o.status === 'On Hold') statusClass = 'bg-yellow-100 text-yellow-700';
+                if (o.status === 'RTO') statusClass = 'bg-indigo-100 text-indigo-700';
 
                 return `
                          <tr class="hover:bg-gray-50 transition-colors border-b border-gray-100">
-                            <td class="px-4 py-3 font-mono font-bold text-blue-600 text-xs">${o.orderId}</td>
-                            <td class="px-4 py-3 font-medium text-gray-800 text-sm whitespace-nowrap max-w-[150px] truncate" title="${o.customerName}">${o.customerName}</td>
-                            <td class="px-4 py-3 text-right font-bold text-gray-700 text-sm">₹${o.total}</td>
+                            <td class="px-4 py-3 font-mono font-bold text-blue-600 text-xs">${o.orderId || '-'}</td>
+                            <td class="px-4 py-3 font-medium text-gray-800 text-sm whitespace-nowrap max-w-[150px] truncate" title="${o.customerName}">${o.customerName || 'Unknown'}</td>
+                            <td class="px-4 py-3 text-right font-bold text-gray-700 text-sm">₹${o.total || 0}</td>
                             <td class="px-4 py-3 text-center">
                                 <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${statusClass}">${o.status}</span>
                             </td>
@@ -6595,56 +6651,89 @@ async function viewEmployeeProfile(empId) {
             }).join('');
         }
 
-        document.getElementById('employeeProfileContent').innerHTML = `
+        // Calculate Amounts for each status
+        const revenue = {
+            total: orders.reduce((sum, o) => sum + (o.total || 0), 0),
+            hold: orders.filter(o => o.status === 'On Hold').reduce((sum, o) => sum + (o.total || 0), 0),
+            cancelled: orders.filter(o => o.status === 'Cancelled').reduce((sum, o) => sum + (o.total || 0), 0),
+            delivered: orders.filter(o => o.status === 'Delivered').reduce((sum, o) => sum + (o.total || 0), 0),
+            dispatched: orders.filter(o => o.status === 'Dispatched').reduce((sum, o) => sum + (o.total || 0), 0),
+            rto: orders.filter(o => o.status === 'RTO').reduce((sum, o) => sum + (o.total || 0), 0)
+        };
+
+        // REQUESTED CARDS: TOTAL, HOLD, CANCEL, DELIVERED, DISPATCHED, RTO
+        const cards = [
+            { label: 'Total', count: stats.total, amount: revenue.total, color: 'gray', icon: '📊' },
+            { label: 'On Hold', count: stats.hold, amount: revenue.hold, color: 'yellow', icon: '⏳' },
+            { label: 'Cancelled', count: stats.cancelled, amount: revenue.cancelled, color: 'red', icon: '❌' },
+            { label: 'Delivered', count: stats.delivered, amount: revenue.delivered, color: 'green', icon: '✅' },
+            { label: 'Dispatched', count: stats.dispatched, amount: revenue.dispatched, color: 'purple', icon: '🚚' },
+            { label: 'RTO', count: stats.rto, amount: revenue.rto, color: 'indigo', icon: '↩️' }
+        ];
+
+        const cardsHtml = cards.map(c => `
+                    <div class="bg-${c.color}-50 border border-${c.color}-100 rounded-xl p-4 text-center hover:shadow-md transition-all">
+                        <p class="text-3xl font-black text-${c.color}-600 mb-1">${c.count || 0}</p>
+                        <p class="text-[10px] text-${c.color}-400 uppercase font-black tracking-wider mb-2">${c.label}</p>
+                        <div class="bg-white/60 rounded-lg py-1 px-2 border border-${c.color}-100 inline-block">
+                             <p class="text-xs font-bold text-${c.color}-700">₹${(c.amount || 0).toLocaleString()}</p>
+                        </div>
+                    </div>
+                `).join('');
+
+        content.innerHTML = `
+                <!-- FANCY HEADER CARD -->
                 <div class="glass-card p-0 overflow-hidden mb-6 bg-indigo-600 text-white relative">
                     <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full opacity-10 blur-3xl -mr-16 -mt-16"></div>
-                    <div class="p-8 relative z-10 flex items-center gap-6">
-                         <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center text-4xl font-black text-indigo-600 shadow-lg">
-                            ${emp.name.charAt(0).toUpperCase()}
+                    
+                    <div class="p-8 relative z-10 flex flex-col md:flex-row items-center gap-6 justify-between">
+                        <div class="flex items-center gap-6">
+                            <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center text-4xl font-black text-indigo-600 shadow-lg">
+                                ${emp.name ? emp.name.charAt(0).toUpperCase() : '?'}
+                            </div>
+                            <div>
+                                <h3 class="text-3xl font-black tracking-tight mb-1">${emp.name || 'Unknown'}</h3>
+                                <div class="flex items-center gap-2">
+                                    <p class="opacity-80 font-mono text-sm bg-indigo-500/30 inline-block px-3 py-1 rounded-lg border border-indigo-400/30">${emp.id}</p>
+                                    <button onclick="showEditEmployeeModal('${emp.id}', '${emp.name}')" class="bg-white/20 hover:bg-white/40 text-white px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 border border-white/20">
+                                        <span>✏️</span> Edit Details
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-3xl font-black tracking-tight mb-1">${emp.name}</h3>
-                            <div class="flex items-center gap-2">
-                                <p class="opacity-80 font-mono text-sm bg-indigo-500/30 inline-block px-3 py-1 rounded-lg border border-indigo-400/30">${emp.id}</p>
-                                <button onclick="showEditEmployeeModal('${emp.id}', '${emp.name}')" class="bg-white/20 hover:bg-white/40 text-white px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 border border-white/20">
-                                    <span>✏️</span> Edit Details
+                        
+                        <!-- DATE FILTERS -->
+                        <div class="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/20 flex flex-wrap gap-2 items-center mt-4 md:mt-0">
+                            <div class="flex flex-col">
+                                <label class="text-[10px] uppercase font-bold text-indigo-100 mb-0.5">From</label>
+                                <input type="date" id="profileStartDate" value="${startDate}" class="bg-white/90 text-indigo-900 text-xs px-2 py-1.5 rounded-lg outline-none font-bold" style="color-scheme: light;">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-[10px] uppercase font-bold text-indigo-100 mb-0.5">To</label>
+                                <input type="date" id="profileEndDate" value="${endDate}" class="bg-white/90 text-indigo-900 text-xs px-2 py-1.5 rounded-lg outline-none font-bold" style="color-scheme: light;">
+                            </div>
+                            <div class="flex items-end gap-1 h-full pt-4">
+                                <button onclick="viewEmployeeProfile('${empId}', document.getElementById('profileStartDate').value, document.getElementById('profileEndDate').value)" class="bg-white text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 transition-colors shadow-lg" title="Apply Filter">
+                                    🔎
+                                </button>
+                                <button onclick="viewEmployeeProfile('${empId}', '', '')" class="bg-indigo-800 text-white p-1.5 rounded-lg hover:bg-indigo-900 transition-colors shadow-lg border border-indigo-500/50" title="Clear Filter">
+                                    Refresh
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
-                     <div class="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
-                        <p class="text-3xl font-black text-gray-800">${stats.total}</p>
-                        <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Total</p>
-                    </div>
-                     <div class="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
-                        <p class="text-3xl font-black text-red-500">${stats.pending}</p>
-                        <p class="text-[10px] text-red-400 uppercase font-bold tracking-wider">Pending</p>
-                    </div>
-                     <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
-                        <p class="text-3xl font-black text-blue-500">${stats.verified}</p>
-                        <p class="text-[10px] text-blue-400 uppercase font-bold tracking-wider">Verified</p>
-                    </div>
-                     <div class="bg-purple-50 border border-purple-100 rounded-xl p-4 text-center">
-                        <p class="text-3xl font-black text-purple-500">${stats.dispatched}</p>
-                        <p class="text-[10px] text-purple-400 uppercase font-bold tracking-wider">Dispatched</p>
-                    </div>
-                     <div class="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
-                        <p class="text-3xl font-black text-green-500">${stats.delivered}</p>
-                        <p class="text-[10px] text-green-400 uppercase font-bold tracking-wider">Delivered</p>
-                    </div>
+                <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-8">
+                    ${cardsHtml}
                 </div>
 
-                 <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 flex items-center justify-between">
-                    <span class="text-sm font-bold text-indigo-800">📅 This Month's Performance</span>
-                    <span class="text-2xl font-black text-indigo-600">${stats.thisMonth} <span class="text-xs font-medium text-indigo-400">Orders</span></span>
-                </div>
-
-                <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                        <h4 class="font-bold text-gray-700">📋 Recent Activity (Last 50)</h4>
+                <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <h4 class="font-bold text-gray-800 flex items-center gap-2">
+                            <span>📜</span> Recent Orders
+                        </h4>
+                        <span class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-lg font-bold">Last 50 (Filtered)</span>
                     </div>
                     <div class="overflow-x-auto max-h-[400px]">
                         <table class="w-full text-left">
@@ -6664,9 +6753,18 @@ async function viewEmployeeProfile(empId) {
                     </div>
                 </div>`;
 
-        document.getElementById('employeeProfileModal').classList.remove('hidden');
-
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error('Profile View Error:', e);
+        const content = document.getElementById('employeeProfileContent');
+        if (content) content.innerHTML = `
+            <div class="text-center py-12">
+                <p class="text-4xl mb-4">⚠️</p>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Failed to load profile</h3>
+                <p class="text-gray-500 mb-6">${e.message || 'Unknown error occurred'}</p>
+                <button onclick="document.getElementById('employeeProfileModal').classList.add('hidden')" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-xl font-bold hover:bg-gray-300">Close</button>
+            </div>
+        `;
+    }
 }
 
 async function loadDepartments() {
@@ -7055,11 +7153,17 @@ async function loadAdminProgress() {
 
         <div id="adminProgressStatsContainer" class="space-y-6">
             <!-- Summary Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="analyticsSummaryGrid">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6" id="analyticsSummaryGrid">
                 <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
                 <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
                 <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
                 <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
+                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
+                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
+                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
+                <!-- Extra skeletons for 5th and 6th cards -->
+                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div> 
+                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div> 
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -7092,21 +7196,24 @@ async function loadAdminProgress() {
                     </div>
                 </div>
             </div>
+            
+            <!-- NEW: Modern Employee Leaderboard Table (Replaces Chart) -->
+             <div class="glass-card p-0 bg-white shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h4 class="font-bold text-slate-800 flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">🏆</span>
+                            Employee Performance Leaderboard
+                    </h4>
+                </div>
+                <div id="employeeLeaderboardContainer" class="overflow-x-auto">
+                    <!-- Table injected by renderAnalyticsEmployees -->
+                     <div class="p-8 text-center text-gray-400">Loading leaderboard...</div>
+                </div>
+            </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Employee Performance -->
-                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100">
-                    <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                         <span class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">🏆</span>
-                         Employee Leaderboard
-                    </h4>
-                    <div class="relative h-[300px]">
-                        <canvas id="employeeChart"></canvas>
-                    </div>
-                </div>
-
                 <!-- City Distribution -->
-                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100">
+                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100 lg:col-span-2">
                     <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
                          <span class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">📍</span>
                          Top Cities (Orders)
@@ -7180,23 +7287,47 @@ async function filterAdminProgress() {
         // Apply filters locally on the full set
         // Note: We use orderReorderMap to check status during counting
         let orders = historyData.orders || [];
-        if (startDate) orders = orders.filter(o => o.timestamp >= startDate);
-        if (endDate) orders = orders.filter(o => o.timestamp <= endDate + 'T23:59:59');
+
+        // Date Filtering Logic (Local Timezone Fix)
+        if (startDate) {
+            orders = orders.filter(o => {
+                if (!o.timestamp) return false;
+                const dateStr = new Date(o.timestamp).toLocaleDateString('en-CA'); // YYYY-MM-DD
+                return dateStr >= startDate;
+            });
+        }
+        if (endDate) {
+            orders = orders.filter(o => {
+                if (!o.timestamp) return false;
+                const dateStr = new Date(o.timestamp).toLocaleDateString('en-CA'); // YYYY-MM-DD
+                return dateStr <= endDate;
+            });
+        }
+
         if (employeeId) orders = orders.filter(o => o.employeeId === employeeId);
 
         // Calculate Summary Stats
-        const totalOrders = orders.length;
-        const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-        const delivered = orders.filter(o => o.status === 'Delivered').length;
+        // SPLIT: Separate Active vs Cancelled for accurate stats
+        const activeOrders = orders.filter(o => o.status !== 'Cancelled');
+        const cancelledOrdersData = orders.filter(o => o.status === 'Cancelled');
+
+        // NET Orders (Active minus Hold)
+        // User Request: Exclude "Hold" from Total Orders count/revenue
+        const netOrders = activeOrders.filter(o => o.status !== 'Hold' && o.status !== 'On Hold');
+
+        // Calculate Summary Stats from NET orders only
+        const totalOrders = netOrders.length;
+        const totalRevenue = netOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+        // const delivered = activeOrders.filter(o => o.status === 'Delivered').length; // Moved down
         const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(0) : 0;
 
-        // Calculate Fresh vs Re-order for the FILTERED set (with Revenue)
+        // Calculate Fresh vs Re-order for the NET set
         let freshCount = 0;
         let reorderCount = 0;
         let freshRevenue = 0;
         let reorderRevenue = 0;
 
-        orders.forEach(o => {
+        netOrders.forEach(o => {
             const orderTotal = o.total || 0;
             // Handle both old (REORDER) and new (Reorder) format
             const isReorder = o.orderType ? (o.orderType === 'Reorder' || o.orderType === 'REORDER') : orderReorderMap.get(o.orderId);
@@ -7210,10 +7341,57 @@ async function filterAdminProgress() {
             }
         });
 
+        // Cancelled Stats
+        const cancelledCount = cancelledOrdersData.length;
+        const cancelledRevenue = cancelledOrdersData.reduce((sum, o) => sum + (o.total || 0), 0);
 
-        // Find Top City
+        // NEW: Dispatched Stats (Operational View)
+        // Filter from RAW historyData to find orders DISPATCHED in this range, regardless of booking date
+        let dispatchedOrdersInDate = historyData.orders || [];
+
+        // CRITICAL FIX: Apply Employee Filter if selected
+        if (employeeId) {
+            dispatchedOrdersInDate = dispatchedOrdersInDate.filter(o => o.employeeId === employeeId);
+        }
+
+        if (startDate) {
+            dispatchedOrdersInDate = dispatchedOrdersInDate.filter(o => {
+                if (!o.dispatchedAt) return false;
+                const dispDateStr = new Date(o.dispatchedAt).toLocaleDateString('en-CA');
+                return dispDateStr >= startDate;
+            });
+        }
+        if (endDate) {
+            dispatchedOrdersInDate = dispatchedOrdersInDate.filter(o => {
+                if (!o.dispatchedAt) return false;
+                const dispDateStr = new Date(o.dispatchedAt).toLocaleDateString('en-CA');
+                return dispDateStr <= endDate;
+            });
+        }
+
+        // We count ALL orders that were dispatched in this period, even if they are now Delivered/RTO
+        // Requirement: "show all orders dispatched on selected date"
+        const dispatchedCount = dispatchedOrdersInDate.length;
+        const dispatchedRevenue = dispatchedOrdersInDate.reduce((sum, o) => sum + (o.total || 0), 0);
+
+        // NEW: Delivered Stats (Booked in Date Range -> Delivered)
+        // Using activeOrders (filtered by Booking Date) ensures we see outcome of orders booked in this period
+        const deliveredOrders = activeOrders.filter(o => o.status === 'Delivered');
+        const deliveredCount = deliveredOrders.length;
+        const deliveredRevenue = deliveredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+        // NEW: Hold Stats
+        const holdOrders = activeOrders.filter(o => o.status === 'Hold' || o.status === 'On Hold');
+        const holdCount = holdOrders.length;
+        const holdRevenue = holdOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+
+
+
+        // Find Top City (from ACTIVE orders - including Hold is fine for marketing insights, or use NET?)
+        // Let's use ACTIVE to capture all demand
         const cityCounts = {};
-        orders.forEach(o => {
+        activeOrders.forEach(o => {
             const loc = (o.distt || o.city || '').trim().toUpperCase();
             if (loc && loc !== 'SAME' && loc !== 'NA' && loc !== 'N/A' && loc !== 'NULL') {
                 cityCounts[loc] = (cityCounts[loc] || 0) + 1;
@@ -7223,54 +7401,121 @@ async function filterAdminProgress() {
 
         // Render Summary Grid
         document.getElementById('analyticsSummaryGrid').innerHTML = `
-            <div class="glass-card p-6 bg-white border border-blue-50">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Revenue</p>
-                <div class="flex items-end justify-between mb-2">
-                    <p class="text-2xl font-black text-slate-800">₹${totalRevenue.toLocaleString()}</p>
-                    <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">💰 Income</span>
+            <!-- 1. Total Revenue -->
+            <div class="glass-card p-5 bg-white border border-blue-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
+                <div>
+                     <div class="flex items-center justify-between mb-2">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Total Revenue</p>
+                        <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 whitespace-nowrap">💰 Income</span>
+                    </div>
+                    <div class="flex items-start justify-between mb-4">
+                        <p class="text-2xl font-black text-slate-800 tracking-tight">₹${totalRevenue.toLocaleString()}</p>
+                    </div>
                 </div>
-                <div class="flex gap-2 pt-2 border-t border-slate-50">
-                     <div class="flex-1 text-center bg-emerald-50/50 rounded-lg py-1 border border-emerald-100">
-                        <span class="block text-[10px] uppercase font-bold text-emerald-500 tracking-wider">Fresh</span>
-                        <span class="block text-sm font-black text-emerald-600">🆕 ₹${freshRevenue.toLocaleString()}</span>
+                <div class="flex gap-2 pt-3 border-t border-slate-50">
+                     <div class="flex-1 text-center bg-emerald-50/50 rounded-lg py-1.5 border border-emerald-100">
+                        <span class="block text-[9px] uppercase font-bold text-emerald-500 tracking-wider mb-0.5">Fresh</span>
+                        <span class="block text-xs font-black text-emerald-600 truncate">₹${freshRevenue.toLocaleString()}</span>
                      </div>
-                     <div class="flex-1 text-center bg-blue-50/50 rounded-lg py-1 border border-blue-100">
-                        <span class="block text-[10px] uppercase font-bold text-blue-500 tracking-wider">Re-order</span>
-                        <span class="block text-sm font-black text-blue-600">🔄 ₹${reorderRevenue.toLocaleString()}</span>
-                     </div>
-                </div>
-            </div>
-            <div class="glass-card p-4 bg-white border border-emerald-50">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Orders</p>
-                <div class="flex items-end justify-between mb-2">
-                    <p class="text-3xl font-black text-slate-800">${totalOrders}</p>
-                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">📦 Volume</span>
-                </div>
-                <div class="flex gap-2 pt-2 border-t border-slate-50">
-                     <div class="flex-1 text-center bg-emerald-50/50 rounded-lg py-1 border border-emerald-100">
-                        <span class="block text-[10px] uppercase font-bold text-emerald-500 tracking-wider">Fresh</span>
-                        <span class="block text-xl font-black text-emerald-600">🆕 ${freshCount}</span>
-                     </div>
-                     <div class="flex-1 text-center bg-blue-50/50 rounded-lg py-1 border border-blue-100">
-                        <span class="block text-[10px] uppercase font-bold text-blue-500 tracking-wider">Re-order</span>
-                        <span class="block text-xl font-black text-blue-600">🔄 ${reorderCount}</span>
+                     <div class="flex-1 text-center bg-blue-50/50 rounded-lg py-1.5 border border-blue-100">
+                        <span class="block text-[9px] uppercase font-bold text-blue-500 tracking-wider mb-0.5">Re-order</span>
+                        <span class="block text-xs font-black text-blue-600 truncate">₹${reorderRevenue.toLocaleString()}</span>
                      </div>
                 </div>
             </div>
-            <div class="glass-card p-6 bg-white border border-amber-50">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Avg Order Value</p>
-                <div class="flex items-end justify-between">
-                    <p class="text-2xl font-black text-slate-800">₹${avgOrderValue}</p>
-                    <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">📊 Ticket</span>
+
+            <!-- 2. Total Orders -->
+            <div class="glass-card p-5 bg-white border border-emerald-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Total Orders</p>
+                        <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 whitespace-nowrap">📦 Volume</span>
+                    </div>
+                    <div class="flex items-start justify-between mb-4">
+                        <p class="text-3xl font-black text-slate-800 tracking-tight">${totalOrders}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2 pt-3 border-t border-slate-50">
+                     <div class="flex-1 text-center bg-emerald-50/50 rounded-lg py-1.5 border border-emerald-100">
+                        <span class="block text-[9px] uppercase font-bold text-emerald-500 tracking-wider mb-0.5">Fresh</span>
+                        <span class="block text-lg font-black text-emerald-600">${freshCount}</span>
+                     </div>
+                     <div class="flex-1 text-center bg-blue-50/50 rounded-lg py-1.5 border border-blue-100">
+                        <span class="block text-[9px] uppercase font-bold text-blue-500 tracking-wider mb-0.5">Re-order</span>
+                        <span class="block text-lg font-black text-blue-600">${reorderCount}</span>
+                     </div>
                 </div>
             </div>
-            <div class="glass-card p-6 bg-white border border-purple-50">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Top Marketing City</p>
-                <div class="flex items-end justify-between">
-                    <p class="text-2xl font-black text-slate-800 truncate pr-2" title="${topCity}">${topCity}</p>
-                    <span class="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-lg">📍 Lead</span>
+
+            <!-- 3. Dispatched Orders (Moved here) -->
+            <div class="glass-card p-5 bg-white border border-purple-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
+                <div>
+                     <div class="flex items-center justify-between mb-2">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Dispatched Orders</p>
+                        <span class="text-[9px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 whitespace-nowrap">🚚 Transit</span>
+                    </div>
+                    <div class="flex items-start justify-between mb-4">
+                        <p class="text-2xl font-black text-slate-800 tracking-tight">${dispatchedCount}</p>
+                    </div>
                 </div>
+                <div class="pt-3 border-t border-purple-50">
+                    <span class="block text-[9px] uppercase font-bold text-purple-400 tracking-wider mb-0.5">Value</span>
+                    <span class="block text-sm font-black text-purple-600 truncate">📦 ₹${dispatchedRevenue.toLocaleString()}</span>
+                 </div>
             </div>
+
+            <!-- 4. Hold Orders (Moved here) -->
+            <div class="glass-card p-5 bg-white border border-orange-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
+                <div>
+                     <div class="flex items-center justify-between mb-2">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Hold Orders</p>
+                        <span class="text-[9px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 whitespace-nowrap">⏸️ Hold</span>
+                    </div>
+                    <div class="flex items-start justify-between mb-4">
+                        <p class="text-2xl font-black text-slate-800 tracking-tight">${holdCount}</p>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-orange-50">
+                    <span class="block text-[9px] uppercase font-bold text-orange-400 tracking-wider mb-0.5">Hold Value</span>
+                    <span class="block text-sm font-black text-orange-600 truncate">⏳ ₹${holdRevenue.toLocaleString()}</span>
+                 </div>
+            </div>
+
+            <!-- 5. Cancelled Orders -->
+            <div class="glass-card p-5 bg-white border border-rose-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
+                <div>
+                     <div class="flex items-center justify-between mb-2">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Cancelled Orders</p>
+                        <span class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 whitespace-nowrap">🚫 Lost</span>
+                    </div>
+                    <div class="flex items-start justify-between mb-4">
+                        <p class="text-2xl font-black text-slate-800 tracking-tight">${cancelledCount}</p>
+                    </div>
+                </div>
+                 <div class="pt-3 border-t border-slate-50">
+                    <span class="block text-[9px] uppercase font-bold text-rose-400 tracking-wider mb-0.5">Lost Revenue</span>
+                    <span class="block text-sm font-black text-rose-500 truncate">📉 ₹${cancelledRevenue.toLocaleString()}</span>
+                 </div>
+            </div>
+
+            <!-- 6. Delivered Orders (Moved Here - Last) -->
+            <div class="glass-card p-5 bg-white border border-teal-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Delivered Orders</p>
+                        <span class="text-[9px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 whitespace-nowrap">✅ Done</span>
+                    </div>
+                    <div class="flex items-start justify-between mb-4">
+                        <p class="text-3xl font-black text-slate-800 tracking-tight">${deliveredCount}</p>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-teal-50">
+                    <span class="block text-[9px] uppercase font-bold text-teal-400 tracking-wider mb-0.5">Revenue</span>
+                    <span class="block text-sm font-black text-teal-600 truncate">💰 ₹${deliveredRevenue.toLocaleString()}</span>
+                 </div>
+            </div>
+
+
         `;
 
         // Render Charts
@@ -7324,7 +7569,17 @@ function renderAnalyticsTrend(orders) {
                     label: 'Delivered',
                     data: deliveredSet,
                     borderColor: '#10b981',
+                    pointBackgroundColor: '#10b981',
                     borderDash: [5, 5],
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                },
+                {
+                    label: 'Cancelled',
+                    data: cancelledSet,
+                    borderColor: '#f43f5e',
+                    pointBackgroundColor: '#f43f5e',
+                    borderDash: [2, 2], // Distinct dash style
                     tension: 0.4,
                     yAxisID: 'y1'
                 }
@@ -7335,10 +7590,10 @@ function renderAnalyticsTrend(orders) {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             scales: {
-                y: { type: 'linear', display: true, position: 'left', grid: { drawOnChartArea: false } },
-                y1: { type: 'linear', display: true, position: 'right' }
+                y: { type: 'linear', display: true, position: 'left', grid: { drawOnChartArea: true, color: '#f1f5f9' }, min: 0 },
+                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, min: 0 }
             },
-            plugins: { legend: { display: false } }
+            plugins: { legend: { display: false } } // Custom legend in HTML
         }
     });
 }
@@ -7395,69 +7650,197 @@ function renderAnalyticsStatus(orders) {
                 }
             },
             cutout: '70%'
-        }
+        },
+        plugins: [{
+            id: 'textOnSegments',
+            afterDatasetsDraw(chart, args, pluginOptions) {
+                const { ctx, data } = chart;
+                chart.data.datasets.forEach((dataset, i) => {
+                    const meta = chart.getDatasetMeta(i);
+                    meta.data.forEach((element, index) => {
+                        // Only draw if value > 0
+                        const value = dataset.data[index];
+                        if (value > 0) {
+                            const { x, y } = element.tooltipPosition();
+                            ctx.save();
+
+                            // Draw Value
+                            ctx.fillStyle = '#fff';
+                            ctx.font = 'bold 12px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                            ctx.shadowBlur = 4;
+                            ctx.fillText(value, x, y);
+
+                            ctx.restore();
+                        }
+                    });
+                });
+            }
+        }]
     });
 }
 
-// Chart Helper: Employee Performance
+// Table Helper: Employee Leaderboard (Modernized)
 function renderAnalyticsEmployees(orders) {
-    const ctx = document.getElementById('employeeChart').getContext('2d');
-    if (analyticsCharts.employee) analyticsCharts.employee.destroy();
+    const container = document.getElementById('employeeLeaderboardContainer');
+    if (!container) return;
 
     const empStats = {};
+
+    // Aggregation
     orders.forEach(o => {
         if (!o.employee) return;
         const empName = o.employee;
-        if (!empStats[empName]) empStats[empName] = { total: 0, delivered: 0 };
+        if (!empStats[empName]) {
+            empStats[empName] = {
+                id: o.employeeId || 'N/A',
+                total: 0,
+                delivered: 0,
+                cancelled: 0,
+                hold: 0,
+                dispatched: 0,
+                rto: 0,
+                revenue: 0,
+                deliveredRev: 0,
+                cancelledRev: 0,
+                holdRev: 0,
+                dispatchedRev: 0,
+                rtoRev: 0
+            };
+        }
+
+        const amt = (o.total || 0);
         empStats[empName].total++;
-        if (o.status === 'Delivered') empStats[empName].delivered++;
-    });
+        empStats[empName].revenue += amt;
 
-    // Sort by total orders and take top 10
-    const sortedData = Object.entries(empStats)
-        .sort((a, b) => b[1].total - a[1].total)
-        .slice(0, 10);
-
-    const labels = sortedData.map(d => d[0]);
-    const totalData = sortedData.map(d => d[1].total);
-    const deliveredData = sortedData.map(d => d[1].delivered);
-
-    analyticsCharts.employee = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Total Orders',
-                    data: totalData,
-                    backgroundColor: '#6366f1', // Indigo
-                    borderRadius: 6
-                },
-                {
-                    label: 'Delivered',
-                    data: deliveredData,
-                    backgroundColor: '#10b981', // Emerald
-                    borderRadius: 6
-                }
-            ]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: { boxWidth: 12, font: { size: 10, weight: '600' } }
-                }
-            },
-            scales: {
-                x: { stacked: false, grid: { display: false } },
-                y: { stacked: false, grid: { display: false } }
-            }
+        if (o.status === 'Delivered') {
+            empStats[empName].delivered++;
+            empStats[empName].deliveredRev += amt;
+        }
+        else if (o.status === 'Cancelled') {
+            empStats[empName].cancelled++;
+            empStats[empName].cancelledRev += amt;
+        }
+        else if (o.status === 'Hold' || o.status === 'On Hold') {
+            empStats[empName].hold++;
+            empStats[empName].holdRev += amt;
+        }
+        else if (o.status === 'Dispatched') {
+            empStats[empName].dispatched++;
+            empStats[empName].dispatchedRev += amt;
+        }
+        else if (o.status === 'RTO') {
+            empStats[empName].rto++;
+            empStats[empName].rtoRev += amt;
         }
     });
+
+    // Sort by Total Orders Descending
+    const sortedData = Object.entries(empStats)
+        .sort((a, b) => b[1].total - a[1].total);
+
+    if (sortedData.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-gray-500">No employee data found for this period.</div>`;
+        return;
+    }
+
+    // Generate Table HTML
+    let tableHtml = `
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 text-xs uppercase font-bold text-slate-500">
+                <tr>
+                    <th class="px-6 py-4">Employee</th>
+                    <th class="px-4 py-4 text-center">Total</th>
+                    <th class="px-4 py-4 text-center text-yellow-600">Hold</th>
+                    <th class="px-4 py-4 text-center text-purple-600">Dispatched</th>
+                    <th class="px-4 py-4 text-center text-emerald-600">Delivered</th>
+                    <th class="px-4 py-4 text-center text-indigo-600">RTO</th>
+                    <th class="px-4 py-4 text-center text-rose-600">Cancelled</th>
+                    <th class="px-4 py-4 text-center text-blue-600">Total Revenue</th>
+                    <th class="px-4 py-4 text-right">Performance</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+    `;
+
+    sortedData.forEach(([name, stats], index) => {
+        const conversionRate = stats.total > 0 ? ((stats.delivered / stats.total) * 100).toFixed(1) : 0;
+        const rank = index + 1;
+        let rankBadge = `<span class="text-slate-400 font-mono text-xs w-6 inline-block">#${rank}</span>`;
+
+        if (rank === 1) rankBadge = `<span class="text-lg">🥇</span>`;
+        if (rank === 2) rankBadge = `<span class="text-lg">🥈</span>`;
+        if (rank === 3) rankBadge = `<span class="text-lg">🥉</span>`;
+
+        tableHtml += `
+            <tr class="hover:bg-slate-50/80 transition-colors group">
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 text-center">${rankBadge}</div>
+                        <div class="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold shrink-0">
+                            ${name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">${name}</p>
+                            <p class="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded inline-block">${stats.id}</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-black text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg mb-1">${stats.total}</span>
+                        <span class="text-[9px] font-bold text-gray-400">Items</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100 mb-1">${stats.hold}</span>
+                        <span class="text-[9px] font-black text-yellow-700">₹${stats.holdRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100 mb-1">${stats.dispatched}</span>
+                        <span class="text-[9px] font-black text-purple-700">₹${stats.dispatchedRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 mb-1">${stats.delivered}</span>
+                        <span class="text-[9px] font-black text-emerald-700">₹${stats.deliveredRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                         <span class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 mb-1">${stats.rto}</span>
+                         <span class="text-[9px] font-black text-indigo-700">₹${stats.rtoRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100 mb-1">${stats.cancelled}</span>
+                        <span class="text-[9px] font-black text-rose-700">₹${stats.cancelledRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <span class="font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100 whitespace-nowrap shadow-sm">₹${stats.revenue.toLocaleString()}</span>
+                </td>
+                <td class="px-4 py-4 text-right">
+                    <div class="flex flex-col items-end gap-1">
+                        <span class="text-xs font-bold ${conversionRate >= 50 ? 'text-emerald-600' : 'text-slate-500'}">${conversionRate}% Success</span>
+                        <div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500 rounded-full" style="width: ${conversionRate}%"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    tableHtml += `</tbody></table>`;
+    container.innerHTML = tableHtml;
 }
 
 // Chart Helper: City Distribution
@@ -7480,14 +7863,44 @@ function renderAnalyticsCities(orders) {
             labels: data.map(d => d[0]),
             datasets: [{
                 data: data.map(d => d[1]),
-                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                borderWidth: 1
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'right' } }
-        }
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { usePointStyle: true, font: { weight: '600' } }
+                }
+            }
+        },
+        plugins: [{
+            id: 'textOnSegments',
+            afterDatasetsDraw(chart, args, pluginOptions) {
+                const { ctx } = chart;
+                chart.data.datasets.forEach((dataset, i) => {
+                    const meta = chart.getDatasetMeta(i);
+                    meta.data.forEach((element, index) => {
+                        const value = dataset.data[index];
+                        if (value > 0) {
+                            const { x, y } = element.tooltipPosition();
+                            ctx.save();
+                            ctx.fillStyle = '#fff';
+                            ctx.font = 'bold 11px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                            ctx.shadowBlur = 3;
+                            ctx.fillText(value, x, y);
+                            ctx.restore();
+                        }
+                    });
+                });
+            }
+        }]
     });
 }
 
