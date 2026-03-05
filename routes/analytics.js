@@ -36,6 +36,8 @@ router.get('/dashboard', async (req, res) => {
         // 2. Filter for "Delivered in Range" (for Delivery Count & Efficiency)
         // We filter from 'allOrders' because delivery might happen for older orders
         let deliveredOrders = [];
+        let dispatchedOrders = []; // New: Track dispatched in range for consistency
+
         if (startDate && endDate) {
             const start = new Date(startDate);
             start.setHours(0, 0, 0, 0);
@@ -43,23 +45,32 @@ router.get('/dashboard', async (req, res) => {
             end.setHours(23, 59, 59, 999);
 
             deliveredOrders = allOrders.filter(o => {
-                if (o.status === 'Delivered' && o.deliveredAt) {
-                    const d = new Date(o.deliveredAt);
+                if (o.status === 'Delivered') {
+                    const dStr = o.deliveredAt || o.updatedAt || o.timestamp;
+                    const d = new Date(dStr);
                     return d >= start && d <= end;
                 }
                 return false;
             });
+
+            dispatchedOrders = allOrders.filter(o => {
+                if (o.status === 'Dispatched' || o.status === 'Delivered') {
+                    const dStr = o.dispatchedAt || o.updatedAt || o.timestamp;
+                    const d = new Date(dStr);
+                    return d >= start && d <= end;
+                }
+                return false;
+            });
+
         } else {
-            // If no range (default view), logically "Delivered Today"? 
-            // Or just all delivered? Usually dashboard defaults to Today if no range?
-            // Actually the frontend sends 'today' range by default.
-            // If strictly no range params, maybe return all delivered? 
-            // Let's stick to the same logic: if no range, use all.
+            // Default View (All Time / No Filter) - Logic remains same
             deliveredOrders = allOrders.filter(o => o.status === 'Delivered');
+            dispatchedOrders = allOrders.filter(o => o.status === 'Dispatched');
         }
 
         if (employeeId) {
             deliveredOrders = deliveredOrders.filter(o => o.employeeId === employeeId.toUpperCase());
+            dispatchedOrders = dispatchedOrders.filter(o => o.employeeId === employeeId.toUpperCase());
         }
 
 
@@ -112,9 +123,13 @@ router.get('/dashboard', async (req, res) => {
                 // Note: efficient filtering would ideally be outside loop
             }
 
-            // Delivered on this day
+            // Delivered on this day (Activity Based with Fallback)
             const dayDelivered = allOrders.filter(o => {
-                return o.status === 'Delivered' && o.deliveredAt && o.deliveredAt.startsWith(dateStr);
+                if (o.status === 'Delivered') {
+                    const dTime = o.deliveredAt || o.updatedAt || o.timestamp;
+                    return dTime.startsWith(dateStr);
+                }
+                return false;
             });
 
             timeline.push({
@@ -128,14 +143,47 @@ router.get('/dashboard', async (req, res) => {
         // Status Distribution (of the Created Orders in Range)
         // This shows "What happened to the orders created in this period?"
         // e.g. "Of orders created today, how many are already dispatched?"
+        // Activity Based Distribution (Matching Admin Panel)
+        // The user expects "Delivered" count in the chart to match the "Delivered" count in the sidebar/text.
+        // So we override the "Created & Delivered" logic with "Delivered in Range" logic.
+
+        // We need to fetch Cancelled and RTO in range as well for consistency if we want pure activity view.
+        // Let's do it for consistency.
+
+        const cancelledOrders = allOrders.filter(o => {
+            if (o.status === 'Cancelled') {
+                const d = new Date(o.cancellationInfo?.cancelledAt || o.updatedAt || o.timestamp);
+                if (startDate && endDate) {
+                    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+                    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+                    return d >= start && d <= end;
+                }
+                return true;
+            }
+            return false;
+        });
+
+        const rtoOrders = allOrders.filter(o => {
+            if (o.status === 'RTO') {
+                const d = new Date(o.rtoAt || o.updatedAt || o.timestamp);
+                if (startDate && endDate) {
+                    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+                    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+                    return d >= start && d <= end;
+                }
+                return true;
+            }
+            return false;
+        });
+
         const statusDistribution = {
-            total: createdOrders.length,
+            total: createdOrders.length, // Total Created (remains as context)
             pending: createdOrders.filter(o => o.status === 'Pending').length,
             verified: createdOrders.filter(o => o.status === 'Address Verified').length,
-            dispatched: createdOrders.filter(o => o.status === 'Dispatched').length,
-            delivered: createdOrders.filter(o => o.status === 'Delivered').length, // This is "Created & Delivered in period"
-            cancelled: createdOrders.filter(o => o.status === 'Cancelled').length,
-            rto: createdOrders.filter(o => o.status === 'RTO').length,
+            dispatched: dispatchedOrders.length, // Activity Based
+            delivered: deliveredOrders.length,   // Activity Based
+            cancelled: cancelledOrders.length,   // Activity Based
+            rto: rtoOrders.length,               // Activity Based
         };
 
         // Wait, for "Delivered Count" in the UI Card, user usually expects "Total Deliveries achieved in period".
@@ -181,10 +229,16 @@ router.get('/dashboard', async (req, res) => {
         const deliveredRevenue = deliveredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
 
         // UI "Today Stats" (Legacy Key) -> Mapped to filtered result
+        // UI "Today Stats" (Legacy Key) -> Mapped to filtered result
         const todayStats = {
             totalOrders: createdOrders.length,
             totalRevenue,
+            freshRevenue,
+            reorderRevenue,
+            freshCount,
+            reorderCount,
             delivered: deliveredOrders.length,
+            dispatched: dispatchedOrders.length, // Add dispatched count
             deliveredRevenue // Added for legacy support if needed
         };
 
@@ -200,6 +254,7 @@ router.get('/dashboard', async (req, res) => {
                 totalOrders: createdOrders.length,
                 totalRevenue, // Revenue of Created Orders
                 deliveredRevenue, // Revenue of Delivered Orders (NEW)
+                deliveredOrders: deliveredOrders.length, // Activity Based Delivered Count (NEW)
                 totalCustomers: new Set(createdOrders.map(o => o.mobileNumber || o.telNo)).size,
                 deliverySuccessRate: createdOrders.length > 0 ?
                     ((createdOrders.filter(o => o.status === 'Delivered').length / createdOrders.length) * 100).toFixed(1) : 0

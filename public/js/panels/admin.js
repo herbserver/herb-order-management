@@ -4,7 +4,7 @@
 let adminStatsCache = {
     data: null,
     timestamp: 0,
-    TTL: 2000 // 2 seconds cache - faster refresh
+    TTL: 0 // Disable cache to force fresh data
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -146,11 +146,25 @@ async function loadAdminStats(forceRefresh = false) {
         }
 
         // Fetch fresh data
-        const res = await fetch(`${API_URL}/admin/stats`);
+        // Default to Today if no range active/provided
+        // Actually, let's check if there's a global date filter?
+        // For now, let's hardcode 'Today' as default for the main dashboard view to match user expectation.
+        const today = new Date();
+        const formatDate = d => {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+        const activeDate = formatDate(today); // Default Today
+
+        // Check if analytic date range is set? Or just default to today.
+        // Let's use Today.
+        const res = await fetch(`${API_URL}/admin/stats?startDate=${activeDate}&endDate=${activeDate}&_t=${Date.now()}`);
         const data = await res.json();
 
         // Also fetch department stats for Today/Yesterday counters
-        const depRes = await fetch(`${API_URL}/admin/department-stats`);
+        const depRes = await fetch(`${API_URL}/admin/department-stats?_t=${Date.now()}`);
         const depData = await depRes.json();
 
         if (data.success) {
@@ -196,6 +210,11 @@ function updateAdminStatsUI(data) {
 
     updateCardStats('pendingCount', data.stats.pendingOrders, data.stats.pendingFresh, data.stats.pendingReorder);
     document.getElementById('dispatchedCount').innerText = data.stats.dispatchedOrders || 0;
+    document.getElementById('deliveredCount').innerText = data.stats.deliveredOrders || 0;
+
+    // Update other missing stats if elements exist
+    if (document.getElementById('cancelledCount')) document.getElementById('cancelledCount').innerText = data.stats.cancelledOrders || 0;
+    if (document.getElementById('onholdCount')) document.getElementById('onholdCount').innerText = data.stats.onHoldOrders || 0;
 
     // Update Pending Tab Revenue Stats
     updateRevenueStats('Pending',
@@ -771,7 +790,7 @@ async function fetchAnalyticsData() {
 
         console.log(`📊 Fetching analytics for ${dateRange}: ${startDate} to ${endDate}`);
 
-        const res = await fetch(`${API_URL}/analytics/dashboard?startDate=${startDate}&endDate=${endDate}`);
+        const res = await fetch(`${API_URL}/analytics/dashboard?startDate=${startDate}&endDate=${endDate}&_t=${Date.now()}`);
         const data = await res.json();
 
         if (data.success) {
@@ -799,7 +818,9 @@ function updateAnalyticsUI(data) {
     document.getElementById('analyticsTotalRevenue').innerText = '₹' + (quickStats.totalRevenue || 0).toLocaleString();
 
     // Delivery Rate
-    document.getElementById('analyticsDeliveryRate').innerText = (quickStats.deliverySuccessRate || 0) + '%';
+    // Delivery Rate / Count
+    // User wants to see "Delivered Count" matching the sidebar
+    document.getElementById('analyticsDeliveryRate').innerText = (quickStats.deliveredOrders || 0) + ' / ' + (quickStats.deliverySuccessRate || 0) + '%';
 
     // Delivered Revenue (Instead of Unique Customers)
     const delRevEl = document.getElementById('analyticsDeliveredRevenue');

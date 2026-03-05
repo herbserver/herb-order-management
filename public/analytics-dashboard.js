@@ -121,12 +121,20 @@ async function applyAnalyticsFilters() {
 
     try {
         const params = new URLSearchParams(currentFilters);
-        const res = await fetch(`${API_URL}/analytics/range?${params}`);
+        // Changed to use dashboard endpoint to get comprehensive data including charts
+        const res = await fetch(`${API_URL}/analytics/dashboard?${params}`);
         const data = await res.json();
 
         if (data.success) {
-            // Update stats display
-            updateFilteredStats(data.stats);
+            // Update all dashboard components
+            renderDashboardStats(data.today, 'FILTERED');
+            renderOrdersChart(data.charts.ordersTimeline);
+            renderEmployeeChart(data.charts.employeePerformance);
+            renderStatusChart(data.charts.statusDistribution);
+
+            if (data.quickStats) {
+                // Optional: Update other quick stats if displayed elsewhere
+            }
         }
     } catch (error) {
         console.error('Filter error:', error);
@@ -266,7 +274,7 @@ async function viewStuckOrders() {
 }
 
 // Render today's stats cards
-function renderDashboardStats(stats) {
+function renderDashboardStats(stats, label = 'TODAY') {
     const container = document.getElementById('dashboardStats');
     if (!container) return;
 
@@ -276,7 +284,7 @@ function renderDashboardStats(stats) {
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-3xl">📊</span>
-                    <span class="text-blue-100 text-sm font-bold">TODAY</span>
+                    <span class="text-blue-100 text-sm font-bold">${label}</span>
                 </div>
                 <h3 class="text-4xl font-black mb-1">${stats.totalOrders}</h3>
                 <p class="text-blue-100 text-sm font-medium">Total Orders</p>
@@ -286,7 +294,7 @@ function renderDashboardStats(stats) {
             <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-3xl">💰</span>
-                    <span class="text-green-100 text-sm font-bold">TODAY</span>
+                    <span class="text-green-100 text-sm font-bold">${label}</span>
                 </div>
                 <h3 class="text-4xl font-black mb-1">₹${stats.totalRevenue.toLocaleString()}</h3>
                 <p class="text-green-100 text-sm font-medium mb-3">Revenue</p>
@@ -306,9 +314,9 @@ function renderDashboardStats(stats) {
             <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-3xl">🚚</span>
-                    <span class="text-purple-100 text-sm font-bold">TODAY</span>
+                    <span class="text-purple-100 text-sm font-bold">${label}</span>
                 </div>
-                <h3 class="text-4xl font-black mb-1">${stats.dispatched}</h3>
+                <h3 class="text-4xl font-black mb-1">${stats.dispatched || 0}</h3>
                 <p class="text-purple-100 text-sm font-medium">Dispatched</p>
             </div>
             
@@ -316,7 +324,7 @@ function renderDashboardStats(stats) {
             <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-3xl">✅</span>
-                    <span class="text-emerald-100 text-sm font-bold">TODAY</span>
+                    <span class="text-emerald-100 text-sm font-bold">${label}</span>
                 </div>
                 <h3 class="text-4xl font-black mb-1">${stats.delivered}</h3>
                 <p class="text-emerald-100 text-sm font-medium">Delivered</p>
