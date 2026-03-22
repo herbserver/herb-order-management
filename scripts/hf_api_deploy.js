@@ -1,48 +1,18 @@
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
+require('dotenv').config();
 
 const TOKEN = process.env.HF_TOKEN;
 const REPO = 'spaces/herbon123/Ordermanagement';
-const BASE_URL = 'https://huggingface.co/api/' + REPO + '/upload/main/';
-
-async function uploadFile(filePath, relativePath) {
-    const content = fs.readFileSync(filePath);
-    const url = BASE_URL + relativePath.replace(/\\/g, '/');
-
-    return new Promise((resolve, reject) => {
-        const req = https.request(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${TOKEN}`,
-                'Content-Type': 'application/octet-stream'
-            }
-        }, (res) => {
-            let data = '';
-            res.on('data', d => data += d);
-            res.on('end', () => {
-                if (res.statusCode >= 200 && res.statusCode < 300) {
-                    console.log('✅ Uploaded: ' + relativePath);
-                    resolve();
-                } else {
-                    console.error('❌ Failed: ' + relativePath + ' (' + res.statusCode + ') ' + data);
-                    reject(data);
-                }
-            });
-        });
-
-        req.on('error', reject);
-        req.write(content);
-        req.end();
-    });
-}
+const BASE_URL = `https://huggingface.co/api/${REPO}/commit/main`;
 
 async function walk(dir, fileList = []) {
     const files = fs.readdirSync(dir);
     for (const file of files) {
         const fullPath = path.join(dir, file);
         if (fs.statSync(fullPath).isDirectory()) {
-            if (file !== 'node_modules' && file !== '.git') {
+            if (file !== 'node_modules' && file !== '.git' && file !== '_debug_archive') {
                 await walk(fullPath, fileList);
             }
         } else {
@@ -55,21 +25,58 @@ async function walk(dir, fileList = []) {
     return fileList;
 }
 
-async function deploy() {
-    console.log('🚀 Starting API-based deployment...');
-    const files = await walk(process.cwd());
-    console.log(`📦 Found ${files.length} files to upload.`);
-
-    // Upload in series to avoid rate limits
-    for (const file of files) {
+async function chunkAndCommit(operations) {
+    // Commit files in chunks of 50 to avoid payload size limit issues
+    const chunkSize = 50;
+    for (let i = 0; i < operations.length; i += chunkSize) {
+        const chunk = operations.slice(i, i + chunkSize);
+        console.log(`📦 Committing chunk ${Math.ceil(i/chunkSize) + 1}/${Math.ceil(operations.length/chunkSize)} (${chunk.length} files)...`);
+        
         try {
-            await uploadFile(file.fullPath, file.relPath);
-        } catch (e) {
-            console.error('Abort due to error');
-            break;
+            const response = await axios.post(BASE_URL, {
+                operations: chunk,
+                commit_message: `Deploy optimizations (Part ${Math.ceil(i/chunkSize) + 1})`
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log('✅ Chunk successful!');
+        } catch (error) {
+            console.error('❌ Chunk failed:', JSON.stringify(error.response?.data || error.message));
+            throw error;
         }
     }
-    console.log('🏁 Deployment complete!');
+}
+
+async function deploy() {
+    console.log('🚀 Starting API-based deployment...');
+    if (!TOKEN) {
+        console.error('❌ HF_TOKEN is missing in .env');
+        return;
+    }
+
+    const files = await walk(process.cwd());
+    const operations = [];
+
+    for (const file of files) {
+        const content = fs.readFileSync(file.fullPath);
+        const relativePath = file.relPath.replace(/\\/g, '/');
+        
+        operations.push({
+            key: relativePath,
+            value: content.toString('base64'),
+            encoding: 'base64'
+        });
+    }
+
+    try {
+        await chunkAndCommit(operations);
+        console.log('🏁 Deployment complete!');
+    } catch (e) {
+        console.error('Abort due to error');
+    }
 }
 
 deploy();
