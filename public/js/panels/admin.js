@@ -83,22 +83,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const activeTab = document.querySelector('.sidebar-btn.active')?.dataset.tab;
 
             if (activeTab === 'orders' || activeTab === 'pending' || activeTab === 'dispatch') {
-                // If on specific order list, refresh it
-                // Ideally we should just update the specific row, but for MVP we refresh list
-                // Debounce refresh to avoid spam
                 debouncedRefresh();
-            } else if (activeTab === 'analytics') {
-                loadAdminProgress(); // Refresh analytics
             }
-
-            // Always refresh stats counters in sidebar/header
-            loadAdminStats(true);
+            
+            debouncedStatsRefresh();
         });
 
         socket.on('order-created', (data) => {
             console.log('🔔 New Order Received:', data.orderId);
             showToast(`New Order Received: ${data.orderId}`);
-            loadAdminStats(true);
+            debouncedStatsRefresh();
             debouncedRefresh();
         });
 
@@ -112,12 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Debounce helper
+// Debounce helper for list refreshes
 let refreshTimeout;
 function debouncedRefresh() {
     clearTimeout(refreshTimeout);
     refreshTimeout = setTimeout(() => {
-        // Determine which list to refresh
         if (!document.getElementById('pendingOrdersTab').classList.contains('hidden')) loadPendingOrders();
         else if (!document.getElementById('verifiedOrdersTab').classList.contains('hidden')) loadVerifiedOrders();
         else if (!document.getElementById('dispatchedOrdersTab').classList.contains('hidden')) loadDispatchedOrders();
@@ -125,8 +118,19 @@ function debouncedRefresh() {
     }, 500);
 }
 
+// Debounce helper for stats/analytics refreshes
+let statsRefreshTimeout;
+function debouncedStatsRefresh() {
+    clearTimeout(statsRefreshTimeout);
+    statsRefreshTimeout = setTimeout(() => {
+        loadAdminStats(true);
+        if (!document.getElementById('adminProgressTab').classList.contains('hidden')) {
+            loadAdminProgress();
+        }
+    }, 2000); // 2 second delay for stats to settle
+}
+
 function showToast(message) {
-    // Simple toast notification
     const div = document.createElement('div');
     div.className = 'fixed top-5 right-5 bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-xl z-50 animate-bounce';
     div.innerText = message;

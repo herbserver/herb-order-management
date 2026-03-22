@@ -215,52 +215,83 @@ async function getOrderById(orderId) {
     return orders.find(o => o.orderId === orderId);
 }
 
-// ==================== STATS OPTIMIZATION ====================
-// Used for Admin Dashboard and Analytics to avoid fetching 10,000+ orders
-async function getOrdersForStats(startDate, endDate) {
-    if (!startDate || !endDate) return await getAllOrders(); // fallback to all if no dates
-    
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-    
-    if (mongoConnected) {
-        const query = {
-            $or: [
-                { timestamp: { $gte: start.toISOString(), $lte: end.toISOString() } },
-                { updatedAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
-                { updatedAt: { $gte: start, $lte: end } },
-                { dispatchedAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
-                { deliveredAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
-                { 'holdDetails.holdAt': { $gte: start.toISOString(), $lte: end.toISOString() } },
-                { verifiedAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
-                { rtoAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
-                { 'cancellationInfo.cancelledAt': { $gte: start.toISOString(), $lte: end.toISOString() } }
-            ]
-        };
-        return await Order.find(query).sort({ timestamp: -1 }).lean();
+// Optimized: Use MongoDB Aggregation for Dashboard Stats
+async function getDashboardStats(startDate = null, endDate = null) {
+    if (!mongoConnected) {
+        // Fallback to simpler (but potentially slow) JSON stats if needed
+        // For now, let's keep it simple as MongoDB is the primary target
+        return null;
     }
-    
-    // JSON Fallback
-    const orders = loadCache('orders', path.join(__dirname, 'data', 'orders.json'), []);
-    return orders.filter(o => {
-        const datesToCheck = [
-            o.timestamp,
-            o.updatedAt,
-            o.dispatchedAt,
-            o.deliveredAt,
-            o.verifiedAt,
-            o.rtoAt,
-            o.holdDetails?.holdAt,
-            o.cancellationInfo?.cancelledAt
-        ].filter(Boolean); // Keep only present dates
 
-        return datesToCheck.some(dStr => {
-            const d = new Date(dStr);
-            return d >= start && d <= end;
-        });
-    });
+    let dateQuery = {};
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        dateQuery.timestamp = { $gte: start.toISOString(), $lte: end.toISOString() };
+    }
+
+    try {
+        const isReorder = { $in: ["$orderType", ["Reorder", "REORDER"]] };
+        const isFresh = { $not: [{ $in: ["$orderType", ["Reorder", "REORDER"]] }] };
+
+        const stats = await Order.aggregate([
+            { $match: dateQuery },
+            {
+                $group: {
+                    _id: null,
+                    totalOrders: { $sum: 1 },
+                    totalFresh: { $sum: { $cond: [isFresh, 1, 0] } },
+                    totalReorder: { $sum: { $cond: [isReorder, 1, 0] } },
+                    freshRevenue: { $sum: { $cond: [isFresh, { $ifNull: ["$total", 0] }, 0] } },
+                    reorderRevenue: { $sum: { $cond: [isReorder, { $ifNull: ["$total", 0] }, 0] } },
+                    
+                    pendingOrders: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
+                    pendingFresh: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Pending"] }, isFresh] }, 1, 0] } },
+                    pendingReorder: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Pending"] }, isReorder] }, 1, 0] } },
+                    pendingFreshRevenue: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Pending"] }, isFresh] }, { $ifNull: ["$total", 0] }, 0] } },
+                    pendingReorderRevenue: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Pending"] }, isReorder] }, { $ifNull: ["$total", 0] }, 0] } },
+
+                    verifiedOrders: { $sum: { $cond: [{ $in: ["$status", ["Address Verified", "Verified"]] }, 1, 0] } },
+                    verifiedFreshRevenue: { $sum: { $cond: [{ $and: [{ $in: ["$status", ["Address Verified", "Verified"]] }, isFresh] }, { $ifNull: ["$total", 0] }, 0] } },
+                    verifiedReorderRevenue: { $sum: { $cond: [{ $and: [{ $in: ["$status", ["Address Verified", "Verified"]] }, isReorder] }, { $ifNull: ["$total", 0] }, 0] } },
+
+                    dispatchedOrders: { $sum: { $cond: [{ $eq: ["$status", "Dispatched"] }, 1, 0] } },
+                    dispatchedFreshRevenue: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Dispatched"] }, isFresh] }, { $ifNull: ["$total", 0] }, 0] } },
+                    dispatchedReorderRevenue: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Dispatched"] }, isReorder] }, { $ifNull: ["$total", 0] }, 0] } },
+
+                    deliveredOrders: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },
+                    deliveredFreshRevenue: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Delivered"] }, isFresh] }, { $ifNull: ["$total", 0] }, 0] } },
+                    deliveredReorderRevenue: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Delivered"] }, isReorder] }, { $ifNull: ["$total", 0] }, 0] } },
+
+                    cancelledOrders: { $sum: { $cond: [{ $eq: ["$status", "Cancelled"] }, 1, 0] } },
+                    onHoldOrders: { $sum: { $cond: [{ $eq: ["$status", "On Hold"] }, 1, 0] } }
+                }
+            }
+        ]);
+
+        return stats[0] || {
+            totalOrders: 0, totalFresh: 0, totalReorder: 0, freshRevenue: 0, reorderRevenue: 0,
+            pendingOrders: 0, pendingFresh: 0, pendingReorder: 0, pendingFreshRevenue: 0, pendingReorderRevenue: 0,
+            verifiedOrders: 0, verifiedFreshRevenue: 0, verifiedReorderRevenue: 0,
+            dispatchedOrders: 0, dispatchedFreshRevenue: 0, dispatchedReorderRevenue: 0,
+            deliveredOrders: 0, deliveredFreshRevenue: 0, deliveredReorderRevenue: 0,
+            cancelledOrders: 0, onHoldOrders: 0
+        };
+    } catch (e) {
+        console.error('❌ Aggregation error:', e);
+        return null;
+    }
+}
+
+// Legacy wrapper or for specific date ranges
+async function getOrdersForStats(startDate, endDate) {
+    if (!startDate || !endDate) return await getAllOrders();
+    // Implementation can be simple find since it's used for exports/logs mostly now
+    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+    return await Order.find({ timestamp: { $gte: start.toISOString(), $lte: end.toISOString() } }).lean();
 }
 
 // Optimized: Filter in memory with Pagination and Date Range
@@ -600,6 +631,7 @@ module.exports = {
     getOrderById,
     getOrdersByStatus,
     getOrdersForStats,
+    getDashboardStats,
     findOrderByMobile,
     createOrder,
     updateOrder,

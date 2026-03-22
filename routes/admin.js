@@ -60,179 +60,31 @@ router.get('/history', async (req, res) => {
     }
 });
 
-// Get Dashboard Stats
-// Get Dashboard Stats with Enhanced Date Filtering (Activity Based)
+// Get Dashboard Stats with Enhanced Performance
 router.get('/stats', async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let allOrders = await dataAccess.getOrdersForStats(startDate, endDate);
-
-        let createdOrders = [...allOrders];
-        let deliveredOrders = [];
-        let dispatchedOrders = [];
-        let cancelledOrders = [];
-        let onHoldOrders = [];
-        let pendingOrders = [];
-        let verifiedOrders = [];
-
-        // --- FILTER LOGIC ---
-        if (startDate && endDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-
-            // 1. Total (Created)
-            createdOrders = allOrders.filter(o => {
-                const d = new Date(o.timestamp);
-                return d >= start && d <= end;
-            });
-
-            // 2. Delivered (Activity Based) - IMPROVED
-            deliveredOrders = allOrders.filter(o => {
-                if (o.status === 'Delivered') {
-                    // Use deliveredAt, fallback to updatedAt, then timestamp
-                    const dStr = o.deliveredAt || o.updatedAt || o.timestamp;
-                    const d = new Date(dStr);
-                    return d >= start && d <= end;
-                }
-                return false;
-            });
-
-            // 3. Dispatched (Activity Based) - IMPROVED
-            dispatchedOrders = allOrders.filter(o => {
-                if (o.status === 'Dispatched' || o.status === 'Delivered') {
-                    // Use dispatchedAt, fallback to updatedAt, then timestamp
-                    // improved check: Only count if dispatchedAt exists OR if status is Dispatched (meaning it happened recently if we use updatedAt)
-                    // If status is Delivered, we only count as dispatched if dispatchedAt is in range.
-
-                    let dStr = o.dispatchedAt;
-                    if (!dStr && o.status === 'Dispatched') dStr = o.updatedAt || o.timestamp;
-
-                    if (dStr) {
-                        const d = new Date(dStr);
-                        return d >= start && d <= end;
-                    }
-                }
-                return false;
-            });
-
-            // 4. Cancelled (Activity Based) - Fallback to updatedAt if cancelledAt missing
-            cancelledOrders = allOrders.filter(o => {
-                if (o.status === 'Cancelled') {
-                    const dStr = (o.cancellationInfo && o.cancellationInfo.cancelledAt) || o.updatedAt || o.timestamp;
-                    const d = new Date(dStr);
-                    return d >= start && d <= end;
-                }
-                return false;
-            });
-
-            // 5. On Hold (Activity Based)
-            onHoldOrders = allOrders.filter(o => {
-                if (o.status === 'On Hold') {
-                    const dStr = (o.holdDetails && o.holdDetails.holdAt) || o.updatedAt || o.timestamp;
-                    const d = new Date(dStr);
-                    return d >= start && d <= end;
-                }
-                return false;
-            });
-
-            // 6. Pending & Verified (Usually concerned with current state created in range)
-            // Or strictly current status? Let's use current status of created orders for these.
-            pendingOrders = createdOrders.filter(o => o.status === 'Pending');
-            verifiedOrders = createdOrders.filter(o => o.status === 'Address Verified');
-
-        } else {
-            // Default: All Time / Current Snapshot
-            createdOrders = allOrders;
-            deliveredOrders = allOrders.filter(o => o.status === 'Delivered');
-            dispatchedOrders = allOrders.filter(o => o.status === 'Dispatched'); // Note: This only counts CURRENTLY dispatched. 
-            // Ideally 'dispatched' should include delivered too for "Total Dispatched", but preserving legacy behavior logic for 'snapshot'.
-            // Actually, for consistency, let's keep it simple: Status === 'Dispatched'.
-            // Wait, previous logic was just filter by status. 
-
-            cancelledOrders = allOrders.filter(o => o.status === 'Cancelled');
-            onHoldOrders = allOrders.filter(o => o.status === 'On Hold');
-            pendingOrders = allOrders.filter(o => o.status === 'Pending');
-            verifiedOrders = allOrders.filter(o => o.status === 'Address Verified');
-        }
-
+        
+        // Use MongoDB Aggregation for core stats (fast)
+        const stats = await dataAccess.getDashboardStats(startDate, endDate);
+        
+        // Supplemental stats (Metadata)
         const departments = await dataAccess.getAllDepartments();
         let totalEmployees = 0;
         departments.forEach(d => {
             if (d.employees) totalEmployees += Object.keys(d.employees).length;
         });
 
-        const now = new Date();
-        const thisMonth = allOrders.filter(o => {
-            const orderDate = new Date(o.timestamp);
-            return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-        });
-
-        // Calculate Revenue from Created Orders (Standard)
-        // Calculate Fresh vs Re-order (from Created Orders for consistency with Total Orders)
-        let totalFresh = 0, totalReorder = 0;
-        let freshRevenue = 0, reorderRevenue = 0;
-
-        createdOrders.forEach(o => {
-            if (!o.orderType) return;
-            // Handle both old format (NEW, REORDER) and new format (Fresh, Reorder)
-            const isReorder = o.orderType === 'Reorder' || o.orderType === 'REORDER';
-            const orderTotal = o.total || 0;
-
-            if (isReorder) {
-                totalReorder++;
-                reorderRevenue += orderTotal;
-            } else {
-                totalFresh++;
-                freshRevenue += orderTotal;
-            }
-        });
-
-        // Helper for status revenue (using the specific lists)
-        const calcRev = (list) => {
-            let fresh = 0, reorder = 0;
-            list.forEach(o => {
-                if (!o.orderType) return;
-                const isReorder = o.orderType === 'Reorder' || o.orderType === 'REORDER';
-                if (isReorder) reorder += (o.total || 0);
-                else fresh += (o.total || 0);
-            });
-            return { fresh, reorder };
-        };
-
-        const pendingRev = calcRev(pendingOrders);
-        const verifiedRev = calcRev(verifiedOrders);
-        const dispatchedRev = calcRev(dispatchedOrders);
-        const deliveredRev = calcRev(deliveredOrders);
+        if (!stats) {
+            return res.status(500).json({ success: false, message: 'Failed to calculate stats' });
+        }
 
         res.json({
             success: true,
             stats: {
-                totalOrders: createdOrders.length,
-                totalFresh,
-                totalReorder,
-                freshRevenue,
-                reorderRevenue,
-                pendingOrders: pendingOrders.length,
-                pendingFresh: pendingOrders.filter(o => (o.orderType !== 'Reorder' && o.orderType !== 'REORDER')).length, // approx
-                pendingReorder: pendingOrders.filter(o => (o.orderType === 'Reorder' || o.orderType === 'REORDER')).length, // approx
-                pendingFreshRevenue: pendingRev.fresh,
-                pendingReorderRevenue: pendingRev.reorder,
-                verifiedOrders: verifiedOrders.length,
-                verifiedFreshRevenue: verifiedRev.fresh,
-                verifiedReorderRevenue: verifiedRev.reorder,
-                dispatchedOrders: dispatchedOrders.length,
-                dispatchedFreshRevenue: dispatchedRev.fresh,
-                dispatchedReorderRevenue: dispatchedRev.reorder,
-                deliveredOrders: deliveredOrders.length,
-                deliveredFreshRevenue: deliveredRev.fresh,
-                deliveredReorderRevenue: deliveredRev.reorder,
-                cancelledOrders: cancelledOrders.length,
-                onHoldOrders: onHoldOrders.length,
-                totalEmployees: totalEmployees,
-                totalDepartments: departments.length,
-                thisMonthOrders: thisMonth.length
+                ...stats,
+                totalEmployees,
+                totalDepartments: departments.length
             }
         });
     } catch (e) {
