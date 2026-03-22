@@ -138,6 +138,7 @@ const orderSchema = new mongoose.Schema({
     },
 
     // Misc
+    remark: String,
     updatedAt: String
 }, {
     timestamps: true,

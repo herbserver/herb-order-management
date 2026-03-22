@@ -447,7 +447,8 @@ function generateAdminOrderCard(o) {
             <div class="flex items-start gap-2 text-xs text-gray-600">
                 <span>📍</span> <span class="truncate line-clamp-1">${o.address}, ${o.city}</span>
             </div>
-             ${o.remark ? `<div class="mt-2 bg-yellow-50 border border-yellow-100 p-2 rounded-lg text-xs text-yellow-800"><strong>📝 Note:</strong> ${o.remark}</div>` : ''}
+             ${o.remark ? `<div class="mt-2 bg-rose-50 border border-rose-100 p-2 rounded-lg text-xs text-rose-800"><strong>💬 Employee Note:</strong> ${o.remark}</div>` : ''}
+             ${o.verificationRemark?.text ? `<div class="mt-2 bg-blue-50 border border-blue-100 p-2 rounded-lg text-xs text-blue-800"><strong>📝 Verification:</strong> ${o.verificationRemark.text}</div>` : ''}
         </div>
 
         <div class="flex gap-2 mt-3">
@@ -512,7 +513,7 @@ async function loadAdminOrdersGeneric(status, containerId, pageKey, page) {
         }
 
         container.innerHTML = orders.map(generateAdminOrderCard).join('');
-        renderPaginationControls(container, currentPage, totalPages, `loadAdmin${status.replace('Address ', '')}`); // Handle 'Verified' name mapping
+        renderPaginationControls(container, currentPage, totalPages, `loadAdmin${status.replace('Address ', '').replace(' ', '')}`); // Handle 'Verified' and 'OnHold' name mapping
 
     } catch (e) {
         console.error(`Error loading admin ${status}:`, e);

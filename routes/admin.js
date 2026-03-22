@@ -68,7 +68,7 @@ router.get('/history', async (req, res) => {
 router.get('/stats', async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-        let allOrders = await dataAccess.getAllOrders();
+        let allOrders = await dataAccess.getOrdersForStats(startDate, endDate);
 
         let createdOrders = [...allOrders];
         let deliveredOrders = [];
@@ -248,7 +248,9 @@ router.get('/stats', async (req, res) => {
 // Get Department-specific Daily Stats
 router.get('/department-stats', async (req, res) => {
     try {
-        let orders = await dataAccess.getAllOrders();
+        const last7DaysQuery = new Date();
+        last7DaysQuery.setDate(last7DaysQuery.getDate() - 7);
+        let orders = await dataAccess.getOrdersForStats(last7DaysQuery.toISOString(), new Date().toISOString());
 
         // Helper to get date string YYYY-MM-DD
         const getDateStr = (d) => new Date(d).toISOString().split('T')[0];

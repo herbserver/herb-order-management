@@ -215,6 +215,54 @@ async function getOrderById(orderId) {
     return orders.find(o => o.orderId === orderId);
 }
 
+// ==================== STATS OPTIMIZATION ====================
+// Used for Admin Dashboard and Analytics to avoid fetching 10,000+ orders
+async function getOrdersForStats(startDate, endDate) {
+    if (!startDate || !endDate) return await getAllOrders(); // fallback to all if no dates
+    
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    
+    if (mongoConnected) {
+        const query = {
+            $or: [
+                { timestamp: { $gte: start.toISOString(), $lte: end.toISOString() } },
+                { updatedAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
+                { updatedAt: { $gte: start, $lte: end } },
+                { dispatchedAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
+                { deliveredAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
+                { 'holdDetails.holdAt': { $gte: start.toISOString(), $lte: end.toISOString() } },
+                { verifiedAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
+                { rtoAt: { $gte: start.toISOString(), $lte: end.toISOString() } },
+                { 'cancellationInfo.cancelledAt': { $gte: start.toISOString(), $lte: end.toISOString() } }
+            ]
+        };
+        return await Order.find(query).sort({ timestamp: -1 });
+    }
+    
+    // JSON Fallback
+    const orders = loadCache('orders', path.join(__dirname, 'data', 'orders.json'), []);
+    return orders.filter(o => {
+        const datesToCheck = [
+            o.timestamp,
+            o.updatedAt,
+            o.dispatchedAt,
+            o.deliveredAt,
+            o.verifiedAt,
+            o.rtoAt,
+            o.holdDetails?.holdAt,
+            o.cancellationInfo?.cancelledAt
+        ].filter(Boolean); // Keep only present dates
+
+        return datesToCheck.some(dStr => {
+            const d = new Date(dStr);
+            return d >= start && d <= end;
+        });
+    });
+}
+
 // Optimized: Filter in memory with Pagination and Date Range
 async function getOrdersByStatus(status, page = 1, limit = 0, startDate = null, endDate = null) {
     // Map status to its corresponding date field
@@ -551,6 +599,7 @@ module.exports = {
     getAllOrders,
     getOrderById,
     getOrdersByStatus,
+    getOrdersForStats,
     findOrderByMobile,
     createOrder,
     updateOrder,

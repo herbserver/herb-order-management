@@ -166,9 +166,9 @@ function calculateTotal() {
 }
 
 function calculateCOD() {
-    const total = Number(document.getElementById('total').value);
-    const advance = Number(document.getElementById('advancePaid').value || 0);
-    document.getElementById('codAmount').value = total - advance;
+    const total = Number(document.getElementById('totalAmountInput').value) || 0;
+    const advance = Number(document.querySelector('input[name="advance"]').value) || 0;
+    document.querySelector('input[name="codAmount"]').value = total - advance;
 }
 
 async function saveOrder() {
@@ -239,10 +239,10 @@ async function saveOrder() {
         landMark: form.landMark.value,
 
         items: items,
-        total: Number(form.total.value),
-        advance: Number(form.advancePaid.value),
+        total: Number(document.getElementById('totalAmountInput').value),
+        advance: Number(form.advance.value),
         cod: Number(form.codAmount.value),
-        remark: form.remark.value,
+        remark: document.getElementById('employeeRemark').value,
         // Capture Manual Order Type
         orderType: document.querySelector('input[name="orderType"]:checked')?.value === 'NEW' ? 'Fresh' : 'Reorder'
     };

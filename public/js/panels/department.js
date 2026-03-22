@@ -181,7 +181,7 @@ async function loadRTOOrders(page = null) {
 
         let html = '';
         orders.forEach(o => {
-            html += renderDeliveryCardModern(o);
+            html += generateOrderCardHTML(o);
         });
         container.innerHTML = html;
         renderPaginationControls(container, currentPage, totalPages, 'loadRTOOrders');
@@ -378,7 +378,7 @@ async function loadOnWayOrders(page = null) {
 
         let html = '';
         orders.forEach(order => {
-            html += renderDeliveryCardModern(order);
+            html += generateOrderCardHTML(order);
         });
         container.innerHTML = html;
         renderPaginationControls(container, currentPage, totalPages, 'loadOnWayOrders');
@@ -443,7 +443,7 @@ async function loadOFDOrders(page = null) {
         let html = syncBtnHtml || '';
         orders.forEach(order => {
             console.log('🎨 Rendering card for:', order.orderId);
-            html += renderDeliveryCardModern(order);
+            html += generateOrderCardHTML(order);
         });
         container.innerHTML = html;
         console.log('✅ Container updated with HTML');
@@ -496,13 +496,13 @@ async function loadDeliveryPerformance() {
     // ... logic from app.js ...
     // Using simple version
     try {
-        const res = await fetch(`${API_URL}/orders/delivered`);
+        const res = await fetch(`${API_URL}/orders/delivered?limit=1`);
         const data = await res.json();
-        let orders = data.orders || [];
+        let total = data.pagination ? data.pagination.total : (data.orders ? data.orders.length : 0);
         document.getElementById('deliveryPerformanceData').innerHTML = `
             <div class="glass-card p-6 bg-white border rounded-xl">
                 <h4 class="font-bold text-lg mb-4">📊 Performance Overview</h4>
-                <p class="text-gray-600">Total Deliveries: <span class="font-bold text-green-600">${orders.length}</span></p>
+                <p class="text-gray-600">Total Deliveries: <span class="font-bold text-green-600">${total}</span></p>
             </div>`;
     } catch (e) { }
 }
@@ -695,7 +695,7 @@ async function loadDeptOrders(page = null) {
             pageKey = 'verification';
         }
         else if (currentDeptType === 'dispatch') {
-            statusFilter = 'Dispatched'; // Orders ready for dispatch (in MongoDB)
+            statusFilter = 'Address Verified'; // Orders ready for dispatch (in MongoDB)
             pageKey = 'dispatchReady';
         }
         else if (currentDeptType === 'delivery') {
@@ -726,11 +726,11 @@ async function loadDeptOrders(page = null) {
                 renderPaginationControls(container, currentPage, totalPages, 'loadDeptOrders');
             } else {
                 if (currentDeptType === 'verification') {
-                    container.innerHTML = filteredOrders.map(o => renderVerificationCardModern(o)).join('');
+                    container.innerHTML = filteredOrders.map(o => renderVerificationCard(o)).join('');
                 } else if (currentDeptType === 'dispatch') {
-                    container.innerHTML = filteredOrders.map(o => renderDispatchCardModern(o)).join('');
+                    container.innerHTML = filteredOrders.map(o => renderDispatchCard(o)).join('');
                 } else if (currentDeptType === 'delivery') {
-                    container.innerHTML = filteredOrders.map(o => renderDeliveryCardModern(o)).join('');
+                    container.innerHTML = filteredOrders.map(o => generateOrderCardHTML(o)).join('');
                 }
 
                 // Append Pagination Controls
@@ -1331,12 +1331,12 @@ window.loadRTOOrders = loadRTOOrders;
 // ==================== DELIVERY BADGE UPDATES ====================
 async function updateDeliveryBadges() {
     try {
-        // Fetch all delivery-related status counts
+        // Fetch all delivery-related status counts using limit=1 to avoid huge data loads
         const [onwayRes, ofdRes, deliveredRes, rtoRes] = await Promise.all([
-            fetch(`${API_URL}/orders/dispatched`),
-            fetch(`${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}`),
-            fetch(`${API_URL}/orders/delivered`),
-            fetch(`${API_URL}/orders?status=RTO`)
+            fetch(`${API_URL}/orders/dispatched?limit=1`),
+            fetch(`${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}&limit=1`),
+            fetch(`${API_URL}/orders/delivered?limit=1`),
+            fetch(`${API_URL}/orders/rto?limit=1`)
         ]);
 
         const onwayData = await onwayRes.json();
@@ -1344,10 +1344,11 @@ async function updateDeliveryBadges() {
         const deliveredData = await deliveredRes.json();
         const rtoData = await rtoRes.json();
 
-        const onwayCount = onwayData.orders ? onwayData.orders.length : 0;
-        const ofdCount = ofdData.orders ? ofdData.orders.length : 0;
-        const deliveredCount = deliveredData.orders ? deliveredData.orders.length : 0;
-        const rtoCount = rtoData.orders ? rtoData.orders.length : 0;
+        // Fallback robustly: if pagination exists, use total, else use orders array length
+        const onwayCount = onwayData.pagination ? onwayData.pagination.total : (onwayData.orders ? onwayData.orders.length : 0);
+        const ofdCount = ofdData.pagination ? ofdData.pagination.total : (ofdData.orders ? ofdData.orders.length : 0);
+        const deliveredCount = deliveredData.pagination ? deliveredData.pagination.total : (deliveredData.orders ? deliveredData.orders.length : 0);
+        const rtoCount = rtoData.pagination ? rtoData.pagination.total : (rtoData.orders ? rtoData.orders.length : 0);
 
         // Update badge elements (IDs should match your HTML)
         const badges = {

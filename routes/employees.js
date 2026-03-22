@@ -160,9 +160,12 @@ router.get('/:empId', async (req, res) => {
         // Helper to fetch full list for stats if we are paginating
         let allOrdersForStats = empOrders;
         if (limit > 0) {
-            // If paginating, we need to fetch ALL matching orders to calculate correct stats totals
-            // This is a bit expensive but necessary for correct numbers with date filters
-            allOrdersForStats = await dataAccess.getEmployeeOrders(id, req.query.status || null, 1, 0, startDate, endDate);
+            // Fetch only necessary orders for stats using getOrdersForStats instead of all orders
+            allOrdersForStats = await dataAccess.getOrdersForStats(startDate, endDate);
+            allOrdersForStats = allOrdersForStats.filter(o => o.employeeId === id);
+            if (req.query.status) {
+                allOrdersForStats = allOrdersForStats.filter(o => o.status === req.query.status);
+            }
         }
 
         if (allOrdersForStats && allOrdersForStats.length > 0) {

@@ -13,6 +13,9 @@ function renderDeliveryCardModern(o) {
     const trackingId = o.shiprocket?.awb || o.tracking?.trackingId;
     const hasTracking = !!trackingId;
 
+    // Robust employee remark collection
+    const eRemark = o.remark || (o.remarks && o.remarks.length > 0 ? o.remarks[0].text : '');
+
     // Get tracking status badge
     let statusBadge = '';
     if (o.tracking && o.tracking.currentStatus) {
@@ -67,6 +70,27 @@ function renderDeliveryCardModern(o) {
         </div>
         ` : ''}
 
+        <!-- Employee Note -->
+        ${eRemark ? `
+        <div class="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 mb-4 relative overflow-hidden group/note shadow-sm">
+            <div class="absolute top-0 right-0 bg-rose-500 text-white px-3 py-0.5 rounded-bl-xl text-[8px] font-black uppercase tracking-widest">Employee Note</div>
+            <div class="flex items-start gap-3">
+                <span class="text-xl">💬</span>
+                <div>
+                   <p class="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Created By: ${o.employee || 'Staff'}</p>
+                   <p class="text-xs text-rose-900 font-bold italic leading-relaxed">"${eRemark}"</p>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+
+        ${o.verificationRemark?.text ? `
+        <div class="bg-yellow-50 border border-yellow-200 p-3 rounded-xl mb-4 relative z-10">
+            <p class="text-[10px] text-yellow-600 font-bold uppercase mb-1">📝 Verification Note</p>
+            <p class="text-xs text-yellow-800 font-medium">"${o.verificationRemark.text}"</p>
+        </div>
+        ` : ''}
+
         <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-5 space-y-2 relative z-10">
             <div class="flex items-start gap-2">
                 <span class="text-base">📍</span>
@@ -117,12 +141,11 @@ function renderDeliveryCardModern(o) {
                 `}
             </div>
             <button onclick="markAsDelivered('${o.orderId}')" 
-                class="bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold py-4 rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transform active:scale-95 flex items-center justify-center gap-2 text-base">
-                <span>✅</span> Delivered
+                class="bg-gradient-to-r from-emerald-500 to-green-600 text-white font-black py-4 rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-3">
+                <span class="text-xl">✨</span> MARK DELIVERED
             </button>
         </div>
     </div>`;
 }
 
 window.renderDeliveryCardModern = renderDeliveryCardModern;
-console.log('✅ Delivery Card Renderer Loaded');

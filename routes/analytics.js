@@ -9,8 +9,22 @@ router.get('/dashboard', async (req, res) => {
     try {
         const { startDate, endDate, employeeId } = req.query;
 
-        // Get all orders using dataAccess
-        const allOrders = await dataAccess.getAllOrders();
+        // Ensure we fetch at least the last 7 days for the timeline chart
+        let fetchStart = startDate ? new Date(startDate) : null;
+        const last7DaysDate = new Date();
+        last7DaysDate.setDate(last7DaysDate.getDate() - 7);
+        
+        if (fetchStart) {
+            if (last7DaysDate < fetchStart) {
+                fetchStart = last7DaysDate;
+            }
+        }
+        
+        // Get orders efficiently for the required period
+        const allOrders = await dataAccess.getOrdersForStats(
+            fetchStart ? fetchStart.toISOString() : null, 
+            endDate || new Date().toISOString()
+        );
 
         // 1. Filter for "Created in Range" (for Total, Pending, Revenue etc.)
         let createdOrders = [...allOrders];
@@ -317,7 +331,7 @@ router.get('/missing-orders', async (req, res) => {
 router.get('/range', async (req, res) => {
     try {
         const { startDate, endDate, employeeId } = req.query;
-        let orders = await dataAccess.getAllOrders();
+        let orders = await dataAccess.getOrdersForStats(startDate, endDate);
 
         if (startDate && endDate) {
             const start = new Date(startDate);
