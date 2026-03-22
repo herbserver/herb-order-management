@@ -12,51 +12,48 @@ const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 // Get Order History (with filters)
 router.get('/history', async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 0;
         let orders = [];
+        let total = 0;
 
         // Optimization: Use efficient lookup if status is provided
         if (req.query.status) {
-            orders = await dataAccess.getOrdersByStatus(req.query.status);
+            const result = await dataAccess.getOrdersByStatus(req.query.status, page, limit, req.query.startDate, req.query.endDate);
+            if (limit > 0 && result.orders) {
+                orders = result.orders;
+                total = result.total;
+            } else {
+                orders = result;
+                total = orders.length;
+            }
         } else {
-            try {
-                orders = await dataAccess.getAllOrders();
-            } catch (e) {
-                orders = readJSON(ORDERS_FILE, []);
+            const result = await dataAccess.getAllOrders(page, limit, req.query.startDate, req.query.endDate);
+            if (limit > 0 && result.orders) {
+                orders = result.orders;
+                total = result.total;
+            } else {
+                orders = result;
+                total = orders.length;
             }
         }
 
         let filteredOrders = [...orders];
 
-        if (req.query.date) {
-            filteredOrders = filteredOrders.filter(o => {
-                const orderDate = new Date(o.timestamp).toISOString().split('T')[0];
-                return orderDate === req.query.date;
-            });
-        }
-
         if (req.query.employee) {
             filteredOrders = filteredOrders.filter(o => o.employeeId === req.query.employee.toUpperCase());
         }
 
-        // Status filter is already applied if we used the optimized path, 
-        // but if we fell back (no status provided but filtered later? No, req.query.status is the switch)
-        // If we didn't use optimized path, we need to filter.
-        // If we DID use optimized path, filteredOrders already has only that status.
-        // Double filtering is safe but redundant.
-        if (!req.query.status && req.query.status) {
-            // This block is unreachable logically based on above if-else, 
-            // but if we had complex logic, we'd check.
-            // Actually, if we fetch all, we MUST filter by status if it was somehow skipped (impossible here).
-        }
-
-        // Wait, if I fetched by status, I don't need to filter by status again.
-        // But if I fetched ALL (else block), I verified req.query.status is falsy.
-        // So no status filter needed in else block either? 
-        // Ah, what if req.query.status is NOT provided? Then we fetch ALL.
-        // AND we don't filter by status. Correct.
-
-        filteredOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        res.json({ success: true, orders: filteredOrders });
+        res.json({ 
+            success: true, 
+            orders: filteredOrders,
+            pagination: limit > 0 ? {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            } : null
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server error' });
