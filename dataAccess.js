@@ -64,7 +64,7 @@ function updateCacheAndDisk(key, filePath, data) {
 
 async function getDepartment(departmentId) {
     if (mongoConnected) {
-        return await Department.findOne({ departmentId });
+        return await Department.findOne({ departmentId }).lean();
     }
     // Fallback to JSON (Cached)
     const depts = loadCache('departments', path.join(__dirname, 'data', 'departments.json'), {});
@@ -77,7 +77,7 @@ async function getDepartment(departmentId) {
 
 async function getAllDepartments() {
     if (mongoConnected) {
-        return await Department.find({});
+        return await Department.find({}).lean();
     }
     // Fallback to JSON (Cached)
     const depts = loadCache('departments', path.join(__dirname, 'data', 'departments.json'), {});
@@ -170,12 +170,12 @@ async function getAllOrders(page = 1, limit = 0, startDate = null, endDate = nul
 
         if (limit > 0) {
             const skip = (page - 1) * limit;
-            const orders = await Order.find(query).sort({ timestamp: -1 }).skip(skip).limit(limit);
+            const orders = await Order.find(query).sort({ timestamp: -1 }).skip(skip).limit(limit).lean();
             const total = await Order.countDocuments(query);
             return { orders, total };
         }
         // Legacy/Export: Return array directly
-        return await Order.find(query).sort({ timestamp: -1 });
+        return await Order.find(query).sort({ timestamp: -1 }).lean();
     }
     // Fallback to JSON (Cached)
     let orders = loadCache('orders', path.join(__dirname, 'data', 'orders.json'), []);
@@ -208,7 +208,7 @@ async function getAllOrders(page = 1, limit = 0, startDate = null, endDate = nul
 
 async function getOrderById(orderId) {
     if (mongoConnected) {
-        return await Order.findOne({ orderId });
+        return await Order.findOne({ orderId }).lean();
     }
     // Fallback to JSON
     const orders = loadCache('orders', path.join(__dirname, 'data', 'orders.json'), []);
@@ -239,7 +239,7 @@ async function getOrdersForStats(startDate, endDate) {
                 { 'cancellationInfo.cancelledAt': { $gte: start.toISOString(), $lte: end.toISOString() } }
             ]
         };
-        return await Order.find(query).sort({ timestamp: -1 });
+        return await Order.find(query).sort({ timestamp: -1 }).lean();
     }
     
     // JSON Fallback
@@ -304,11 +304,11 @@ async function getOrdersByStatus(status, page = 1, limit = 0, startDate = null, 
         // Use status as-is - MongoDB has proper case: 'Pending', 'Address Verified', etc.
         if (limit > 0) {
             const skip = (page - 1) * limit;
-            const orders = await Order.find(dateQuery).sort({ [dateField]: -1 }).skip(skip).limit(limit);
+            const orders = await Order.find(dateQuery).sort({ [dateField]: -1 }).skip(skip).limit(limit).lean();
             const total = await Order.countDocuments(dateQuery);
             return { orders, total };
         }
-        return await Order.find(dateQuery).sort({ [dateField]: -1 });
+        return await Order.find(dateQuery).sort({ [dateField]: -1 }).lean();
     }
     // Fallback to JSON
     const orders = loadCache('orders', path.join(__dirname, 'data', 'orders.json'), []);
@@ -367,7 +367,7 @@ async function findOrderByMobile(telNo) {
         return await Order.findOne({
             $or: [{ telNo: telNo }, { mobileNumber: telNo }],
             status: { $ne: 'Cancelled' }
-        }).sort({ timestamp: -1 });
+        }).sort({ timestamp: -1 }).lean();
     }
     // Fallback to JSON
     const orders = loadCache('orders', path.join(__dirname, 'data', 'orders.json'), []);
@@ -544,11 +544,11 @@ async function getEmployeeOrders(empId, status = null, page = 1, limit = 0, star
 
         if (limit > 0) {
             const skip = (page - 1) * limit;
-            const orders = await Order.find(query).sort({ timestamp: -1 }).skip(skip).limit(limit);
+            const orders = await Order.find(query).sort({ timestamp: -1 }).skip(skip).limit(limit).lean();
             const total = await Order.countDocuments(query);
             return { orders, total };
         }
-        return await Order.find(query).sort({ timestamp: -1 });
+        return await Order.find(query).sort({ timestamp: -1 }).lean();
     }
 
     // JSON Fallback
