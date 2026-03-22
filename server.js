@@ -40,6 +40,11 @@ const apiLimiter = rateLimit({
     max: 1000,
     message: { success: false, message: 'Too many requests. Please slow down.' }
 });
+
+// Fix for Render / Heroku proxy configuration
+// Prevents ERR_ERL_UNEXPECTED_X_FORWARDED_FOR crash in express-rate-limit
+app.set('trust proxy', 1);
+
 app.use('/api/', apiLimiter);
 
 // ==================== ROUTES ====================
