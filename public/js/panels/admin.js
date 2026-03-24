@@ -722,7 +722,8 @@ window.switchAdminTab = function (tabName) {
 // Global state for analytics
 let analyticsState = {
     dateRange: 'today', // today, yesterday, week, month
-    charts: {} // Store chart instances to destroy/update
+    charts: {}, // Store chart instances to destroy/update
+    cache: {} // Client-side cache for instant loads
 };
 
 // Check if Chart.js is available
@@ -795,17 +796,27 @@ async function fetchAnalyticsData() {
 
         console.log(`📊 Fetching analytics for ${dateRange}: ${startDate} to ${endDate}`);
 
+        const cacheKey = `${startDate}_${endDate}`;
+        const cached = analyticsState.cache[cacheKey];
+        if (cached && (Date.now() - cached.timestamp < 120000)) { // 2 minute cache
+            console.log('⚡ Using cached analytics data (instant load)');
+            updateAnalyticsUI(cached.data);
+            checkStuckOrders(); // Fetch stuck orders in background
+            return;
+        }
+
+        // Fire background stuck orders check IMMEDIATELY (parallel execution)
+        checkStuckOrders();
+
         const res = await fetch(`${API_URL}/analytics/dashboard?startDate=${startDate}&endDate=${endDate}&_t=${Date.now()}`);
         const data = await res.json();
 
         if (data.success) {
+            analyticsState.cache[cacheKey] = { timestamp: Date.now(), data };
             updateAnalyticsUI(data);
         } else {
             console.error('Analytics load failed', data.message);
         }
-
-        // Check for stuck orders
-        checkStuckOrders();
 
     } catch (e) {
         console.error('Analytics Error:', e);

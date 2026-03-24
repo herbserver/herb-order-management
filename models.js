@@ -146,7 +146,6 @@ const orderSchema = new mongoose.Schema({
 });
 
 // Performance Indices
-orderSchema.index({ orderId: 1 }, { unique: true });
 orderSchema.index({ status: 1 });
 orderSchema.index({ timestamp: -1 });
 orderSchema.index({ employeeId: 1 });
@@ -158,6 +157,7 @@ orderSchema.index({ deliveredAt: -1 });
 orderSchema.index({ ofdAt: -1 });
 orderSchema.index({ rtoAt: -1 });
 orderSchema.index({ updatedAt: -1 });
+orderSchema.index({ 'cancellationInfo.cancelledAt': -1 }); // Added for analytics
 orderSchema.index({ employeeId: 1, timestamp: -1 }); // For Employee History
 orderSchema.index({ status: 1, timestamp: -1 }); // For Department Panels
 orderSchema.index({ orderType: 1 }); // For Stats

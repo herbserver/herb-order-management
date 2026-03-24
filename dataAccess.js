@@ -285,6 +285,198 @@ async function getDashboardStats(startDate = null, endDate = null) {
     }
 }
 
+// Optimized: Get full analytics data using MongoDB Aggregation
+async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) {
+    if (!mongoConnected) return null;
+
+    // 1. Date range for "Created in period"
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    const startISO = start.toISOString();
+    const endISO = end.toISOString();
+
+    try {
+        const isReorder = { $in: ["$orderType", ["Reorder", "REORDER"]] };
+        const isFresh = { $not: [{ $in: ["$orderType", ["Reorder", "REORDER"]] }] };
+
+        // Match for orders CREATED in range
+        let baseMatch = { timestamp: { $gte: startISO, $lte: endISO } };
+        if (employeeId && employeeId !== 'all' && employeeId !== '') {
+            baseMatch.employeeId = employeeId.toUpperCase();
+        }
+
+        const results = await Order.aggregate([
+            {
+                $facet: {
+                    // Quick Stats & distribution based on CREATED orders
+                    "createdStats": [
+                        { $match: baseMatch },
+                        {
+                            $group: {
+                                _id: null,
+                                totalOrders: { $sum: 1 },
+                                totalRevenue: { $sum: { $ifNull: ["$total", 0] } },
+                                freshRevenue: { $sum: { $cond: [isFresh, { $ifNull: ["$total", 0] }, 0] } },
+                                reorderRevenue: { $sum: { $cond: [isReorder, { $ifNull: ["$total", 0] }, 0] } },
+                                freshCount: { $sum: { $cond: [isFresh, 1, 0] } },
+                                reorderCount: { $sum: { $cond: [isReorder, 1, 0] } },
+                                deliveredCount: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },
+                                pending: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
+                                verified: { $sum: { $cond: [{ $eq: ["$status", "Address Verified"] }, 1, 0] } },
+                                customers: { $addToSet: "$telNo" }
+                            }
+                        },
+                        {
+                            $project: {
+                                _id: 0,
+                                totalOrders: 1, totalRevenue: 1, freshRevenue: 1, reorderRevenue: 1,
+                                freshCount: 1, reorderCount: 1, deliveredCount: 1, pending: 1, verified: 1,
+                                customersCount: { $size: { $ifNull: ["$customers", []] } }
+                            }
+                        }
+                    ],
+                    // Delivered in Period (Regardless of creation)
+                    "deliveredStats": [
+                        {
+                            $match: {
+                                status: "Delivered",
+                                deliveredAt: { $gte: startISO, $lte: endISO },
+                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
+                            }
+                        },
+                        { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
+                    ],
+                    // Dispatched in Period
+                    "dispatchedStats": [
+                        {
+                            $match: {
+                                status: { $in: ["Dispatched", "Delivered"] },
+                                dispatchedAt: { $gte: startISO, $lte: endISO },
+                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
+                            }
+                        },
+                        { $group: { _id: null, count: { $sum: 1 } } }
+                    ],
+                    // Cancelled in Period
+                    "cancelledStats": [
+                        {
+                            $match: {
+                                status: "Cancelled",
+                                "cancellationInfo.cancelledAt": { $gte: start, $lte: end },
+                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
+                            }
+                        },
+                        { $group: { _id: null, count: { $sum: 1 } } }
+                    ],
+                    // RTO in Period
+                    "rtoStats": [
+                        {
+                            $match: {
+                                status: "RTO",
+                                rtoAt: { $gte: startISO, $lte: endISO },
+                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
+                            }
+                        },
+                        { $group: { _id: null, count: { $sum: 1 } } }
+                    ],
+                    // Top Employees (Created orders revenue)
+                    "employeePerformance": [
+                        { $match: baseMatch },
+                        {
+                            $group: {
+                                _id: "$employeeId",
+                                name: { $first: { $ifNull: ["$employee", "$employeeId"] } },
+                                totalOrders: { $sum: 1 },
+                                revenue: { $sum: { $ifNull: ["$total", 0] } }
+                            }
+                        },
+                        { $sort: { revenue: -1 } },
+                        { $limit: 10 }
+                    ],
+                    // 7-Day Timeline trend
+                    "timeline": [
+                        {
+                            $match: {
+                                timestamp: { $gte: new Date(Date.now() - 7 * 86400000).toISOString() },
+                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
+                            }
+                        },
+                        {
+                            $group: {
+                                _id: { $substr: ["$timestamp", 0, 10] },
+                                total: { $sum: 1 },
+                                delivered: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } }
+                            }
+                        },
+                        { $sort: { _id: 1 } }
+                    ]
+                }
+            }
+        ]);
+
+        const data = results[0];
+        return {
+            created: data.createdStats[0] || { totalOrders: 0, totalRevenue: 0, customersCount: 0, deliveredCount: 0 },
+            delivered: data.deliveredStats[0] || { count: 0, revenue: 0 },
+            dispatched: data.dispatchedStats[0] || { count: 0 },
+            cancelled: data.cancelledStats[0] || { count: 0 },
+            rto: data.rtoStats[0] || { count: 0 },
+            employees: data.employeePerformance || [],
+            timeline: data.timeline || []
+        };
+    } catch (e) {
+        console.error('❌ Aggregation error:', e);
+        return null;
+    }
+}
+
+// Optimized: Find stuck orders directly in DB
+async function getStuckOrders(thresholdHours = 48) {
+    if (!mongoConnected) return { success: false, message: 'DB not connected' };
+
+    try {
+        const threshold = thresholdHours * 60 * 60 * 1000;
+        const cutoff = new Date(Date.now() - threshold);
+        const cutoffISO = cutoff.toISOString();
+
+        // Optimized query: Only non-final states, older than threshold
+        // We check both updatedAt and timestamp (if updatedAt missing)
+        const stuckOrders = await Order.find({
+            status: { $nin: ['Delivered', 'Cancelled'] },
+            $or: [
+                { updatedAt: { $lt: cutoffISO } },
+                { updatedAt: { $exists: false }, timestamp: { $lt: cutoffISO } }
+            ]
+        }).select('orderId customerName total status updatedAt timestamp').lean();
+
+        const byStatus = {};
+        stuckOrders.forEach(o => {
+            if (!byStatus[o.status]) byStatus[o.status] = [];
+            const lastUpdate = o.updatedAt || o.timestamp;
+            const hoursStuck = Math.floor((Date.now() - new Date(lastUpdate)) / (3600000));
+            byStatus[o.status].push({
+                orderId: o.orderId,
+                customerName: o.customerName,
+                total: o.total,
+                lastUpdate,
+                hoursStuck
+            });
+        });
+
+        return {
+            success: true,
+            totalStuck: stuckOrders.length,
+            byStatus,
+            alert: stuckOrders.length > 0
+        };
+    } catch (e) {
+        console.error('❌ Stuck orders query error:', e);
+        return { success: false, message: e.message };
+    }
+}
+
 // Legacy wrapper or for specific date ranges
 async function getOrdersForStats(startDate, endDate) {
     if (!startDate || !endDate) return await getAllOrders();
@@ -638,7 +830,11 @@ module.exports = {
     deleteOrder,
     updateEmployeeOrders,
     getEmployeeOrders,
+    getAnalyticsDashboardData,
+    getStuckOrders,
     // Shiprocket
     getShiprocketConfig,
-    updateShiprocketConfig
+    updateShiprocketConfig,
+    // Export Data Models for direct queries
+    Order
 };

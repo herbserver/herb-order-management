@@ -47,12 +47,12 @@ async function deploy() {
     }
 
     try {
-        console.log(`📦 Committing ${operations.length} files to spaces/herbon123/Ordermanagement...`);
+        console.log(`📦 Committing ${operations.length} files to spaces/herbonnaturals/order-system...`);
         const res = await commit({
-            repo: { type: "space", name: "herbon123/Ordermanagement" },
+            repo: { type: "space", name: "herbonnaturals/order-system" },
             credentials: { accessToken: TOKEN },
             operations: operations,
-            title: "Supercharged: Add backend pagination & lean optimization"
+            title: "Performance Fix: MongoDB Aggregation + Indexed Queries + Debouncing"
         });
         console.log('🏁 Deployment complete! The Space is now building.', res.commit.id);
     } catch (e) {
