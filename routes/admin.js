@@ -13,44 +13,40 @@ const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 router.get('/history', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 0;
-        let orders = [];
-        let total = 0;
+        const limit = parseInt(req.query.limit) || 50; // default 50, 0 mat rehne do
+        let orders = [], total = 0;
 
-        // Optimization: Use efficient lookup if status is provided
-        if (req.query.status) {
-            const result = await dataAccess.getOrdersByStatus(req.query.status, page, limit, req.query.startDate, req.query.endDate);
-            if (limit > 0 && result.orders) {
-                orders = result.orders;
-                total = result.total;
-            } else {
-                orders = result;
-                total = orders.length;
-            }
-        } else {
-            const result = await dataAccess.getAllOrders(page, limit, req.query.startDate, req.query.endDate);
-            if (limit > 0 && result.orders) {
-                orders = result.orders;
-                total = result.total;
-            } else {
-                orders = result;
-                total = orders.length;
-            }
-        }
-
-        let filteredOrders = [...orders];
-
+        // Employee filter → dedicated function use karo
         if (req.query.employee) {
-            filteredOrders = filteredOrders.filter(o => o.employeeId === req.query.employee.toUpperCase());
+            const result = await dataAccess.getEmployeeOrders(
+                req.query.employee,
+                req.query.status || null,
+                page, limit,
+                req.query.startDate, req.query.endDate
+            );
+            orders = result.orders || result;
+            total = result.total || orders.length;
+        } else if (req.query.status) {
+            const result = await dataAccess.getOrdersByStatus(
+                req.query.status, page, limit,
+                req.query.startDate, req.query.endDate
+            );
+            orders = result.orders || result;
+            total = result.total || orders.length;
+        } else {
+            const result = await dataAccess.getAllOrders(
+                page, limit,
+                req.query.startDate, req.query.endDate
+            );
+            orders = result.orders || result;
+            total = result.total || orders.length;
         }
 
-        res.json({ 
-            success: true, 
-            orders: filteredOrders,
+        res.json({
+            success: true,
+            orders,
             pagination: limit > 0 ? {
-                total,
-                page,
-                limit,
+                total, page, limit,
                 totalPages: Math.ceil(total / limit)
             } : null
         });
@@ -97,31 +93,72 @@ router.get('/stats', async (req, res) => {
 // Get Department-specific Daily Stats
 router.get('/department-stats', async (req, res) => {
     try {
-        const last7DaysQuery = new Date();
-        last7DaysQuery.setDate(last7DaysQuery.getDate() - 7);
-        let orders = await dataAccess.getOrdersForStats(last7DaysQuery.toISOString(), new Date().toISOString());
-
-        // Helper to get date string YYYY-MM-DD
-        const getDateStr = (d) => new Date(d).toISOString().split('T')[0];
-
+        const { Order } = require('../dataAccess');
+        
         const now = new Date();
-        const todayStr = getDateStr(now);
+        const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+        const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate()-1);
+        const last7Start = new Date(todayStart); last7Start.setDate(last7Start.getDate()-7);
 
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = getDateStr(yesterday);
+        const toISO = d => d.toISOString();
 
-        const last7Days = new Date();
-        last7Days.setDate(last7Days.getDate() - 7);
+        const result = await Order.aggregate([
+            {
+                $match: {
+                    timestamp: { $gte: toISO(last7Start) },
+                    status: { $in: ['Address Verified','Verified','Dispatched','Delivered'] }
+                }
+            },
+            {
+                $addFields: {
+                    typeKey: {
+                        $cond: [
+                            { $in: ['$orderType', ['Reorder','REORDER']] },
+                            'reorder', 'fresh'
+                        ]
+                    },
+                    effectiveDate: {
+                        $switch: {
+                            branches: [
+                                { case: { $in: ['$status',['Address Verified','Verified']] }, then: { $ifNull: ['$verifiedAt','$timestamp'] } },
+                                { case: { $eq: ['$status','Dispatched'] }, then: { $ifNull: ['$dispatchedAt','$timestamp'] } },
+                                { case: { $eq: ['$status','Delivered'] }, then: { $ifNull: ['$deliveredAt','$timestamp'] } }
+                            ],
+                            default: '$timestamp'
+                        }
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    dateStr: { $substr: ['$effectiveDate', 0, 10] },
+                    dept: {
+                        $switch: {
+                            branches: [
+                                { case: { $in: ['$status',['Address Verified','Verified']] }, then: 'verification' },
+                                { case: { $eq: ['$status','Dispatched'] }, then: 'dispatch' },
+                                { case: { $eq: ['$status','Delivered'] }, then: 'delivery' }
+                            ],
+                            default: 'other'
+                        }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: { dept: '$dept', dateStr: '$dateStr', typeKey: '$typeKey' },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
 
-        // Sort orders by timestamp to ensure chronological processing if needed (though orderType is static now)
-        orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const todayStr = toISO(todayStart).substring(0,10);
+        const yesterdayStr = toISO(yesterdayStart).substring(0,10);
 
-        // Initialize stats structure
         const initStats = () => ({
-            today: { fresh: 0, reorder: 0 },
-            yesterday: { fresh: 0, reorder: 0 },
-            last7Days: { fresh: 0, reorder: 0 }
+            today: { fresh:0, reorder:0 },
+            yesterday: { fresh:0, reorder:0 },
+            last7Days: { fresh:0, reorder:0 }
         });
 
         const stats = {
@@ -130,47 +167,13 @@ router.get('/department-stats', async (req, res) => {
             delivery: initStats()
         };
 
-        orders.forEach(o => {
-            // Handle missing orderType gracefully (default to fresh if missing)
-            let typeKey = 'fresh';
-            if (o.orderType && (o.orderType === 'Reorder' || o.orderType === 'REORDER')) {
-                typeKey = 'reorder';
-            }
-
-            // --- Aggregation Logic (Status Based with Date Fallbacks) ---
-
-            // Verification Stats (Address Verified)
-            if (o.status === 'Address Verified' || o.status === 'Verified') {
-                const vDateStr = o.verifiedAt || o.updatedAt || o.timestamp;
-                const vDate = new Date(vDateStr);
-                const vDateIso = getDateStr(vDate);
-
-                if (vDateIso === todayStr) stats.verification.today[typeKey]++;
-                if (vDateIso === yesterdayStr) stats.verification.yesterday[typeKey]++;
-                if (vDate >= last7Days) stats.verification.last7Days[typeKey]++;
-            }
-
-            // Dispatch Stats (Dispatched)
-            if (o.status === 'Dispatched') {
-                const dDateStr = o.dispatchedAt || o.updatedAt || o.timestamp;
-                const dDate = new Date(dDateStr);
-                const dDateIso = getDateStr(dDate);
-
-                if (dDateIso === todayStr) stats.dispatch.today[typeKey]++;
-                if (dDateIso === yesterdayStr) stats.dispatch.yesterday[typeKey]++;
-                if (dDate >= last7Days) stats.dispatch.last7Days[typeKey]++;
-            }
-
-            // Delivery Stats (Delivered)
-            if (o.status === 'Delivered') {
-                const delDateStr = o.deliveredAt || o.updatedAt || o.timestamp;
-                const delDate = new Date(delDateStr);
-                const delDateIso = getDateStr(delDate);
-
-                if (delDateIso === todayStr) stats.delivery.today[typeKey]++;
-                if (delDateIso === yesterdayStr) stats.delivery.yesterday[typeKey]++;
-                if (delDate >= last7Days) stats.delivery.last7Days[typeKey]++;
-            }
+        result.forEach(({ _id, count }) => {
+            const { dept, dateStr, typeKey } = _id;
+            if (!stats[dept]) return;
+            
+            if (dateStr === todayStr) stats[dept].today[typeKey] += count;
+            if (dateStr === yesterdayStr) stats[dept].yesterday[typeKey] += count;
+            stats[dept].last7Days[typeKey] += count;
         });
 
         res.json({ success: true, stats });
