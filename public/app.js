@@ -7431,7 +7431,6 @@ async function filterAdminProgress() {
                  </div>
             </div>`;
 
-        // Render Charts using Old UI renderers
         // Render Charts using Old UI renderers (Safe Check for Chart.js)
         if (typeof Chart === 'undefined') {
             console.warn('📊 Chart.js is still loading... waiting 500ms');
@@ -7512,7 +7511,7 @@ function renderAnalyticsTrend(timeline) {
                 y: { type: 'linear', display: true, position: 'left', grid: { drawOnChartArea: true, color: '#f1f5f9' }, min: 0 },
                 y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, min: 0 }
             },
-            plugins: { legend: { display: false } }
+            plugins: { legend: { display: false } } // Custom legend in HTML
         }
     });
 }
@@ -7596,6 +7595,111 @@ function renderAnalyticsStatus(statusData) {
             }
         }]
     });
+
+    // Sort by Total Orders Descending
+    const sortedData = Object.entries(empStats)
+        .sort((a, b) => b[1].total - a[1].total);
+
+    if (sortedData.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-gray-500">No employee data found for this period.</div>`;
+        return;
+    }
+
+    // Generate Table HTML
+    let tableHtml = `
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 text-xs uppercase font-bold text-slate-500">
+                <tr>
+                    <th class="px-6 py-4">Employee</th>
+                    <th class="px-4 py-4 text-center">Total</th>
+                    <th class="px-4 py-4 text-center text-yellow-600">Hold</th>
+                    <th class="px-4 py-4 text-center text-purple-600">Dispatched</th>
+                    <th class="px-4 py-4 text-center text-emerald-600">Delivered</th>
+                    <th class="px-4 py-4 text-center text-indigo-600">RTO</th>
+                    <th class="px-4 py-4 text-center text-rose-600">Cancelled</th>
+                    <th class="px-4 py-4 text-center text-blue-600">Total Revenue</th>
+                    <th class="px-4 py-4 text-right">Performance</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+    `;
+
+    sortedData.forEach(([name, stats], index) => {
+        const conversionRate = stats.total > 0 ? ((stats.delivered / stats.total) * 100).toFixed(1) : 0;
+        const rank = index + 1;
+        let rankBadge = `<span class="text-slate-400 font-mono text-xs w-6 inline-block">#${rank}</span>`;
+
+        if (rank === 1) rankBadge = `<span class="text-lg">🥇</span>`;
+        if (rank === 2) rankBadge = `<span class="text-lg">🥈</span>`;
+        if (rank === 3) rankBadge = `<span class="text-lg">🥉</span>`;
+
+        tableHtml += `
+            <tr class="hover:bg-slate-50/80 transition-colors group">
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 text-center">${rankBadge}</div>
+                        <div class="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold shrink-0">
+                            ${name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">${name}</p>
+                            <p class="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded inline-block">${stats.id}</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-black text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg mb-1">${stats.total}</span>
+                        <span class="text-[9px] font-bold text-gray-400">Items</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100 mb-1">${stats.hold}</span>
+                        <span class="text-[9px] font-black text-yellow-700">₹${stats.holdRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100 mb-1">${stats.dispatched}</span>
+                        <span class="text-[9px] font-black text-purple-700">₹${stats.dispatchedRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 mb-1">${stats.delivered}</span>
+                        <span class="text-[9px] font-black text-emerald-700">₹${stats.deliveredRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                         <span class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 mb-1">${stats.rto}</span>
+                         <span class="text-[9px] font-black text-indigo-700">₹${stats.rtoRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100 mb-1">${stats.cancelled}</span>
+                        <span class="text-[9px] font-black text-rose-700">₹${stats.cancelledRev.toLocaleString()}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <span class="font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100 whitespace-nowrap shadow-sm">₹${stats.revenue.toLocaleString()}</span>
+                </td>
+                <td class="px-4 py-4 text-right">
+                    <div class="flex flex-col items-end gap-1">
+                        <span class="text-xs font-bold ${conversionRate >= 50 ? 'text-emerald-600' : 'text-slate-500'}">${conversionRate}% Success</span>
+                        <div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500 rounded-full" style="width: ${conversionRate}%"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    tableHtml += `</tbody></table>`;
+    container.innerHTML = tableHtml;
 }
 
 // Table Helper: Employee Leaderboard (RESTORED FROM BACKUP)

@@ -399,17 +399,6 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                             $group: {
                                 _id: "$employeeId",
                                 name: { $first: { $ifNull: ["$employee", "$employeeId"] } },
-                                total: { $sum: 1 },
-                                revenue: { $sum: { $ifNull: ["$total", 0] } },
-                                hold: { $sum: { $cond: [{ $in: ["$status", ["Hold", "On Hold"]] }, 1, 0] } },
-                                holdRev: { $sum: { $cond: [{ $in: ["$status", ["Hold", "On Hold"]] }, { $ifNull: ["$total", 0] }, 0] } },
-                                dispatched: { $sum: { $cond: [{ $in: ["$status", ["Dispatched", "Out For Delivery"]] }, 1, 0] } },
-                                dispatchedRev: { $sum: { $cond: [{ $in: ["$status", ["Dispatched", "Out For Delivery"]] }, { $ifNull: ["$total", 0] }, 0] } },
-                                delivered: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },
-                                deliveredRev: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, { $ifNull: ["$total", 0] }, 0] } },
-                                rto: { $sum: { $cond: [{ $eq: ["$status", "RTO"] }, 1, 0] } },
-                                rtoRev: { $sum: { $cond: [{ $eq: ["$status", "RTO"] }, { $ifNull: ["$total", 0] }, 0] } },
-                                cancelled: { $sum: { $cond: [{ $eq: ["$status", "Cancelled"] }, 1, 0] } },
                                 cancelledRev: { $sum: { $cond: [{ $eq: ["$status", "Cancelled"] }, { $ifNull: ["$total", 0] }, 0] } }
                             }
                         },
