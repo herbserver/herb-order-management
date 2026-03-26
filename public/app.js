@@ -2533,6 +2533,10 @@ async function loadMyCancelledOrders() {
                         <span>📅 ${new Date(order.timestamp).toLocaleDateString()}</span>
                         <span>📱 ${order.telNo}</span>
                     </div>
+                    ${(order.remark || (order.remarks && order.remarks.length > 0)) ? `
+                <div class="mt-2 p-2 bg-rose-50 border border-rose-100 rounded-lg text-[10px] text-rose-600 italic">
+                    <span class="font-bold">Note:</span> ${order.remark || order.remarks[0].text}
+                </div>` : ''}
                     <div class="bg-red-50 p-2 rounded-lg text-xs text-red-700 italic">
                         💬 ${order.remarks || 'No remarks provided'}
                     </div>
@@ -4108,8 +4112,15 @@ function renderOrderCard(order, borderColor = 'gray') {
                                     ${order.state || 'N/A'}
                                  </span>
                              </div>
-                        </div>
+                         </div>
                     </div>
+
+                    ${(order.remark || (order.remarks && order.remarks.length > 0)) ? `
+                    <div class="bg-rose-50 border border-rose-200 p-3 rounded-xl mb-2">
+                        <p class="text-[10px] text-rose-600 font-bold uppercase mb-1">💬 Note from ${order.employee || 'Employee'}</p>
+                        <p class="text-xs text-rose-800 font-bold italic">"${order.remark || order.remarks[0].text}"</p>
+                    </div>
+                    ` : ''}
 
                     <!-- Meta Info -->
                      <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
@@ -4376,6 +4387,14 @@ function generateOrderCardHTML(order) {
                         class="text-[10px] text-blue-600 hover:text-blue-700 font-black ml-auto flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-blue-200 hover:border-blue-300 transition-all shadow-sm">📋 COPY</button>
                 </div>
             </div>
+
+            <!-- Employee Remark -->
+            ${order.remark ? `
+            <div class="bg-rose-50 border-2 border-rose-200 p-3 rounded-xl shadow-inner animate-pulse">
+                <p class="text-[10px] text-rose-600 font-bold uppercase mb-1">💬 Employee Remark</p>
+                <p class="text-xs text-rose-800 font-black italic">"${order.remark}"</p>
+            </div>
+            ` : ''}
         </div>
 
         <!-- Remarks Section -->
@@ -5566,6 +5585,10 @@ async function openEditOrderModal(orderId) {
                             <div><label class="block text-xs font-medium mb-1">LANDMARK</label><input type="text" id="editLandMark" value="${order.landMark || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
                             <div><label class="block text-xs font-medium mb-1">ALT NO.</label><input type="tel" id="editAltNo" value="${order.altNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
                         </div>
+                        ${(order.remark || (order.remarks && order.remarks.length > 0)) ? `
+            <div class="mt-2 text-xs bg-rose-50 text-rose-600 p-2 rounded-lg border border-rose-100 italic">
+                💬 ${order.remark || order.remarks[0].text}
+            </div>` : ''}
                         <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
                             <div class="flex justify-between items-center mb-3">
                                 <label class="font-bold text-emerald-700">🛒 ITEMS</label>

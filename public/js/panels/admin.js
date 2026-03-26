@@ -14,266 +14,103 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Admin Panel v2.1 Loaded - Refined Date Filtering Active');
     loadAdminStats();
     loadAllEmployees();
-    loadRiskAlerts(); // AI Agent Alerts
 
-    // Refresh interval (5 minutes)
-    setInterval(() => {
-        loadAdminStats();
-        loadRiskAlerts();
-    }, 300000);
-});
+    // Initialize Socket.io for Real-time Updates
+    // Initialize Socket.io for Real-time Updates
+    if (typeof io !== 'undefined') {
+        const socket = io();
+        console.log('🔌 Socket.io Client Initialized');
 
-async function loadRiskAlerts() {
-    try {
-        const res = await fetch(`${API_URL}/admin/alerts`);
-        const data = await res.json();
+        // Status UI Elements
+        const statusDot = document.getElementById('serverStatusDot');
+        const statusText = document.getElementById('serverStatusText');
 
-        // Find existing container or inject
-        let container = document.getElementById('adminAlertContainer');
-        if (!container) {
-            // Try to find the main content area (often flex-1 in dashboard layout)
-            const mainContent = document.querySelector('.flex-1.p-4.overflow-y-auto') || document.querySelector('main');
-            if (mainContent) {
-                container = document.createElement('div');
-                container.id = 'adminAlertContainer';
-                container.className = 'mb-6 space-y-3';
-                mainContent.insertBefore(container, mainContent.firstChild);
-            }
-        }
-
-        if (!container) return; // Still not found, might need manual placement
-
-        container.innerHTML = '';
-
-        if (data.success) {
-            // Stuck Orders
-            if (data.stuckOrders && data.stuckOrders.length > 0) {
-                const stuckHTML = `
-                    <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r shadow-sm flex justify-between items-center">
-                        <div class="flex items-center">
-                            <span class="text-2xl mr-3">🕵️‍♂️</span>
-                            <div>
-                                <h3 class="font-bold text-amber-800">AI Watchdog Alert</h3>
-                                <p class="text-sm text-amber-700">Found ${data.stuckOrders.length} orders stuck in transit > 5 days.</p>
-                            </div>
-                        </div>
-                        <button onclick="viewStuckOrders()" class="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg font-bold text-sm hover:bg-amber-200 transition">View List</button>
-                    </div>
-                `;
-                container.innerHTML += stuckHTML;
-                window._stuckOrders = data.stuckOrders; // Store for view
-            }
-
-            // Risk Orders
-            if (data.riskOrders && data.riskOrders.length > 0) {
-                const riskHTML = `
-                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm flex justify-between items-center mt-2">
-                        <div class="flex items-center">
-                            <span class="text-2xl mr-3">🛡️</span>
-                            <div>
-                                <h3 class="font-bold text-red-800">High Risk Detected</h3>
-                                <p class="text-sm text-red-700">${data.riskOrders.length} orders flagged (RTO Risk/Blacklist).</p>
-                            </div>
-                        </div>
-                        <button onclick="viewRiskOrders()" class="bg-red-100 text-red-800 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-200 transition">Review</button>
-                    </div>
-                `;
-                container.innerHTML += riskHTML;
-                window._riskOrders = data.riskOrders;
-            }
-        }
-    } catch (e) { console.error('Error loading alerts:', e); }
-}
-
-function viewStuckOrders() {
-    const orders = window._stuckOrders || [];
-    if (orders.length === 0) return alert('No stuck orders data available');
-
-    let html = '<div class="space-y-2">';
-    orders.forEach(o => {
-        html += `
-            <div class="p-3 border rounded flex justify-between items-center hover:bg-gray-50">
-                <div>
-                   <span class="font-bold text-blue-600">#${o.orderId}</span> - ${o.customerName}<br>
-                   <span class="text-xs text-gray-500">Status: ${o.status} | Last Update: ${new Date(o.tracking?.lastUpdatedAt).toLocaleDateString()}</span>
-                </div>
-                <button onclick="navigator.clipboard.writeText('${o.orderId}').then(()=>alert('Copied!'))" class="text-xs bg-gray-100 p-2 rounded">Copy ID</button>
-            </div>
-        `;
-    });
-    html += '</div>';
-
-    // Simple mock modal for now or use showSuccessPopup format
-    const modalContent = document.createElement('div');
-    modalContent.innerHTML = `
-        <div class="fixed inset-0 bg-black/50 z-[99999] flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-scaleIn">
-                <div class="p-4 border-b flex justify-between items-center bg-gray-50">
-                    <h3 class="font-bold text-lg">🚨 Stuck Orders (${orders.length})</h3>
-                    <button onclick="this.closest('.fixed').remove()" class="text-xl w-8 h-8 rounded-full hover:bg-gray-200">&times;</button>
-                </div>
-                <div class="p-4 overflow-y-auto flex-1">
-                    ${html}
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modalContent.firstElementChild);
-}
-
-// Expose
-window.viewStuckOrders = viewStuckOrders;
-
-function viewRiskOrders() {
-    const orders = window._riskOrders || [];
-    if (orders.length === 0) return alert('No risk orders data available');
-
-    let html = '<div class="space-y-2">';
-    orders.forEach(o => {
-        html += `
-            <div class="p-3 border rounded flex justify-between items-center hover:bg-gray-50 border-red-100 bg-red-50/30">
-                <div>
-                   <span class="font-bold text-red-600">#${o.orderId}</span> - ${o.customerName}<br>
-                   <span class="text-xs text-red-700 font-bold">${o.riskMetadata?.riskReason || 'High RTO Risk'}</span><br>
-                   <span class="text-[10px] text-gray-500">Status: ${o.status} | Mobile: ${o.telNo || 'N/A'}</span>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="navigator.clipboard.writeText('${o.orderId}').then(()=>alert('Copied!'))" class="text-[10px] bg-white border p-1.5 rounded shadow-sm">Copy ID</button>
-                    <button onclick="openEditModal('${o.orderId}')" class="text-[10px] bg-indigo-600 text-white p-1.5 rounded shadow-sm">Edit</button>
-                </div>
-            </div>
-        `;
-    });
-    html += '</div>';
-
-    const modalContent = document.createElement('div');
-    modalContent.innerHTML = `
-        <div class="fixed inset-0 bg-black/60 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">
-            <div class="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-scaleIn border-t-8 border-red-500">
-                <div class="p-4 border-b flex justify-between items-center bg-red-50">
-                    <div>
-                        <h3 class="font-bold text-lg text-red-800">🛡️ High Risk Orders (${orders.length})</h3>
-                        <p class="text-[10px] text-red-600 uppercase tracking-widest font-bold">AI Risk Guard Analysis</p>
-                    </div>
-                    <button onclick="this.closest('.fixed').remove()" class="text-2xl w-10 h-10 rounded-full hover:bg-red-100 flex items-center justify-center transition-colors">&times;</button>
-                </div>
-                <div class="p-4 overflow-y-auto flex-1">
-                    ${html}
-                </div>
-                <div class="p-4 bg-gray-50 border-t text-center">
-                    <p class="text-[10px] text-gray-500">Orders are flagged based on historical RTO rates (>33%)</p>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modalContent.firstElementChild);
-}
-
-window.viewRiskOrders = viewRiskOrders;
-
-// Initialize Socket.io for Real-time Updates
-// Initialize Socket.io for Real-time Updates
-if (typeof io !== 'undefined') {
-    const socket = io();
-    console.log('🔌 Socket.io Client Initialized');
-
-    // Status UI Elements
-    const statusDot = document.getElementById('serverStatusDot');
-    const statusText = document.getElementById('serverStatusText');
-
-    const setOnline = () => {
-        if (statusDot) {
-            statusDot.classList.remove('bg-red-500', 'bg-amber-500');
-            statusDot.classList.add('bg-emerald-500');
-        }
-        if (statusText) statusText.innerText = 'Online';
-    };
-
-    const setOffline = () => {
-        if (statusDot) {
-            statusDot.classList.remove('bg-emerald-500', 'bg-amber-500');
-            statusDot.classList.add('bg-red-500');
-        }
-        if (statusText) statusText.innerText = 'Offline';
-    };
-
-    socket.on('connect', () => {
-        console.log('🟢 Connected to Real-time Server');
-        setOnline();
-    });
-
-    socket.on('disconnect', () => {
-        console.log('🔴 Disconnected from Server');
-        setOffline();
-    });
-
-    socket.on('connect_error', () => {
-        setOffline();
-    });
-
-    // Heartbeat Listener
-    let heartbeatTimeout;
-    socket.on('server-heartbeat', (data) => {
-        // console.log('💓 Heartbeat received', data.timestamp);
-        setOnline();
-
-        // If we don't hear back for 45s, mark as offline/laggy
-        clearTimeout(heartbeatTimeout);
-        heartbeatTimeout = setTimeout(() => {
+        const setOnline = () => {
             if (statusDot) {
-                statusDot.classList.remove('bg-emerald-500');
-                statusDot.classList.add('bg-amber-500');
+                statusDot.classList.remove('bg-red-500', 'bg-amber-500');
+                statusDot.classList.add('bg-emerald-500');
             }
-            if (statusText) statusText.innerText = 'Slow Connection';
-        }, 45000);
-    });
+            if (statusText) statusText.innerText = 'Online';
+        };
 
-    // Listen for Order Updates
+        const setOffline = () => {
+            if (statusDot) {
+                statusDot.classList.remove('bg-emerald-500', 'bg-amber-500');
+                statusDot.classList.add('bg-red-500');
+            }
+            if (statusText) statusText.innerText = 'Offline';
+        };
 
-    // Listen for Order Updates
-    socket.on('order-updated', (data) => {
-        console.log('🔔 Real-time Update Received:', data.orderId);
+        socket.on('connect', () => {
+            console.log('🟢 Connected to Real-time Server');
+            setOnline();
+        });
 
-        // Refresh based on current view
-        // activeTab is global from app.js (or we check UI state)
-        const activeTab = document.querySelector('.sidebar-btn.active')?.dataset.tab;
+        socket.on('disconnect', () => {
+            console.log('🔴 Disconnected from Server');
+            setOffline();
+        });
 
-        if (activeTab === 'orders' || activeTab === 'pending' || activeTab === 'dispatch') {
-            // If on specific order list, refresh it
-            // Ideally we should just update the specific row, but for MVP we refresh list
-            // Debounce refresh to avoid spam
+        socket.on('connect_error', () => {
+            setOffline();
+        });
+
+        // Heartbeat Listener
+        let heartbeatTimeout;
+        socket.on('server-heartbeat', (data) => {
+            // console.log('💓 Heartbeat received', data.timestamp);
+            setOnline();
+
+            // If we don't hear back for 45s, mark as offline/laggy
+            clearTimeout(heartbeatTimeout);
+            heartbeatTimeout = setTimeout(() => {
+                if (statusDot) {
+                    statusDot.classList.remove('bg-emerald-500');
+                    statusDot.classList.add('bg-amber-500');
+                }
+                if (statusText) statusText.innerText = 'Slow Connection';
+            }, 45000);
+        });
+
+        // Listen for Order Updates
+
+        // Listen for Order Updates
+        socket.on('order-updated', (data) => {
+            console.log('🔔 Real-time Update Received:', data.orderId);
+
+            // Refresh based on current view
+            // activeTab is global from app.js (or we check UI state)
+            const activeTab = document.querySelector('.sidebar-btn.active')?.dataset.tab;
+
+            if (activeTab === 'orders' || activeTab === 'pending' || activeTab === 'dispatch') {
+                debouncedRefresh();
+            }
+            
+            debouncedStatsRefresh();
+        });
+
+        socket.on('order-created', (data) => {
+            console.log('🔔 New Order Received:', data.orderId);
+            showToast(`New Order Received: ${data.orderId}`);
+            debouncedStatsRefresh();
             debouncedRefresh();
-        } else if (activeTab === 'analytics') {
-            loadAdminProgress(); // Refresh analytics
-        }
+        });
 
-        // Always refresh stats counters in sidebar/header
-        loadAdminStats(true);
-    });
-
-    socket.on('order-created', (data) => {
-        console.log('🔔 New Order Received:', data.orderId);
-        showToast(`New Order Received: ${data.orderId}`);
-        loadAdminStats(true);
-        debouncedRefresh();
-    });
-
-    socket.on('dashboard-update', () => {
-        if (document.getElementById('adminProgressTab').classList.contains('hidden') === false) {
-            loadAdminProgress();
-        }
-    });
-} else {
-    console.warn('⚠️ Socket.io not loaded');
-}
+        socket.on('dashboard-update', () => {
+            if (document.getElementById('adminProgressTab').classList.contains('hidden') === false) {
+                loadAdminProgress();
+            }
+        });
+    } else {
+        console.warn('⚠️ Socket.io not loaded');
+    }
 });
 
-// Debounce helper
+// Debounce helper for list refreshes
 let refreshTimeout;
 function debouncedRefresh() {
     clearTimeout(refreshTimeout);
     refreshTimeout = setTimeout(() => {
-        // Determine which list to refresh
         if (!document.getElementById('pendingOrdersTab').classList.contains('hidden')) loadPendingOrders();
         else if (!document.getElementById('verifiedOrdersTab').classList.contains('hidden')) loadVerifiedOrders();
         else if (!document.getElementById('dispatchedOrdersTab').classList.contains('hidden')) loadDispatchedOrders();
@@ -281,8 +118,19 @@ function debouncedRefresh() {
     }, 500);
 }
 
+// Debounce helper for stats/analytics refreshes
+let statsRefreshTimeout;
+function debouncedStatsRefresh() {
+    clearTimeout(statsRefreshTimeout);
+    statsRefreshTimeout = setTimeout(() => {
+        loadAdminStats(true);
+        if (!document.getElementById('adminProgressTab').classList.contains('hidden')) {
+            loadAdminProgress();
+        }
+    }, 2000); // 2 second delay for stats to settle
+}
+
 function showToast(message) {
-    // Simple toast notification
     const div = document.createElement('div');
     div.className = 'fixed top-5 right-5 bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-xl z-50 animate-bounce';
     div.innerText = message;
@@ -603,7 +451,8 @@ function generateAdminOrderCard(o) {
             <div class="flex items-start gap-2 text-xs text-gray-600">
                 <span>📍</span> <span class="truncate line-clamp-1">${o.address}, ${o.city}</span>
             </div>
-             ${o.remark ? `<div class="mt-2 bg-yellow-50 border border-yellow-100 p-2 rounded-lg text-xs text-yellow-800"><strong>📝 Note:</strong> ${o.remark}</div>` : ''}
+             ${o.remark ? `<div class="mt-2 bg-rose-50 border border-rose-100 p-2 rounded-lg text-xs text-rose-800"><strong>💬 Employee Note:</strong> ${o.remark}</div>` : ''}
+             ${o.verificationRemark?.text ? `<div class="mt-2 bg-blue-50 border border-blue-100 p-2 rounded-lg text-xs text-blue-800"><strong>📝 Verification:</strong> ${o.verificationRemark.text}</div>` : ''}
         </div>
 
         <div class="flex gap-2 mt-3">
@@ -668,7 +517,7 @@ async function loadAdminOrdersGeneric(status, containerId, pageKey, page) {
         }
 
         container.innerHTML = orders.map(generateAdminOrderCard).join('');
-        renderPaginationControls(container, currentPage, totalPages, `loadAdmin${status.replace('Address ', '')}`); // Handle 'Verified' name mapping
+        renderPaginationControls(container, currentPage, totalPages, `loadAdmin${status.replace('Address ', '').replace(' ', '')}`); // Handle 'Verified' and 'OnHold' name mapping
 
     } catch (e) {
         console.error(`Error loading admin ${status}:`, e);
@@ -873,7 +722,8 @@ window.switchAdminTab = function (tabName) {
 // Global state for analytics
 let analyticsState = {
     dateRange: 'today', // today, yesterday, week, month
-    charts: {} // Store chart instances to destroy/update
+    charts: {}, // Store chart instances to destroy/update
+    cache: {} // Client-side cache for instant loads
 };
 
 // Check if Chart.js is available
@@ -906,15 +756,27 @@ window.loadAdminProgress = async function () {
 // Update dashboard when range changes
 window.updateAnalyticsDashboard = function () {
     const rangeSelect = document.getElementById('analyticsDateRange');
-    if (rangeSelect) {
-        analyticsState.dateRange = rangeSelect.value;
-        fetchAnalyticsData();
+    const customRange = document.getElementById('customAnalyticsRange');
+    
+    if (rangeSelect.value === 'custom') {
+        customRange.classList.remove('hidden');
+        // Set defaults if empty
+        if (!document.getElementById('analyticsStartDate').value) {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('analyticsStartDate').value = today;
+            document.getElementById('analyticsEndDate').value = today;
+        }
+    } else {
+        customRange.classList.add('hidden');
+        window.fetchAnalyticsData();
     }
 }
 
 // Fetch data from backend
-async function fetchAnalyticsData() {
+window.fetchAnalyticsData = async function () {
     try {
+        const rangeSelect = document.getElementById('analyticsDateRange');
+        if (rangeSelect) analyticsState.dateRange = rangeSelect.value;
         const { dateRange } = analyticsState;
 
         // Calculate dates for filter
@@ -927,7 +789,14 @@ async function fetchAnalyticsData() {
             return `${yyyy}-${mm}-${dd}`;
         };
 
-        if (dateRange === 'today') {
+        if (dateRange === 'custom') {
+            startDate = document.getElementById('analyticsStartDate').value;
+            endDate = document.getElementById('analyticsEndDate').value;
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+        } else if (dateRange === 'today') {
             startDate = formatDate(today);
             endDate = formatDate(today);
         } else if (dateRange === 'yesterday') {
@@ -946,17 +815,27 @@ async function fetchAnalyticsData() {
 
         console.log(`📊 Fetching analytics for ${dateRange}: ${startDate} to ${endDate}`);
 
+        const cacheKey = `${startDate}_${endDate}`;
+        const cached = analyticsState.cache[cacheKey];
+        if (cached && (Date.now() - cached.timestamp < 120000)) { // 2 minute cache
+            console.log('⚡ Using cached analytics data (instant load)');
+            updateAnalyticsUI(cached.data);
+            checkStuckOrders(); // Fetch stuck orders in background
+            return;
+        }
+
+        // Fire background stuck orders check IMMEDIATELY (parallel execution)
+        checkStuckOrders();
+
         const res = await fetch(`${API_URL}/analytics/dashboard?startDate=${startDate}&endDate=${endDate}&_t=${Date.now()}`);
         const data = await res.json();
 
         if (data.success) {
+            analyticsState.cache[cacheKey] = { timestamp: Date.now(), data };
             updateAnalyticsUI(data);
         } else {
             console.error('Analytics load failed', data.message);
         }
-
-        // Check for stuck orders
-        checkStuckOrders();
 
     } catch (e) {
         console.error('Analytics Error:', e);
@@ -1126,6 +1005,10 @@ async function checkStuckOrders() {
     } catch (e) { console.error(e); }
 }
 
+// Redirect to stuck orders view (e.g., filtered list)
+window.viewStuckOrders = function () {
+    alert('Feature coming soon: Direct link to filtered list.');
+}
 
 // Helper: Animate numbers
 function animateValue(id, end) {

@@ -91,11 +91,12 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
             // Fallback to automatic detection if not provided
             orderType = 'Fresh';
             try {
-                const allOrders = await dataAccess.getAllOrders();
                 const customerMobile = orderData.telNo || orderData.mobileNumber;
-                const exists = allOrders.some(o => (o.telNo === customerMobile || o.mobileNumber === customerMobile));
-                if (exists) {
-                    orderType = 'Reorder';
+                if (customerMobile) {
+                    const existingOrder = await dataAccess.findOrderByMobile(customerMobile);
+                    if (existingOrder) {
+                        orderType = 'Reorder';
+                    }
                 }
             } catch (err) {
                 console.error('Error checking order history:', err);

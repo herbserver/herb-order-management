@@ -427,6 +427,35 @@ async function viewOrder(orderId) {
                             </div>
                         </div>
 
+                        <!-- Remarks Section -->
+                        ${(order.remark || (order.remarks && order.remarks.length > 0) || (order.verificationRemark && order.verificationRemark.text)) ? `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            ${(order.remark || (order.remarks && order.remarks.length > 0)) ? `
+                            <div class="bg-rose-50 border-2 border-rose-100 p-5 rounded-3xl shadow-sm relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-rose-500 text-white px-4 py-1 rounded-bl-2xl text-[8px] font-black uppercase tracking-widest">Employee Note</div>
+                                <div class="flex items-start gap-3">
+                                    <span class="text-2xl">💬</span>
+                                    <div>
+                                        <p class="text-xs font-black text-rose-400 uppercase tracking-widest mb-1">Created By: ${order.employee || 'Employee'}</p>
+                                        <p class="text-gray-800 font-bold italic leading-relaxed">"${order.remark || order.remarks[0].text}"</p>
+                                    </div>
+                                </div>
+                            </div>` : ''}
+
+                            ${(order.verificationRemark && order.verificationRemark.text) ? `
+                            <div class="bg-blue-50 border-2 border-blue-100 p-5 rounded-3xl shadow-sm relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-2xl text-[8px] font-black uppercase tracking-widest">Verification Dept</div>
+                                <div class="flex items-start gap-3">
+                                    <span class="text-2xl">📝</span>
+                                    <div>
+                                        <p class="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Remarks by: ${order.verificationRemark.addedBy || 'Verifier'}</p>
+                                        <p class="text-gray-800 font-bold leading-relaxed">${order.verificationRemark.text}</p>
+                                    </div>
+                                </div>
+                            </div>` : ''}
+                        </div>
+                        ` : ''}
+
                         <!-- Order Items Section -->
                         <div class="bg-white border-2 border-gray-50 rounded-[40px] shadow-sm overflow-hidden">
                             <div class="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">

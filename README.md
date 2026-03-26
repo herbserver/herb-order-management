@@ -1,10 +1,11 @@
 ---
-title: Ordermanagement
+title: HerbServer Order Form
 emoji: 🌿
 colorFrom: green
-colorTo: indigo
+colorTo: blue
 sdk: docker
 pinned: false
+app_port: 7860
 ---
 
 # 🌿 Herb On Naturals - Order Management System

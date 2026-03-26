@@ -92,14 +92,6 @@ const orderSchema = new mongoose.Schema({
         dispatchedAt: String
     },
 
-    // AI Agent Fields (Risk & Intelligence)
-    riskMetadata: {
-        isHighRisk: { type: Boolean, default: false },
-        riskReason: { type: String, default: '' }, // e.g., "Customer returned 2 previous orders"
-        stuckAlert: { type: Boolean, default: false }, // True if stuck in transit > 5 days
-        lastAiCheck: { type: Date }
-    },
-
     // Tracking
     tracking: {
         courier: String,
@@ -146,14 +138,26 @@ const orderSchema = new mongoose.Schema({
     },
 
     // Misc
+    remark: String,
     updatedAt: String
 }, {
     timestamps: true,
     collection: 'orders'
 });
 
-// Indexes for Performance
-orderSchema.index({ timestamp: -1 }); // For default sorting
+// Performance Indices
+orderSchema.index({ status: 1 });
+orderSchema.index({ timestamp: -1 });
+orderSchema.index({ employeeId: 1 });
+orderSchema.index({ mobile: 1 }); // Index for mobile search (Duplication check)
+orderSchema.index({ telNo: 1 });   // Index for mobile search (Alternate field)
+orderSchema.index({ verifiedAt: -1 });
+orderSchema.index({ dispatchedAt: -1 });
+orderSchema.index({ deliveredAt: -1 });
+orderSchema.index({ ofdAt: -1 });
+orderSchema.index({ rtoAt: -1 });
+orderSchema.index({ updatedAt: -1 });
+orderSchema.index({ 'cancellationInfo.cancelledAt': -1 }); // Added for analytics
 orderSchema.index({ employeeId: 1, timestamp: -1 }); // For Employee History
 orderSchema.index({ status: 1, timestamp: -1 }); // For Department Panels
 orderSchema.index({ orderType: 1 }); // For Stats
