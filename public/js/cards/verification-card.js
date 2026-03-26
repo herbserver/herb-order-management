@@ -8,47 +8,63 @@
  */
 
 function renderVerificationCardModern(o) {
+    // Robust employee remark collection
+    const eRemark = o.remark || (o.remarks && o.remarks.length > 0 ? o.remarks[0].text : '');
+
     return `
-    <div class="bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 rounded-2xl p-5 hover:shadow-2xl hover:border-emerald-300 transition-all duration-300 relative overflow-hidden group">
-        <!-- Decorative Corner -->
-        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-100/40 to-blue-100/40 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500"></div>
-        
-        <!-- Header Section -->
-        <div class="flex justify-between items-start mb-4 relative z-10">
-            <div class="flex-1">
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full font-bold shadow-lg shadow-orange-200 animate-pulse">✨ NEW</span>
-                    <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
-                        class="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl flex items-center justify-center hover:scale-110 hover:rotate-12 shadow-lg shadow-green-200 transition-all" title="Send WhatsApp">
-                        ${WHATSAPP_ICON}
-                    </button>
+    <div class="bg-gradient-to-br from-white to-indigo-50/30 border-2 border-indigo-200 rounded-3xl p-6 hover:shadow-2xl hover:border-indigo-400 transition-all duration-500 relative overflow-hidden group">
+        <!-- Badge -->
+        <div class="absolute top-0 right-0 bg-gradient-to-r from-red-500 to-rose-600 text-white px-6 py-2 rounded-bl-3xl text-[10px] font-black uppercase tracking-widest shadow-lg z-10">PENDING</div>
+
+        <div class="flex justify-between items-start mb-6 relative z-10">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-xl shadow-indigo-100 group-hover:rotate-6 transition-transform">👤</div>
+                <div>
+                   <h4 class="font-black text-2xl text-slate-900 leading-tight">${o.customerName}</h4>
+                   <div class="flex items-center gap-2 mt-1">
+                       <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                       <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${o.orderId}</span>
+                   </div>
                 </div>
-                <h4 class="font-black text-xl text-gray-900 leading-tight">${o.customerName}</h4>
-                <p class="text-xs text-gray-500 font-medium mt-1">🕒 ${new Date(o.timestamp).toLocaleString()}</p>
             </div>
-            <div class="text-right bg-gradient-to-br from-emerald-50 to-teal-50 px-4 py-3 rounded-2xl border-2 border-emerald-200 shadow-sm">
-                <p class="text-xs text-emerald-600 font-bold uppercase tracking-wide">Total</p>
-                <p class="font-black text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">₹${o.total}</p>
+            <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
+                class="bg-emerald-50 text-emerald-600 p-3 rounded-2xl hover:bg-emerald-600 hover:text-white hover:scale-110 active:scale-95 transition-all shadow-sm border border-emerald-100">
+                ${WHATSAPP_ICON}
+            </button>
+        </div>
+
+        <!-- Address & Contact -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 group-hover:bg-indigo-50 transition-colors">
+                <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Shipping Address</p>
+                <p class="text-sm font-bold text-slate-700 leading-relaxed capitalize">${o.address}</p>
+            </div>
+            <div class="bg-purple-50/50 p-4 rounded-2xl border border-purple-100 group-hover:bg-purple-50 transition-colors">
+                <p class="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Primary Contact</p>
+                <p class="text-xl font-black text-slate-800 font-mono tracking-tight">${o.telNo}</p>
+                ${o.altNo ? `<p class="text-xs font-bold text-slate-500 mt-1">Alt: ${o.altNo}</p>` : ''}
             </div>
         </div>
-        
-        <!-- Contact Info Section -->
-        <div class="bg-gradient-to-r from-gray-50 to-slate-50 p-4 rounded-xl border border-gray-200 mb-4 space-y-2 shadow-inner">
-            <div class="flex items-start gap-2">
-                <span class="text-lg">📍</span>
-                <p class="text-sm text-gray-700 font-medium flex-1">${o.address}</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="text-lg">📞</span>
-                <p class="text-sm text-gray-800 font-bold">${o.telNo}</p>
+
+        <!-- Employee Note -->
+        ${eRemark ? `
+        <div class="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 mb-6 relative overflow-hidden group/note">
+            <div class="absolute top-0 right-0 bg-rose-200/30 px-3 py-1 rounded-bl-xl text-[8px] font-black text-rose-500 uppercase">Employee Note</div>
+            <div class="flex items-start gap-3">
+                <span class="text-2xl">💬</span>
+                <div>
+                    <p class="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Note from ${o.employee || 'Staff'}</p>
+                    <p class="text-sm font-bold text-rose-900 italic leading-relaxed">"${eRemark}"</p>
+                </div>
             </div>
         </div>
+        ` : ''}
         
         <!-- Remark Section -->
         <div class="mb-4">
-            <label class="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 block">📝 Internal Notes</label>
+            <label class="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 block">📝 Internal Notes (Verification)</label>
             <textarea id="remark-${o.orderId}" placeholder="Add verification notes, special instructions..." 
-                class="w-full text-sm p-3 border-2 border-gray-200 rounded-xl h-20 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all resize-none">${o.remark || ''}</textarea>
+                class="w-full text-sm p-3 border-2 border-gray-200 rounded-xl h-20 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all resize-none">${o.verificationRemark?.text || ''}</textarea>
         </div>
         
         <!-- Courier Suggestion -->

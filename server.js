@@ -25,15 +25,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-    : ['*'];
+    : ['http://localhost:3000', 'https://herb-order-server.onrender.com'];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow all origins for easier migration/deployment
-        if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-        return callback(new Error('Not allowed by CORS'));
+        // EMERGENCY FIX: Allow all origins for presentation demo
+        return callback(null, true);
     },
     credentials: true
 }));
@@ -43,6 +40,11 @@ const apiLimiter = rateLimit({
     max: 1000,
     message: { success: false, message: 'Too many requests. Please slow down.' }
 });
+
+// Fix for Render / Heroku proxy configuration
+// Prevents ERR_ERL_UNEXPECTED_X_FORWARDED_FOR crash in express-rate-limit
+app.set('trust proxy', 1);
+
 app.use('/api/', apiLimiter);
 
 // ==================== ROUTES ====================

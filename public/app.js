@@ -1,4 +1,5 @@
 // API Configuration
+console.log('🚀 app.js version: AnalyticsRestore-v1 [LIVE]');
 // If API_URL is defined in HTML, use it, else default
 var API_URL = typeof API_URL !== 'undefined' ? API_URL : (window.location.origin + '/api');
 
@@ -49,7 +50,7 @@ function togglePassword(inputId, btn) {
 }
 
 // Emoji constants for WhatsApp compatibility
-const E = {
+var E = E || {
     leaf: String.fromCodePoint(0x1F33F),
     pray: String.fromCodePoint(0x1F64F),
     check: String.fromCodePoint(0x2705),
@@ -199,7 +200,7 @@ var currentEditingOrderId = currentEditingOrderId || null;
 var currentDispatchOrder = currentDispatchOrder || null; // Track order being dispatched
 
 // Courier tracking URLs
-const COURIER_URLS = {
+var COURIER_URLS = COURIER_URLS || {
     'India Post': 'https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx',
     'DTDC': 'https://www.dtdc.in/tracking.asp',
     'Blue Dart': 'https://www.bluedart.com/tracking',
@@ -213,7 +214,7 @@ const COURIER_URLS = {
 };
 
 // ==================== SESSION MANAGEMENT ====================
-const WHATSAPP_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" style="width:1.2em; height:1.2em;"><path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.1 0-65.6-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-5.5-2.8-23.2-8.5-44.2-27.1-16.4-14.6-27.4-32.7-30.6-38.1-3.2-5.4-.3-8.3 2.4-11.1 2.4-2.5 5.5-6.4 8.3-9.6 2.8-3.2 3.7-5.5 5.5-9.1 1.9-3.7 1-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 13.2 5.8 23.5 9.2 31.5 11.8 13.3 4.2 25.4 3.6 35 2.2 10.7-1.5 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>`;
+var WHATSAPP_ICON = WHATSAPP_ICON || `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" style="width:1.2em; height:1.2em;"><path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.1 0-65.6-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-5.5-2.8-23.2-8.5-44.2-27.1-16.4-14.6-27.4-32.7-30.6-38.1-3.2-5.4-.3-8.3 2.4-11.1 2.4-2.5 5.5-6.4 8.3-9.6 2.8-3.2 3.7-5.5 5.5-9.1 1.9-3.7 1-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 13.2 5.8 23.5 9.2 31.5 11.8 13.3 4.2 25.4 3.6 35 2.2 10.7-1.5 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>`;
 
 function saveSession() {
     const session = {
@@ -1589,7 +1590,7 @@ function selectPOFromPincode(poName) {
     updateAddress();
 }
 
-const PRODUCT_LIST = [
+var PRODUCT_LIST = PRODUCT_LIST || [
     { name: "Amlex" },
     { name: "Black pills" },
     { name: "Blue & White capsule" },
@@ -2533,6 +2534,10 @@ async function loadMyCancelledOrders() {
                         <span>📅 ${new Date(order.timestamp).toLocaleDateString()}</span>
                         <span>📱 ${order.telNo}</span>
                     </div>
+                    ${(order.remark || (order.remarks && order.remarks.length > 0)) ? `
+                <div class="mt-2 p-2 bg-rose-50 border border-rose-100 rounded-lg text-[10px] text-rose-600 italic">
+                    <span class="font-bold">Note:</span> ${order.remark || order.remarks[0].text}
+                </div>` : ''}
                     <div class="bg-red-50 p-2 rounded-lg text-xs text-red-700 italic">
                         💬 ${order.remarks || 'No remarks provided'}
                     </div>
@@ -2998,8 +3003,8 @@ async function loadEmpProgress() {
 }
 
 // ==================== PORTED FROM DEPARTMENT.JS ====================
-const DEPT_ITEMS_PER_PAGE = 10;
-let deptPagination = {
+var DEPT_ITEMS_PER_PAGE = typeof DEPT_ITEMS_PER_PAGE !== 'undefined' ? DEPT_ITEMS_PER_PAGE : 10;
+var deptPagination = deptPagination || {
     verification: 1,
     dispatchReady: 1,
     dispatchRequests: 1,
@@ -3662,7 +3667,7 @@ async function showLocalTrackingFallback(orderId, awb, errorMessage) {
 }
 
 // Auto-refresh tracking every 5 minutes
-let trackingInterval = null;
+var trackingInterval = trackingInterval || null;
 function startAutoTrackingRefresh() {
     if (trackingInterval) return; // Already running
 
@@ -4108,8 +4113,15 @@ function renderOrderCard(order, borderColor = 'gray') {
                                     ${order.state || 'N/A'}
                                  </span>
                              </div>
-                        </div>
+                         </div>
                     </div>
+
+                    ${(order.remark || (order.remarks && order.remarks.length > 0)) ? `
+                    <div class="bg-rose-50 border border-rose-200 p-3 rounded-xl mb-2">
+                        <p class="text-[10px] text-rose-600 font-bold uppercase mb-1">💬 Note from ${order.employee || 'Employee'}</p>
+                        <p class="text-xs text-rose-800 font-bold italic">"${order.remark || order.remarks[0].text}"</p>
+                    </div>
+                    ` : ''}
 
                     <!-- Meta Info -->
                      <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
@@ -4376,6 +4388,14 @@ function generateOrderCardHTML(order) {
                         class="text-[10px] text-blue-600 hover:text-blue-700 font-black ml-auto flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-blue-200 hover:border-blue-300 transition-all shadow-sm">📋 COPY</button>
                 </div>
             </div>
+
+            <!-- Employee Remark -->
+            ${order.remark ? `
+            <div class="bg-rose-50 border-2 border-rose-200 p-3 rounded-xl shadow-inner animate-pulse">
+                <p class="text-[10px] text-rose-600 font-bold uppercase mb-1">💬 Employee Remark</p>
+                <p class="text-xs text-rose-800 font-black italic">"${order.remark}"</p>
+            </div>
+            ` : ''}
         </div>
 
         <!-- Remarks Section -->
@@ -5566,6 +5586,10 @@ async function openEditOrderModal(orderId) {
                             <div><label class="block text-xs font-medium mb-1">LANDMARK</label><input type="text" id="editLandMark" value="${order.landMark || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
                             <div><label class="block text-xs font-medium mb-1">ALT NO.</label><input type="tel" id="editAltNo" value="${order.altNo || ''}" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
                         </div>
+                        ${(order.remark || (order.remarks && order.remarks.length > 0)) ? `
+            <div class="mt-2 text-xs bg-rose-50 text-rose-600 p-2 rounded-lg border border-rose-100 italic">
+                💬 ${order.remark || order.remarks[0].text}
+            </div>` : ''}
                         <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
                             <div class="flex justify-between items-center mb-3">
                                 <label class="font-bold text-emerald-700">🛒 ITEMS</label>
@@ -6156,7 +6180,7 @@ function applyQuickDateFilter(prefix, range) {
 
 // GENERIC LOAD FUNCTION FOR ADMIN TABS
 // Pagination state
-let adminPagination = {
+var adminPagination = adminPagination || {
     pending: 1,
     verified: 1,
     dispatched: 1,
@@ -6164,7 +6188,7 @@ let adminPagination = {
     cancelled: 1,
     onhold: 1
 };
-const ORDERS_PER_PAGE = 10;
+var ORDERS_PER_PAGE = typeof ORDERS_PER_PAGE !== 'undefined' ? ORDERS_PER_PAGE : 10;
 
 async function loadAdminStatusTab(status, listId, searchId, startId, endId, statsIds, dateField, page = null) {
     try {
@@ -7123,109 +7147,113 @@ function renderAdminHistoryTable(orders) {
 }
 
 async function loadAdminProgress() {
-    const html = `
-        <div class="glass-card mb-6 p-4">
-            <div class="flex flex-wrap gap-4 items-end">
-                <div class="flex-1 min-w-[150px]">
-                    <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Start Date</label>
-                    <input type="date" id="adminProgressStartDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
-                </div>
-                <div class="flex-1 min-w-[150px]">
-                    <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">End Date</label>
-                    <input type="date" id="adminProgressEndDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
-                </div>
-                <div class="flex-1 min-w-[150px]">
-                    <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Employee</label>
-                    <select id="adminProgressEmployee" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 bg-white">
-                        <option value="">All Employees</option>
-                    </select>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="loadAdminProgress()" class="bg-blue-500 text-white font-bold px-6 py-2 rounded-xl text-sm hover:bg-blue-600 transition-all">
-                        🔄 Refresh
-                    </button>
-                    <button onclick="exportAnalyticsReport()" class="bg-emerald-600 text-white font-bold px-6 py-2 rounded-xl text-sm hover:bg-emerald-700 transition-all flex items-center gap-2">
-                        <span>📥</span> Export Report
-                    </button>
+    const container = document.getElementById('adminProgressTab');
+    
+    // Only inject HTML if it's not already initialized with the correct structure
+    if (!document.getElementById('analyticsSummaryGrid')) {
+        container.innerHTML = `
+            <div class="glass-card mb-6 p-4">
+                <div class="flex flex-wrap gap-4 items-end">
+                    <div class="flex-1 min-w-[150px]">
+                        <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Start Date</label>
+                        <input type="date" id="adminProgressStartDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 shadow-sm transition-all focus:ring-4 focus:ring-blue-500/10">
+                    </div>
+                    <div class="flex-1 min-w-[150px]">
+                        <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">End Date</label>
+                        <input type="date" id="adminProgressEndDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 shadow-sm transition-all focus:ring-4 focus:ring-blue-500/10">
+                    </div>
+                    <div class="flex-1 min-w-[150px]">
+                        <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Employee</label>
+                        <select id="adminProgressEmployee" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 bg-white shadow-sm transition-all focus:ring-4 focus:ring-blue-500/10">
+                            <option value="">All Employees</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="loadAdminProgress()" class="bg-blue-600 text-white font-bold px-6 py-2 rounded-xl text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center gap-2">
+                            <span>🔄</span> Refresh
+                        </button>
+                        <button onclick="exportAnalyticsReport()" class="bg-emerald-600 text-white font-bold px-6 py-2 rounded-xl text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2">
+                            <span>📥</span> Export Report
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div id="adminProgressStatsContainer" class="space-y-6">
-            <!-- Summary Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6" id="analyticsSummaryGrid">
-                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
-                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
-                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
-                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
-                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
-                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
-                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div>
-                <!-- Extra skeletons for 5th and 6th cards -->
-                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div> 
-                <div class="animate-pulse bg-gray-100 h-24 rounded-2xl"></div> 
-            </div>
+            <div id="adminProgressStatsContainer" class="space-y-6">
+                <!-- Summary Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6" id="analyticsSummaryGrid">
+                    <div class="animate-pulse bg-slate-50 h-32 rounded-2xl border border-slate-100"></div>
+                    <div class="animate-pulse bg-slate-50 h-32 rounded-2xl border border-slate-100"></div>
+                    <div class="animate-pulse bg-slate-50 h-32 rounded-2xl border border-slate-100"></div>
+                    <div class="animate-pulse bg-slate-50 h-32 rounded-2xl border border-slate-100"></div>
+                    <div class="animate-pulse bg-slate-50 h-32 rounded-2xl border border-slate-100"></div>
+                    <div class="animate-pulse bg-slate-50 h-32 rounded-2xl border border-slate-100"></div>
+                </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Main Trend Chart -->
-                <div class="lg:col-span-2 glass-card p-6 bg-white shadow-sm border border-slate-100">
-                    <div class="flex items-center justify-between mb-6">
-                        <h4 class="font-bold text-slate-800 flex items-center gap-2">
-                             <span class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">📈</span>
-                             Business Performance Trend
-                        </h4>
-                        <div class="flex gap-4 text-xs font-semibold">
-                             <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span>Revenue</span>
-                             <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span>Delivered</span>
-                             <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span>Cancelled</span>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 glass-card p-6 bg-white shadow-sm border border-slate-100">
+                         <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center gap-3">
+                                 <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">📈</div>
+                                 <div>
+                                     <h4 class="font-bold text-slate-800 tracking-tight">Business Performance Trend</h4>
+                                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Revenue & Delivery Analysis</p>
+                                 </div>
+                            </div>
+                        </div>
+                        <div class="relative h-[320px]">
+                            <canvas id="trendChart"></canvas>
                         </div>
                     </div>
-                    <div class="relative h-[300px]">
-                        <canvas id="trendChart"></canvas>
+
+                    <div class="glass-card p-6 bg-white shadow-sm border border-slate-100">
+                        <div class="flex items-center gap-3 mb-6">
+                             <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">🥧</div>
+                             <div>
+                                 <h4 class="font-bold text-slate-800 tracking-tight">Order Breakdown</h4>
+                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status Distribution</p>
+                             </div>
+                        </div>
+                        <div class="relative h-[250px] flex items-center justify-center">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                 <div class="glass-card p-0 bg-white shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-50 bg-slate-50/30">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100">🏆</div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 tracking-tight">Employee Performance Leaderboard</h4>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Top Performing verified items</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="employeeLeaderboardContainer" class="overflow-x-auto min-h-[150px]">
+                        <div class="p-12 text-center text-slate-400">
+                            <div class="animate-spin inline-block w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full mb-3"></div>
+                            <p class="text-sm font-bold">Loading Performance Data...</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Status Distribution Chart -->
-                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100">
-                    <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                         <span class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">🥧</span>
-                         Order Breakdown
-                    </h4>
-                    <div class="relative h-[300px] flex items-center justify-center">
-                        <canvas id="statusChart"></canvas>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-card p-6 bg-white shadow-sm border border-slate-100 lg:col-span-2">
+                        <div class="flex items-center gap-3 mb-6">
+                             <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-100">📍</div>
+                             <div>
+                                 <h4 class="font-bold text-slate-800 tracking-tight">Top Cities (Orders)</h4>
+                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Geographic Distribution</p>
+                             </div>
+                        </div>
+                        <div class="relative h-[300px]">
+                            <canvas id="cityChart"></canvas>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- NEW: Modern Employee Leaderboard Table (Replaces Chart) -->
-             <div class="glass-card p-0 bg-white shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h4 class="font-bold text-slate-800 flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">🏆</span>
-                            Employee Performance Leaderboard
-                    </h4>
-                </div>
-                <div id="employeeLeaderboardContainer" class="overflow-x-auto">
-                    <!-- Table injected by renderAnalyticsEmployees -->
-                     <div class="p-8 text-center text-gray-400">Loading leaderboard...</div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- City Distribution -->
-                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100 lg:col-span-2">
-                    <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                         <span class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">📍</span>
-                         Top Cities (Orders)
-                    </h4>
-                    <div class="relative h-[300px]">
-                        <canvas id="cityChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-
-    document.getElementById('adminProgressTab').innerHTML = html;
+            </div>`;
+    }
 
     // Load Employees for dropdown
     try {
@@ -7233,20 +7261,28 @@ async function loadAdminProgress() {
         const data = await res.json();
         const employees = data.employees || [];
         const select = document.getElementById('adminProgressEmployee');
-        employees.forEach(e => {
-            const opt = document.createElement('option');
-            opt.value = e.id;
-            opt.textContent = `${e.name} (${e.id})`;
-            select.appendChild(opt);
-        });
+        if (select && select.options.length <= 1) { // Avoid duplicate loading
+            employees.forEach(e => {
+                const opt = document.createElement('option');
+                opt.value = e.id;
+                opt.textContent = `${e.name} (${e.id})`;
+                select.appendChild(opt);
+            });
+        }
     } catch (e) { console.error('Error loading employees for filter', e); }
+
+    // Set default dates to Today if empty
+    const sdInput = document.getElementById('adminProgressStartDate');
+    const edInput = document.getElementById('adminProgressEndDate');
+    if (sdInput && !sdInput.value) sdInput.value = new Date().toISOString().split('T')[0];
+    if (edInput && !edInput.value) edInput.value = new Date().toISOString().split('T')[0];
 
     // Initial Filter Call
     filterAdminProgress();
 }
 
 // Global Chart Instances
-let analyticsCharts = {
+var analyticsCharts = analyticsCharts || {
     trend: null,
     status: null,
     employee: null,
@@ -7255,151 +7291,31 @@ let analyticsCharts = {
 
 async function filterAdminProgress() {
     try {
-        const startDate = document.getElementById('adminProgressStartDate').value;
-        const endDate = document.getElementById('adminProgressEndDate').value;
-        const employeeId = document.getElementById('adminProgressEmployee').value;
+        const startDateInput = document.getElementById('adminProgressStartDate');
+        const endDateInput = document.getElementById('adminProgressEndDate');
+        const employeeSelect = document.getElementById('adminProgressEmployee');
 
-        // Fetch range data from dedicated API
-        let url = `${API_URL}/analytics/range?`;
+        const startDate = startDateInput ? startDateInput.value : '';
+        const endDate = endDateInput ? endDateInput.value : '';
+        const employeeId = employeeSelect ? employeeSelect.value : '';
+
+        // Fetch data from high-performance aggregation API
+        let url = `${API_URL}/analytics/dashboard?`;
         if (startDate) url += `startDate=${startDate}&`;
         if (endDate) url += `endDate=${endDate}&`;
-        if (employeeId) url += `employeeId=${employeeId}&`;
+        if (employeeId && employeeId !== '') url += `employeeId=${employeeId}&`;
 
-        const res = await fetch(url);
-        const result = await res.json();
+        const res = await fetch(url + `&_t=${Date.now()}`);
+        const data = await res.json();
 
-        // We also need all orders for detailed chart processing if range API is too light
-        // For now, let's fetch history for full flexibility in charting
-        const historyRes = await fetch(`${API_URL}/admin/history`);
-        const historyData = await historyRes.json();
-        // Pre-process Fresh/Re-order status on FULL history before filtering
-        const sortedHistory = [...(historyData.orders || [])].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        const seenMobiles = new Set();
-        const orderReorderMap = new Map(); // Map orderId -> isReorder boolean
-
-        sortedHistory.forEach(o => {
-            const mobile = o.telNo || o.mobileNumber;
-            const isReorder = seenMobiles.has(mobile);
-            if (mobile) seenMobiles.add(mobile);
-            orderReorderMap.set(o.orderId, isReorder);
-        });
-
-        // Apply filters locally on the full set
-        // Note: We use orderReorderMap to check status during counting
-        let orders = historyData.orders || [];
-
-        // Date Filtering Logic (Local Timezone Fix)
-        if (startDate) {
-            orders = orders.filter(o => {
-                if (!o.timestamp) return false;
-                const dateStr = new Date(o.timestamp).toLocaleDateString('en-CA'); // YYYY-MM-DD
-                return dateStr >= startDate;
-            });
-        }
-        if (endDate) {
-            orders = orders.filter(o => {
-                if (!o.timestamp) return false;
-                const dateStr = new Date(o.timestamp).toLocaleDateString('en-CA'); // YYYY-MM-DD
-                return dateStr <= endDate;
-            });
+        if (!data.success) {
+            showToast('Analytics error: ' + data.message, 'error');
+            return;
         }
 
-        if (employeeId) orders = orders.filter(o => o.employeeId === employeeId);
+        const stats = data.today;
 
-        // Calculate Summary Stats
-        // SPLIT: Separate Active vs Cancelled for accurate stats
-        const activeOrders = orders.filter(o => o.status !== 'Cancelled');
-        const cancelledOrdersData = orders.filter(o => o.status === 'Cancelled');
-
-        // NET Orders (Active minus Hold)
-        // User Request: Exclude "Hold" from Total Orders count/revenue
-        const netOrders = activeOrders.filter(o => o.status !== 'Hold' && o.status !== 'On Hold');
-
-        // Calculate Summary Stats from NET orders only
-        const totalOrders = netOrders.length;
-        const totalRevenue = netOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-        // const delivered = activeOrders.filter(o => o.status === 'Delivered').length; // Moved down
-        const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(0) : 0;
-
-        // Calculate Fresh vs Re-order for the NET set
-        let freshCount = 0;
-        let reorderCount = 0;
-        let freshRevenue = 0;
-        let reorderRevenue = 0;
-
-        netOrders.forEach(o => {
-            const orderTotal = o.total || 0;
-            // Handle both old (REORDER) and new (Reorder) format
-            const isReorder = o.orderType ? (o.orderType === 'Reorder' || o.orderType === 'REORDER') : orderReorderMap.get(o.orderId);
-
-            if (isReorder) {
-                reorderCount++;
-                reorderRevenue += orderTotal;
-            } else {
-                freshCount++;
-                freshRevenue += orderTotal;
-            }
-        });
-
-        // Cancelled Stats
-        const cancelledCount = cancelledOrdersData.length;
-        const cancelledRevenue = cancelledOrdersData.reduce((sum, o) => sum + (o.total || 0), 0);
-
-        // NEW: Dispatched Stats (Operational View)
-        // Filter from RAW historyData to find orders DISPATCHED in this range, regardless of booking date
-        let dispatchedOrdersInDate = historyData.orders || [];
-
-        // CRITICAL FIX: Apply Employee Filter if selected
-        if (employeeId) {
-            dispatchedOrdersInDate = dispatchedOrdersInDate.filter(o => o.employeeId === employeeId);
-        }
-
-        if (startDate) {
-            dispatchedOrdersInDate = dispatchedOrdersInDate.filter(o => {
-                if (!o.dispatchedAt) return false;
-                const dispDateStr = new Date(o.dispatchedAt).toLocaleDateString('en-CA');
-                return dispDateStr >= startDate;
-            });
-        }
-        if (endDate) {
-            dispatchedOrdersInDate = dispatchedOrdersInDate.filter(o => {
-                if (!o.dispatchedAt) return false;
-                const dispDateStr = new Date(o.dispatchedAt).toLocaleDateString('en-CA');
-                return dispDateStr <= endDate;
-            });
-        }
-
-        // We count ALL orders that were dispatched in this period, even if they are now Delivered/RTO
-        // Requirement: "show all orders dispatched on selected date"
-        const dispatchedCount = dispatchedOrdersInDate.length;
-        const dispatchedRevenue = dispatchedOrdersInDate.reduce((sum, o) => sum + (o.total || 0), 0);
-
-        // NEW: Delivered Stats (Booked in Date Range -> Delivered)
-        // Using activeOrders (filtered by Booking Date) ensures we see outcome of orders booked in this period
-        const deliveredOrders = activeOrders.filter(o => o.status === 'Delivered');
-        const deliveredCount = deliveredOrders.length;
-        const deliveredRevenue = deliveredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-
-        // NEW: Hold Stats
-        const holdOrders = activeOrders.filter(o => o.status === 'Hold' || o.status === 'On Hold');
-        const holdCount = holdOrders.length;
-        const holdRevenue = holdOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-
-
-
-
-        // Find Top City (from ACTIVE orders - including Hold is fine for marketing insights, or use NET?)
-        // Let's use ACTIVE to capture all demand
-        const cityCounts = {};
-        activeOrders.forEach(o => {
-            const loc = (o.distt || o.city || '').trim().toUpperCase();
-            if (loc && loc !== 'SAME' && loc !== 'NA' && loc !== 'N/A' && loc !== 'NULL') {
-                cityCounts[loc] = (cityCounts[loc] || 0) + 1;
-            }
-        });
-        const topCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-
-        // Render Summary Grid
+        // Render Summary Grid (EXACT MATCH TO BACKUP/SCREENSHOT)
         document.getElementById('analyticsSummaryGrid').innerHTML = `
             <!-- 1. Total Revenue -->
             <div class="glass-card p-5 bg-white border border-blue-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
@@ -7409,17 +7325,17 @@ async function filterAdminProgress() {
                         <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 whitespace-nowrap">💰 Income</span>
                     </div>
                     <div class="flex items-start justify-between mb-4">
-                        <p class="text-2xl font-black text-slate-800 tracking-tight">₹${totalRevenue.toLocaleString()}</p>
+                        <p class="text-2xl font-black text-slate-800 tracking-tight">₹${(stats.totalRevenue || 0).toLocaleString()}</p>
                     </div>
                 </div>
                 <div class="flex gap-2 pt-3 border-t border-slate-50">
                      <div class="flex-1 text-center bg-emerald-50/50 rounded-lg py-1.5 border border-emerald-100">
                         <span class="block text-[9px] uppercase font-bold text-emerald-500 tracking-wider mb-0.5">Fresh</span>
-                        <span class="block text-xs font-black text-emerald-600 truncate">₹${freshRevenue.toLocaleString()}</span>
+                        <span class="block text-xs font-black text-emerald-600 truncate">₹${(stats.freshRevenue || 0).toLocaleString()}</span>
                      </div>
                      <div class="flex-1 text-center bg-blue-50/50 rounded-lg py-1.5 border border-blue-100">
                         <span class="block text-[9px] uppercase font-bold text-blue-500 tracking-wider mb-0.5">Re-order</span>
-                        <span class="block text-xs font-black text-blue-600 truncate">₹${reorderRevenue.toLocaleString()}</span>
+                        <span class="block text-xs font-black text-blue-600 truncate">₹${(stats.reorderRevenue || 0).toLocaleString()}</span>
                      </div>
                 </div>
             </div>
@@ -7432,22 +7348,22 @@ async function filterAdminProgress() {
                         <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 whitespace-nowrap">📦 Volume</span>
                     </div>
                     <div class="flex items-start justify-between mb-4">
-                        <p class="text-3xl font-black text-slate-800 tracking-tight">${totalOrders}</p>
+                        <p class="text-3xl font-black text-slate-800 tracking-tight">${stats.totalOrders || 0}</p>
                     </div>
                 </div>
                 <div class="flex gap-2 pt-3 border-t border-slate-50">
                      <div class="flex-1 text-center bg-emerald-50/50 rounded-lg py-1.5 border border-emerald-100">
                         <span class="block text-[9px] uppercase font-bold text-emerald-500 tracking-wider mb-0.5">Fresh</span>
-                        <span class="block text-lg font-black text-emerald-600">${freshCount}</span>
+                        <span class="block text-lg font-black text-emerald-600">${stats.freshCount || 0}</span>
                      </div>
                      <div class="flex-1 text-center bg-blue-50/50 rounded-lg py-1.5 border border-blue-100">
                         <span class="block text-[9px] uppercase font-bold text-blue-500 tracking-wider mb-0.5">Re-order</span>
-                        <span class="block text-lg font-black text-blue-600">${reorderCount}</span>
+                        <span class="block text-lg font-black text-blue-600">${stats.reorderCount || 0}</span>
                      </div>
                 </div>
             </div>
 
-            <!-- 3. Dispatched Orders (Moved here) -->
+            <!-- 3. Dispatched Orders -->
             <div class="glass-card p-5 bg-white border border-purple-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
                 <div>
                      <div class="flex items-center justify-between mb-2">
@@ -7455,16 +7371,16 @@ async function filterAdminProgress() {
                         <span class="text-[9px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 whitespace-nowrap">🚚 Transit</span>
                     </div>
                     <div class="flex items-start justify-between mb-4">
-                        <p class="text-2xl font-black text-slate-800 tracking-tight">${dispatchedCount}</p>
+                        <p class="text-2xl font-black text-slate-800 tracking-tight">${stats.dispatched || 0}</p>
                     </div>
                 </div>
                 <div class="pt-3 border-t border-purple-50">
                     <span class="block text-[9px] uppercase font-bold text-purple-400 tracking-wider mb-0.5">Value</span>
-                    <span class="block text-sm font-black text-purple-600 truncate">📦 ₹${dispatchedRevenue.toLocaleString()}</span>
+                    <span class="block text-sm font-black text-purple-600 truncate">📦 ₹${(stats.dispatchedRevenue || 0).toLocaleString()}</span>
                  </div>
             </div>
 
-            <!-- 4. Hold Orders (Moved here) -->
+            <!-- 4. Hold Orders -->
             <div class="glass-card p-5 bg-white border border-orange-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
                 <div>
                      <div class="flex items-center justify-between mb-2">
@@ -7472,12 +7388,12 @@ async function filterAdminProgress() {
                         <span class="text-[9px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 whitespace-nowrap">⏸️ Hold</span>
                     </div>
                     <div class="flex items-start justify-between mb-4">
-                        <p class="text-2xl font-black text-slate-800 tracking-tight">${holdCount}</p>
+                        <p class="text-2xl font-black text-slate-800 tracking-tight">${stats.hold || 0}</p>
                     </div>
                 </div>
                 <div class="pt-3 border-t border-orange-50">
                     <span class="block text-[9px] uppercase font-bold text-orange-400 tracking-wider mb-0.5">Hold Value</span>
-                    <span class="block text-sm font-black text-orange-600 truncate">⏳ ₹${holdRevenue.toLocaleString()}</span>
+                    <span class="block text-sm font-black text-orange-600 truncate">⏳ ₹${(stats.holdRevenue || 0).toLocaleString()}</span>
                  </div>
             </div>
 
@@ -7489,16 +7405,16 @@ async function filterAdminProgress() {
                         <span class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 whitespace-nowrap">🚫 Lost</span>
                     </div>
                     <div class="flex items-start justify-between mb-4">
-                        <p class="text-2xl font-black text-slate-800 tracking-tight">${cancelledCount}</p>
+                        <p class="text-2xl font-black text-slate-800 tracking-tight">${stats.cancelled || 0}</p>
                     </div>
                 </div>
                  <div class="pt-3 border-t border-slate-50">
                     <span class="block text-[9px] uppercase font-bold text-rose-400 tracking-wider mb-0.5">Lost Revenue</span>
-                    <span class="block text-sm font-black text-rose-500 truncate">📉 ₹${cancelledRevenue.toLocaleString()}</span>
+                    <span class="block text-sm font-black text-rose-500 truncate">📉 ₹${(stats.cancelledRevenue || 0).toLocaleString()}</span>
                  </div>
             </div>
 
-            <!-- 6. Delivered Orders (Moved Here - Last) -->
+            <!-- 6. Delivered Orders -->
             <div class="glass-card p-5 bg-white border border-teal-50 h-full flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
                 <div>
                     <div class="flex items-center justify-between mb-2">
@@ -7506,23 +7422,36 @@ async function filterAdminProgress() {
                         <span class="text-[9px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 whitespace-nowrap">✅ Done</span>
                     </div>
                     <div class="flex items-start justify-between mb-4">
-                        <p class="text-3xl font-black text-slate-800 tracking-tight">${deliveredCount}</p>
+                        <p class="text-3xl font-black text-slate-800 tracking-tight">${stats.delivered || 0}</p>
                     </div>
                 </div>
                 <div class="pt-3 border-t border-teal-50">
                     <span class="block text-[9px] uppercase font-bold text-teal-400 tracking-wider mb-0.5">Revenue</span>
-                    <span class="block text-sm font-black text-teal-600 truncate">💰 ₹${deliveredRevenue.toLocaleString()}</span>
+                    <span class="block text-sm font-black text-teal-600 truncate">💰 ₹${(stats.deliveredRevenue || 0).toLocaleString()}</span>
                  </div>
-            </div>
+            </div>`;
 
-
-        `;
-
-        // Render Charts
-        renderAnalyticsTrend(orders);
-        renderAnalyticsStatus(orders);
-        renderAnalyticsEmployees(orders);
-        renderAnalyticsCities(orders);
+        // Render Charts using Old UI renderers
+        // Render Charts using Old UI renderers (Safe Check for Chart.js)
+        if (typeof Chart === 'undefined') {
+            console.warn('📊 Chart.js is still loading... waiting 500ms');
+            setTimeout(() => {
+                if (typeof Chart !== 'undefined') {
+                    renderAnalyticsTrend(data.charts.ordersTimeline);
+                    renderAnalyticsStatus(data.charts.statusDistribution);
+                    renderAnalyticsEmployees(data.charts.employeePerformance);
+                    renderAnalyticsCities(data.charts.cityDistribution);
+                } else {
+                    console.error('❌ Chart.js failed to load.');
+                    showToast('Chart library missing!', 'error');
+                }
+            }, 500);
+        } else {
+            renderAnalyticsTrend(data.charts.ordersTimeline);
+            renderAnalyticsStatus(data.charts.statusDistribution);
+            renderAnalyticsEmployees(data.charts.employeePerformance);
+            renderAnalyticsCities(data.charts.cityDistribution);
+        }
 
     } catch (e) {
         console.error('Error filtering progress', e);
@@ -7530,26 +7459,16 @@ async function filterAdminProgress() {
     }
 }
 
-// Chart Helper: Trend Line
-function renderAnalyticsTrend(orders) {
+// Chart Helpers for API Data
+// Chart Helper: Trend Line (RESTORED FROM BACKUP)
+function renderAnalyticsTrend(timeline) {
     const ctx = document.getElementById('trendChart').getContext('2d');
     if (analyticsCharts.trend) analyticsCharts.trend.destroy();
 
-    // Process data: group by date
-    const dailyData = {};
-    orders.forEach(o => {
-        const date = (o.timestamp || '').split('T')[0];
-        if (!date) return;
-        if (!dailyData[date]) dailyData[date] = { revenue: 0, delivered: 0, cancelled: 0 };
-        dailyData[date].revenue += (o.total || 0);
-        if (o.status === 'Delivered') dailyData[date].delivered++;
-        if (o.status === 'Cancelled') dailyData[date].cancelled++;
-    });
-
-    const labels = Object.keys(dailyData).sort();
-    const revenueSet = labels.map(l => dailyData[l].revenue);
-    const deliveredSet = labels.map(l => dailyData[l].delivered);
-    const cancelledSet = labels.map(l => dailyData[l].cancelled);
+    const labels = timeline.map(t => t._id);
+    const revenueSet = timeline.map(t => t.revenue);
+    const deliveredSet = timeline.map(t => t.delivered);
+    const cancelledSet = timeline.map(t => t.cancelled);
 
     analyticsCharts.trend = new Chart(ctx, {
         type: 'line',
@@ -7579,7 +7498,7 @@ function renderAnalyticsTrend(orders) {
                     data: cancelledSet,
                     borderColor: '#f43f5e',
                     pointBackgroundColor: '#f43f5e',
-                    borderDash: [2, 2], // Distinct dash style
+                    borderDash: [2, 2],
                     tension: 0.4,
                     yAxisID: 'y1'
                 }
@@ -7593,39 +7512,49 @@ function renderAnalyticsTrend(orders) {
                 y: { type: 'linear', display: true, position: 'left', grid: { drawOnChartArea: true, color: '#f1f5f9' }, min: 0 },
                 y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, min: 0 }
             },
-            plugins: { legend: { display: false } } // Custom legend in HTML
+            plugins: { legend: { display: false } }
         }
     });
 }
 
-// Chart Helper: Status Doughnut
-function renderAnalyticsStatus(orders) {
+// Chart Helper: Status Doughnut (RESTORED FROM BACKUP)
+function renderAnalyticsStatus(statusData) {
     const ctx = document.getElementById('statusChart').getContext('2d');
     if (analyticsCharts.status) analyticsCharts.status.destroy();
 
-    const stats = {
-        'Delivered': orders.filter(o => o.status === 'Delivered').length,
-        'Cancelled': orders.filter(o => o.status === 'Cancelled').length,
-        'On Hold': orders.filter(o => o.status === 'On Hold').length,
-        'Pending': orders.filter(o => o.status === 'Pending').length,
-        'Verified': orders.filter(o => o.status === 'Address Verified').length,
-        'In Transit': orders.filter(o => o.status === 'Dispatched').length
-    };
+    // Handle BOTH formats: object {pending:17,...} OR array [{_id:"Pending",count:17},...]
+    let stats = {};
+    if (Array.isArray(statusData)) {
+        statusData.forEach(s => stats[s._id] = s.count);
+    } else if (statusData && typeof statusData === 'object') {
+        // Direct object format from API: {pending:17, delivered:901, cancelled:333, ...}
+        stats['Delivered'] = statusData.delivered || 0;
+        stats['Cancelled'] = statusData.cancelled || 0;
+        stats['Hold'] = statusData.hold || statusData.onHold || 0;
+        stats['Pending'] = statusData.pending || 0;
+        stats['Address Verified'] = statusData.verified || statusData.addressVerified || 0;
+        stats['Dispatched'] = statusData.dispatched || 0;
+        stats['RTO'] = statusData.rto || 0;
+    }
+
+    const labels = ['Delivered', 'Cancelled', 'On Hold', 'Pending', 'Verified', 'In Transit', 'RTO'];
+    const data = [
+        stats['Delivered'] || 0,
+        stats['Cancelled'] || 0,
+        stats['Hold'] || stats['On Hold'] || 0,
+        stats['Pending'] || 0,
+        stats['Address Verified'] || stats['Verified'] || 0,
+        stats['Dispatched'] || stats['In Transit'] || 0,
+        stats['RTO'] || 0
+    ];
 
     analyticsCharts.status = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: Object.keys(stats),
+            labels,
             datasets: [{
-                data: Object.values(stats),
-                backgroundColor: [
-                    '#10b981', // Delivered (Emerald)
-                    '#ef4444', // Cancelled (Red)
-                    '#f59e0b', // On Hold (Amber)
-                    '#f43f5e', // Pending (Rose/Pink)
-                    '#3b82f6', // Verified (Blue)
-                    '#8b5cf6'  // In Transit (Violet)
-                ],
+                data,
+                backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#f43f5e', '#3b82f6', '#8b5cf6', '#fb923c'],
                 borderWidth: 0,
                 hoverOffset: 15
             }]
@@ -7636,35 +7565,23 @@ function renderAnalyticsStatus(orders) {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 15,
-                        font: { size: 11, weight: '600' }
-                    }
+                    labels: { usePointStyle: true, padding: 15, font: { size: 11, weight: '600' } }
                 },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    padding: 12,
-                    bodyFont: { size: 13 },
-                    titleFont: { size: 13, weight: '700' }
-                }
+                tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', padding: 12, bodyFont: { size: 13 }, titleFont: { size: 13, weight: '700' } }
             },
             cutout: '70%'
         },
         plugins: [{
             id: 'textOnSegments',
-            afterDatasetsDraw(chart, args, pluginOptions) {
-                const { ctx, data } = chart;
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
                 chart.data.datasets.forEach((dataset, i) => {
                     const meta = chart.getDatasetMeta(i);
                     meta.data.forEach((element, index) => {
-                        // Only draw if value > 0
                         const value = dataset.data[index];
                         if (value > 0) {
                             const { x, y } = element.tooltipPosition();
                             ctx.save();
-
-                            // Draw Value
                             ctx.fillStyle = '#fff';
                             ctx.font = 'bold 12px sans-serif';
                             ctx.textAlign = 'center';
@@ -7672,7 +7589,6 @@ function renderAnalyticsStatus(orders) {
                             ctx.shadowColor = 'rgba(0,0,0,0.5)';
                             ctx.shadowBlur = 4;
                             ctx.fillText(value, x, y);
-
                             ctx.restore();
                         }
                     });
@@ -7682,71 +7598,16 @@ function renderAnalyticsStatus(orders) {
     });
 }
 
-// Table Helper: Employee Leaderboard (Modernized)
-function renderAnalyticsEmployees(orders) {
+// Table Helper: Employee Leaderboard (RESTORED FROM BACKUP)
+function renderAnalyticsEmployees(leaders) {
     const container = document.getElementById('employeeLeaderboardContainer');
     if (!container) return;
 
-    const empStats = {};
-
-    // Aggregation
-    orders.forEach(o => {
-        if (!o.employee) return;
-        const empName = o.employee;
-        if (!empStats[empName]) {
-            empStats[empName] = {
-                id: o.employeeId || 'N/A',
-                total: 0,
-                delivered: 0,
-                cancelled: 0,
-                hold: 0,
-                dispatched: 0,
-                rto: 0,
-                revenue: 0,
-                deliveredRev: 0,
-                cancelledRev: 0,
-                holdRev: 0,
-                dispatchedRev: 0,
-                rtoRev: 0
-            };
-        }
-
-        const amt = (o.total || 0);
-        empStats[empName].total++;
-        empStats[empName].revenue += amt;
-
-        if (o.status === 'Delivered') {
-            empStats[empName].delivered++;
-            empStats[empName].deliveredRev += amt;
-        }
-        else if (o.status === 'Cancelled') {
-            empStats[empName].cancelled++;
-            empStats[empName].cancelledRev += amt;
-        }
-        else if (o.status === 'Hold' || o.status === 'On Hold') {
-            empStats[empName].hold++;
-            empStats[empName].holdRev += amt;
-        }
-        else if (o.status === 'Dispatched') {
-            empStats[empName].dispatched++;
-            empStats[empName].dispatchedRev += amt;
-        }
-        else if (o.status === 'RTO') {
-            empStats[empName].rto++;
-            empStats[empName].rtoRev += amt;
-        }
-    });
-
-    // Sort by Total Orders Descending
-    const sortedData = Object.entries(empStats)
-        .sort((a, b) => b[1].total - a[1].total);
-
-    if (sortedData.length === 0) {
+    if (!leaders || leaders.length === 0) {
         container.innerHTML = `<div class="p-8 text-center text-gray-500">No employee data found for this period.</div>`;
         return;
     }
 
-    // Generate Table HTML
     let tableHtml = `
         <table class="w-full text-left border-collapse">
             <thead class="bg-slate-50 text-xs uppercase font-bold text-slate-500">
@@ -7765,14 +7626,15 @@ function renderAnalyticsEmployees(orders) {
             <tbody class="divide-y divide-slate-100">
     `;
 
-    sortedData.forEach(([name, stats], index) => {
+    leaders.forEach((stats, index) => {
+        const name = stats.name || 'Unknown';
         const conversionRate = stats.total > 0 ? ((stats.delivered / stats.total) * 100).toFixed(1) : 0;
         const rank = index + 1;
         let rankBadge = `<span class="text-slate-400 font-mono text-xs w-6 inline-block">#${rank}</span>`;
 
         if (rank === 1) rankBadge = `<span class="text-lg">🥇</span>`;
-        if (rank === 2) rankBadge = `<span class="text-lg">🥈</span>`;
-        if (rank === 3) rankBadge = `<span class="text-lg">🥉</span>`;
+        else if (rank === 2) rankBadge = `<span class="text-lg">🥈</span>`;
+        else if (rank === 3) rankBadge = `<span class="text-lg">🥉</span>`;
 
         tableHtml += `
             <tr class="hover:bg-slate-50/80 transition-colors group">
@@ -7797,35 +7659,35 @@ function renderAnalyticsEmployees(orders) {
                 <td class="px-4 py-4 text-center">
                     <div class="flex flex-col items-center">
                         <span class="font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100 mb-1">${stats.hold}</span>
-                        <span class="text-[9px] font-black text-yellow-700">₹${stats.holdRev.toLocaleString()}</span>
+                        <span class="text-[9px] font-black text-yellow-700">₹${(stats.holdRev || 0).toLocaleString()}</span>
                     </div>
                 </td>
                 <td class="px-4 py-4 text-center">
                     <div class="flex flex-col items-center">
                         <span class="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100 mb-1">${stats.dispatched}</span>
-                        <span class="text-[9px] font-black text-purple-700">₹${stats.dispatchedRev.toLocaleString()}</span>
+                        <span class="text-[9px] font-black text-purple-700">₹${(stats.dispatchedRev || 0).toLocaleString()}</span>
                     </div>
                 </td>
                 <td class="px-4 py-4 text-center">
                     <div class="flex flex-col items-center">
                         <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 mb-1">${stats.delivered}</span>
-                        <span class="text-[9px] font-black text-emerald-700">₹${stats.deliveredRev.toLocaleString()}</span>
+                        <span class="text-[9px] font-black text-emerald-700">₹${(stats.deliveredRev || 0).toLocaleString()}</span>
                     </div>
                 </td>
                 <td class="px-4 py-4 text-center">
                     <div class="flex flex-col items-center">
                          <span class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 mb-1">${stats.rto}</span>
-                         <span class="text-[9px] font-black text-indigo-700">₹${stats.rtoRev.toLocaleString()}</span>
+                         <span class="text-[9px] font-black text-indigo-700">₹${(stats.rtoRev || 0).toLocaleString()}</span>
                     </div>
                 </td>
                 <td class="px-4 py-4 text-center">
                     <div class="flex flex-col items-center">
                         <span class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100 mb-1">${stats.cancelled}</span>
-                        <span class="text-[9px] font-black text-rose-700">₹${stats.cancelledRev.toLocaleString()}</span>
+                        <span class="text-[9px] font-black text-rose-700">₹${(stats.cancelledRev || 0).toLocaleString()}</span>
                     </div>
                 </td>
                 <td class="px-4 py-4 text-center">
-                    <span class="font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100 whitespace-nowrap shadow-sm">₹${stats.revenue.toLocaleString()}</span>
+                    <span class="font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100 whitespace-nowrap shadow-sm">₹${(stats.revenue || 0).toLocaleString()}</span>
                 </td>
                 <td class="px-4 py-4 text-right">
                     <div class="flex flex-col items-end gap-1">
@@ -7843,26 +7705,21 @@ function renderAnalyticsEmployees(orders) {
     container.innerHTML = tableHtml;
 }
 
-// Chart Helper: City Distribution
-function renderAnalyticsCities(orders) {
+// Chart Helper: City Distribution (RESTORED FROM BACKUP)
+function renderAnalyticsCities(cityData) {
     const ctx = document.getElementById('cityChart').getContext('2d');
+    if (!ctx) return;
     if (analyticsCharts.city) analyticsCharts.city.destroy();
 
-    const cityStats = {};
-    orders.forEach(o => {
-        const city = (o.distt || o.city || '').trim().toUpperCase();
-        if (!city || city === 'SAME' || city === 'NA' || city === 'N/A' || city === 'NULL') return;
-        cityStats[city] = (cityStats[city] || 0) + 1;
-    });
-
-    const data = Object.entries(cityStats).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const data = cityData.slice(0, 5); // Top 5
+    if (data.length === 0) return;
 
     analyticsCharts.city = new Chart(ctx, {
         type: 'polarArea',
         data: {
-            labels: data.map(d => d[0]),
+            labels: data.map(d => d._id),
             datasets: [{
-                data: data.map(d => d[1]),
+                data: data.map(d => d.count),
                 backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
                 borderWidth: 1
             }]
@@ -7873,13 +7730,13 @@ function renderAnalyticsCities(orders) {
             plugins: {
                 legend: {
                     position: 'right',
-                    labels: { usePointStyle: true, font: { weight: '600' } }
+                    labels: { usePointStyle: true, font: { weight: '600', size: 10 } }
                 }
             }
         },
         plugins: [{
             id: 'textOnSegments',
-            afterDatasetsDraw(chart, args, pluginOptions) {
+            afterDatasetsDraw(chart) {
                 const { ctx } = chart;
                 chart.data.datasets.forEach((dataset, i) => {
                     const meta = chart.getDatasetMeta(i);
@@ -7903,6 +7760,7 @@ function renderAnalyticsCities(orders) {
         }]
     });
 }
+
 
 // ==================== SHARED FUNCTIONS ====================
 // Redundant viewOrder removed (using unified version in modals.js)
@@ -8641,7 +8499,7 @@ async function initOrderMap(address) {
 }
 
 // ==================== MAP INTEGRATION ====================
-let currentMap = null;
+var currentMap = currentMap || null;
 
 function showMap(orderId, address) {
     const mapDiv = document.getElementById(`map-${orderId}
@@ -9443,8 +9301,8 @@ async function requestDelivery(orderId) {
 // ==================== EMPLOYEE PANEL: SEARCH AND REORDER ====================
 
 // Global variables to store original order lists for filtering
-let allMyOrders = [];
-let allMyHistory = [];
+var allMyOrders = allMyOrders || [];
+var allMyHistory = allMyHistory || [];
 
 // Filter My Orders by mobile number
 function filterMyOrders(query) {
@@ -9636,7 +9494,7 @@ function filterMyHistory(q) {
 
 // PERFORMANCE: Removed fetch wrapper - was adding 500ms delay to every API call
 // All fetch calls now execute at full speed
-const originalSwitchEmpTab = window.switchEmpTab;
+var originalSwitchEmpTab = window.switchEmpTab;
 if (typeof originalSwitchEmpTab === 'function') {
     window.switchEmpTab = function (tab) {
         originalSwitchEmpTab(tab);

@@ -1,5 +1,5 @@
 // WhatsApp Icon SVG
-const WHATSAPP_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" style="width:1.2em; height:1.2em;"><path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.1 0-65.6-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-5.5-2.8-23.2-8.5-44.2-27.1-16.4-14.6-27.4-32.7-30.6-38.1-3.2-5.4-.3-8.3 2.4-11.1 2.4-2.5 5.5-6.4 8.3-9.6 2.8-3.2 3.7-5.5 5.5-9.1 1.9-3.7 1-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 13.2 5.8 23.5 9.2 31.5 11.8 13.3 4.2 25.4 3.6 35 2.2 10.7-1.5 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>`;
+var WHATSAPP_ICON = WHATSAPP_ICON || `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" style="width:1.2em; height:1.2em;"><path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.1 0-65.6-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-5.5-2.8-23.2-8.5-44.2-27.1-16.4-14.6-27.4-32.7-30.6-38.1-3.2-5.4-.3-8.3 2.4-11.1 2.4-2.5 5.5-6.4 8.3-9.6 2.8-3.2 3.7-5.5 5.5-9.1 1.9-3.7 1-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 13.2 5.8 23.5 9.2 31.5 11.8 13.3 4.2 25.4 3.6 35 2.2 10.7-1.5 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>`;
 
 // API Configuration
 // If API_URL is defined in HTML, use it, else default
@@ -118,7 +118,7 @@ _Team Herb On Naturals_`
 }
 
 // ==================== SESSION MANAGEMENT ====================
-let currentUser = null;
+var currentUser = currentUser || null;
 
 function saveSession(user, type, deptType) {
     const session = {
@@ -188,7 +188,7 @@ function checkAuth(requiredRole) {
 function showMessage(msg, type, elementId) {
     const el = document.getElementById(elementId) || document.getElementById('adminMessage'); // Fallback
     if (!el) {
-        alert(msg); // Ultimate fallback
+        showToast(msg, type); // Use toast as fallback
         return;
     }
 
@@ -203,6 +203,28 @@ function showMessage(msg, type, elementId) {
 
     el.classList.remove('hidden');
     setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+function showToast(message, type = 'success') {
+    const div = document.createElement('div');
+    const colors = {
+        success: 'bg-emerald-600',
+        error: 'bg-red-600',
+        warning: 'bg-amber-500',
+        info: 'bg-blue-600'
+    };
+    const bgColor = colors[type] || colors.success;
+    div.className = `fixed top-10 right-10 ${bgColor} text-white px-8 py-4 rounded-2xl shadow-2xl z-[20000] animate-bounce font-bold border-2 border-white/20`;
+    div.innerHTML = `<div class="flex items-center gap-3">
+        <span class="text-xl">${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'}</span>
+        <span>${message}</span>
+    </div>`;
+    document.body.appendChild(div);
+    setTimeout(() => {
+        div.classList.remove('animate-bounce');
+        div.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+        setTimeout(() => div.remove(), 500);
+    }, 4000);
 }
 
 function closeModal(id) {
@@ -426,6 +448,35 @@ async function viewOrder(orderId) {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Remarks Section -->
+                        ${(order.remark || (order.remarks && order.remarks.length > 0) || (order.verificationRemark && order.verificationRemark.text)) ? `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            ${(order.remark || (order.remarks && order.remarks.length > 0)) ? `
+                            <div class="bg-rose-50 border-2 border-rose-100 p-5 rounded-3xl shadow-sm relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-rose-500 text-white px-4 py-1 rounded-bl-2xl text-[8px] font-black uppercase tracking-widest">Employee Note</div>
+                                <div class="flex items-start gap-3">
+                                    <span class="text-2xl">💬</span>
+                                    <div>
+                                        <p class="text-xs font-black text-rose-400 uppercase tracking-widest mb-1">Created By: ${order.employee || 'Employee'}</p>
+                                        <p class="text-gray-800 font-bold italic leading-relaxed">"${order.remark || order.remarks[0].text}"</p>
+                                    </div>
+                                </div>
+                            </div>` : ''}
+
+                            ${(order.verificationRemark && order.verificationRemark.text) ? `
+                            <div class="bg-blue-50 border-2 border-blue-100 p-5 rounded-3xl shadow-sm relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-2xl text-[8px] font-black uppercase tracking-widest">Verification Dept</div>
+                                <div class="flex items-start gap-3">
+                                    <span class="text-2xl">📝</span>
+                                    <div>
+                                        <p class="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Remarks by: ${order.verificationRemark.addedBy || 'Verifier'}</p>
+                                        <p class="text-gray-800 font-bold leading-relaxed">${order.verificationRemark.text}</p>
+                                    </div>
+                                </div>
+                            </div>` : ''}
+                        </div>
+                        ` : ''}
 
                         <!-- Order Items Section -->
                         <div class="bg-white border-2 border-gray-50 rounded-[40px] shadow-sm overflow-hidden">

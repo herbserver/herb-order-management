@@ -130,6 +130,11 @@ const validateOrderCreation = [
     body('items')
         .isArray({ min: 1 }).withMessage('At least one item is required'),
 
+    body('remark')
+        .optional()
+        .trim()
+        .isLength({ max: 500 }).withMessage('Remark must be at most 500 characters'),
+
     handleValidationErrors
 ];
 

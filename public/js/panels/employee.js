@@ -88,7 +88,7 @@ function initOrderForm() {
     if (timeInput) timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
-const PRODUCT_LIST = [
+var PRODUCT_LIST = typeof PRODUCT_LIST !== 'undefined' ? PRODUCT_LIST : [
     { name: "Amlex", price: 0 },
     { name: "Black pills", price: 0 },
     { name: "Blue & White capsule", price: 0 },
@@ -166,9 +166,9 @@ function calculateTotal() {
 }
 
 function calculateCOD() {
-    const total = Number(document.getElementById('total').value);
-    const advance = Number(document.getElementById('advancePaid').value || 0);
-    document.getElementById('codAmount').value = total - advance;
+    const total = Number(document.getElementById('totalAmountInput').value) || 0;
+    const advance = Number(document.querySelector('input[name="advance"]').value) || 0;
+    document.querySelector('input[name="codAmount"]').value = total - advance;
 }
 
 async function saveOrder() {
@@ -239,10 +239,10 @@ async function saveOrder() {
         landMark: form.landMark.value,
 
         items: items,
-        total: Number(form.total.value),
-        advance: Number(form.advancePaid.value),
+        total: Number(document.getElementById('totalAmountInput').value),
+        advance: Number(form.advance.value),
         cod: Number(form.codAmount.value),
-        remark: form.remark.value,
+        remark: document.getElementById('employeeRemark').value,
         // Capture Manual Order Type
         orderType: document.querySelector('input[name="orderType"]:checked')?.value === 'NEW' ? 'Fresh' : 'Reorder'
     };
@@ -968,84 +968,4 @@ window.filterMyHistory = filterMyHistory;
 window.filterMyCancelledOrders = filterMyCancelledOrders;
 window.reorderFromHistory = reorderFromHistory;
 window.loadMyHistory = loadMyHistory;
-
-
-// ==================== AI AGENT LOGIC (Magic Paste) ====================
-function openAiPasteModal() {
-    const modal = document.getElementById('aiPasteModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.getElementById('aiPasteInput').focus();
-    }
-}
-
-function closeAiPasteModal() {
-    const modal = document.getElementById('aiPasteModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        document.getElementById('aiPasteInput').value = '';
-    }
-}
-
-function processAiPaste() {
-    const input = document.getElementById('aiPasteInput').value;
-    if (!input || !input.trim()) {
-        alert('Please paste some text first!');
-        return;
-    }
-
-    if (typeof SmartParser === 'undefined') {
-        alert('AI Parser is loading... please try again in a moment.');
-        return;
-    }
-
-    const data = SmartParser.parse(input);
-    if (!data) {
-        alert('Could not understand the text. Please try manually.');
-        return;
-    }
-
-    // Populate Form
-    const f = document.getElementById('orderForm');
-    if (!f) return;
-
-    // Helper to set value and trigger input event (for validation/updates)
-    const setVal = (name, val) => {
-        if (f[name] && val) {
-            f[name].value = val;
-            f[name].dispatchEvent(new Event('input'));
-        }
-    };
-
-    if (data.customerName) setVal('customerName', data.customerName);
-    if (data.mobile) setVal('telNo', data.mobile);
-    if (data.alternatMobile && f.alternatMobile) setVal('alternatMobile', data.alternatMobile);
-
-    // Address Fields
-    setVal('hNo', data.hNo);
-    // blockGaliNo is hard to parse, usually skip or map from address residue if needed
-    setVal('villColony', data.villColony);
-    setVal('landMark', data.landMark);
-    setVal('po', data.po);
-    setVal('tahTaluka', data.tahTaluka);
-    setVal('distt', data.distt);
-    setVal('state', data.state);
-    setVal('pin', data.pin);
-
-    // Force address update
-    if (window.updateAddress) updateAddress();
-
-    // Show Success Animation
-    closeAiPasteModal();
-    if (typeof showSuccessPopup === 'function') {
-        showSuccessPopup('AI Magic Applied! ✨', 'Form filled automatically. Please review details.', '🤖', '#8b5cf6');
-    } else {
-        alert('AI Form Filled! Please review.');
-    }
-}
-
-// Expose to window
-window.openAiPasteModal = openAiPasteModal;
-window.closeAiPasteModal = closeAiPasteModal;
-window.processAiPaste = processAiPaste;
 

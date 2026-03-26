@@ -14,11 +14,10 @@
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
 
     <!-- Preload Critical Resources for Faster Loading -->
-    <link rel="preload" href="app.js?v=3.6" as="script">
+
     <link rel="preload" href="styles.css" as="style">
     <link rel="preload" href="js/core/config.js" as="script">
     <link rel="preload" href="js/core/session.js" as="script">
-    <link rel="preload" href="js/utils/smart-parser.js" as="script">
 
     <!-- Critical: Tailwind CSS (needed for styling) -->
     <script src="https://cdn.tailwindcss.com" defer></script>
@@ -403,21 +402,16 @@
                         <!-- Order Form Tab -->
                         <div id="empOrderTab" class="animate-fadeIn">
                             <div class="glass-card p-6 lg:p-8 border-t-4 border-blue-500 relative">
-                                <div
-                                    class="flex items-center justify-between gap-3 mb-8 pb-4 border-b border-dashed border-gray-200">
-                                    <div class="flex items-center gap-3">
-                                        <span
-                                            class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-xl">📝</span>
-                                        <div>
-                                            <h2 class="text-xl font-bold text-gray-800">New Order Entry</h2>
-                                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Fill
-                                                details carefully</p>
-                                        </div>
+                                <div class="flex items-center gap-3 mb-8 pb-4 border-b border-dashed border-gray-200">
+                                    <span
+                                        class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-xl">📝</span>
+                                    <div>
+                                        <h2 class="text-xl font-bold text-gray-800">New Order Entry</h2>
+                                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Fill
+                                            details
+                                            carefully
+                                        </p>
                                     </div>
-                                    <button onclick="openAiPasteModal()" type="button"
-                                        class="px-4 py-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 animate-pulse">
-                                        ✨ AI Paste
-                                    </button>
                                 </div>
 
                                 <form id="orderForm" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -547,7 +541,7 @@
                                         </div>
                                         <div class="mb-3">
                                             <label class="block text-sm font-medium mb-1">Remark (Optional)</label>
-                                            <textarea name="remark" rows="2"
+                                            <textarea name="remark" id="employeeRemark" rows="2"
                                                 placeholder="Koi khaas baat? (e.g. Call before delivery)"
                                                 class="w-full border-2 rounded-xl px-4 py-2 text-sm resize-none"></textarea>
                                         </div>
@@ -2282,226 +2276,119 @@
 
                     <!-- PROGRESS TAB -->
                     <div id="adminProgressTab" class="hidden animate-fadeIn space-y-6">
-                        <!-- Header with Actions -->
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                            <h2 class="text-2xl font-black text-gray-800 flex items-center gap-3">
-                                <span class="text-3xl">📊</span> Analytics Dashboard
-                            </h2>
-                            <div
-                                class="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-                                <select id="analyticsDateRange" onchange="updateAnalyticsDashboard()"
-                                    class="bg-transparent text-sm font-semibold text-slate-600 outline-none px-2 py-1.5 cursor-pointer hover:text-indigo-600 transition-colors">
-                                    <option value="today">Today</option>
-                                    <option value="yesterday">Yesterday</option>
-                                    <option value="week">Last 7 Days</option>
-                                    <option value="month">This Month</option>
-                                </select>
-                                <button onclick="loadAdminProgress()"
-                                    class="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600 transition-colors"
-                                    title="Refresh Data">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Info Alert for Stuck Orders -->
-                        <div id="stuckOrdersAlert"
-                            class="hidden bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm mb-6 animate-pulse">
-                            <div class="flex items-start">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd"
-                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                            clip-rule="evenodd" />
-                                    </svg>
+                        <!-- Filters Header -->
+                        <div class="glass-card mb-6 p-4">
+                            <div class="flex flex-wrap gap-4 items-end">
+                                <div class="flex-1 min-w-[150px]">
+                                    <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Start Date</label>
+                                    <input type="date" id="adminProgressStartDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
                                 </div>
-                                <div class="ml-3">
-                                    <h3 class="text-sm font-bold text-amber-800">Attention Needed</h3>
-                                    <div class="mt-1 text-sm text-amber-700">
-                                        <p><span id="stuckOrdersCount" class="font-black">0</span> orders haven't been
-                                            updated in over 48 hours.</p>
-                                    </div>
-                                    <div class="mt-2">
-                                        <button onclick="viewStuckOrders()"
-                                            class="text-xs font-bold text-amber-800 uppercase tracking-wide hover:underline">
-                                            View Details &rarr;
-                                        </button>
-                                    </div>
+                                <div class="flex-1 min-w-[150px]">
+                                    <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">End Date</label>
+                                    <input type="date" id="adminProgressEndDate" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
+                                </div>
+                                <div class="flex-1 min-w-[150px]">
+                                    <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Employee</label>
+                                    <select id="adminProgressEmployee" onchange="filterAdminProgress()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 bg-white">
+                                        <option value="">All Employees</option>
+                                    </select>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="loadAdminProgress()" class="bg-blue-500 text-white font-bold px-6 py-2 rounded-xl text-sm hover:bg-blue-600 transition-all">
+                                        🔄 Refresh
+                                    </button>
+                                    <button onclick="exportAnalyticsReport()" class="bg-emerald-600 text-white font-bold px-6 py-2 rounded-xl text-sm hover:bg-emerald-700 transition-all flex items-center gap-2">
+                                        <span>📥</span> Export Report
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Stats Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                            <!-- Total Orders Card -->
-                            <div
-                                class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg shadow-indigo-200 relative overflow-hidden group">
-                                <div
-                                    class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <span class="text-6xl">📦</span>
-                                </div>
-                                <div class="relative z-10">
-                                    <p class="text-indigo-100 text-xs font-bold uppercase tracking-wider mb-1">Total
-                                        Orders</p>
-                                    <h3 class="text-3xl font-black mb-1" id="analyticsTotalOrders">0</h3>
-                                    <div
-                                        class="flex items-center gap-2 text-xs font-medium text-indigo-100 bg-white/10 w-fit px-2 py-1 rounded-lg">
-                                        <span>Today</span>
-                                        <span class="w-1 h-1 bg-white rounded-full"></span>
-                                        <span id="analyticsTotalOrdersTrend">0 vs yesterday</span>
-                                    </div>
-                                </div>
+                        <div id="adminProgressStatsContainer" class="space-y-6">
+                            <!-- Summary Grid: 6 Cards (Injected by JS) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6" id="analyticsSummaryGrid">
+                                <div class="animate-pulse bg-gray-100 h-28 rounded-2xl"></div>
+                                <div class="animate-pulse bg-gray-100 h-28 rounded-2xl"></div>
+                                <div class="animate-pulse bg-gray-100 h-28 rounded-2xl"></div>
+                                <div class="animate-pulse bg-gray-100 h-28 rounded-2xl"></div>
+                                <div class="animate-pulse bg-gray-100 h-28 rounded-2xl"></div>
+                                <div class="animate-pulse bg-gray-100 h-28 rounded-2xl"></div>
                             </div>
 
-                            <!-- Revenue Card -->
-                            <div
-                                class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                                <div
-                                    class="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-50 rounded-full group-hover:scale-150 transition-transform duration-500">
-                                </div>
-                                <div class="relative z-10">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div class="p-2 bg-emerald-100 rounded-xl text-emerald-600">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                                </path>
-                                            </svg>
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Main Trend Chart -->
+                                <div class="lg:col-span-2 glass-card p-6 bg-white shadow-sm border border-slate-100">
+                                    <div class="flex items-center justify-between mb-6">
+                                        <div class="flex items-center gap-3">
+                                             <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">📈</div>
+                                             <div>
+                                                 <h4 class="font-bold text-slate-800 tracking-tight">Business Performance Trend</h4>
+                                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Revenue & Delivery Analysis</p>
+                                             </div>
                                         </div>
-                                        <span
-                                            class="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">+<span
-                                                id="analyticsRevenueGrowth">0</span>%</span>
-                                    </div>
-                                    <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total
-                                        Revenue</p>
-                                    <h3 class="text-2xl font-black text-slate-800" id="analyticsTotalRevenue">₹0</h3>
-                                </div>
-                            </div>
-
-                            <!-- Conversion Rate Card -->
-                            <div
-                                class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                                <div
-                                    class="absolute -right-6 -bottom-6 w-24 h-24 bg-blue-50 rounded-full group-hover:scale-150 transition-transform duration-500">
-                                </div>
-                                <div class="relative z-10">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div class="p-2 bg-blue-100 rounded-xl text-blue-600">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                            </svg>
+                                        <div class="hidden sm:flex gap-4 text-[10px] font-black uppercase tracking-wider">
+                                             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-200"></span> Revenue</span>
+                                             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></span> Delivered</span>
+                                             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-200"></span> Cancelled</span>
                                         </div>
-                                        <span
-                                            class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg">Target:
-                                            80%</span>
                                     </div>
-                                    <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Delivery
-                                        Rate</p>
-                                    <h3 class="text-2xl font-black text-slate-800" id="analyticsDeliveryRate">0%</h3>
+                                    <div class="relative h-[320px]">
+                                        <canvas id="trendChart"></canvas>
+                                    </div>
+                                </div>
+
+                                <!-- Status Distribution Chart -->
+                                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100">
+                                    <div class="flex items-center gap-3 mb-6">
+                                         <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">🥧</div>
+                                         <div>
+                                             <h4 class="font-bold text-slate-800 tracking-tight">Order Breakdown</h4>
+                                             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status Distribution</p>
+                                         </div>
+                                    </div>
+                                    <div class="relative h-[250px] flex items-center justify-center">
+                                        <canvas id="statusChart"></canvas>
+                                    </div>
+                                    <div class="mt-4 pt-4 border-t border-slate-50 flex flex-wrap justify-center gap-x-4 gap-y-2">
+                                        <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Delivered</div>
+                                        <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Cancelled</div>
+                                        <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Hold</div>
+                                    </div>
                                 </div>
                             </div>
-
-                            <!-- Delivered Revenue Card -->
-                            <div
-                                class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                                <div
-                                    class="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-50 rounded-full group-hover:scale-150 transition-transform duration-500">
-                                </div>
-                                <div class="relative z-10">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div class="p-2 bg-emerald-100 rounded-xl text-emerald-600">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                                </path>
-                                            </svg>
+                            
+                             <!-- Employee Leaderboard -->
+                             <div class="glass-card p-0 bg-white shadow-sm border border-slate-100 overflow-hidden">
+                                <div class="p-6 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100">🏆</div>
+                                        <div>
+                                            <h4 class="font-bold text-slate-800 tracking-tight">Employee Performance Leaderboard</h4>
+                                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Top Performing verified items</p>
                                         </div>
-                                        <span
-                                            class="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">Cash</span>
-                                    </div>
-                                    <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Delivered
-                                        Revenue</p>
-                                    <h3 class="text-2xl font-black text-slate-800" id="analyticsDeliveredRevenue">₹0
-                                    </h3>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Charts Section -->
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                            <!-- Main Chart (Timeline) -->
-                            <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                                <div class="flex justify-between items-center mb-6">
-                                    <h3 class="font-bold text-slate-800">Orders Timeline</h3>
-                                    <div class="flex items-center gap-2">
-                                        <span class="flex items-center gap-1 text-xs font-semibold text-slate-500"><span
-                                                class="w-2 h-2 rounded-full bg-indigo-500"></span> Orders</span>
-                                        <span class="flex items-center gap-1 text-xs font-semibold text-slate-500"><span
-                                                class="w-2 h-2 rounded-full bg-emerald-500"></span> Delivered</span>
                                     </div>
                                 </div>
-                                <div class="h-64 relative">
-                                    <canvas id="ordersTimelineChart"></canvas>
+                                <div id="employeeLeaderboardContainer" class="overflow-x-auto min-h-[150px]">
+                                     <div class="p-12 text-center text-slate-400">
+                                         <div class="animate-spin inline-block w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full mb-3"></div>
+                                         <p class="text-sm font-bold">Loading Performance Data...</p>
+                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Secondary Stats / List -->
-                            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col">
-                                <h3 class="font-bold text-slate-800 mb-4">Order Status Distribution</h3>
-                                <div class="h-48 relative flex-1">
-                                    <canvas id="statusDistributionChart"></canvas>
-                                </div>
-                                <div class="mt-4 space-y-2">
-                                    <div class="flex justify-between items-center text-sm">
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                            <span class="text-slate-600">Delivered</span>
-                                        </div>
-                                        <span class="font-bold text-slate-800" id="analyticsStatDelivered">0%</span>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- City Distribution -->
+                                <div class="glass-card p-6 bg-white shadow-sm border border-slate-100 lg:col-span-2">
+                                    <div class="flex items-center gap-3 mb-6">
+                                         <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-100">📍</div>
+                                         <div>
+                                             <h4 class="font-bold text-slate-800 tracking-tight">Top Cities (Orders)</h4>
+                                             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Geographic Distribution</p>
+                                         </div>
                                     </div>
-                                    <div class="flex justify-between items-center text-sm">
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-                                            <span class="text-slate-600">Dispatched</span>
-                                        </div>
-                                        <span class="font-bold text-slate-800" id="analyticsStatDispatched">0%</span>
+                                    <div class="relative h-[300px]">
+                                        <canvas id="cityChart"></canvas>
                                     </div>
-                                    <div class="flex justify-between items-center text-sm">
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                                            <span class="text-slate-600">Pending</span>
-                                        </div>
-                                        <span class="font-bold text-slate-800" id="analyticsStatPending">0%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Top Performers & Recent Activity -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Top Employees -->
-                            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <span>🏆</span> Top Performers
-                                </h3>
-                                <div class="space-y-4" id="topEmployeesList">
-                                    <!-- Dynamic Content -->
-                                    <div class="text-center text-slate-400 text-sm py-4">Loading data...</div>
-                                </div>
-                            </div>
-
-                            <!-- Recent System Alerts / Logs -->
-                            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <span>🔔</span> Recent Alerts
-                                </h3>
-                                <div class="space-y-3" id="analyticsRecentAlerts">
-                                    <!-- Dynamic Content -->
-                                    <div class="text-center text-slate-400 text-sm py-4">No recent alerts</div>
                                 </div>
                             </div>
                         </div>
@@ -2752,9 +2639,8 @@
     <!-- ╔═══════════════════════════════════════════════════════════════════════════════════╗
              ║  📜 SCRIPTS (Lines 2212-2214)                                                        ║
              ╠═══════════════════════════════════════════════════════════════════════════════════╣
-             ║  Contains: Main app.js, WhatsApp notifications, Auto tracking                     ║
-             ╚═══════════════════════════════════════════════════════════════════════════════════╝ -->
-    <script src="app.js?v=20251227_modal_working"></script>
+    <!-- MAIN APPLICATION -->
+
     <script src="whatsapp-notifications.js?v=2025123"></script>
     <script src="auto-tracking.js?v=2025123"></script>
 
@@ -3100,9 +2986,9 @@
     <!-- <script src="js/core/pagination-helper.js" defer></script> -->
 
     <!-- CORE MODULES (Load First) -->
-    <!-- <script src="js/core/config.js" defer></script> -->
-    <!-- <script src="js/core/session.js" defer></script> -->
-    <!-- <script src="js/core/utils.js" defer></script> -->
+    <script src="js/core/config.js"></script>
+    <script src="js/core/session.js"></script>
+    <script src="js/core/utils.js"></script>
 
     <!-- UI UTILITIES -->
     <!-- <script src="js/ui/messages.js" defer></script> -->
@@ -3142,7 +3028,7 @@
 
     <!-- MAIN APPLICATION (Monolith - Will gradually phase out) -->
     <script src="js/panels/admin.js?v=2.1" defer></script>
-    <script src="app.js?v=3.11b" defer></script>
+    <script src="app.js?v=DashboardFix-v2" defer></script>
     <!-- Employee Panel (Moved after app.js to override legacy functions) -->
     <script src="js/panels/employee.js?v=2" defer></script>
 
@@ -3154,17 +3040,12 @@
     <!-- <script src="order-notifications.js" defer></script> -->
     <!-- <script src="whatsapp-notifications.js" defer></script> -->
 
-    <!-- Global Search (Added explicitly for fix) -->
-    <script src="js/global-search.js?v=FIX_MOBILE_SIDEBAR" defer></script>
+    <!-- global-search.js already loaded above -->
 
     <!-- APPLICATION INIT (Load Last) -->
     <script src="js/init.js" defer></script>
 
-    <!-- AI PARSER UTILITY -->
-    <script src="js/utils/smart-parser.js"></script>
-
-    <!-- CRITICAL: Common.js loads LAST to ensure viewOrder is available -->
-    <script src="js/common.js?v=2.1"></script>
+    <!-- common.js already loaded above at line 3110 -->
 
     <!-- MOVED MODALS TO END OF BODY FOR PROPER Z-INDEX STACKING -->
     <!-- Order Details Modal -->
@@ -3195,41 +3076,6 @@
 
     <!-- Socket.io -->
     <script src="/socket.io/socket.io.js"></script>
-
-    <!-- AI Paste Modal -->
-    <div id="aiPasteModal"
-        class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 m-4">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                    <span class="text-2xl">✨</span> AI Address Parser
-                </h3>
-                <button onclick="closeAiPasteModal()" class="text-gray-400 hover:text-gray-600">✕</button>
-            </div>
-
-            <div class="bg-violet-50 p-4 rounded-xl mb-4 text-xs text-violet-700">
-                <p class="font-bold">✨ Magic Tip:</p>
-                <p>Paste the full message from WhatsApp directly. The AI will extract Name, Address, and Mobile
-                    automatically.</p>
-            </div>
-
-            <textarea id="aiPasteInput" rows="6"
-                class="w-full border-2 border-violet-100 rounded-xl p-4 text-sm focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder-gray-400"
-                placeholder="Paste here... 
-Example: Raju 9876543210 House 12, Sector 5, Delhi"></textarea>
-
-            <div class="flex gap-3 mt-6">
-                <button onclick="processAiPaste()"
-                    class="flex-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
-                    ⚡ Auto-Fill Form
-                </button>
-                <button onclick="closeAiPasteModal()"
-                    class="px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">
-                    Cancel
-                </button>
-            </div>
-        </div>
-    </div>
 
 </body>
 
