@@ -130,7 +130,14 @@ function debouncedStatsRefresh() {
     }, 2000); // 2 second delay for stats to settle
 }
 
-// Deleted showToast - now in common.js
+function showToast(message) {
+    const div = document.createElement('div');
+    div.className = 'fixed top-5 right-5 bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-xl z-50 animate-bounce';
+    div.innerText = message;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 3000);
+}
+
 async function loadAdminStats(forceRefresh = false) {
     try {
         // Check cache first
@@ -379,8 +386,8 @@ function renderPaginationControls(container, currentPage, totalPages, fetchFuncN
 
 // ==================== ADMIN ORDER LOADERS ====================
 
-var ADMIN_ITEMS_PER_PAGE = typeof ADMIN_ITEMS_PER_PAGE !== 'undefined' ? ADMIN_ITEMS_PER_PAGE : 6;
-var adminPagination = typeof adminPagination !== 'undefined' ? adminPagination : {
+const ADMIN_ITEMS_PER_PAGE = 6; // Reduced for faster loading
+let adminPagination = {
     pending: 1,
     verified: 1,
     dispatched: 1,
@@ -749,27 +756,15 @@ window.loadAdminProgress = async function () {
 // Update dashboard when range changes
 window.updateAnalyticsDashboard = function () {
     const rangeSelect = document.getElementById('analyticsDateRange');
-    const customRange = document.getElementById('customAnalyticsRange');
-    
-    if (rangeSelect.value === 'custom') {
-        customRange.classList.remove('hidden');
-        // Set defaults if empty
-        if (!document.getElementById('analyticsStartDate').value) {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('analyticsStartDate').value = today;
-            document.getElementById('analyticsEndDate').value = today;
-        }
-    } else {
-        customRange.classList.add('hidden');
-        window.fetchAnalyticsData();
+    if (rangeSelect) {
+        analyticsState.dateRange = rangeSelect.value;
+        fetchAnalyticsData();
     }
 }
 
 // Fetch data from backend
-window.fetchAnalyticsData = async function () {
+async function fetchAnalyticsData() {
     try {
-        const rangeSelect = document.getElementById('analyticsDateRange');
-        if (rangeSelect) analyticsState.dateRange = rangeSelect.value;
         const { dateRange } = analyticsState;
 
         // Calculate dates for filter
@@ -782,14 +777,7 @@ window.fetchAnalyticsData = async function () {
             return `${yyyy}-${mm}-${dd}`;
         };
 
-        if (dateRange === 'custom') {
-            startDate = document.getElementById('analyticsStartDate').value;
-            endDate = document.getElementById('analyticsEndDate').value;
-            if (!startDate || !endDate) {
-                alert('Please select both start and end dates');
-                return;
-            }
-        } else if (dateRange === 'today') {
+        if (dateRange === 'today') {
             startDate = formatDate(today);
             endDate = formatDate(today);
         } else if (dateRange === 'yesterday') {

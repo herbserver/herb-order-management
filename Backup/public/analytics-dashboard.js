@@ -413,7 +413,7 @@ function renderEmployeeChart(employees) {
     if (!container) return;
 
     const names = employees.map(e => e.name);
-    const orders = employees.map(e => e.total);
+    const orders = employees.map(e => e.totalOrders);
     const revenue = employees.map(e => e.revenue);
 
     container.innerHTML = `

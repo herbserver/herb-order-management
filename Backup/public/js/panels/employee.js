@@ -88,7 +88,7 @@ function initOrderForm() {
     if (timeInput) timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
-var PRODUCT_LIST = typeof PRODUCT_LIST !== 'undefined' ? PRODUCT_LIST : [
+const PRODUCT_LIST = [
     { name: "Amlex", price: 0 },
     { name: "Black pills", price: 0 },
     { name: "Blue & White capsule", price: 0 },

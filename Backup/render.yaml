@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: herb-server
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: MONGODB_URI
+        sync: false
+      - key: SHIPROCKET_API_EMAIL
+        sync: false
+      - key: SHIPROCKET_API_PASSWORD
+        sync: false

@@ -31,15 +31,8 @@ router.get('/dashboard', async (req, res) => {
                 freshCount: data.created.freshCount,
                 reorderCount: data.created.reorderCount,
                 delivered: data.delivered.count,
-                deliveredRevenue: data.delivered.revenue,
                 dispatched: data.dispatched.count,
-                dispatchedRevenue: data.dispatched.revenue,
-                hold: data.hold.count,
-                holdRevenue: data.hold.revenue,
-                cancelled: data.cancelled.count,
-                cancelledRevenue: data.cancelled.revenue,
-                rto: data.rto.count,
-                rtoRevenue: data.rto.revenue
+                deliveredRevenue: data.delivered.revenue
             },
             charts: {
                 statusDistribution: {
@@ -52,8 +45,7 @@ router.get('/dashboard', async (req, res) => {
                     rto: data.rto.count
                 },
                 ordersTimeline: data.timeline,
-                employeePerformance: data.employees,
-                cityDistribution: data.cities
+                employeePerformance: data.employees
             },
             quickStats: {
                 totalOrders: data.created.totalOrders,
