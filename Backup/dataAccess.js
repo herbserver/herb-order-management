@@ -352,12 +352,12 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                     "dispatchedStats": [
                         {
                             $match: {
-                                status: { $in: ["Dispatched", "Delivered", "RTO", "Out For Delivery"] },
+                                status: { $in: ["Dispatched", "Delivered"] },
                                 dispatchedAt: { $gte: startISO, $lte: endISO },
                                 ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
                             }
                         },
-                        { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
+                        { $group: { _id: null, count: { $sum: 1 } } }
                     ],
                     // Cancelled in Period
                     "cancelledStats": [
@@ -368,18 +368,7 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                                 ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
                             }
                         },
-                        { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
-                    ],
-                    // Hold Orders (Booked in period)
-                    "holdStats": [
-                        {
-                            $match: {
-                                status: { $in: ["Hold", "On Hold"] },
-                                timestamp: { $gte: startISO, $lte: endISO },
-                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
-                            }
-                        },
-                        { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
+                        { $group: { _id: null, count: { $sum: 1 } } }
                     ],
                     // RTO in Period
                     "rtoStats": [
@@ -390,51 +379,27 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                                 ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
                             }
                         },
-                        { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
+                        { $group: { _id: null, count: { $sum: 1 } } }
                     ],
-                    // Top Employees (Full per-status breakdown for leaderboard)
+                    // Top Employees (Created orders revenue)
                     "employeePerformance": [
                         { $match: baseMatch },
                         {
                             $group: {
                                 _id: "$employeeId",
                                 name: { $first: { $ifNull: ["$employee", "$employeeId"] } },
-                                total: { $sum: 1 },
-                                revenue: { $sum: { $ifNull: ["$total", 0] } },
-                                hold: { $sum: { $cond: [{ $in: ["$status", ["Hold", "On Hold"]] }, 1, 0] } },
-                                holdRev: { $sum: { $cond: [{ $in: ["$status", ["Hold", "On Hold"]] }, { $ifNull: ["$total", 0] }, 0] } },
-                                dispatched: { $sum: { $cond: [{ $in: ["$status", ["Dispatched", "Out For Delivery"]] }, 1, 0] } },
-                                dispatchedRev: { $sum: { $cond: [{ $in: ["$status", ["Dispatched", "Out For Delivery"]] }, { $ifNull: ["$total", 0] }, 0] } },
-                                delivered: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },
-                                deliveredRev: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, { $ifNull: ["$total", 0] }, 0] } },
-                                rto: { $sum: { $cond: [{ $eq: ["$status", "RTO"] }, 1, 0] } },
-                                rtoRev: { $sum: { $cond: [{ $eq: ["$status", "RTO"] }, { $ifNull: ["$total", 0] }, 0] } },
-                                cancelled: { $sum: { $cond: [{ $eq: ["$status", "Cancelled"] }, 1, 0] } },
-                                cancelledRev: { $sum: { $cond: [{ $eq: ["$status", "Cancelled"] }, { $ifNull: ["$total", 0] }, 0] } }
+                                totalOrders: { $sum: 1 },
+                                revenue: { $sum: { $ifNull: ["$total", 0] } }
                             }
                         },
-                        { $addFields: { id: "$_id" } },
                         { $sort: { revenue: -1 } },
-                        { $limit: 10 }
-                    ],
-                    // City Distribution
-                    "cityDistribution": [
-                        { $match: baseMatch },
-                        {
-                            $group: {
-                                _id: { $toUpper: { $trim: { input: { $ifNull: ["$city", "$distt"] } } } },
-                                count: { $sum: 1 }
-                            }
-                        },
-                        { $match: { _id: { $nin: [null, "", "SAME", "NA", "N/A", "NULL"] } } },
-                        { $sort: { count: -1 } },
                         { $limit: 10 }
                     ],
                     // 7-Day Timeline trend
                     "timeline": [
                         {
                             $match: {
-                                timestamp: { $gte: startISO, $lte: endISO },
+                                timestamp: { $gte: new Date(Date.now() - 7 * 86400000).toISOString() },
                                 ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
                             }
                         },
@@ -442,9 +407,7 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                             $group: {
                                 _id: { $substr: ["$timestamp", 0, 10] },
                                 total: { $sum: 1 },
-                                revenue: { $sum: { $ifNull: ["$total", 0] } },
-                                delivered: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },
-                                cancelled: { $sum: { $cond: [{ $eq: ["$status", "Cancelled"] }, 1, 0] } }
+                                delivered: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } }
                             }
                         },
                         { $sort: { _id: 1 } }
@@ -453,18 +416,14 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
             }
         ]);
 
-        if (!results || results.length === 0) return null;
         const data = results[0];
-
         return {
-            created: data.createdStats[0] || { totalOrders: 0, totalRevenue: 0, customersCount: 0, deliveredCount: 0, pending: 0, verified: 0, freshRevenue: 0, reorderRevenue: 0, freshCount: 0, reorderCount: 0 },
+            created: data.createdStats[0] || { totalOrders: 0, totalRevenue: 0, customersCount: 0, deliveredCount: 0 },
             delivered: data.deliveredStats[0] || { count: 0, revenue: 0 },
-            dispatched: data.dispatchedStats[0] || { count: 0, revenue: 0 },
-            cancelled: data.cancelledStats[0] || { count: 0, revenue: 0 },
-            hold: data.holdStats[0] || { count: 0, revenue: 0 },
-            rto: data.rtoStats[0] || { count: 0, revenue: 0 },
+            dispatched: data.dispatchedStats[0] || { count: 0 },
+            cancelled: data.cancelledStats[0] || { count: 0 },
+            rto: data.rtoStats[0] || { count: 0 },
             employees: data.employeePerformance || [],
-            cities: data.cityDistribution || [],
             timeline: data.timeline || []
         };
     } catch (e) {
