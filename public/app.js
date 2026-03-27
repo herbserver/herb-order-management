@@ -290,7 +290,10 @@ function showMessage(msg, type, elementId) {
 
 function closeModal(id) {
     const modal = document.getElementById(id);
-    if (modal) modal.classList.add('hidden');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
 }
 
 function copyTracking(text) {
@@ -589,6 +592,8 @@ async function loadAdminData() {
 
         orders.forEach(o => {
             if (!o.orderType) return; // Skip orders without orderType
+            // Skip Cancelled and On Hold orders from totals
+            if (o.status === 'Cancelled' || o.status === 'On Hold') return;
 
             // Handle both old format (NEW, REORDER) and new format (Fresh, Reorder)
             const isReorder = o.orderType === 'Reorder' || o.orderType === 'REORDER';
@@ -617,8 +622,8 @@ async function loadAdminData() {
 
         const stats = {
             totalOrders: totalActiveOrders, // Changed: Excludes Cancelled & On Hold
-            totalRevenue: orders.reduce((sum, o) => sum + (o.total || 0), 0),
-            avgOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + (o.total || 0), 0) / orders.length : 0,
+            totalRevenue: orders.filter(o => o.status !== 'Cancelled' && o.status !== 'On Hold').reduce((sum, o) => sum + (o.total || 0), 0),
+            avgOrderValue: totalActiveOrders > 0 ? orders.filter(o => o.status !== 'Cancelled' && o.status !== 'On Hold').reduce((sum, o) => sum + (o.total || 0), 0) / totalActiveOrders : 0,
             pendingOrders,
             verifiedOrders,
             dispatchedOrders,

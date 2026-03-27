@@ -1482,8 +1482,9 @@
 
     <!-- Order Detail Modal (Globally Accessible for View Button) -->
     <div id="orderDetailModal"
+        onclick="closeModal('orderDetailModal')"
         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+        <div onclick="event.stopPropagation()" class="bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
             <div id="orderDetailContent">
                 <!-- Content will be dynamically loaded by viewOrder() -->
             </div>
@@ -2539,14 +2540,7 @@
                 <div id="employeeProfileContent" class="p-6"></div>
             </div>
         </div>
-        <!-- Order Detail Modal with Map -->
-        <div id="orderDetailModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto relative">
-                <div id="orderDetailContent" class="p-0">
-                    <!-- Content will be populated by viewOrder() function -->
-                </div>
-            </div>
-        </div>
+        <!-- Order Detail Modal REMOVED: Using global #orderDetailModal at line ~1484 instead (was duplicate ID) -->
     </div>
     </div>
 

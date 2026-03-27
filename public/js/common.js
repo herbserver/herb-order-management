@@ -137,16 +137,7 @@ function loadSession() {
             return session;
         }
     } catch (e) { }
-
-    // EMERGENCY FALLBACK: If no session, create a default Admin session
-    console.warn('Session not found. Providing default Admin access.');
-    const defaultSession = {
-        user: { name: 'Super Admin', id: 'admin-001' },
-        type: 'admin',
-        deptType: 'admin'
-    };
-    currentUser = defaultSession.user;
-    return defaultSession;
+    return null;
 }
 
 function clearSession() {
@@ -162,9 +153,11 @@ function logout() {
 function checkAuth(requiredRole) {
     const session = loadSession();
     if (!session) {
-        // Redirection disabled as per user request (Missing login.html)
-        console.log('Auth check bypassed - no session and no redirect');
-        return true; 
+        // If not on login page, redirect
+        if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+        }
+        return false;
     }
 
     // Role Redirects
@@ -236,7 +229,10 @@ function showToast(message, type = 'success') {
 
 function closeModal(id) {
     const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
+    if (el) {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+    }
 }
 
 function showSuccessPopup(title, msg, icon, color, whatsappData = null) {

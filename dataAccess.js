@@ -241,11 +241,11 @@ async function getDashboardStats(startDate = null, endDate = null) {
             {
                 $group: {
                     _id: null,
-                    totalOrders: { $sum: 1 },
-                    totalFresh: { $sum: { $cond: [isFresh, 1, 0] } },
-                    totalReorder: { $sum: { $cond: [isReorder, 1, 0] } },
-                    freshRevenue: { $sum: { $cond: [isFresh, { $ifNull: ["$total", 0] }, 0] } },
-                    reorderRevenue: { $sum: { $cond: [isReorder, { $ifNull: ["$total", 0] }, 0] } },
+                    totalOrders: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold"]] }, 0, 1] } },
+                    totalFresh: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, 1, 0] } },
+                    totalReorder: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, 1, 0] } },
+                    freshRevenue: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
+                    reorderRevenue: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
                     
                     pendingOrders: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
                     pendingFresh: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Pending"] }, isFresh] }, 1, 0] } },
@@ -316,12 +316,12 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                         {
                             $group: {
                                 _id: null,
-                                totalOrders: { $sum: 1 },
-                                totalRevenue: { $sum: { $ifNull: ["$total", 0] } },
-                                freshRevenue: { $sum: { $cond: [isFresh, { $ifNull: ["$total", 0] }, 0] } },
-                                reorderRevenue: { $sum: { $cond: [isReorder, { $ifNull: ["$total", 0] }, 0] } },
-                                freshCount: { $sum: { $cond: [isFresh, 1, 0] } },
-                                reorderCount: { $sum: { $cond: [isReorder, 1, 0] } },
+                                totalOrders: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold"]] }, 0, 1] } },
+                                totalRevenue: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold"]] }, 0, { $ifNull: ["$total", 0] }] } },
+                                freshRevenue: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
+                                reorderRevenue: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
+                                freshCount: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, 1, 0] } },
+                                reorderCount: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, 1, 0] } },
                                 deliveredCount: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },
                                 pending: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
                                 verified: { $sum: { $cond: [{ $eq: ["$status", "Address Verified"] }, 1, 0] } },
