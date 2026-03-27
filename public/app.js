@@ -5615,7 +5615,7 @@ async function openEditOrderModal(orderId) {
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="block text-sm font-medium mb-1">Advance</label><input type="number" id="editAdvance" value="${order.advance || 0}" oninput="updateEditCOD()" class="w-full border-2 rounded-xl px-4 py-2"></div>
-                            <div><label class="block text-sm font-medium mb-1">COD Amount</label><input type="number" id="editCodAmount" value="${order.codAmount || 0}" readonly class="w-full border-2 rounded-xl px-4 py-2 bg-red-50 text-red-700 font-bold"></div>
+                            <div><label class="block text-sm font-medium mb-1">COD Amount</label><input type="number" id="editCodAmount" value="${order.codAmount || order.cod || (order.total - (order.advance || 0)) || 0}" readonly class="w-full border-2 rounded-xl px-4 py-2 bg-red-50 text-red-700 font-bold"></div>
                         </div>
                         <div class="flex gap-3">
                             <button type="button" onclick="document.getElementById('dynamicEditModal').remove();" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button>
@@ -5765,7 +5765,9 @@ async function saveEditOrder() {
         items,
         total,
         advance: parseFloat(getVal('editAdvance')) || 0,
-        codAmount: parseFloat(getVal('editCodAmount')) || 0,
+        // Always recalculate COD = Total - Advance (don't rely on stale readonly field)
+        codAmount: Math.max(0, total - (parseFloat(getVal('editAdvance')) || 0)),
+        cod: Math.max(0, total - (parseFloat(getVal('editAdvance')) || 0)),
         editedBy: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : 'Department',
         editedAt: new Date().toISOString()
     };
