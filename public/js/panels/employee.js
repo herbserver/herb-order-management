@@ -1,8 +1,13 @@
 // ==================== EMPLOYEE PANEL LOGIC ====================
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Only run employee init if user is actually an employee
+    // (Prevents redirect when admin/department loads this script)
+    const session = typeof loadSession === 'function' ? loadSession() : null;
+    if (!session || session.role !== 'employee') return;
+
     const user = checkAuth('employee');
-    if (!user) return; // checkAuth handles redirect
+    if (!user) return;
 
     // Initialize UI
     initOrderForm();
@@ -968,4 +973,10 @@ window.filterMyHistory = filterMyHistory;
 window.filterMyCancelledOrders = filterMyCancelledOrders;
 window.reorderFromHistory = reorderFromHistory;
 window.loadMyHistory = loadMyHistory;
+
+// Override slow legacy functions from app.js with optimized paginated versions
+window.loadMyOrders = loadMyOrders;
+window._empLoadMyOrders = loadMyOrders; // Used by app.js to delegate to fast version
+window.loadCancelledOrders = loadCancelledOrders;
+window.loadEmpProgress = loadEmpProgress;
 

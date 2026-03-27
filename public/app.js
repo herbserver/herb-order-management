@@ -2219,9 +2219,13 @@ async function editOrder(orderId) {
     }
 }
 
-async function loadMyOrders() {
+async function loadMyOrders(page) {
+    // DELEGATED: Fast paginated version loaded from employee.js
+    if (window._empLoadMyOrders) {
+        return window._empLoadMyOrders(page);
+    }
     try {
-        const res = await fetch(`${API_URL}/orders/employee/${currentUser.id}`);
+        const res = await fetch(`${API_URL}/orders/employee/${currentUser.id}?page=1&limit=12`);
         const data = await res.json();
 
         // Get date filter value (if empty, use today's date)
@@ -4163,152 +4167,28 @@ function renderOrderCard(order, borderColor = 'gray') {
             </div>`;
 }
 
-async function loadDeptOrders() {
+async function loadDeptOrders(page) {
+    // DELEGATED: Fast paginated version loaded from department.js
+    // department.js sets window.loadDeptOrders with MongoDB skip/limit pagination
+    if (window._deptLoadDeptOrders) {
+        return window._deptLoadDeptOrders(page);
+    }
+    // Fallback: basic fetch (should rarely trigger after department.js loads)
     const endpoint = currentDeptType === 'verification' ? '/orders/pending' : '/orders/verified';
-
     try {
-        const res = await fetch(`${API_URL}${endpoint}`);
+        const res = await fetch(`${API_URL}${endpoint}?page=1&limit=10`);
         const data = await res.json();
-        let orders = data.orders || [];
-
-        // Load dashboard stats in background
-        if (currentDeptType === 'verification') {
-            loadVerificationDashboardStats();
-        }
-
-        // Apply Date Filter if in Verification Pending tab
+        const orders = data.orders || [];
         const containerId = currentDeptType === 'verification' ? 'pendingVerificationList' : 'readyDispatchList';
-
-        if (currentDeptType === 'verification' && containerId === 'pendingVerificationList') {
-            const dateFilter = document.getElementById('verificationPendingDate').value;
-            if (dateFilter) {
-                orders = orders.filter(o => o.timestamp && o.timestamp.startsWith(dateFilter));
+        const container = document.getElementById(containerId);
+        if (container) {
+            if (orders.length === 0) {
+                container.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400">No orders found</div>';
+            } else {
+                container.innerHTML = orders.map(o => generateOrderCardHTML(o)).join('');
             }
         }
-
-        // Apply Filters for Dispatch Ready Tab - NEW FEATURE
-        if (currentDeptType === 'dispatch' && containerId === 'readyDispatchList') {
-            // Load dashboard stats in background
-            loadDispatchDashboardStats();
-
-            // Search Filter
-            const search = document.getElementById('dispatchReadySearch')?.value.toLowerCase();
-            if (search) {
-                orders = orders.filter(o =>
-                    (o.customerName && o.customerName.toLowerCase().includes(search)) ||
-                    (o.telNo && o.telNo.includes(search)) ||
-                    (o.orderId && o.orderId.toLowerCase().includes(search))
-                );
-            }
-
-            // Date Filter
-            const dateFilter = document.getElementById('dispatchReadyDate')?.value;
-            if (dateFilter) {
-                orders = orders.filter(o => o.timestamp && o.timestamp.startsWith(dateFilter));
-            }
-        }
-
-        // Sort orders by date - oldest first
-        orders.sort((a, b) => {
-            const dateA = new Date(a.timestamp || 0);
-            const dateB = new Date(b.timestamp || 0);
-            return dateA - dateB; // Ascending order (oldest first)
-        });
-
-        if (orders.length === 0) {
-            document.getElementById(containerId).innerHTML = `
-                <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                    <p class="text-4xl mb-3">📭</p>
-                    <p class="text-gray-500 font-medium">No pending orders found</p>
-                </div>`;
-            return;
-        }
-
-        // Group orders by date categories for better organization
-        const groups = {
-            today: [],
-            yesterday: [],
-            recent: [], // 2-6 days
-            week: [], // 7-29 days
-            old: [] // 30+ days
-        };
-
-        orders.forEach(order => {
-            const diffDays = Math.floor((Date.now() - new Date(order.timestamp)) / 86400000);
-            if (diffDays === 0) groups.today.push(order);
-            else if (diffDays === 1) groups.yesterday.push(order);
-            else if (diffDays < 7) groups.recent.push(order);
-            else if (diffDays < 30) groups.week.push(order);
-            else groups.old.push(order);
-        });
-
-        let html = '';
-
-        // TODAY section
-        if (groups.today.length > 0) {
-            html += `<div id="section-today" class="col-span-full"><div class="flex items-center gap-3 mb-4 pb-2 border-b-2 border-emerald-200"><span class="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl font-black text-sm uppercase tracking-wide border-2 border-emerald-300">⏰ TODAY</span><span class="text-emerald-600 font-bold text-sm">${groups.today.length} order${groups.today.length > 1 ? 's' : ''}</span></div></div>`;
-            groups.today.forEach(order => { html += generateOrderCardHTML(order); });
-        }
-
-        // YESTERDAY section
-        if (groups.yesterday.length > 0) {
-            html += `<div id="section-yesterday" class="col-span-full mt-6"><div class="flex items-center gap-3 mb-4 pb-2 border-b-2 border-blue-200"><span class="bg-blue-100 text-blue-700 px-4 py-2 rounded-xl font-black text-sm uppercase tracking-wide border-2 border-blue-300">📅 YESTERDAY</span><span class="text-blue-600 font-bold text-sm">${groups.yesterday.length} order${groups.yesterday.length > 1 ? 's' : ''}</span></div></div>`;
-            groups.yesterday.forEach(order => { html += generateOrderCardHTML(order); });
-        }
-
-        // 2-6 DAYS section
-        if (groups.recent.length > 0) {
-            html += `<div id="section-recent" class="col-span-full mt-6"><div class="flex items-center gap-3 mb-4 pb-2 border-b-2 border-amber-200"><span class="bg-amber-100 text-amber-700 px-4 py-2 rounded-xl font-black text-sm uppercase tracking-wide border-2 border-amber-300">🕐 2-6 DAYS AGO</span><span class="text-amber-600 font-bold text-sm">${groups.recent.length} order${groups.recent.length > 1 ? 's' : ''}</span></div></div>`;
-            groups.recent.forEach(order => { html += generateOrderCardHTML(order); });
-        }
-
-        // WEEKS section
-        if (groups.week.length > 0) {
-            html += `<div id="section-week" class="col-span-full mt-6"><div class="flex items-center gap-3 mb-4 pb-2 border-b-2 border-orange-200"><span class="bg-orange-100 text-orange-700 px-4 py-2 rounded-xl font-black text-sm uppercase tracking-wide border-2 border-orange-300">📆 1-4 WEEKS AGO</span><span class="text-orange-600 font-bold text-sm">${groups.week.length} order${groups.week.length > 1 ? 's' : ''}</span></div></div>`;
-            groups.week.forEach(order => { html += generateOrderCardHTML(order); });
-        }
-
-        // OLD section
-        if (groups.old.length > 0) {
-            html += `<div id="section-old" class="col-span-full mt-6"><div class="flex items-center gap-3 mb-4 pb-2 border-b-2 border-red-200"><span class="bg-red-100 text-red-700 px-4 py-2 rounded-xl font-black text-sm uppercase tracking-wide border-2 border-red-300">⚠️ 1+ MONTHS AGO</span><span class="text-red-600 font-bold text-sm">${groups.old.length} order${groups.old.length > 1 ? 's' : ''}</span></div></div>`;
-            groups.old.forEach(order => { html += generateOrderCardHTML(order); });
-        }
-
-        // Populate filter buttons if in verification pending tab
-        if (currentDeptType === 'verification' && containerId === 'pendingVerificationList') {
-            const filterContainer = document.getElementById('filterButtonsContainer');
-            const filterButtons = document.getElementById('dateFilterButtons');
-
-            if (filterContainer && filterButtons) {
-                let buttonsHTML = '';
-
-                if (groups.today.length > 0) {
-                    buttonsHTML += `<button onclick="document.getElementById('section-today')?.scrollIntoView({behavior:'smooth', block:'start'})" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-600 transition-all shadow-sm flex items-center gap-1.5 hover:shadow-md">⏰ TODAY <span class="bg-white text-emerald-600 px-2 py-0.5 rounded-full">${groups.today.length}</span></button>`;
-                }
-                if (groups.yesterday.length > 0) {
-                    buttonsHTML += `<button onclick="document.getElementById('section-yesterday')?.scrollIntoView({behavior:'smooth', block:'start'})" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-600 transition-all shadow-sm flex items-center gap-1.5 hover:shadow-md">📅 YESTERDAY <span class="bg-white text-blue-600 px-2 py-0.5 rounded-full">${groups.yesterday.length}</span></button>`;
-                }
-                if (groups.recent.length > 0) {
-                    buttonsHTML += `<button onclick="document.getElementById('section-recent')?.scrollIntoView({behavior:'smooth', block:'start'})" class="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-600 transition-all shadow-sm flex items-center gap-1.5 hover:shadow-md">🕐 2-6 DAYS <span class="bg-white text-amber-600 px-2 py-0.5 rounded-full">${groups.recent.length}</span></button>`;
-                }
-                if (groups.week.length > 0) {
-                    buttonsHTML += `<button onclick="document.getElementById('section-week')?.scrollIntoView({behavior:'smooth', block:'start'})" class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-orange-600 transition-all shadow-sm flex items-center gap-1.5 hover:shadow-md">📆 1-4 WEEKS <span class="bg-white text-orange-600 px-2 py-0.5 rounded-full">${groups.week.length}</span></button>`;
-                }
-                if (groups.old.length > 0) {
-                    buttonsHTML += `<button onclick="document.getElementById('section-old')?.scrollIntoView({behavior:'smooth', block:'start'})" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-600 transition-all shadow-sm flex items-center gap-1.5 hover:shadow-md">⚠️ 1+ MONTHS <span class="bg-white text-red-600 px-2 py-0.5 rounded-full">${groups.old.length}</span></button>`;
-                }
-
-                filterContainer.innerHTML = buttonsHTML;
-                filterButtons.classList.remove('hidden');
-            }
-        }
-
-        document.getElementById(containerId).innerHTML = html;
-    }
-
-    catch (e) {
-        console.error(e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 // Helper to Title Case a string
@@ -5615,7 +5495,7 @@ async function openEditOrderModal(orderId) {
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="block text-sm font-medium mb-1">Advance</label><input type="number" id="editAdvance" value="${order.advance || 0}" oninput="updateEditCOD()" class="w-full border-2 rounded-xl px-4 py-2"></div>
-                            <div><label class="block text-sm font-medium mb-1">COD Amount</label><input type="number" id="editCodAmount" value="${order.codAmount || 0}" readonly class="w-full border-2 rounded-xl px-4 py-2 bg-red-50 text-red-700 font-bold"></div>
+                            <div><label class="block text-sm font-medium mb-1">COD Amount</label><input type="number" id="editCodAmount" value="${order.codAmount || order.cod || (order.total - (order.advance || 0)) || 0}" readonly class="w-full border-2 rounded-xl px-4 py-2 bg-red-50 text-red-700 font-bold"></div>
                         </div>
                         <div class="flex gap-3">
                             <button type="button" onclick="document.getElementById('dynamicEditModal').remove();" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button>
@@ -5765,7 +5645,9 @@ async function saveEditOrder() {
         items,
         total,
         advance: parseFloat(getVal('editAdvance')) || 0,
-        codAmount: parseFloat(getVal('editCodAmount')) || 0,
+        // Always recalculate COD = Total - Advance (don't rely on stale readonly field)
+        codAmount: Math.max(0, total - (parseFloat(getVal('editAdvance')) || 0)),
+        cod: Math.max(0, total - (parseFloat(getVal('editAdvance')) || 0)),
         editedBy: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : 'Department',
         editedAt: new Date().toISOString()
     };

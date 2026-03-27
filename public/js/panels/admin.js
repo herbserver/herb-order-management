@@ -8,9 +8,19 @@ let adminStatsCache = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+<<<<<<< HEAD
     const session = loadSession();
     const user = session && session.type === 'admin';
     if (!user) return; // Don't redirect, just don't load admin features
+=======
+    // Only run admin init if user is actually an admin
+    // (Prevents redirect when employee/department loads this script)
+    const session = typeof loadSession === 'function' ? loadSession() : null;
+    if (!session || session.role !== 'admin') return;
+
+    const user = checkAuth('admin');
+    if (!user) return;
+>>>>>>> 3b0fd2e9dc4b899f4d1a67f3e67e721b60e7f78d
 
     console.log('🚀 Admin Panel v2.1 Loaded - Refined Date Filtering Active');
     loadAdminStats();
