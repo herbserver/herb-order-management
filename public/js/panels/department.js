@@ -1,17 +1,21 @@
 // ==================== DEPARTMENT PANEL LOGIC ====================
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Only run department init if user is actually a department user
+    // (Prevents redirect when admin/employee loads this script)
+    const session = typeof loadSession === 'function' ? loadSession() : null;
+    if (!session || session.role !== 'department') return;
+
     const user = checkAuth('department');
     if (!user) return;
 
     // Set Dept Title
-    const type = loadSession().deptType || 'verification';
+    const type = session.deptType || 'verification';
     document.getElementById('deptTitle').innerText =
         type === 'verification' ? 'Verification Panel' :
             type === 'dispatch' ? 'Dispatch Manager' : 'Delivery Manager';
 
     // Initial Load
-    // We reuse switch func but we might need to hide irrelevant tabs based on type
     setupDeptUI(type);
     loadDeptOrders();
 
@@ -653,6 +657,7 @@ async function syncOFDStatus() {
 window.switchDispatchTab = switchDispatchTab;
 window.switchDeliveryTab = switchDeliveryTab;
 window.loadDeptOrders = loadDeptOrders;
+window._deptLoadDeptOrders = loadDeptOrders; // Used by app.js to delegate to fast version
 window.loadDeliveryRequests = loadDeliveryRequests;
 window.loadDispatchedOrders = loadDispatchedOrders;
 window.loadDispatchHistory = loadDispatchHistory;
