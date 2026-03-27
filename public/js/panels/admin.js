@@ -8,8 +8,9 @@ let adminStatsCache = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    const user = checkAuth('admin');
-    if (!user) return; // Redirects handled
+    const session = loadSession();
+    const user = session && session.type === 'admin';
+    if (!user) return; // Don't redirect, just don't load admin features
 
     console.log('🚀 Admin Panel v2.1 Loaded - Refined Date Filtering Active');
     loadAdminStats();

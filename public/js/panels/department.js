@@ -1249,7 +1249,16 @@ function openManualDispatchModal(orderId) {
                 </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-3 mt-6">
+            <!-- Print Label Button for Post Office -->
+            <div class="mt-4 pt-4 border-t border-dashed border-gray-200">
+                <button onclick="openLabelFromManualDispatch('${orderId}')" 
+                    class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg flex items-center justify-center gap-2">
+                    <span>🏷️</span> Print Speed Post Label
+                </button>
+                <p class="text-xs text-gray-400 text-center mt-2">For India Post / Speed Post COD</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 mt-4">
                 <button onclick="this.closest('.fixed').remove()" 
                     class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-all">
                     Cancel
@@ -1317,12 +1326,30 @@ window.submitManualDispatch = async (orderId, modal) => {
     }
 }
 
+// Helper: Open Speed Post Label from Manual Dispatch Modal
+function openLabelFromManualDispatch(orderId) {
+    const courier = document.getElementById('manualCourierSelect')?.value || 'India Post';
+    const awb = document.getElementById('manualAWBInput')?.value?.trim() || '';
+    
+    // Close manual dispatch modal
+    const modal = document.getElementById('manualCourierSelect')?.closest('.fixed');
+    if (modal) modal.remove();
+    
+    // Open label print modal (from modals.js)
+    if (typeof openLabelPrintModal === 'function') {
+        openLabelPrintModal(orderId, null, awb, courier);
+    } else {
+        alert('❌ Label Print module not loaded!');
+    }
+}
+
 // Global Exports
 window.verifyAddress = verifyAddress;
 window.cancelOrder = cancelOrder;
 window.saveOrderRemark = saveOrderRemark;
 window.dispatchWithShiprocket = dispatchWithShiprocket;
 window.openManualDispatchModal = openManualDispatchModal;
+window.openLabelFromManualDispatch = openLabelFromManualDispatch;
 window.loadDeptOrders = loadDeptOrders;
 window.switchDispatchTab = switchDispatchTab;
 window.switchDeliveryTab = switchDeliveryTab;

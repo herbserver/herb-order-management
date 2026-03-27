@@ -8199,7 +8199,7 @@ async function exportDispatchedOrders() {
             return {
                 "S.No": index + 1,
                 "Customer Name": order.customerName || '',
-                "Mobile Number": order.telNo || '',
+                "Mobile Number": (order.telNo || '') + (order.altNo ? ', ' + order.altNo : ''),
                 "Address": toTitleCase(fullAddress),
                 "Add1": "", // Placeholder
                 "Add2": "", // Placeholder
@@ -8371,7 +8371,7 @@ async function exportDispatchedOrdersFiltered(event) {
             return {
                 "S.No": index + 1,
                 "Customer Name": order.customerName || '',
-                "Mobile Number": order.telNo || '',
+                "Mobile Number": (order.telNo || '') + (order.altNo ? ', ' + order.altNo : ''),
                 "Address": toTitleCase(fullAddress),
                 "Add1": "",
                 "Add2": "",
