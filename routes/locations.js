@@ -40,12 +40,11 @@ function normalizeFallbackRecord(record) {
     };
 }
 
-async function queryMongo(handler) {
-    if (!dataAccess.getMongoStatus()) {
-        throw new Error('MongoDB connection required for locations');
-    }
-
-    return await handler();
+async function queryMongo() {
+    // Location lookups are intentionally served from the static JSON dataset.
+    // Returning null keeps all existing route response shapes unchanged while
+    // forcing the already-implemented static fallback path below.
+    return null;
 }
 
 // Get All States
