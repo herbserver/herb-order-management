@@ -12,6 +12,10 @@ services:
         value: 3000
       - key: MONGODB_URI
         sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
       - key: SHIPROCKET_API_EMAIL
         sync: false
       - key: SHIPROCKET_API_PASSWORD
