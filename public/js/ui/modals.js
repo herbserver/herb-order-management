@@ -61,6 +61,11 @@ async function viewOrder(orderId) {
         }
 
         const fullAddress = `${order.address || ''}, ${order.distt || ''}, ${order.state || ''} - ${order.pin || ''}`;
+        const employeeRemark = order.remark || ((order.remarks && order.remarks.length > 0) ? order.remarks[0].text : '');
+        const verificationRemark = order.verificationRemark && order.verificationRemark.text
+            ? order.verificationRemark.text
+            : '';
+        const employeeRemarkBy = order.employee || order.employeeName || 'Employee';
 
         // Standardize on orderDetailModal (Premium)
         let modalElement = document.getElementById('orderDetailModal');
@@ -178,6 +183,35 @@ async function viewOrder(orderId) {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Remarks Section -->
+                        ${(employeeRemark || verificationRemark) ? `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            ${employeeRemark ? `
+                            <div class="bg-rose-50 border-2 border-rose-100 p-5 rounded-3xl shadow-sm relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-rose-500 text-white px-4 py-1 rounded-bl-2xl text-[8px] font-black uppercase tracking-widest">Employee Note</div>
+                                <div class="flex items-start gap-3">
+                                    <span class="text-2xl">💬</span>
+                                    <div>
+                                        <p class="text-xs font-black text-rose-400 uppercase tracking-widest mb-1">Created By: ${employeeRemarkBy}</p>
+                                        <p class="text-gray-800 font-bold italic leading-relaxed">"${employeeRemark}"</p>
+                                    </div>
+                                </div>
+                            </div>` : ''}
+
+                            ${verificationRemark ? `
+                            <div class="bg-blue-50 border-2 border-blue-100 p-5 rounded-3xl shadow-sm relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-2xl text-[8px] font-black uppercase tracking-widest">Verification Dept</div>
+                                <div class="flex items-start gap-3">
+                                    <span class="text-2xl">📝</span>
+                                    <div>
+                                        <p class="text-xs font-black text-blue-400 uppercase tracking-widest mb-1">Remarks by: ${order.verificationRemark?.addedBy || 'Verifier'}</p>
+                                        <p class="text-gray-800 font-bold leading-relaxed">${verificationRemark}</p>
+                                    </div>
+                                </div>
+                            </div>` : ''}
+                        </div>
+                        ` : ''}
 
                         <!-- Tracking Details Card (NEW) -->
                         ${(order.shiprocket?.awb || order.tracking?.trackingId) ? `

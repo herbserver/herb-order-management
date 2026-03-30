@@ -46,6 +46,83 @@ function getCurrentEmployeeName() {
     return normalizeEmployeeUser(currentUser)?.name || '';
 }
 
+const EMPLOYEE_PRODUCT_FALLBACK = [
+    'Amlex', 'Black pills', 'Blue & White capsule', 'Blue&White Cap',
+    'Ess Oil', 'Ess. Cap', 'Ess. capsule', 'Gaumutra', 'H.O.S.',
+    'Herb On Naturals Herbal Tea', 'Herb On Vedic Plus Capsule',
+    'Herbon Daibayog Cap', 'Herbon Tulsi Paawan', 'Herbon Urja Rasayan Capsule',
+    'HOS Powder', 'KamGold capsule', 'kamGold Oil', 'KamGold Prash',
+    'Mind Fresh Tea', 'Nadi Yog Capsule', 'Nadiyog', 'Naskhol',
+    'Naskhol Capsule', 'Oil', 'Ostrich-Cap', 'Ostrich-Red Oil',
+    'Pain Over Capsule', 'Pain Snap Prash', 'Painover', 'Pangasic Oil',
+    'Same Medicine', 'Slim fit kit', 'Spray Oil', 'Tea-1500',
+    'Tea-1800', 'Tea-400', "Vedic Vain's Liquid", 'Vedic-Cap',
+    'Vedic-Tab', 'Vena-V', 'Yellow capsule', 'Yellow Cpasule'
+].map((name) => ({ name, price: 0 }));
+
+function escapeEmployeeProductValue(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function getEmployeeProductList() {
+    const source = Array.isArray(window.PRODUCT_LIST) && window.PRODUCT_LIST.length > 0
+        ? window.PRODUCT_LIST
+        : EMPLOYEE_PRODUCT_FALLBACK;
+
+    return source
+        .map((product) => {
+            if (typeof product === 'string') {
+                return { name: product, price: 0 };
+            }
+
+            const name = String(product?.name || '').trim();
+            if (!name) return null;
+
+            return {
+                ...product,
+                name,
+                price: Number(product?.price || 0)
+            };
+        })
+        .filter(Boolean);
+}
+
+function buildEmployeeProductOptions(selectedValue = '') {
+    const normalizedSelectedValue = String(selectedValue || '').trim();
+    const products = getEmployeeProductList();
+    let options = products.map((product) => {
+        const name = escapeEmployeeProductValue(product.name);
+        const isSelected = product.name === normalizedSelectedValue ? ' selected' : '';
+        return `<option value="${name}" data-price="${Number(product.price || 0)}"${isSelected}>${name}</option>`;
+    }).join('');
+
+    if (normalizedSelectedValue && !products.some((product) => product.name === normalizedSelectedValue)) {
+        const escapedSelectedValue = escapeEmployeeProductValue(normalizedSelectedValue);
+        options += `<option value="${escapedSelectedValue}" selected>${escapedSelectedValue}</option>`;
+    }
+
+    return options;
+}
+
+function refreshEmployeeProductRows() {
+    document.querySelectorAll('#itemsContainer .item-row select').forEach((select) => {
+        const currentValue = select.value;
+        select.innerHTML = `
+            <option value="">Select Product...</option>
+            ${buildEmployeeProductOptions(currentValue)}
+        `;
+        if (currentValue) {
+            select.value = currentValue;
+        }
+    });
+}
+
+window.addEventListener('productsLoaded', refreshEmployeeProductRows);
+
 document.addEventListener('DOMContentLoaded', () => {
     // Only run employee init if user is actually an employee
     // (Prevents redirect when admin/department loads this script)
@@ -199,17 +276,17 @@ function addItem() {
     const div = document.createElement('div');
     div.className = 'item-row grid grid-cols-12 gap-2 mb-2 items-center';
 
-    let options = PRODUCT_LIST.map(p => `<option value="${p.name}" data-price="${p.price}">${p.name}</option>`).join('');
+    const options = buildEmployeeProductOptions();
 
     div.innerHTML = `
         <div class="col-span-6">
-            <select class="w-full p-2 border rounded" onchange="updateTotal(this)">
+            <select class="item-desc w-full p-2 border rounded" onchange="updateTotal(this)">
                 <option value="">Select Product...</option>
                 ${options}
             </select>
         </div>
         <div class="col-span-2">
-            <input type="number" class="w-full p-2 border rounded text-center" value="1" min="1" oninput="updateTotal(this)">
+            <input type="number" class="item-qty w-full p-2 border rounded text-center" value="1" min="1" oninput="updateTotal(this)">
         </div>
         <div class="col-span-3">
             <input type="number" class="w-full p-2 border rounded text-right item-row-total" value="0" oninput="calculateTotal()">
@@ -229,7 +306,10 @@ function updateTotal(el) {
 function calculateTotal() {
     let sum = 0;
     document.querySelectorAll('.item-row .item-row-total').forEach(i => sum += Number(i.value || 0));
-    document.getElementById('total').value = sum;
+    const totalInput = document.getElementById('totalAmountInput');
+    if (totalInput) {
+        totalInput.value = sum;
+    }
     calculateCOD();
 }
 
