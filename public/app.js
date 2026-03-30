@@ -1873,7 +1873,8 @@ async function saveOrder() {
         items,
         total: total,
         advance: parseFloat(form.advance.value) || 0,
-        codAmount: parseFloat(form.codAmount.value) || 0
+        codAmount: parseFloat(form.codAmount.value) || 0,
+        remark: document.getElementById('employeeRemark')?.value?.trim() || ''
     };
 
     // LOGIC CHANGE: Decide URL and Method based on Create or Edit mode
@@ -2188,6 +2189,10 @@ async function editOrder(orderId) {
         form.date.value = order.date || '';
         form.time.value = order.time || '';
         form.advance.value = order.advance || 0;
+        const employeeRemarkInput = document.getElementById('employeeRemark');
+        if (employeeRemarkInput) {
+            employeeRemarkInput.value = order.remark || '';
+        }
         document.getElementById('totalAmountInput').value = order.total || 0;
         calculateTotal(); // Trigger combo check
 
