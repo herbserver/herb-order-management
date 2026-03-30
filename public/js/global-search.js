@@ -5,12 +5,36 @@
 
 // Global search function - works across all panels
 async function globalSearchOrder(query) {
-    if (!query || query.trim().length < 3) {
+    if (!query) return;
+    const qTrim = query.trim();
+
+    // Command Interceptor (#)
+    if (qTrim.startsWith('#')) {
+        console.log('🤖 Command detected:', qTrim);
+        
+        // Try Employee Handler
+        if (typeof window.handleEmployeeCommand === 'function') {
+            if (window.handleEmployeeCommand(qTrim)) return;
+        }
+
+        if (typeof window.handleVerificationCommand === 'function') {
+            if (window.handleVerificationCommand(qTrim)) return;
+        }
+
+        if (typeof window.handleDispatchCommand === 'function') {
+            if (window.handleDispatchCommand(qTrim)) return;
+        }
+        
+        // Try Admin/Dept Handlers (to be implemented if needed)
+        // if (typeof window.handleAdminCommand === 'function') ...
+    }
+
+    if (qTrim.length < 3) {
         showWarningPopup('Search Too Short', 'Please enter at least 3 characters to search');
         return;
     }
 
-    const searchQuery = query.trim();
+    const searchQuery = qTrim;
     console.log('🔍 Global search initiated:', searchQuery);
 
     try {
@@ -53,6 +77,97 @@ async function globalSearchOrder(query) {
         console.error('Search error:', error);
         showWarningPopup('Search Error', 'Failed to search orders. Please try again.');
     }
+}
+
+function handleVerificationCommand(cmd) {
+    const command = String(cmd || '').toLowerCase().replace('#', '').trim();
+    const isVerificationPage = window.location.pathname === '/verification' || window.currentDeptType === 'verification';
+
+    if (!isVerificationPage || typeof window.switchVerificationTab !== 'function') {
+        return false;
+    }
+
+    const mapping = {
+        pending: 'pending',
+        verify: 'pending',
+        verification: 'pending',
+        orders: 'pending',
+        unverified: 'unverified',
+        hold: 'unverified',
+        onhold: 'unverified',
+        history: 'history',
+        past: 'history',
+        cancelled: 'cancelled',
+        cancel: 'cancelled'
+    };
+
+    const targetTab = mapping[command];
+    if (!targetTab) {
+        if (!command && typeof window.showToast === 'function') {
+            window.showToast('Use #pending, #unverified, #history, or #cancelled', 'info');
+            return true;
+        }
+        return false;
+    }
+
+    window.switchVerificationTab(targetTab);
+    document.getElementById('globalSearchBar')?.classList.add('hidden');
+
+    ['globalSearchInput', 'deptHeaderSearch'].forEach((id) => {
+        const input = document.getElementById(id);
+        if (input) input.value = '';
+    });
+
+    if (typeof window.showToast === 'function') {
+        window.showToast(`Switched to ${targetTab} tab`, 'info');
+    }
+
+    return true;
+}
+
+function handleDispatchCommand(cmd) {
+    const command = String(cmd || '').toLowerCase().replace('#', '').trim();
+    const isDispatchPage = window.location.pathname === '/dispatch' || window.currentDeptType === 'dispatch';
+
+    if (!isDispatchPage || typeof window.switchDispatchTab !== 'function') {
+        return false;
+    }
+
+    const mapping = {
+        ready: 'ready',
+        pending: 'ready',
+        queue: 'ready',
+        dispatch: 'ready',
+        dispatched: 'dispatched',
+        shipped: 'dispatched',
+        sent: 'dispatched',
+        history: 'history',
+        stats: 'history',
+        past: 'history'
+    };
+
+    const targetTab = mapping[command];
+    if (!targetTab) {
+        if (!command && typeof window.showToast === 'function') {
+            window.showToast('Use #ready, #dispatched, or #history', 'info');
+            return true;
+        }
+        return false;
+    }
+
+    window.switchDispatchTab(targetTab);
+    document.getElementById('globalSearchBar')?.classList.add('hidden');
+
+    ['globalSearchInput', 'deptHeaderSearch'].forEach((id) => {
+        const input = document.getElementById(id);
+        if (input) input.value = '';
+    });
+
+    if (typeof window.showToast === 'function') {
+        window.showToast(`Switched to ${targetTab} tab`, 'info');
+    }
+
+    return true;
 }
 
 // Display search results in a modal
@@ -302,6 +417,8 @@ function closeLoadingPopup() {
 
 // Export to window
 window.globalSearchOrder = globalSearchOrder;
+window.handleVerificationCommand = handleVerificationCommand;
+window.handleDispatchCommand = handleDispatchCommand;
 window.closeGlobalSearchModal = closeGlobalSearchModal;
 
 // Helper to show search bar

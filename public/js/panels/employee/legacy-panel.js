@@ -1,66 +1,13 @@
 // ==================== EMPLOYEE PANEL LOGIC ====================
 
-function readStoredSession() {
-    try {
-        return JSON.parse(localStorage.getItem('herb_session'));
-    } catch (e) {
-        return null;
-    }
-}
-
-function normalizeEmployeeUser(user) {
-    if (!user) return null;
-
-    const id = String(user.id || user.employeeId || user.empId || '').trim().toUpperCase();
-    if (!id) return null;
-
-    return {
-        ...user,
-        id,
-        employeeId: user.employeeId || id,
-        name: user.name || user.employeeName || ''
-    };
-}
-
-function syncEmployeeSessionUser(user) {
-    const normalizedUser = normalizeEmployeeUser(user);
-    if (!normalizedUser) return null;
-
-    currentUser = normalizedUser;
-    window.currentUser = normalizedUser;
-
-    const session = readStoredSession();
-    if (session && session.type === 'employee') {
-        session.user = normalizedUser;
-        localStorage.setItem('herb_session', JSON.stringify(session));
-    }
-
-    return normalizedUser;
-}
-
-function getCurrentEmployeeId() {
-    return normalizeEmployeeUser(currentUser)?.id || '';
-}
-
-function getCurrentEmployeeName() {
-    return normalizeEmployeeUser(currentUser)?.name || '';
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     // Only run employee init if user is actually an employee
     // (Prevents redirect when admin/department loads this script)
-    if (typeof loadSession === 'function') {
-        loadSession();
-    }
-
-    const session = readStoredSession();
+    const session = typeof loadSession === 'function' ? loadSession() : null;
     if (!session || session.type !== 'employee') return;
 
-    const isAuthorized = checkAuth('employee');
-    if (!isAuthorized) return;
-
-    const employeeUser = syncEmployeeSessionUser(session.user || currentUser);
-    if (!employeeUser) return;
+    const user = checkAuth('employee');
+    if (!user) return;
 
     // Initialize UI
     initOrderForm();
@@ -68,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set Name
     const nameEl = document.getElementById('empNameDisplay');
-    if (nameEl) nameEl.textContent = employeeUser.name;
+    if (nameEl) nameEl.textContent = user.name;
 
     // Initial Tab
     if (window.switchEmpTab) switchEmpTab('order');
@@ -77,38 +24,38 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== TAB SWITCHING ====================
 function switchEmpTab(tab) {
     // Hide all contents
-    ['empOrderTab', 'empTrackingTab', 'empHistoryTab', 'empProgressTab', 'empOfdTab', 'empCancelledTab'].forEach(id => {
+    ['empOrderTab', 'empTrackingTab', 'empHistoryTab', 'empProgressTab', 'empCancelledTab'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
 
     // Reset buttons
-    ['empTabOrder', 'empTabTracking', 'empTabHistory', 'empTabProgress', 'empTabOfd', 'empTabCancelled'].forEach(id => {
+    const btns = ['empTabOrder', 'empTabTracking', 'empTabHistory', 'empTabProgress', 'empTabCancelled'];
+    btns.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            // Remove old styling classes
-            el.classList.remove('sidebar-active', 'bg-emerald-50', 'text-emerald-600', 'tab-active', 'bg-white', 'text-gray-800');
-            el.classList.add('text-slate-600', 'text-gray-500');
+            el.classList.remove('tab-active');
             el.querySelector('span')?.classList.remove('scale-110');
+            el.classList.add('text-gray-500');
+            el.classList.remove('bg-white', 'text-gray-800');
         }
     });
 
     let contentId = 'empOrderTab';
-    let buttonId = 'empTabOrder';
+    let btnId = 'empTabOrder';
 
-    if (tab === 'tracking') { contentId = 'empTrackingTab'; buttonId = 'empTabTracking'; loadMyOrders(); }
-    else if (tab === 'history') { contentId = 'empHistoryTab'; buttonId = 'empTabHistory'; loadMyHistory(); }
-    else if (tab === 'progress') { contentId = 'empProgressTab'; buttonId = 'empTabProgress'; loadEmpProgress(); }
-    else if (tab === 'ofd') { contentId = 'empOfdTab'; buttonId = 'empTabOfd'; if (typeof loadMyOfdOrders === 'function') loadMyOfdOrders(); }
-    else if (tab === 'cancelled') { contentId = 'empCancelledTab'; buttonId = 'empTabCancelled'; loadCancelledOrders(); }
+    if (tab === 'tracking') { contentId = 'empTrackingTab'; btnId = 'empTabTracking'; loadMyOrders(); }
+    else if (tab === 'history') { contentId = 'empHistoryTab'; btnId = 'empTabHistory'; loadMyHistory(); }
+    else if (tab === 'progress') { contentId = 'empProgressTab'; btnId = 'empTabProgress'; loadEmpProgress(); }
+    else if (tab === 'cancelled') { contentId = 'empCancelledTab'; btnId = 'empTabCancelled'; loadCancelledOrders(); }
 
     const content = document.getElementById(contentId);
-    const btn = document.getElementById(buttonId);
+    const btn = document.getElementById(btnId);
 
     if (content) content.classList.remove('hidden');
     if (btn) {
-        btn.classList.add('sidebar-active', 'bg-emerald-50', 'text-emerald-600');
-        btn.classList.remove('text-slate-600', 'text-gray-500');
+        btn.classList.add('tab-active');
+        btn.classList.remove('text-gray-500');
         btn.querySelector('span')?.classList.add('scale-110');
     }
 
@@ -125,52 +72,6 @@ function switchEmpTab(tab) {
         }
     }
 }
-
-/**
- * Handle Search Bar Commands (e.g., #orders, #history)
- * @param {string} cmd Command starting with #
- * @returns {boolean} True if command was handled
- */
-function handleEmployeeCommand(cmd) {
-    const command = cmd.toLowerCase().replace('#', '').trim();
-    
-    const mapping = {
-        'new': 'order',
-        'order': 'order',
-        'entry': 'order',
-        'tracking': 'tracking',
-        'orders': 'tracking',
-        'myorders': 'tracking',
-        'myorder': 'tracking',
-        'history': 'history',
-        'past': 'history',
-        'progress': 'progress',
-        'stats': 'progress',
-        'report': 'progress',
-        'analytics': 'progress',
-        'ofd': 'ofd',
-        'delivery': 'ofd',
-        'outfordelivery': 'ofd',
-        'cancelled': 'cancelled',
-        'cancel': 'cancelled'
-    };
-
-    if (mapping[command]) {
-        if (typeof window.openEmployeeTab === 'function') {
-            window.openEmployeeTab(mapping[command]);
-        } else {
-            switchEmpTab(mapping[command]);
-        }
-        // Hide global search bar after switching
-        const bar = document.getElementById('globalSearchBar');
-        if (bar) bar.classList.add('hidden');
-        return true;
-    }
-
-    return false;
-}
-
-window.handleEmployeeCommand = handleEmployeeCommand;
 
 // ==================== ORDER FORM LOGIC ====================
 function initOrderForm() {
@@ -241,13 +142,6 @@ function calculateCOD() {
 
 async function saveOrder() {
     const form = document.getElementById('orderForm');
-    const employeeId = getCurrentEmployeeId();
-    const employeeName = getCurrentEmployeeName();
-
-    if (!employeeId) {
-        return showMessage('Employee session missing hai. Dobara login karein.', 'error', 'empMessage');
-    }
-
     if (!form.checkValidity()) {
         form.reportValidity();
         return;
@@ -297,9 +191,8 @@ async function saveOrder() {
     // ----------------------------
 
     const orderData = {
-        employeeId,
-        employee: employeeName,
-        employeeName, // Ensure this is sent
+        employeeId: currentUser.id,
+        employeeName: currentUser.name, // Ensure this is sent
         customerName: form.customerName.value,
         telNo: form.telNo.value,
         address: form.address.value, // Full address string
@@ -606,144 +499,44 @@ function updateAddress() {
 
 const EMP_ITEMS_PER_PAGE = 12; // Limit per page
 let empMyOrdersPage = 1;
-let empMyOrdersLastDate = '';
-
-function getEmployeeItemsPerPage() {
-    if (typeof paginationConfig !== 'undefined' && typeof paginationConfig.getItemsPerPage === 'function') {
-        return paginationConfig.getItemsPerPage();
-    }
-    if (typeof window.EMP_ITEMS_PER_PAGE === 'number') {
-        return window.EMP_ITEMS_PER_PAGE;
-    }
-    return EMP_ITEMS_PER_PAGE;
-}
-
-function getMyOrdersDateValue() {
-    const input = document.getElementById('myOrdersDate');
-    if (!input) return '';
-    return input.value || '';
-}
-
-function renderMyOrdersStats(stats, options = {}) {
-    const container = document.getElementById('myOrdersStats');
-    if (!container) return;
-    const showDateSummary = Boolean(options.showDateSummary);
-
-    const safeStats = {
-        total: 0,
-        pending: 0,
-        verified: 0,
-        dispatched: 0,
-        ofd: 0,
-        delivered: 0,
-        cancelled: 0,
-        hold: 0,
-        ...(stats || {})
-    };
-
-    const cards = showDateSummary
-        ? [
-            { label: 'Total', value: safeStats.total, border: 'blue' },
-            { label: 'Pending', value: safeStats.pending, border: 'yellow' },
-            { label: 'Verified', value: safeStats.verified, border: 'emerald' },
-            { label: 'Dispatch', value: safeStats.dispatched, border: 'indigo' },
-            { label: 'Done', value: safeStats.delivered, border: 'green' },
-            { label: 'Cancel', value: safeStats.cancelled, border: 'red' }
-        ]
-        : [
-            { label: 'Total', value: safeStats.total, border: 'blue' },
-            { label: 'Pending', value: safeStats.pending, border: 'yellow' },
-            { label: 'Verified', value: safeStats.verified, border: 'emerald' },
-            { label: 'Dispatch', value: safeStats.dispatched, border: 'indigo' },
-            { label: 'OFD', value: safeStats.ofd, border: 'orange' },
-            { label: 'Hold', value: safeStats.hold, border: 'amber' }
-        ];
-
-    container.innerHTML = cards.map(card => `
-        <div class="glass-card p-2 flex flex-col items-center justify-center text-center border-b-2 border-${card.border}-500 bg-white shadow-sm">
-            <span class="text-[7px] font-black text-gray-400 uppercase tracking-tighter">${card.label}</span>
-            <span class="text-sm font-black text-slate-800">${card.value}</span>
-        </div>
-    `).join('');
-}
 
 async function loadMyOrders(page = null) {
     if (!currentUser) return;
     try {
-        const employeeId = getCurrentEmployeeId();
-        const selectedDate = getMyOrdersDateValue();
-        const itemsPerPage = getEmployeeItemsPerPage();
-        const activeStatuses = 'Pending,Address Verified,Dispatched,Out For Delivery,On Hold,Hold';
-        const showDateSummary = Boolean(selectedDate);
-
-        if (!employeeId) {
-            const list = document.getElementById('myOrdersList');
-            if (list) {
-                list.innerHTML = '<div class="col-span-full text-center text-red-500">Employee session missing. Please login again.</div>';
-            }
-            return;
-        }
-
-        // Reset pagination when date filter changes
-        if (page !== null) {
-            empMyOrdersPage = page;
-        } else if (selectedDate !== empMyOrdersLastDate) {
-            empMyOrdersPage = 1;
-        }
-        empMyOrdersLastDate = selectedDate;
-
+        // Update page if provided
+        if (page !== null) empMyOrdersPage = page;
         const currentPage = empMyOrdersPage;
 
-        const params = new URLSearchParams({
-            page: String(currentPage),
-            limit: String(itemsPerPage)
-        });
-        if (selectedDate) {
-            params.set('startDate', selectedDate);
-            params.set('endDate', selectedDate);
-            params.set('dateField', 'date');
-        } else {
-            params.set('status', activeStatuses);
-        }
-        const res = await fetch(`${API_URL}/employees/${employeeId}?${params.toString()}`);
+        // OPTIMIZED: Fetch with pagination limit
+        const statuses = 'Pending,Dispatched,Out For Delivery,On Hold';
+        const res = await fetch(`${API_URL}/orders/employee/${currentUser.id}?status=${encodeURIComponent(statuses)}&page=${currentPage}&limit=${EMP_ITEMS_PER_PAGE}`);
         const data = await res.json();
 
         if (!data.success) {
             console.error('Failed to load orders');
-            const list = document.getElementById('myOrdersList');
-            if (list) {
-                list.innerHTML = '<div class="col-span-full text-center text-red-500">Orders load nahi ho paye.</div>';
-            }
             return;
         }
 
         const orders = data.orders || [];
         const totalItems = data.pagination ? data.pagination.total : orders.length;
-        const totalPages = itemsPerPage > 0 ? (Math.ceil(totalItems / itemsPerPage) || 1) : 1;
+        const totalPages = Math.ceil(totalItems / EMP_ITEMS_PER_PAGE) || 1;
 
-        renderMyOrdersStats(data.stats, { showDateSummary });
-
-        // Update today count if element exists
-        const todayCountEl = document.getElementById('todayCount');
-        if (todayCountEl) {
-            const todayOrders = orders.filter(o => new Date(o.timestamp).toDateString() === new Date().toDateString());
-            todayCountEl.innerText = todayOrders.length;
-        }
+        // Update today count (from all orders, might need separate API call for accurate count)
+        const todayOrders = orders.filter(o => new Date(o.timestamp).toDateString() === new Date().toDateString());
+        document.getElementById('todayCount').innerText = todayOrders.length;
 
         const list = document.getElementById('myOrdersList');
         if (!list) return;
 
         if (orders.length === 0) {
-            list.innerHTML = `<div class="col-span-full text-center text-gray-400">${selectedDate ? `No orders found for ${selectedDate}` : 'No active orders'}</div>`;
+            list.innerHTML = '<div class="col-span-full text-center text-gray-400">No active orders</div>';
             return;
         }
 
         list.innerHTML = orders.map(o => renderEmpOrderCard(o)).join('');
 
         // Add pagination controls
-        if (itemsPerPage > 0 && totalPages > 1) {
-            renderPaginationControls(list, currentPage, totalPages, 'loadMyOrders');
-        }
+        renderPaginationControls(list, currentPage, totalPages, 'loadMyOrders');
     } catch (e) {
         console.error('Error loading my orders:', e);
     }
@@ -752,10 +545,7 @@ async function loadMyOrders(page = null) {
 async function loadCancelledOrders() {
     if (!currentUser) return;
     try {
-        const employeeId = getCurrentEmployeeId();
-        if (!employeeId) return;
-
-        const res = await fetch(`${API_URL}/employees/${employeeId}`);
+        const res = await fetch(`${API_URL}/employees/${currentUser.id}`);
         const data = await res.json();
         const orders = (data.orders || []).filter(o => o.status === 'Cancelled');
 
@@ -890,69 +680,19 @@ function handleEmpItemsChange(fetchFuncName) {
     }
 }
 
-async function loadMyOfdOrders(page = 1) {
-    if (!currentUser) return;
-    try {
-        const employeeId = getCurrentEmployeeId();
-        if (!employeeId) return;
-
-        const statuses = 'Out For Delivery';
-        const res = await fetch(`${API_URL}/orders/employee/${employeeId}?status=${encodeURIComponent(statuses)}&page=${page}&limit=${EMP_ITEMS_PER_PAGE}`);
-        const data = await res.json();
-
-        const list = document.getElementById('empOfdList');
-        if (!list) return;
-
-        if (!data.success || !data.orders || data.orders.length === 0) {
-            list.innerHTML = '<div class="col-span-full text-center py-12 bg-indigo-50 rounded-2xl border-dashed border-2 border-indigo-100"><p class="text-4xl mb-3">🚚</p><p class="text-gray-500">No orders out for delivery</p></div>';
-            return;
-        }
-
-        list.innerHTML = data.orders.map(o => renderEmpOrderCard(o)).join('');
-        
-        const totalItems = data.pagination ? data.pagination.total : data.orders.length;
-        const totalPages = Math.ceil(totalItems / EMP_ITEMS_PER_PAGE) || 1;
-        renderPaginationControls(list, page, totalPages, 'loadMyOfdOrders');
-    } catch (e) {
-        console.error('Error loading OFD orders:', e);
-    }
-}
-
-window.loadMyOfdOrders = loadMyOfdOrders;
 window.handleEmpItemsChange = handleEmpItemsChange;
 window.generatePageNumbers = generatePageNumbers;
 
 let historyPage = 1;
-let historyLastDate = '';
 async function loadMyHistory(page = 1) {
     if (!currentUser) return;
+    historyPage = page;
     try {
-        const employeeId = getCurrentEmployeeId();
-        if (!employeeId) return;
-
-        const selectedDate = document.getElementById('empHistoryDate')?.value || '';
-        if (selectedDate !== historyLastDate && page === 1) {
-            historyPage = 1;
-        } else {
-            historyPage = page;
-        }
-        historyLastDate = selectedDate;
-
         // Optimized: Fetch history with pagination
         const statuses = 'Delivered,Returned,Cancelled';
         const limit = 10;
-        const params = new URLSearchParams({
-            status: statuses,
-            page: String(historyPage),
-            limit: String(limit)
-        });
-        if (selectedDate) {
-            params.set('startDate', selectedDate);
-            params.set('endDate', selectedDate);
-            params.set('dateField', 'date');
-        }
 
-        const res = await fetch(`${API_URL}/employees/${employeeId}?${params.toString()}`);
+        const res = await fetch(`${API_URL}/employees/${currentUser.id}?status=${encodeURIComponent(statuses)}&page=${page}&limit=${limit}`);
         const data = await res.json();
 
         let orders = data.orders || [];
@@ -966,7 +706,7 @@ async function loadMyHistory(page = 1) {
 
         const list = document.getElementById('myHistoryList');
         if (orders.length === 0) {
-            list.innerHTML = `<div class="text-center text-gray-400 col-span-full">${selectedDate ? `No history found for ${selectedDate}` : 'No history yet'}</div>`;
+            list.innerHTML = '<div class="text-center text-gray-400 col-span-full">No history yet</div>';
             return;
         }
 
@@ -974,9 +714,7 @@ async function loadMyHistory(page = 1) {
 
         // Render Pagination
         const totalPages = Math.ceil(total / limit) || 1;
-        if (totalPages > 1) {
-            renderPaginationControls(list, historyPage, totalPages, 'loadMyHistory');
-        }
+        renderPaginationControls(list, page, totalPages, 'loadMyHistory');
 
         // Add Reorder listeners if needed
     } catch (e) { console.error('History load error:', e); }
@@ -984,8 +722,6 @@ async function loadMyHistory(page = 1) {
 
 async function loadEmpProgress() {
     if (!currentUser) return;
-    const employeeId = getCurrentEmployeeId();
-    if (!employeeId) return;
 
     const startDate = document.getElementById('empProgressStartDate')?.value || '';
     const endDate = document.getElementById('empProgressEndDate')?.value || '';
@@ -998,7 +734,7 @@ async function loadEmpProgress() {
     try {
         // Fetch stats from employee detail API
         // Passing limit=0 to get ALL orders for correct stats calculation
-        let url = `${API_URL}/employees/${employeeId}?limit=0`;
+        let url = `${API_URL}/employees/${currentUser.id}?limit=0`;
         if (startDate) url += `&startDate=${startDate}`;
         if (endDate) url += `&endDate=${endDate}`;
 
@@ -1056,10 +792,6 @@ function renderEmpOrderCard(o, isHistory = false) {
         o.status === 'Dispatched' ? 'text-blue-500 bg-blue-50' :
             o.status === 'Out For Delivery' ? 'text-purple-500 bg-purple-50' :
                 o.status === 'Delivered' ? 'text-green-500 bg-green-50' : 'text-gray-500 bg-gray-50';
-    const savedDate = String(o.date || '').trim();
-    const displayDate = /^\d{4}-\d{2}-\d{2}$/.test(savedDate)
-        ? savedDate
-        : new Date(o.timestamp).toLocaleDateString();
 
     const hasTracking = (o.shiprocket && o.shiprocket.awb) || (o.tracking && o.tracking.trackingId);
     const trackingId = (o.shiprocket && o.shiprocket.awb) || (o.tracking && o.tracking.trackingId) || '';
@@ -1088,7 +820,7 @@ function renderEmpOrderCard(o, isHistory = false) {
             </div>
             <div class="text-right">
                 <p class="font-bold text-sm">₹${o.total}</p>
-                <p class="text-xs text-gray-400">${displayDate}</p>
+                <p class="text-xs text-gray-400">${new Date(o.timestamp).toLocaleDateString()}</p>
             </div>
         </div>
         ${o.remark ? `<div class="bg-yellow-50 border border-yellow-100 p-2 rounded-lg mb-3 text-xs text-yellow-800"><strong>📝 Remark:</strong> ${o.remark}</div>` : ''}
@@ -1211,5 +943,4 @@ window.loadMyOrders = loadMyOrders;
 window._empLoadMyOrders = loadMyOrders; // Used by app.js to delegate to fast version
 window.loadCancelledOrders = loadCancelledOrders;
 window.loadEmpProgress = loadEmpProgress;
-window.loadMyOfdOrders = loadMyOfdOrders;
 

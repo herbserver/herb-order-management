@@ -8,8 +8,8 @@ var API_URL = API_URL || (window.location.origin + '/api');
 
 console.log('Connecting to API at:', API_URL);
 
-// Admin Password 
-var ADMIN_PASS = ADMIN_PASS || 'admin123';
+// Admin password is now verified server-side via /api/config/admin-login
+// Do NOT store admin password on frontend for security
 
 // Courier Tracking URLs
 window.COURIER_TRACKING = window.COURIER_TRACKING || {
@@ -25,51 +25,35 @@ window.COURIER_TRACKING = window.COURIER_TRACKING || {
     'Professional': 'https://www.tpcindia.com/track.aspx'
 };
 
-// Product List for Order Form
-window.PRODUCT_LIST = window.PRODUCT_LIST || [
-    { name: "Amlex" },
-    { name: "Black pills" },
-    { name: "Blue & White capsule" },
-    { name: "Blue&White Cap" },
-    { name: "Ess Oil" },
-    { name: "Ess. Cap" },
-    { name: "Ess. capsule" },
-    { name: "Gaumutra" },
-    { name: "H.O.S." },
-    { name: "Herb On Naturals Herbal Tea" },
-    { name: "Herb On Vedic Plus Capsule" },
-    { name: "Herbon Daibayog Cap" },
-    { name: "Herbon Tulsi Paawan" },
-    { name: "Herbon Urja Rasayan Capsule" },
-    { name: "HOS Powder" },
-    { name: "KamGold capsule" },
-    { name: "kamGold Oil" },
-    { name: "KamGold Prash" },
-    { name: "Mind Fresh Tea" },
-    { name: "Nadi Yog Capsule" },
-    { name: "Nadiyog" },
-    { name: "Naskhol" },
-    { name: "Naskhol Capsule" },
-    { name: "Oil" },
-    { name: "Ostrich-Cap" },
-    { name: "Ostrich-Red Oil" },
-    { name: "Pain Over Capsule" },
-    { name: "Pain Snap Prash" },
-    { name: "Painover" },
-    { name: "Pangasic Oil" },
-    { name: "Same Medicine" },
-    { name: "Slim fit kit" },
-    { name: "Spray Oil" },
-    { name: "Tea-1500" },
-    { name: "Tea-1800" },
-    { name: "Tea-400" },
-    { name: "Vedic Vain's Liquid" },
-    { name: "Vedic-Cap" },
-    { name: "Vedic-Tab" },
-    { name: "Vena-V" },
-    { name: "Yellow capsule" },
-    { name: "Yellow Cpasule" }
-];
+// Product List - Loaded from DB dynamically
+// Fallback empty array (populated by loadProductListFromDB below)
+window.PRODUCT_LIST = window.PRODUCT_LIST || [];
+
+/**
+ * Load products from MongoDB via API
+ * Called automatically on page load
+ */
+async function loadProductListFromDB() {
+    try {
+        const res = await fetch('/api/config/products');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+            window.PRODUCT_LIST = data.products;
+            // Notify any listening components (e.g., order form dropdowns)
+            window.dispatchEvent(new CustomEvent('productsLoaded', { detail: data.products }));
+            console.log(`✅ Products loaded from DB: ${data.products.length} items`);
+        }
+    } catch (e) {
+        console.warn('⚠️ Could not load products from DB:', e.message);
+    }
+}
+
+// Auto-load products when page is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadProductListFromDB);
+} else {
+    loadProductListFromDB();
+}
 
 // Emoji constants for WhatsApp compatibility
 window.E = window.E || {

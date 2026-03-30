@@ -52,6 +52,16 @@ app.use('/api/', apiLimiter);
 // Static Files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Frontend Routes
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+app.get('/employee', (req, res) => res.sendFile(path.join(__dirname, 'public', 'employee.html')));
+app.get('/verification', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verification.html')));
+app.get('/dispatch', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dispatch.html')));
+app.get('/delivery', (req, res) => res.sendFile(path.join(__dirname, 'public', 'delivery.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/department', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verification.html'))); // Default dept = verification
+
 // Health Check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date(), db: dataAccess.getMongoStatus() });
@@ -71,6 +81,7 @@ const paymentRoutes = require('./routes/payment');
 const leaderboardRoutes = require('./routes/leaderboard');
 const searchRoutes = require('./routes/search');
 const fetchAwbRoutes = require('./routes/fetchAwb');
+const configRoutes = require('./routes/config');
 
 // Mount Routes
 app.use('/api/auth', authRoutes); // /api/auth/login, etc.
@@ -86,6 +97,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/fetch-awb', fetchAwbRoutes);
+app.use('/api/config', configRoutes);
 
 // Compatibility Mounts (Legacy URLs)
 app.use('/api', authRoutes);
@@ -116,34 +128,28 @@ const socketManager = require('./socket-manager');
 
 async function startServer() {
     const dbConnected = await connectDatabase();
-    if (dbConnected) {
-        await initializeDefaultData();
-        console.log('✅ Database initialized!');
-        // Start Auto AWB Sync (har 5 minute me Shiprocket se AWB sync karega)
-        startAutoSync(5);
-        console.log('🔄 Auto AWB Sync enabled (every 5 minutes)');
-    } else {
-        console.warn('⚠️ Running without MongoDB - Data will not persist!');
-    }
+    await initializeDefaultData();
+    console.log('Database initialized!');
+    // Start Auto AWB Sync (har 5 minute me Shiprocket se AWB sync karega)
+    startAutoSync(5);
+    console.log('Auto AWB Sync enabled (every 5 minutes)');
 
     // Create HTTP Server for Socket.io
     const server = http.createServer(app);
 
     // Initialize Socket.io
     const io = socketManager.init(server, allowedOrigins);
-    console.log('🔌 Socket.io initialized');
+    console.log('ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ…â€™ Socket.io initialized');
 
     server.listen(PORT, '0.0.0.0', () => {
-        console.log('╔═══════════════════════════════════════════════════════════╗');
-        console.log('║       🌿 HERB ON NATURALS MODULAR SERVER STARTED 🌿       ║');
-        console.log(`║  Port:     ${PORT}                                            ║`);
-        console.log(`║  Status:   ${dbConnected ? '🟢 MongoDB Connected' : '🔴 JSON Mode'}           ║`);
-        console.log(`║  Realtime: 🟢 Socket.io Active                                ║`);
-        console.log('╚═══════════════════════════════════════════════════════════╝');
+        console.log('HERB ON NATURALS MODULAR SERVER STARTED');
+        console.log(`Port: ${PORT}`);
+        console.log('Status: MongoDB Connected');
+        console.log('Realtime: Socket.io Active');
     });
 }
 
 startServer().catch(err => {
-    console.error('❌ Failed to start server:', err);
+    console.error('ÃƒÂ¢Ã‚ÂÃ…â€™ Failed to start server:', err);
     process.exit(1);
 });

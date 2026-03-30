@@ -1,29 +1,11 @@
 // MongoDB Data Access Layer
-// This module provides functions to interact with MongoDB collections
-// Falls back to JSON files if MongoDB is not connected
-// NOW WITH IN-MEMORY CACHING FOR PERFORMANCE
+// This module provides functions to interact with MongoDB collections only.
 
 const path = require('path');
-const fs = require('fs').promises; // Use promises for async file ops
 const { Order, Department, ShiprocketConfig } = require('./models');
-const { readJSON: readJSONFile, writeJSONAsync: writeJSONFileAsync } = require('./utils/fileHelpers');
 
 // Track MongoDB connection status
 let mongoConnected = false;
-
-// IN-MEMORY CACHE
-const cache = {
-    orders: null, // Array of orders
-    departments: null, // Object of departments
-    shiprocketConfig: null,
-    lastRefreshed: {
-        orders: 0,
-        departments: 0,
-        shiprocketConfig: 0
-    }
-};
-
-const CACHE_TTL = 0; // 0 = Infinite for this session (files update via this process only)
 
 function setMongoStatus(status) {
     mongoConnected = status;
@@ -33,30 +15,55 @@ function getMongoStatus() {
     return mongoConnected;
 }
 
-// ==================== CACHE HELPERS ====================
-
-function loadCache(key, filePath, defaultValue) {
-    if (mongoConnected) return null;
-
-    if (cache[key] === null) {
-        console.log(`[CACHE] Loading ${key} from disk...`);
-        try {
-            cache[key] = readJSONFile(filePath, defaultValue);
-        } catch (e) {
-            console.error(`[CACHE] Error loading ${key}:`, e);
-            cache[key] = defaultValue;
-        }
+function requireMongoConnection() {
+    if (!mongoConnected) {
+        throw new Error('MongoDB connection required. JSON fallback has been removed.');
     }
-    return cache[key];
 }
 
-function updateCacheAndDisk(key, filePath, data) {
-    if (mongoConnected) return;
+// ==================== CACHE HELPERS ====================
 
-    cache[key] = data;
-    // Write asynchronously to avoid blocking the event loop
-    // Using fire-and-forget for performance, but logging errors
-    writeJSONFileAsync(filePath, data).catch(err => console.error(`[DISK] Write failed for ${key}:`, err));
+function loadCache() {
+    requireMongoConnection();
+}
+
+function updateCacheAndDisk() {
+    requireMongoConnection();
+}
+
+function escapeRegex(value) {
+    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildOrderSearchQuery(search) {
+    const normalizedSearch = String(search || '').trim();
+    if (!normalizedSearch) return null;
+
+    const regex = new RegExp(escapeRegex(normalizedSearch), 'i');
+    return {
+        $or: [
+            { orderId: regex },
+            { customerName: regex },
+            { telNo: regex },
+            { altNo: regex },
+            { employeeId: regex },
+            { employee: regex }
+        ]
+    };
+}
+
+function matchesOrderSearch(order, search) {
+    const normalizedSearch = String(search || '').trim().toLowerCase();
+    if (!normalizedSearch) return true;
+
+    return [
+        order.orderId,
+        order.customerName,
+        order.telNo,
+        order.altNo,
+        order.employeeId,
+        order.employee
+    ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch));
 }
 
 
@@ -147,7 +154,7 @@ async function deleteDepartment(departmentId) {
 
 // Pagination Support
 // Pagination Support with Date Range
-async function getAllOrders(page = 1, limit = 0, startDate = null, endDate = null) {
+async function getAllOrders(page = 1, limit = 0, startDate = null, endDate = null, search = null) {
     // Date Filter Construction
     let dateQuery = {};
     if (startDate || endDate) {
@@ -167,6 +174,8 @@ async function getAllOrders(page = 1, limit = 0, startDate = null, endDate = nul
     if (mongoConnected) {
         let query = {};
         if (Object.keys(dateQuery).length > 0) Object.assign(query, dateQuery);
+        const searchQuery = buildOrderSearchQuery(search);
+        if (searchQuery) Object.assign(query, searchQuery);
 
         if (limit > 0) {
             const skip = (page - 1) * limit;
@@ -191,6 +200,10 @@ async function getAllOrders(page = 1, limit = 0, startDate = null, endDate = nul
             if (end && oDate > end) return false;
             return true;
         });
+    }
+
+    if (search) {
+        orders = orders.filter((order) => matchesOrderSearch(order, search));
     }
 
     if (limit > 0) {
@@ -520,6 +533,10 @@ async function getStuckOrders(thresholdHours = 48) {
 
 // Legacy wrapper or for specific date ranges
 async function getOrdersForStats(startDate, endDate) {
+    if (!mongoConnected) {
+        return await getAllOrders(1, 0, startDate, endDate);
+    }
+
     if (!startDate || !endDate) return await getAllOrders();
     // Implementation can be simple find since it's used for exports/logs mostly now
     const start = new Date(startDate); start.setHours(0, 0, 0, 0);
@@ -528,7 +545,7 @@ async function getOrdersForStats(startDate, endDate) {
 }
 
 // Optimized: Filter in memory with Pagination and Date Range
-async function getOrdersByStatus(status, page = 1, limit = 0, startDate = null, endDate = null) {
+async function getOrdersByStatus(status, page = 1, limit = 0, startDate = null, endDate = null, search = null) {
     // Map status to its corresponding date field
     const statusDateFieldMap = {
         'Pending': 'timestamp',
@@ -563,6 +580,9 @@ async function getOrdersByStatus(status, page = 1, limit = 0, startDate = null, 
             }
         }
     }
+
+    const searchQuery = buildOrderSearchQuery(search);
+    if (searchQuery) Object.assign(dateQuery, searchQuery);
 
     if (mongoConnected) {
         // Use status as-is - MongoDB has proper case: 'Pending', 'Address Verified', etc.
@@ -601,6 +621,10 @@ async function getOrdersByStatus(status, page = 1, limit = 0, startDate = null, 
             if (end && oDate > end) return false;
             return true;
         });
+    }
+
+    if (search) {
+        filtered = filtered.filter((order) => matchesOrderSearch(order, search));
     }
 
     if (limit > 0) {
@@ -846,9 +870,6 @@ async function getEmployeeOrders(empId, status = null, page = 1, limit = 0, star
     }
     return filtered;
 }
-
-// Note: Using centralized fileHelpers module
-// readJSONFile and writeJSONFileAsync are imported from utils/fileHelpers
 
 module.exports = {
     setMongoStatus,

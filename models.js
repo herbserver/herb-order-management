@@ -181,6 +181,19 @@ const departmentSchema = new mongoose.Schema({
     collection: 'departments'
 });
 
+// Employee Schema
+const employeeSchema = new mongoose.Schema({
+    employeeId: { type: String, required: true, unique: true, index: true },
+    name: { type: String, required: true, trim: true },
+    password: { type: String, required: true },
+    createdAt: String
+}, {
+    timestamps: true,
+    collection: 'employees'
+});
+
+employeeSchema.index({ name: 1 });
+
 // Shiprocket Config Schema
 const shiprocketConfigSchema = new mongoose.Schema({
     configId: { type: String, default: 'main', unique: true },
@@ -234,15 +247,53 @@ const notificationSchema = new mongoose.Schema({
     collection: 'notifications'
 });
 
+// AppConfig Schema - Admin password, product list, and other app settings
+const appConfigSchema = new mongoose.Schema({
+    configId: { type: String, default: 'main', unique: true },
+    // Admin Password (bcrypt hashed)
+    adminPassword: { type: String },
+    // Product List
+    products: [{
+        name: { type: String, required: true },
+        category: { type: String, default: 'General' },
+        active: { type: Boolean, default: true },
+        order: { type: Number, default: 0 }
+    }]
+}, {
+    timestamps: true,
+    collection: 'app_config'
+});
+
+// Pincode/Post Office Schema
+const pincodeEntrySchema = new mongoose.Schema({
+    officeName: { type: String, required: true, trim: true, index: true },
+    pincode: { type: Number, required: true, index: true },
+    taluk: { type: String, default: '', trim: true, index: true },
+    districtName: { type: String, required: true, trim: true, index: true },
+    stateName: { type: String, required: true, trim: true, index: true }
+}, {
+    timestamps: true,
+    collection: 'pincodes'
+});
+
+pincodeEntrySchema.index({ districtName: 1, stateName: 1 });
+pincodeEntrySchema.index({ officeName: 1, pincode: 1 });
+
 // Create models
 const Order = mongoose.model('Order', orderSchema);
 const Department = mongoose.model('Department', departmentSchema);
+const Employee = mongoose.model('Employee', employeeSchema);
 const ShiprocketConfig = mongoose.model('ShiprocketConfig', shiprocketConfigSchema);
 const Notification = mongoose.model('Notification', notificationSchema);
+const AppConfig = mongoose.model('AppConfig', appConfigSchema);
+const PincodeEntry = mongoose.model('PincodeEntry', pincodeEntrySchema);
 
 module.exports = {
     Order,
     Department,
+    Employee,
     ShiprocketConfig,
-    Notification
+    Notification,
+    AppConfig,
+    PincodeEntry
 };

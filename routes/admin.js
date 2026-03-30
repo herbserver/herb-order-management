@@ -12,8 +12,12 @@ const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 // Get Order History (with filters)
 router.get('/history', async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 50; // default 50, 0 mat rehne do
+        const parsedPage = parseInt(req.query.page, 10);
+        const parsedLimit = parseInt(req.query.limit, 10);
+        const page = Number.isNaN(parsedPage) ? 1 : parsedPage;
+        const limit = Number.isNaN(parsedLimit) ? 50 : parsedLimit;
+        const startDate = req.query.startDate || req.query.date || null;
+        const endDate = req.query.endDate || req.query.date || null;
         let orders = [], total = 0;
 
         // Employee filter → dedicated function use karo
@@ -22,21 +26,21 @@ router.get('/history', async (req, res) => {
                 req.query.employee,
                 req.query.status || null,
                 page, limit,
-                req.query.startDate, req.query.endDate
+                startDate, endDate
             );
             orders = result.orders || result;
             total = result.total || orders.length;
         } else if (req.query.status) {
             const result = await dataAccess.getOrdersByStatus(
                 req.query.status, page, limit,
-                req.query.startDate, req.query.endDate
+                startDate, endDate
             );
             orders = result.orders || result;
             total = result.total || orders.length;
         } else {
             const result = await dataAccess.getAllOrders(
                 page, limit,
-                req.query.startDate, req.query.endDate
+                startDate, endDate
             );
             orders = result.orders || result;
             total = result.total || orders.length;

@@ -138,6 +138,12 @@ async function searchDeliveryDepartmentOrders(query) {
 function filterDeptOrdersHeader(query) {
     const q = query.trim();
 
+    if (q.startsWith('#') && typeof window.handleVerificationCommand === 'function') {
+        if (window.handleVerificationCommand(q)) {
+            return;
+        }
+    }
+
     // For quick typing (< 3 chars), just filter current visible tab
     if (q.length < 3) {
         // Delegate to active tab's filter
@@ -180,6 +186,11 @@ function filterDeptOrdersHeader(query) {
 function handleHeaderSearchKeypress(event, input) {
     if (event.key === 'Enter') {
         const q = input.value.trim();
+        if (q.startsWith('#') && typeof window.handleVerificationCommand === 'function') {
+            if (window.handleVerificationCommand(q)) {
+                return;
+            }
+        }
         if (q.length >= 3) {
             clearTimeout(headerSearchDebounce);
             if (isDeliveryDepartment()) {

@@ -75,6 +75,7 @@ router.post('/check-duplicate', async (req, res) => {
 router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
     try {
         const orderData = req.body;
+        const employeeName = orderData.employeeName || orderData.employee || '';
 
 
         const config = await dataAccess.getShiprocketConfig();
@@ -105,6 +106,7 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
 
         const newOrder = {
             ...orderData,
+            employee: employeeName,
             orderId,
             orderType, // Saved explicitly
             status: 'Pending',
@@ -115,7 +117,7 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
         };
 
         await dataAccess.createOrder(newOrder);
-        console.log(`📦 New Order: ${orderId} (${orderType}) by ${orderData.employee} (${orderData.employeeId})`);
+        console.log(`📦 New Order: ${orderId} (${orderType}) by ${employeeName || 'Unknown'} (${orderData.employeeId})`);
 
         // Emit Real-time Event
         try {
@@ -171,13 +173,14 @@ router.get('/', async (req, res) => {
         const limit = parseInt(req.query.limit) || 0;
         const startDate = req.query.startDate;
         const endDate = req.query.endDate;
+        const search = String(req.query.search || '').trim();
 
         let result;
         // Optimization: Server-side filtering
         if (req.query.status) {
-            result = await dataAccess.getOrdersByStatus(req.query.status, page, limit, startDate, endDate);
+            result = await dataAccess.getOrdersByStatus(req.query.status, page, limit, startDate, endDate, search);
         } else {
-            result = await dataAccess.getAllOrders(page, limit, startDate, endDate);
+            result = await dataAccess.getAllOrders(page, limit, startDate, endDate, search);
         }
 
         // Handle Pagination Response vs Full List

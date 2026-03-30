@@ -150,11 +150,18 @@ function logout() {
     window.location.href = '/login';
 }
 
+function getDepartmentRoute(deptType) {
+    if (deptType === 'dispatch') return '/dispatch';
+    if (deptType === 'delivery') return '/delivery';
+    return '/verification';
+}
+
+
 function checkAuth(requiredRole) {
     const session = loadSession();
     if (!session) {
         // If not on login page, redirect
-        if (!window.location.pathname.includes('/login')) {
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
             window.location.href = '/login';
         }
         return false;
@@ -163,22 +170,28 @@ function checkAuth(requiredRole) {
     // Role Redirects
     if (requiredRole && session.type !== requiredRole) {
         if (session.type === 'admin') {
-            if (window.location.pathname !== '/') window.location.href = '/';
+            if (window.location.pathname !== '/admin') window.location.href = '/admin';
+            return true;
         }
         else if (session.type === 'employee') {
             if (window.location.pathname !== '/employee') window.location.href = '/employee';
         }
         else if (session.type === 'department') {
-            if (window.location.pathname !== '/department') window.location.href = '/department';
+            const departmentRoute = getDepartmentRoute(session.deptType);
+            if (window.location.pathname !== '/department' && window.location.pathname !== departmentRoute) {
+                window.location.href = departmentRoute;
+            }
         }
         return false;
     }
 
     // If on login page but already logged in, redirect
     if (window.location.pathname.includes('/login')) {
-        if (session.type === 'admin') window.location.href = '/';
+        if (session.type === 'admin') {
+            if (window.location.pathname !== '/admin') window.location.href = '/admin';
+        }
         else if (session.type === 'employee') window.location.href = '/employee';
-        else if (session.type === 'department') window.location.href = '/department';
+        else if (session.type === 'department') window.location.href = getDepartmentRoute(session.deptType);
     }
 
     return true;

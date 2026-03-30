@@ -29,7 +29,7 @@ async function employeeLogin() {
                 '👋',
                 '#3b82f6'
             );
-            setTimeout(() => showEmployeePanel(), 1500);
+            setTimeout(() => window.location.href = '/employee', 1500);
         } else {
             showMessage(data.message, 'error', 'loginMessage');
         }
@@ -59,7 +59,11 @@ async function departmentLogin() {
             currentUserType = 'department';
             currentDeptType = data.department.type;
             saveSession();
-            showDepartmentPanel();
+            window.location.href = currentDeptType === 'dispatch'
+                ? '/dispatch'
+                : currentDeptType === 'delivery'
+                    ? '/delivery'
+                    : '/verification';
         } else {
             showMessage(data.message, 'error', 'loginMessage');
         }
@@ -71,16 +75,39 @@ async function departmentLogin() {
 /**
  * Admin Login
  */
-function adminLogin() {
+async function adminLogin() {
     const pass = document.getElementById('adminLoginPass').value;
+    if (!pass) return showMessage('Password daalo!', 'error', 'loginMessage');
 
-    if (pass === ADMIN_PASS) {
-        currentUser = { id: 'ADMIN', name: 'Administrator' };
-        currentUserType = 'admin';
-        saveSession();
-        showAdminPanel();
-    } else {
-        showMessage('Galat Admin Password!', 'error', 'loginMessage');
+    const btn = document.querySelector('button[onclick="adminLogin()"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Authenticating...';
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/config/admin-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pass })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            currentUser = { id: 'ADMIN', name: 'Administrator' };
+            currentUserType = 'admin';
+            saveSession();
+            window.location.href = '/admin';
+        } else {
+            showMessage(data.message || 'Galat Admin Password!', 'error', 'loginMessage');
+        }
+    } catch (e) {
+        showMessage('Server se connect nahi ho paya!', 'error', 'loginMessage');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Authenticate';
+        }
     }
 }
 
@@ -108,7 +135,7 @@ async function registerEmployee() {
             currentUser = data.employee;
             currentUserType = 'employee';
             saveSession();
-            showEmployeePanel();
+            window.location.href = '/employee';
         } else {
             showMessage(data.message, 'error', 'registerMessage');
         }

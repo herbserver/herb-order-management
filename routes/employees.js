@@ -1,249 +1,284 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
-const path = require('path');
 const dataAccess = require('../dataAccess');
-const { readJSON, writeJSON } = require('../utils/fileHelpers');
+const { Employee, Order } = require('../models');
 
-const DATA_DIR = path.join(__dirname, '../data');
-const EMPLOYEES_FILE = path.join(DATA_DIR, 'employees.json');
-const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+function buildTimestampMatch(startDate, endDate) {
+    const match = {};
 
-// Note: Using centralized fileHelpers module for JSON operations
-
-// Helper function to sync all employees to MongoDB
-async function syncAllEmployeesToMongo(employees) {
-    try {
-        if (!dataAccess.getMongoStatus()) {
-            console.log('⚠️ MongoDB not connected, skipping sync');
-            return false;
+    if (startDate || endDate) {
+        match.timestamp = {};
+        if (startDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            match.timestamp.$gte = start.toISOString();
         }
-
-        // Get or find employee department
-        let empDept = await dataAccess.getDepartment('HON-EMP');
-        if (!empDept) {
-            const allDepts = await dataAccess.getAllDepartments();
-            empDept = allDepts.find(d => d.departmentType === 'employee');
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            match.timestamp.$lte = end.toISOString();
         }
-
-        if (empDept) {
-            await dataAccess.updateDepartment(empDept.departmentId, { employees });
-            console.log(`✅ All employees synced to MongoDB (${Object.keys(employees).length} employees)`);
-            return true;
-        }
-        return false;
-    } catch (error) {
-        console.error('❌ Failed to sync employees to MongoDB:', error.message);
-        return false;
     }
+
+    return match;
 }
 
-// Get All Employees (for Admin)
-router.get('/', async (req, res) => {
-    try {
-        // Read employees directly from JSON file
-        const employees = readJSON(EMPLOYEES_FILE, {});
-        console.log(`📂 Loaded ${Object.keys(employees).length} employees from JSON file`);
+function parseStatusList(status) {
+    if (!status) {
+        return null;
+    }
 
-        const startDate = req.query.startDate || null;
-        const endDate = req.query.endDate || null;
+    return String(status)
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+}
 
-        let orders = [];
-        try {
-            // Pass date filters to getAllOrders
-            orders = await dataAccess.getAllOrders(1, 0, startDate, endDate);
-        } catch (mongoError) {
-            console.warn('⚠️ MongoDB orders failed, using JSON fallback:', mongoError.message);
-            // On fallback, re-read and apply filter manually (though updated getAllOrders handles fallback logic too, 
-            // but the catch block implies something went wrong INSIDE it or connection issue).
-            // Actually updated getAllOrders safely handles fallback internally if mongoConnected is false,
-            // so this catch block is for unexpected errors.
-            orders = readJSON(ORDERS_FILE, []);
+function defaultStats() {
+    return {
+        total: 0,
+        pending: 0,
+        verified: 0,
+        dispatched: 0,
+        ofd: 0,
+        delivered: 0,
+        cancelled: 0,
+        hold: 0,
+        rto: 0
+    };
+}
 
-            // Manual filter if fallback raw read happens here
-            if (startDate || endDate) {
-                const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
-                const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
-                orders = orders.filter(o => {
-                    const oDate = new Date(o.timestamp).getTime();
-                    if (start && oDate < start) return false;
-                    if (end && oDate > end) return false;
-                    return true;
-                });
+function getEffectiveOrderDate(order) {
+    const explicitDate = String(order?.date || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(explicitDate)) {
+        return explicitDate;
+    }
+
+    const timestamp = String(order?.timestamp || '').trim();
+    return timestamp ? timestamp.slice(0, 10) : '';
+}
+
+function filterOrdersByDateField(orders, startDate, endDate) {
+    if (!startDate && !endDate) {
+        return orders;
+    }
+
+    return orders.filter((order) => {
+        const effectiveDate = getEffectiveOrderDate(order);
+        if (!effectiveDate) return false;
+        if (startDate && effectiveDate < startDate) return false;
+        if (endDate && effectiveDate > endDate) return false;
+        return true;
+    });
+}
+
+function buildStatsFromOrders(orders) {
+    return {
+        total: orders.length,
+        pending: orders.filter((order) => order.status === 'Pending').length,
+        verified: orders.filter((order) => order.status === 'Address Verified').length,
+        dispatched: orders.filter((order) => order.status === 'Dispatched').length,
+        ofd: orders.filter((order) => order.status === 'Out For Delivery').length,
+        delivered: orders.filter((order) => order.status === 'Delivered').length,
+        cancelled: orders.filter((order) => order.status === 'Cancelled').length,
+        hold: orders.filter((order) => order.status === 'On Hold' || order.status === 'Hold').length,
+        rto: orders.filter((order) => order.status === 'RTO').length
+    };
+}
+
+async function findEmployeeRecord(employeeId) {
+    return Employee.findOne({ employeeId }).lean();
+}
+
+async function getEmployeeStats(employeeId, startDate, endDate, status, dateField = 'timestamp') {
+    if (dateField === 'date') {
+        const orders = await dataAccess.getEmployeeOrders(employeeId, status, 1, 0, null, null);
+        return buildStatsFromOrders(filterOrdersByDateField(orders, startDate, endDate));
+    }
+
+    const statuses = parseStatusList(status);
+    const match = { employeeId, ...buildTimestampMatch(startDate, endDate) };
+
+    if (statuses && statuses.length > 0) {
+        match.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
+    }
+
+    const [stats] = await Order.aggregate([
+        { $match: match },
+        {
+            $group: {
+                _id: null,
+                total: { $sum: 1 },
+                pending: { $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] } },
+                verified: { $sum: { $cond: [{ $eq: ['$status', 'Address Verified'] }, 1, 0] } },
+                dispatched: { $sum: { $cond: [{ $eq: ['$status', 'Dispatched'] }, 1, 0] } },
+                ofd: { $sum: { $cond: [{ $eq: ['$status', 'Out For Delivery'] }, 1, 0] } },
+                delivered: { $sum: { $cond: [{ $eq: ['$status', 'Delivered'] }, 1, 0] } },
+                cancelled: { $sum: { $cond: [{ $eq: ['$status', 'Cancelled'] }, 1, 0] } },
+                hold: { $sum: { $cond: [{ $in: ['$status', ['On Hold', 'Hold']] }, 1, 0] } },
+                rto: { $sum: { $cond: [{ $eq: ['$status', 'RTO'] }, 1, 0] } }
             }
         }
+    ]);
 
-        const employeeList = Object.entries(employees).map(([id, data]) => {
-            const empOrders = orders.filter(o => o.employeeId === id);
+    return stats ? { ...defaultStats(), ...stats } : defaultStats();
+}
+
+router.get('/', async (req, res) => {
+    try {
+        const startDate = req.query.startDate || null;
+        const endDate = req.query.endDate || null;
+        const employees = await Employee.find({}).sort({ name: 1 }).lean();
+        const match = buildTimestampMatch(startDate, endDate);
+
+        const groupedStats = await Order.aggregate([
+            { $match: match },
+            {
+                $group: {
+                    _id: '$employeeId',
+                    totalOrders: { $sum: 1 },
+                    pendingOrders: { $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] } },
+                    verifiedOrders: { $sum: { $cond: [{ $eq: ['$status', 'Address Verified'] }, 1, 0] } },
+                    dispatchedOrders: { $sum: { $cond: [{ $eq: ['$status', 'Dispatched'] }, 1, 0] } },
+                    deliveredOrders: { $sum: { $cond: [{ $eq: ['$status', 'Delivered'] }, 1, 0] } },
+                    cancelledOrders: { $sum: { $cond: [{ $eq: ['$status', 'Cancelled'] }, 1, 0] } },
+                    onHoldOrders: { $sum: { $cond: [{ $in: ['$status', ['On Hold', 'Hold']] }, 1, 0] } }
+                }
+            }
+        ]);
+
+        const statsMap = new Map(groupedStats.map((item) => [item._id, item]));
+        const employeeList = employees.map((employee) => {
+            const stats = statsMap.get(employee.employeeId) || {};
             return {
-                id,
-                name: data.name,
-                createdAt: data.createdAt,
-                totalOrders: empOrders.length,
-                pendingOrders: empOrders.filter(o => o.status === 'Pending').length,
-                verifiedOrders: empOrders.filter(o => o.status === 'Address Verified').length,
-                dispatchedOrders: empOrders.filter(o => o.status === 'Dispatched').length,
-                deliveredOrders: empOrders.filter(o => o.status === 'Delivered').length,
-                cancelledOrders: empOrders.filter(o => o.status === 'Cancelled').length,
-                onHoldOrders: empOrders.filter(o => o.status === 'On Hold').length
+                id: employee.employeeId,
+                name: employee.name,
+                createdAt: employee.createdAt,
+                totalOrders: stats.totalOrders || 0,
+                pendingOrders: stats.pendingOrders || 0,
+                verifiedOrders: stats.verifiedOrders || 0,
+                dispatchedOrders: stats.dispatchedOrders || 0,
+                deliveredOrders: stats.deliveredOrders || 0,
+                cancelledOrders: stats.cancelledOrders || 0,
+                onHoldOrders: stats.onHoldOrders || 0
             };
         });
 
-        console.log(`✅ Loaded ${employeeList.length} employees`);
         res.json({ success: true, employees: employeeList });
     } catch (error) {
-        console.error('❌ Get employees error:', error);
+        console.error('Get employees error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 });
 
-// Get Single Employee with Orders
 router.get('/:empId', async (req, res) => {
     try {
         const id = req.params.empId.toUpperCase();
-        const depts = await dataAccess.getAllDepartments();
+        const page = parseInt(req.query.page, 10) || 1;
+        const limit = parseInt(req.query.limit, 10) || 0;
+        const startDate = req.query.startDate || null;
+        const endDate = req.query.endDate || null;
+        const status = req.query.status || null;
+        const dateField = req.query.dateField || 'timestamp';
 
-        let foundEmployee = null;
-        for (const dept of depts) {
-            if (dept.employees && dept.employees[id]) {
-                foundEmployee = {
-                    id,
-                    ...dept.employees[id],
-                    department: dept.departmentName
-                };
-                break;
-            }
-        }
-
-        if (!foundEmployee) {
-            // Check standalone employees file too
-            const employees = readJSON(EMPLOYEES_FILE, {});
-            if (employees[id]) {
-                foundEmployee = { id, ...employees[id] };
-            }
-        }
-
-        if (!foundEmployee) {
+        const employee = await findEmployeeRecord(id);
+        if (!employee) {
             return res.status(404).json({ success: false, message: 'Employee not found!' });
         }
 
-        // Optimization: Use getEmployeeOrders
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 0; // Default to all if not specified (legacy)
-        const startDate = req.query.startDate || null;
-        const endDate = req.query.endDate || null;
+        let orders;
+        let total;
 
-        let result;
-        if (req.query.status) {
-            result = await dataAccess.getEmployeeOrders(id, req.query.status, page, limit, startDate, endDate);
-        } else {
-            result = await dataAccess.getEmployeeOrders(id, null, page, limit, startDate, endDate);
-        }
+        if (dateField === 'date') {
+            const allOrders = await dataAccess.getEmployeeOrders(id, status, 1, 0, null, null);
+            const filteredOrders = filterOrdersByDateField(allOrders, startDate, endDate)
+                .sort((left, right) => new Date(right.timestamp || 0) - new Date(left.timestamp || 0));
 
-        let empOrders, total = 0;
-        if (limit > 0 && result.orders) {
-            empOrders = result.orders;
-            total = result.total;
-        } else {
-            empOrders = result;
-            total = empOrders.length;
-        }
-
-        // Calculate Stats on the fly based on the FILTERED orders
-        // Note: If paginated, stats might only reflect the page unless we fetch all for stats.
-        // For accurate stats with filters, we usually need a separate aggregation query.
-        // But for now, if limit=0 (default for this view usually), it's fine.
-        // If paginated, this will only show stats for the current page which is WRONG.
-        // We need ALL orders for checks stats if dates are applied.
-
-        let statsObject = { total: 0, pending: 0, verified: 0, dispatched: 0, delivered: 0, cancelled: 0, hold: 0, rto: 0 };
-
-        // Helper to fetch full list for stats if we are paginating
-        let allOrdersForStats = empOrders;
-        if (limit > 0) {
-            // Fetch only necessary orders for stats using getOrdersForStats instead of all orders
-            allOrdersForStats = await dataAccess.getOrdersForStats(startDate, endDate);
-            allOrdersForStats = allOrdersForStats.filter(o => o.employeeId === id);
-            if (req.query.status) {
-                allOrdersForStats = allOrdersForStats.filter(o => o.status === req.query.status);
+            total = filteredOrders.length;
+            if (limit > 0) {
+                const startIndex = (page - 1) * limit;
+                orders = filteredOrders.slice(startIndex, startIndex + limit);
+            } else {
+                orders = filteredOrders;
             }
+        } else {
+            const result = await dataAccess.getEmployeeOrders(id, status, page, limit, startDate, endDate);
+            orders = limit > 0 && result.orders ? result.orders : result;
+            total = limit > 0 && result.total ? result.total : orders.length;
         }
 
-        if (allOrdersForStats && allOrdersForStats.length > 0) {
-            statsObject.total = allOrdersForStats.length;
-            statsObject.pending = allOrdersForStats.filter(o => o.status === 'Pending').length;
-            statsObject.verified = allOrdersForStats.filter(o => o.status === 'Address Verified').length;
-            statsObject.dispatched = allOrdersForStats.filter(o => o.status === 'Dispatched').length;
-            statsObject.delivered = allOrdersForStats.filter(o => o.status === 'Delivered').length;
-            statsObject.cancelled = allOrdersForStats.filter(o => o.status === 'Cancelled').length;
-            statsObject.hold = allOrdersForStats.filter(o => o.status === 'On Hold' || o.status === 'Hold').length;
-            statsObject.rto = allOrdersForStats.filter(o => o.status === 'RTO').length;
-        }
+        const stats = await getEmployeeStats(id, startDate, endDate, status, dateField);
 
         res.json({
             success: true,
-            employee: foundEmployee,
-            orders: empOrders,
+            employee: {
+                id,
+                name: employee.name,
+                createdAt: employee.createdAt
+            },
+            orders,
             pagination: limit > 0 ? {
                 total,
                 page,
                 limit,
                 totalPages: Math.ceil(total / limit)
             } : null,
-            stats: statsObject
+            stats
         });
-    } catch (e) {
-        console.error('Get employee detail error:', e);
+    } catch (error) {
+        console.error('Get employee detail error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-// Update Employee
 router.put('/:empId', async (req, res) => {
     try {
         const oldId = req.params.empId.toUpperCase();
-        const { newId, name, password } = req.body; // Added password
-        const employees = readJSON(EMPLOYEES_FILE, {});
+        const { newId, name, password } = req.body;
+        const nextId = String(newId || oldId).toUpperCase().trim();
 
-        if (!employees[oldId]) {
+        const existingEmployee = await findEmployeeRecord(oldId);
+        if (!existingEmployee) {
             return res.status(404).json({ success: false, message: 'Employee not found!' });
         }
 
-        const employeeData = { ...employees[oldId] };
-        if (name) employeeData.name = name;
+        if (oldId !== nextId) {
+            const duplicateEmployee = await findEmployeeRecord(nextId);
+            if (duplicateEmployee) {
+                return res.status(400).json({ success: false, message: `ID ${nextId} already in use!` });
+            }
+        }
+
+        const updates = {};
+        let updatedName = existingEmployee.name;
+
+        if (name) {
+            updates.name = name;
+            updatedName = name;
+        }
+
         if (password) {
             const { hashPassword } = require('../auth');
-            employeeData.password = await hashPassword(password);
+            updates.password = await hashPassword(password);
         }
 
-        const nId = (newId || oldId).toUpperCase();
+        const updatedEmployee = await Employee.findOneAndUpdate(
+            { employeeId: oldId },
+            { $set: { employeeId: nextId, ...updates } },
+            { new: true, runValidators: true }
+        );
 
-        if (oldId !== nId) {
-            if (employees[nId]) {
-                return res.status(400).json({ success: false, message: `ID ${nId} already in use!` });
-            }
-            delete employees[oldId];
-            employees[nId] = employeeData;
-        } else {
-            employees[oldId] = employeeData;
-        }
+        updatedName = updatedEmployee.name;
+        await dataAccess.updateEmployeeOrders(oldId, nextId, updatedName);
 
-        writeJSON(EMPLOYEES_FILE, employees);
-
-        // Sync to MongoDB Department
-        const { syncEmployeeToMongo } = require('./auth'); // Assuming shared logic if possible, or local
-        // Actually, let's just use the shared logic or local helper if needed.
-        // For now, employees.js has syncAllEmployeesToMongo, which is better.
-        await syncAllEmployeesToMongo(employees);
-
-        // SYNC ORDERS: Update employeeId and Name in all existing orders
-        if (dataAccess.updateEmployeeOrders) {
-            await dataAccess.updateEmployeeOrders(oldId, nId, name);
-        }
-
-        console.log(`👤 Employee Updated: ${oldId} -> ${nId} (${employeeData.name})`);
-        res.json({ success: true, message: 'Employee updated successfully!', employee: { id: nId, name: employeeData.name } });
+        console.log(`Employee Updated: ${oldId} -> ${nextId} (${updatedName})`);
+        res.json({
+            success: true,
+            message: 'Employee updated successfully!',
+            employee: { id: nextId, name: updatedName }
+        });
     } catch (error) {
-        console.error('❌ Employee update error:', error.message);
+        console.error('Employee update error:', error.message);
         res.status(500).json({ success: false, message: 'Update failed. ' + error.message });
     }
 });

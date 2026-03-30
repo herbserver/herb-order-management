@@ -189,7 +189,7 @@ _Team Herb On Naturals_`
 }
 
 console.log('Connecting to API at:', API_URL);
-var ADMIN_PASS = ADMIN_PASS || 'admin123';
+var ADMIN_PASS = ADMIN_PASS || 'admin@2025';
 
 // ============ GLOBAL STATE (Shared across old and new modules) ============
 // Using var instead of let/const to allow redeclaration across multiple scripts
@@ -246,6 +246,23 @@ function clearSession() {
     localStorage.removeItem('herb_session');
     currentUser = null;
     currentUserType = null;
+}
+
+function getDepartmentRoute(deptType) {
+    if (deptType === 'dispatch') return '/dispatch';
+    if (deptType === 'delivery') return '/delivery';
+    return '/verification';
+}
+
+function getUserHomeRoute(userType, deptType) {
+    if (userType === 'admin') return '/admin';
+    if (userType === 'employee') return '/employee';
+    if (userType === 'department') return getDepartmentRoute(deptType || currentDeptType);
+    return '/login';
+}
+
+function redirectToUserHome(userType, deptType) {
+    window.location.href = getUserHomeRoute(userType, deptType);
 }
 
 // ==================== GLOBAL EXPORTS ====================
@@ -482,7 +499,10 @@ function showDepartmentPanel() {
         if (navGroup) navGroup.classList.remove('hidden');
         document.getElementById('verificationDeptContent').classList.remove('hidden');
 
-        switchVerificationTab('pending');
+        const initialVerificationTab = typeof getVerificationTabFromHash === 'function'
+            ? getVerificationTabFromHash()
+            : 'pending';
+        switchVerificationTab(initialVerificationTab);
     } else if (currentDeptType === 'dispatch') {
         const headerTitle = document.getElementById('deptHeaderTitle');
         if (headerTitle) headerTitle.textContent = 'Dispatch Dept';
@@ -498,7 +518,10 @@ function showDepartmentPanel() {
             exportBtn.onclick = exportDispatchedOrdersFiltered;
         }
 
-        switchDispatchTab('ready');
+        const initialDispatchTab = typeof getDispatchTabFromHash === 'function'
+            ? getDispatchTabFromHash()
+            : 'ready';
+        switchDispatchTab(initialDispatchTab);
     } else if (currentDeptType === 'delivery') {
         const headerTitle = document.getElementById('deptHeaderTitle');
         if (headerTitle) headerTitle.textContent = 'Delivery Dept';
@@ -514,7 +537,9 @@ function showDepartmentPanel() {
         switchDeliveryTab('onway');
     }
 
-    loadDeptOrders();
+    if (currentDeptType !== 'verification' && currentDeptType !== 'dispatch') {
+        loadDeptOrders();
+    }
 }
 
 function toggleDeptSidebar() {
@@ -741,11 +766,16 @@ function showAdminPanel() {
     if (deptSidebar && deptSidebar.parentElement === document.body) deptSidebar.classList.add('hidden');
 
 
-    // Performance Optimization: Use granular loaders instead of fetching all orders
+    // Performance Optimization: Use granular loaders instead of fetching only the active tab
     if (typeof loadAdminStats === 'function') loadAdminStats();
-    if (typeof loadAdminPending === 'function') loadAdminPending(1);
-
-    // switchAdminTab('pending'); // If such function exists, use it. For now, default to pending loader.
+    if (typeof switchAdminTab === 'function') {
+        const initialAdminTab = typeof getAdminTabFromHash === 'function'
+            ? getAdminTabFromHash()
+            : 'pending';
+        switchAdminTab(initialAdminTab);
+    } else if (typeof loadAdminPending === 'function') {
+        loadAdminPending(1);
+    }
 
     // Start auto-tracking for Out for Delivery alerts
     // Auto-tracking DISABLED - Using webhook for real-time updates
@@ -784,7 +814,7 @@ async function employeeLogin() {
                 '👋',
                 '#3b82f6'
             );
-            setTimeout(() => showEmployeePanel(), 1500);
+            setTimeout(() => redirectToUserHome('employee'), 1500);
         }
 
         else {
@@ -821,7 +851,7 @@ async function departmentLogin() {
             currentUserType = 'department';
             currentDeptType = data.department.type;
             saveSession();
-            showDepartmentPanel();
+            redirectToUserHome('department', currentDeptType);
         }
 
         else {
@@ -834,24 +864,36 @@ async function departmentLogin() {
     }
 }
 
-function adminLogin() {
+async function adminLogin() {
     const pass = document.getElementById('adminLoginPass').value;
+    if (!pass) return showMessage('Password daalo!', 'error', 'loginMessage');
 
-    if (pass === ADMIN_PASS) {
-        currentUser = {
-            id: 'ADMIN', name: 'Administrator'
+    const btn = document.querySelector('button[onclick="adminLogin()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Authenticating...'; }
+
+    try {
+        const res = await fetch(`${API_URL}/config/admin-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pass })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            currentUser = { id: 'ADMIN', name: 'Administrator' };
+            currentUserType = 'admin';
+            saveSession();
+            redirectToUserHome('admin');
+        } else {
+            showMessage(data.message || 'Galat Admin Password!', 'error', 'loginMessage');
         }
-
-            ;
-        currentUserType = 'admin';
-        saveSession();
-        showAdminPanel();
-    }
-
-    else {
-        showMessage('Galat Admin Password!', 'error', 'loginMessage');
+    } catch (e) {
+        showMessage('Server se connect nahi ho paya!', 'error', 'loginMessage');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Authenticate'; }
     }
 }
+
 
 async function registerEmployee() {
     const name = document.getElementById('regName').value.trim();
@@ -880,7 +922,7 @@ async function registerEmployee() {
             currentUser = data.employee;
             currentUserType = 'employee';
             saveSession();
-            showEmployeePanel();
+            redirectToUserHome('employee');
         }
 
         else {
@@ -937,7 +979,7 @@ async function resetPassword() {
 
 function logout() {
     clearSession();
-    showLoginScreen();
+    window.location.href = '/login';
 }
 
 // ==================== EMPLOYEE PANEL ====================
@@ -1540,7 +1582,7 @@ async function fetchPincodeDetails(pincode) {
     suggestList.classList.remove('hidden');
 
     try {
-        const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+        const res = await fetch(`${API_URL}/locations/pincode/${encodeURIComponent(pincode)}`);
         const data = await res.json();
 
         if (data[0].Status === "Success") {
@@ -3149,7 +3191,39 @@ function renderPaginationControls(container, currentPage, totalPages, fetchFuncN
 }
 
 // ==================== DEPARTMENT PANEL ====================
-function switchDispatchTab(tab) {
+function normalizeDispatchTab(tab) {
+    const normalizedTab = String(tab || '').toLowerCase();
+    return ['ready', 'dispatched', 'history'].includes(normalizedTab) ? normalizedTab : 'ready';
+}
+
+function getDispatchTabFromHash() {
+    return normalizeDispatchTab(window.location.hash.replace(/^#/, ''));
+}
+
+function getActiveDispatchTab() {
+    if (!document.getElementById('dispatchReadyTab')?.classList.contains('hidden')) return 'ready';
+    if (!document.getElementById('dispatchDispatchedTab')?.classList.contains('hidden')) return 'dispatched';
+    if (!document.getElementById('dispatchHistoryTab')?.classList.contains('hidden')) return 'history';
+    return 'ready';
+}
+
+function updateDispatchTabHash(tab, replaceOnly = false) {
+    const normalizedTab = normalizeDispatchTab(tab);
+    const nextHash = `#${normalizedTab}`;
+
+    if (window.location.hash === nextHash) return;
+
+    if (replaceOnly && window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', nextHash);
+        return;
+    }
+
+    window.location.hash = normalizedTab;
+}
+
+function switchDispatchTab(tab, syncHash = true) {
+    tab = normalizeDispatchTab(tab);
+
     document.getElementById('dispatchReadyTab').classList.add('hidden');
     document.getElementById('dispatchDispatchedTab').classList.add('hidden');
     document.getElementById('dispatchHistoryTab').classList.add('hidden');
@@ -3167,7 +3241,18 @@ function switchDispatchTab(tab) {
         setActiveDeptTab('deptTabDispatchHistory');
         loadDispatchHistory();
     }
+
+    if (syncHash) {
+        updateDispatchTabHash(tab);
+    }
 }
+
+window.addEventListener('hashchange', function () {
+    if (currentDeptType !== 'dispatch') return;
+    const requestedTab = getDispatchTabFromHash();
+    if (getActiveDispatchTab() === requestedTab) return;
+    switchDispatchTab(requestedTab, false);
+});
 
 
 // Delivery Department Tab Switching
@@ -4167,28 +4252,350 @@ function renderOrderCard(order, borderColor = 'gray') {
             </div>`;
 }
 
+var verificationPendingPage = 1;
+var verificationPendingQuickFilter = '';
+var verificationPendingLastFilterKey = '';
+var dispatchReadyQuickFilter = '';
+
+function getDeptItemsPerPage() {
+    if (typeof paginationConfig !== 'undefined' && typeof paginationConfig.getItemsPerPage === 'function') {
+        return paginationConfig.getItemsPerPage();
+    }
+    return 10;
+}
+
+function formatFilterDate(date) {
+    return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+}
+
+function getVerificationPendingDateRange() {
+    const exactDate = document.getElementById('verificationPendingDate')?.value || '';
+    if (exactDate) {
+        return { startDate: exactDate, endDate: exactDate, key: `date:${exactDate}` };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (verificationPendingQuickFilter === 'today') {
+        const todayStr = formatFilterDate(today);
+        return { startDate: todayStr, endDate: todayStr, key: 'quick:today' };
+    }
+
+    if (verificationPendingQuickFilter === 'yesterday') {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = formatFilterDate(yesterday);
+        return { startDate: yesterdayStr, endDate: yesterdayStr, key: 'quick:yesterday' };
+    }
+
+    if (verificationPendingQuickFilter === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return {
+            startDate: formatFilterDate(weekAgo),
+            endDate: formatFilterDate(yesterday),
+            key: 'quick:week'
+        };
+    }
+
+    return { startDate: '', endDate: '', key: 'all' };
+}
+
+function getDispatchReadyDateRange() {
+    const exactDate = document.getElementById('dispatchReadyDate')?.value || '';
+    if (exactDate) {
+        return { startDate: exactDate, endDate: exactDate, key: `date:${exactDate}` };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (dispatchReadyQuickFilter === 'today') {
+        const todayStr = formatFilterDate(today);
+        return { startDate: todayStr, endDate: todayStr, key: 'quick:today' };
+    }
+
+    if (dispatchReadyQuickFilter === 'yesterday') {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = formatFilterDate(yesterday);
+        return { startDate: yesterdayStr, endDate: yesterdayStr, key: 'quick:yesterday' };
+    }
+
+    if (dispatchReadyQuickFilter === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return {
+            startDate: formatFilterDate(weekAgo),
+            endDate: formatFilterDate(yesterday),
+            key: 'quick:week'
+        };
+    }
+
+    return { startDate: '', endDate: '', key: 'all' };
+}
+
+function buildVerificationPendingParams(limitValue = 0) {
+    const dateRange = getVerificationPendingDateRange();
+    const params = new URLSearchParams({
+        status: 'Pending',
+        page: '1',
+        limit: String(limitValue)
+    });
+
+    if (dateRange.startDate) params.set('startDate', dateRange.startDate);
+    if (dateRange.endDate) params.set('endDate', dateRange.endDate);
+
+    return { params, dateRange };
+}
+
+function updateVerificationPendingQuickFilterUI() {
+    document.querySelectorAll('[data-pending-range]').forEach((el) => {
+        const isActive = el.getAttribute('data-pending-range') === verificationPendingQuickFilter;
+        el.classList.toggle('ring-2', isActive);
+        el.classList.toggle('ring-offset-2', isActive);
+        el.classList.toggle('ring-blue-400', isActive);
+    });
+}
+
+function updateDispatchReadyQuickFilterUI() {
+    document.querySelectorAll('[data-dispatch-ready-range]').forEach((el) => {
+        const isActive = el.getAttribute('data-dispatch-ready-range') === dispatchReadyQuickFilter;
+        el.classList.toggle('ring-2', isActive);
+        el.classList.toggle('ring-offset-2', isActive);
+        el.classList.toggle('ring-purple-400', isActive);
+    });
+}
+
+function updateVerificationPendingStats(orders) {
+    const pendingOrders = orders || [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const countToday = pendingOrders.filter((order) => {
+        const orderDate = new Date(order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate.getTime() === today.getTime();
+    }).length;
+
+    const countYesterday = pendingOrders.filter((order) => {
+        const orderDate = new Date(order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate.getTime() === yesterday.getTime();
+    }).length;
+
+    const countWeek = pendingOrders.filter((order) => {
+        const orderDate = new Date(order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate >= sevenDaysAgo && orderDate < today;
+    }).length;
+
+    const todayEl = document.getElementById('miniStatVerifyToday');
+    if (todayEl) todayEl.textContent = countToday;
+
+    const yesterdayEl = document.getElementById('miniStatVerifyYesterday');
+    if (yesterdayEl) yesterdayEl.textContent = countYesterday;
+
+    const weekEl = document.getElementById('miniStatVerifyWeek');
+    if (weekEl) weekEl.textContent = countWeek;
+}
+
+function updateDispatchReadyStats(orders) {
+    const readyOrders = orders || [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const countToday = readyOrders.filter((order) => {
+        const orderDate = new Date(order.verifiedAt || order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate.getTime() === today.getTime();
+    }).length;
+
+    const countYesterday = readyOrders.filter((order) => {
+        const orderDate = new Date(order.verifiedAt || order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate.getTime() === yesterday.getTime();
+    }).length;
+
+    const countWeek = readyOrders.filter((order) => {
+        const orderDate = new Date(order.verifiedAt || order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate >= sevenDaysAgo && orderDate < today;
+    }).length;
+
+    const todayEl = document.getElementById('miniStatDispatchToday');
+    if (todayEl) todayEl.textContent = countToday;
+
+    const yesterdayEl = document.getElementById('miniStatDispatchYesterday');
+    if (yesterdayEl) yesterdayEl.textContent = countYesterday;
+
+    const weekEl = document.getElementById('miniStatDispatchWeek');
+    if (weekEl) weekEl.textContent = countWeek;
+}
+
+function applyVerificationPendingQuickFilter(range) {
+    verificationPendingQuickFilter = range || '';
+    const dateInput = document.getElementById('verificationPendingDate');
+    if (dateInput) dateInput.value = '';
+    loadDeptOrders(1);
+}
+
+function applyVerificationPendingDateFilter() {
+    verificationPendingQuickFilter = '';
+    loadDeptOrders(1);
+}
+
+function clearVerificationPendingFilters() {
+    verificationPendingQuickFilter = '';
+    const dateInput = document.getElementById('verificationPendingDate');
+    if (dateInput) dateInput.value = '';
+    loadDeptOrders(1);
+}
+
+function applyDispatchReadyQuickFilter(range) {
+    dispatchReadyQuickFilter = range || '';
+    const dateInput = document.getElementById('dispatchReadyDate');
+    if (dateInput) dateInput.value = '';
+    loadDeptOrders(1);
+}
+
+function applyDispatchReadyDateFilter() {
+    dispatchReadyQuickFilter = '';
+    loadDeptOrders(1);
+}
+
+function clearDispatchReadyFilters() {
+    dispatchReadyQuickFilter = '';
+    const dateInput = document.getElementById('dispatchReadyDate');
+    if (dateInput) dateInput.value = '';
+    const searchInput = document.getElementById('dispatchReadySearch');
+    if (searchInput) searchInput.value = '';
+    loadDeptOrders(1);
+}
+
 async function loadDeptOrders(page) {
     // DELEGATED: Fast paginated version loaded from department.js
-    // department.js sets window.loadDeptOrders with MongoDB skip/limit pagination
-    if (window._deptLoadDeptOrders) {
+    // Keep verification/dispatch in app.js because these standalone pages rely on tab-specific filters/stats.
+    if (window._deptLoadDeptOrders && currentDeptType !== 'verification' && currentDeptType !== 'dispatch') {
         return window._deptLoadDeptOrders(page);
     }
-    // Fallback: basic fetch (should rarely trigger after department.js loads)
-    const endpoint = currentDeptType === 'verification' ? '/orders/pending' : '/orders/verified';
+
+    const isVerification = currentDeptType === 'verification';
+    const isDispatch = currentDeptType === 'dispatch';
+    const statusFilter = isVerification ? 'Pending' : 'Address Verified';
+    const containerId = isVerification ? 'pendingVerificationList' : 'readyDispatchList';
+    const container = document.getElementById(containerId);
+    const itemsPerPage = getDeptItemsPerPage();
+    const requestLimit = (isVerification || isDispatch) ? 0 : itemsPerPage;
+
     try {
-        const res = await fetch(`${API_URL}${endpoint}?page=1&limit=10`);
-        const data = await res.json();
-        const orders = data.orders || [];
-        const containerId = currentDeptType === 'verification' ? 'pendingVerificationList' : 'readyDispatchList';
-        const container = document.getElementById(containerId);
-        if (container) {
-            if (orders.length === 0) {
-                container.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400">No orders found</div>';
-            } else {
-                container.innerHTML = orders.map(o => generateOrderCardHTML(o)).join('');
-            }
+        let currentPage = page || 1;
+        let startDate = '';
+        let endDate = '';
+        let searchValue = '';
+
+        if (isVerification) {
+            const dateRange = getVerificationPendingDateRange();
+            startDate = dateRange.startDate;
+            endDate = dateRange.endDate;
+            verificationPendingLastFilterKey = dateRange.key;
+            verificationPendingPage = 1;
+            currentPage = 1;
+            updateVerificationPendingQuickFilterUI();
+        } else if (isDispatch) {
+            const dateRange = getDispatchReadyDateRange();
+            startDate = dateRange.startDate;
+            endDate = dateRange.endDate;
+            currentPage = 1;
+            searchValue = document.getElementById('dispatchReadySearch')?.value.trim() || '';
+            updateDispatchReadyQuickFilterUI();
         }
-    } catch (e) { console.error(e); }
+
+        if (container) {
+            container.innerHTML = '<div class="col-span-full text-center py-8">Loading...</div>';
+        }
+
+        const params = new URLSearchParams({
+            status: statusFilter,
+            page: String(currentPage),
+            limit: String(requestLimit)
+        });
+
+        if (startDate) params.set('startDate', startDate);
+        if (endDate) params.set('endDate', endDate);
+        if (searchValue) params.set('search', searchValue);
+
+        const requests = [fetch(`${API_URL}/orders?${params.toString()}`)];
+
+        if (isVerification || isDispatch) {
+            const statsParams = new URLSearchParams({
+                status: isVerification ? 'Pending' : 'Address Verified',
+                page: '1',
+                limit: '0'
+            });
+            requests.push(fetch(`${API_URL}/orders?${statsParams.toString()}`));
+        }
+
+        const responses = await Promise.all(requests);
+        const [data, statsData] = await Promise.all(responses.map((res) => res.json()));
+
+        const orders = data.orders || [];
+        const totalItems = data.pagination ? data.pagination.total : orders.length;
+        const totalPages = requestLimit > 0 ? (Math.ceil(totalItems / requestLimit) || 1) : 1;
+
+        if (isVerification) {
+            updateVerificationPendingStats((statsData && statsData.orders) || []);
+        } else if (isDispatch) {
+            updateDispatchReadyStats((statsData && statsData.orders) || []);
+        }
+
+        if (!container) return;
+
+        if (orders.length === 0) {
+            const rangeLabel = isVerification
+                ? 'pending orders'
+                : isDispatch
+                    ? 'ready orders'
+                    : 'orders';
+            const emptyLabel = startDate && endDate && startDate !== endDate
+                ? `No ${rangeLabel} found from ${startDate} to ${endDate}`
+                : startDate
+                    ? `No ${rangeLabel} found for ${startDate}`
+                    : searchValue
+                        ? `No ${rangeLabel} found for "${searchValue}"`
+                        : `No ${rangeLabel} found`;
+            container.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400">${emptyLabel}</div>`;
+            return;
+        }
+
+        container.innerHTML = orders.map(o => generateOrderCardHTML(o)).join('');
+        if (!isVerification && !isDispatch) {
+            renderPaginationControls(container, currentPage, totalPages, 'loadDeptOrders');
+        }
+    } catch (e) {
+        console.error(e);
+        if (container) {
+            const errorLabel = isVerification ? 'pending' : isDispatch ? 'ready-to-dispatch' : 'department';
+            container.innerHTML = `<div class="col-span-full text-center py-12 text-red-500">Failed to load ${errorLabel} orders</div>`;
+        }
+    }
 }
 
 // Helper to Title Case a string
@@ -4832,13 +5239,6 @@ async function loadDispatchHistory() {
         document.getElementById('statsDispatchYesterday').textContent = countYesterday;
         document.getElementById('statsDispatchWeek').textContent = countWeek;
 
-        // Update mini stats in Ready tab too if they exist
-        if (document.getElementById('miniStatDispatchToday')) {
-            document.getElementById('miniStatDispatchToday').textContent = countToday;
-            document.getElementById('miniStatDispatchYesterday').textContent = countYesterday;
-            document.getElementById('miniStatDispatchWeek').textContent = countWeek;
-        }
-
         // FILTERS
         const search = document.getElementById('dispatchHistorySearch').value.toLowerCase();
         const startDate = document.getElementById('dispatchHistoryStart').value;
@@ -5071,14 +5471,64 @@ async function filterDispatchOrders(mobile) {
 
 function openDispatchModal(orderId, order = null) {
     console.log('📦 Manual Dispatch button clicked for Order:', orderId);
-    console.log('📦 Order Data:', order);
 
     currentDispatchOrder = order;
 
+    // Check if static HTML modal exists
     const modal = document.getElementById('dispatchModal');
     if (!modal) {
-        console.error('❌ FATAL: dispatchModal element not found in DOM!');
-        alert('Internal Error: Dispatch modal not found! Please refresh page.');
+        // Fallback: Use dynamic modal from modals.js (has Speed Post Label button)
+        console.log('📦 Static dispatchModal not found, using dynamic modal from modals.js');
+        // Check if modals.js dynamic version exists
+        const modalsOpenDispatch = window._openDispatchModalDynamic;
+        if (typeof modalsOpenDispatch === 'function') {
+            modalsOpenDispatch(orderId, order);
+        } else {
+            // Inline fallback: create simple dispatch modal with Speed Post Label
+            const m = document.createElement('div');
+            m.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4';
+            m.id = 'manualDispatchModalFallback';
+            m.innerHTML = `
+                <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+                    <div class="bg-purple-600 text-white p-4 rounded-t-2xl">
+                        <h3 class="font-bold text-lg">📦 Dispatch Order</h3>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Courier Company</label>
+                            <select id="fallbackCourier" class="w-full border-2 rounded-xl px-4 py-3">
+                                <option value="">-- Select Courier --</option>
+                                <option value="India Post">📮 India Post</option>
+                                <option value="Delhivery">🚛 Delhivery</option>
+                                <option value="Delhivery Air">✈️ Delhivery Air</option>
+                                <option value="Blue Dart">🔵 Blue Dart</option>
+                                <option value="DTDC">📦 DTDC</option>
+                                <option value="Xpressbees">⚡ Xpressbees</option>
+                                <option value="Ekart">🛒 Ekart</option>
+                                <option value="Ecom Express">📫 Ecom Express</option>
+                                <option value="Professional">Professional</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Tracking ID *</label>
+                            <input type="text" id="fallbackTrackingId" placeholder="Enter tracking number" class="w-full border-2 rounded-xl px-4 py-3 font-mono font-bold">
+                        </div>
+                        <div class="pt-3 border-t border-dashed border-gray-200">
+                            <button type="button" onclick="var oid='${orderId}'; var c=document.getElementById('fallbackCourier').value||'India Post'; var a=document.getElementById('fallbackTrackingId').value.trim(); document.getElementById('manualDispatchModalFallback').remove(); if(typeof openLabelPrintModal==='function'){openLabelPrintModal(oid,null,a,c);}else{alert('Label module not loaded!');}"
+                                class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg flex items-center justify-center gap-2">
+                                🏷️ Print Speed Post Label
+                            </button>
+                            <p class="text-xs text-gray-400 text-center mt-1">For India Post / Speed Post COD</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="document.getElementById('manualDispatchModalFallback').remove()" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button>
+                            <button onclick="(async()=>{var c=document.getElementById('fallbackCourier').value;var t=document.getElementById('fallbackTrackingId').value.trim();if(!c){alert('Courier select karein!');return;}if(!t){alert('Tracking ID daalna zaroori hai!');return;}document.getElementById('manualDispatchModalFallback').remove();try{var r=await fetch(API_URL+'/orders/${orderId}/dispatch',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({courier:c,trackingId:t,dispatchedBy:currentUser?currentUser.id:'dispatch_dept'})});var d=await r.json();if(d.success){showSuccessPopup('Dispatched!','Courier: '+c+' | AWB: '+t,'🚚','#9333ea');if(typeof loadDeptOrders==='function')loadDeptOrders();if(typeof loadVerifiedOrders==='function')loadVerifiedOrders();}else{alert('Error: '+(d.message||'Failed'));}}catch(e){alert('Error: '+e.message);}})()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-medium hover:bg-purple-700">🚚 Dispatch</button>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(m);
+        }
         return;
     }
 
@@ -5791,35 +6241,61 @@ function toggleAdminSidebar() {
     }
 }
 
-function switchAdminTab(tab) {
-    if (!tab) return;
+function normalizeAdminTab(tab) {
+    const normalizedTab = String(tab || '').toLowerCase();
+    return ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'progress'].includes(normalizedTab)
+        ? normalizedTab
+        : 'pending';
+}
 
-    // Special Case for RTO (ID is adminRTOTab not adminRtoTab)
-    if (tab === 'rto') {
-        const contentEl = document.getElementById('adminRTOTab');
-        const buttonEl = document.getElementById('adminTabRto');
+function getAdminTabContentId(tab) {
+    if (tab === 'rto') return 'adminRTOTab';
+    if (tab === 'ofd') return 'adminOfdTab';
+    if (tab === 'onhold') return 'adminOnholdTab';
+    const capTab = tab.charAt(0).toUpperCase() + tab.slice(1);
+    return `admin${capTab}Tab`;
+}
 
-        // Hide all admin tabs
-        document.querySelectorAll('[id^="admin"][id$="Tab"]').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('.sidebar-nav-item, [id^="adminTab"]').forEach(el => el.classList.remove('sidebar-active'));
+function getAdminTabButtonId(tab) {
+    if (tab === 'rto') return 'adminTabRto';
+    if (tab === 'ofd') return 'adminTabOfd';
+    if (tab === 'onhold') return 'adminTabOnhold';
+    const capTab = tab.charAt(0).toUpperCase() + tab.slice(1);
+    return `adminTab${capTab}`;
+}
 
-        if (contentEl) contentEl.classList.remove('hidden');
-        if (buttonEl) buttonEl.classList.add('sidebar-active');
+function getAdminTabFromHash() {
+    return normalizeAdminTab(window.location.hash.replace(/^#/, ''));
+}
 
-        loadRTOOrders();
-        updateAdminBadges();
+function getActiveAdminTab() {
+    const adminTabs = ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'progress'];
+    for (const tab of adminTabs) {
+        const contentEl = document.getElementById(getAdminTabContentId(tab));
+        if (contentEl && !contentEl.classList.contains('hidden')) return tab;
+    }
+    return 'pending';
+}
 
-        // Close sidebar on mobile
-        if (window.innerWidth < 1024) {
-            const sidebar = document.getElementById('adminSidebar');
-            if (sidebar) sidebar.classList.add('-translate-x-full');
-        }
+function updateAdminTabHash(tab, replaceOnly = false) {
+    const normalizedTab = normalizeAdminTab(tab);
+    const nextHash = `#${normalizedTab}`;
+
+    if (window.location.hash === nextHash) return;
+
+    if (replaceOnly && window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', nextHash);
         return;
     }
 
-    const capTab = tab.charAt(0).toUpperCase() + tab.slice(1);
-    const contentId = `admin${capTab}Tab`;
-    const buttonId = `adminTab${capTab}`;
+    window.location.hash = normalizedTab;
+}
+
+function switchAdminTab(tab, syncHash = true) {
+    tab = normalizeAdminTab(tab);
+
+    const contentId = getAdminTabContentId(tab);
+    const buttonId = getAdminTabButtonId(tab);
 
     const contentEl = document.getElementById(contentId);
     const buttonEl = document.getElementById(buttonId);
@@ -5842,12 +6318,14 @@ function switchAdminTab(tab) {
     const buttons = document.querySelectorAll('.sidebar-nav-item, [id^="adminTab"]');
     buttons.forEach(el => {
         el.classList.remove('sidebar-active');
+        el.classList.remove('tab-active');
     });
 
     contentEl.classList.remove('hidden');
 
     if (buttonEl) {
         buttonEl.classList.add('sidebar-active');
+        buttonEl.classList.add('tab-active');
     }
 
     // Close sidebar on mobile after selection
@@ -5871,9 +6349,21 @@ function switchAdminTab(tab) {
     if (tab === 'delivered') loadAdminDelivered();
     if (tab === 'cancelled') loadAdminCancelled();
     if (tab === 'onhold') loadAdminOnHold();
+    if (tab === 'rto') loadRTOOrders();
 
     updateAdminBadges();
+
+    if (syncHash) {
+        updateAdminTabHash(tab);
+    }
 }
+
+window.addEventListener('hashchange', function () {
+    if (currentUserType !== 'admin') return;
+    const requestedTab = getAdminTabFromHash();
+    if (getActiveAdminTab() === requestedTab) return;
+    switchAdminTab(requestedTab, false);
+});
 
 // ==================== LOAD OFD ORDERS ====================
 window.loadAdminOFD = async function (page = null) {
@@ -6910,22 +7400,63 @@ async function deleteDepartment() {
     }
 }
 
+async function fetchAdminHistoryOrders(filters = {}) {
+    const buildParams = (page) => {
+        const params = new URLSearchParams();
+        if (filters.startDate) params.set('startDate', filters.startDate);
+        if (filters.endDate) params.set('endDate', filters.endDate);
+        if (filters.employee) params.set('employee', filters.employee);
+        if (filters.status) params.set('status', filters.status);
+        params.set('page', String(page));
+        params.set('limit', '500');
+        return params;
+    };
+
+    const readPage = async (page) => {
+        const res = await fetch(`${API_URL}/admin/history?${buildParams(page).toString()}`);
+        const data = await res.json();
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load admin history');
+        }
+        return data;
+    };
+
+    const firstPage = await readPage(1);
+    const firstOrders = firstPage.orders || [];
+    const totalPages = firstPage.pagination && firstPage.pagination.totalPages
+        ? firstPage.pagination.totalPages
+        : 1;
+
+    if (totalPages <= 1) {
+        return firstOrders;
+    }
+
+    const remainingPageNumbers = Array.from({ length: totalPages - 1 }, (_, index) => index + 2);
+    const remainingPages = await Promise.all(remainingPageNumbers.map((page) => readPage(page)));
+    return firstOrders.concat(...remainingPages.map((pageData) => pageData.orders || []));
+}
+
 async function loadAdminHistory() {
     try {
-        const res = await fetch(`${API_URL}/admin/history`);
-        const data = await res.json();
-        const orders = data.orders || [];
+        const historyTab = document.getElementById('adminHistoryTab');
+        if (historyTab) {
+            historyTab.innerHTML = '<div class="bg-white border border-slate-200 rounded-2xl p-6 text-slate-500 font-medium">Loading full history...</div>';
+        }
 
-        const employees = [...new Set(orders.map(o => o.employeeId))];
+        const orders = await fetchAdminHistoryOrders();
 
         let html = `
                 <div class="glass-card mb-6 p-4">
                     <div class="flex flex-wrap gap-4 items-end">
-                        <div class="flex-1 min-w-[200px]">
-                            <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Filter By Date</label>
-                            <input type="date" id="adminHistoryDate" onchange="filterAdminHistory()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
+                        <div class="flex-1 min-w-[170px]">
+                            <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Start Date</label>
+                            <input type="date" id="adminHistoryStartDate" onchange="filterAdminHistory()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
                         </div>
-                        <div class="flex-1 min-w-[200px]">
+                        <div class="flex-1 min-w-[170px]">
+                            <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">End Date</label>
+                            <input type="date" id="adminHistoryEndDate" onchange="filterAdminHistory()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div class="flex-1 min-w-[220px]">
                             <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Employee</label>
                             <select id="adminHistoryEmployee" onchange="filterAdminHistory()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 bg-white">
                                 <option value="">All Employees</option>
@@ -6934,15 +7465,27 @@ async function loadAdminHistory() {
                 .map(([id, name]) => `<option value="${id}">${name} (${id})</option>`).join('')}
                             </select>
                         </div>
-                        <div class="flex-1 min-w-[200px]">
+                        <div class="flex-1 min-w-[180px]">
                              <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 uppercase">Status</label>
                              <select id="adminHistoryStatus" onchange="filterAdminHistory()" class="w-full border-2 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500 bg-white">
                                 <option value="">All Status</option>
                                 <option value="Pending">Pending</option>
                                 <option value="Address Verified">Verified</option>
                                 <option value="Dispatched">Dispatched</option>
+                                <option value="Out For Delivery">Out For Delivery</option>
                                 <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
+                                <option value="On Hold">On Hold</option>
+                                <option value="RTO">RTO</option>
                             </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="filterAdminHistory()" class="bg-blue-600 text-white font-bold px-5 py-2 rounded-xl text-sm hover:bg-blue-700 transition-all">
+                                Apply
+                            </button>
+                            <button onclick="resetAdminHistoryFilters()" class="bg-slate-100 text-slate-700 font-bold px-5 py-2 rounded-xl text-sm hover:bg-slate-200 transition-all">
+                                Clear
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -6950,24 +7493,42 @@ async function loadAdminHistory() {
 
         document.getElementById('adminHistoryTab').innerHTML = html;
         renderAdminHistoryTable(orders);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+        const historyTab = document.getElementById('adminHistoryTab');
+        if (historyTab) {
+            historyTab.innerHTML = '<div class="bg-white border border-red-200 text-red-600 rounded-2xl p-6 font-medium">Admin history load nahi ho payi.</div>';
+        }
+    }
 }
 
 async function filterAdminHistory() {
-    const date = document.getElementById('adminHistoryDate').value;
-    const employee = document.getElementById('adminHistoryEmployee').value;
-    const status = document.getElementById('adminHistoryStatus').value;
-
-    let url = `${API_URL}/admin/history?`;
-    if (date) url += `date=${date}&`;
-    if (employee) url += `employee=${employee}&`;
-    if (status) url += `status=${status}&`;
+    const startDate = document.getElementById('adminHistoryStartDate')?.value || '';
+    const endDate = document.getElementById('adminHistoryEndDate')?.value || '';
+    const employee = document.getElementById('adminHistoryEmployee')?.value || '';
+    const status = document.getElementById('adminHistoryStatus')?.value || '';
 
     try {
-        const res = await fetch(url);
-        const data = await res.json();
-        renderAdminHistoryTable(data.orders || []);
-    } catch (e) { console.error(e); }
+        const orders = await fetchAdminHistoryOrders({ startDate, endDate, employee, status });
+        renderAdminHistoryTable(orders);
+    } catch (e) {
+        console.error(e);
+        renderAdminHistoryTable([]);
+    }
+}
+
+function resetAdminHistoryFilters() {
+    const startDateInput = document.getElementById('adminHistoryStartDate');
+    const endDateInput = document.getElementById('adminHistoryEndDate');
+    const employeeInput = document.getElementById('adminHistoryEmployee');
+    const statusInput = document.getElementById('adminHistoryStatus');
+
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    if (employeeInput) employeeInput.value = '';
+    if (statusInput) statusInput.value = '';
+
+    filterAdminHistory();
 }
 
 function renderAdminHistoryTable(orders) {
@@ -7782,6 +8343,12 @@ function copyTracking(text) {
 
 // Helper to map order to Excel schema
 function mapOrderForExport(order, index) {
+    const normalizeExportStatusLabel = (value) => {
+        const normalizedValue = String(value || '').trim();
+        if (!normalizedValue) return '';
+        return normalizedValue.toLowerCase() === 'on way' ? 'OnWay' : normalizedValue;
+    };
+
     let address = order.address || '';
     let landmark = '';
     if (typeof address === 'object' && address !== null) {
@@ -7810,7 +8377,7 @@ function mapOrderForExport(order, index) {
     return {
         "S.No": index + 1,
         "Customer Name": order.customerName || '',
-        "Mobile Number": order.telNo || '',
+        "Mobile Number": (order.telNo || '') + (order.altNo ? ', ' + order.altNo : ''),
         "Address": toTitleCase(fullAddress),
         "Add1": "",
         "Add2": "",
@@ -7818,7 +8385,7 @@ function mapOrderForExport(order, index) {
         "Order Date": formatDate(order.timestamp),
         "Delivered Date": order.status === 'Delivered' ? formatDate(order.deliveryDate) : '',
         "Product Name": productNames,
-        "Delivery Status": order.status || 'Unknown',
+        "Delivery Status": normalizeExportStatusLabel(order.status || 'Unknown'),
         "Amount Rs.": order.total || 0,
         "Advance Payment": order.advance || 0,
         "Payment Method": order.paymentMode || 'COD',
@@ -8089,7 +8656,7 @@ async function exportDispatchedOrders() {
                 "Order Date": formatDate(order.timestamp),
                 "Delivered Date": order.status === 'Delivered' ? formatDate(order.deliveryDate) : '',
                 "Product Name": productNames,
-                "Delivery Status": "On Way",
+                "Delivery Status": "OnWay",
                 "Amount Rs.": order.total || 0,
                 "Advance Payment": order.advance || 0,
                 "Payment Method": order.paymentMode || 'COD',
@@ -8261,7 +8828,7 @@ async function exportDispatchedOrdersFiltered(event) {
                 "Order Date": formatDate(order.timestamp),
                 "Delivered Date": order.status === 'Delivered' ? formatDate(order.deliveryDate) : '',
                 "Product Name": productNames,
-                "Delivery Status": order.status === 'Delivered' ? 'Delivered' : 'On Way',
+                "Delivery Status": order.status === 'Delivered' ? 'Delivered' : 'OnWay',
                 "Amount Rs.": order.total || 0,
                 "Advance Payment": order.advance || 0,
                 "Payment Method": order.paymentMode || 'COD',
@@ -8440,7 +9007,42 @@ function showMap(orderId, address) {
 
 
 // ==================== VERIFICATION DEPARTMENT TABS ====================
-function switchVerificationTab(tab) {
+function normalizeVerificationTab(tab) {
+    const normalizedTab = String(tab || '').toLowerCase();
+    return ['pending', 'unverified', 'history', 'cancelled'].includes(normalizedTab) ? normalizedTab : 'pending';
+}
+
+function getVerificationTabFromHash() {
+    return normalizeVerificationTab(window.location.hash.replace(/^#/, ''));
+}
+
+function getActiveVerificationTab() {
+    if (!document.getElementById('verificationPendingTab')?.classList.contains('hidden')) return 'pending';
+    if (!document.getElementById('verificationUnverifiedTab')?.classList.contains('hidden')) return 'unverified';
+    if (!document.getElementById('verificationHistoryTab')?.classList.contains('hidden')) return 'history';
+    if (document.getElementById('verificationCancelledTab') && !document.getElementById('verificationCancelledTab').classList.contains('hidden')) {
+        return 'cancelled';
+    }
+    return 'pending';
+}
+
+function updateVerificationTabHash(tab, replaceOnly = false) {
+    const normalizedTab = normalizeVerificationTab(tab);
+    const nextHash = `#${normalizedTab}`;
+
+    if (window.location.hash === nextHash) return;
+
+    if (replaceOnly && window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', nextHash);
+        return;
+    }
+
+    window.location.hash = normalizedTab;
+}
+
+function switchVerificationTab(tab, syncHash = true) {
+    tab = normalizeVerificationTab(tab);
+
     document.getElementById('verificationPendingTab').classList.add('hidden');
     document.getElementById('verificationUnverifiedTab').classList.add('hidden');
     document.getElementById('verificationHistoryTab').classList.add('hidden');
@@ -8467,7 +9069,18 @@ function switchVerificationTab(tab) {
         setActiveDeptTab('deptTabCancelled');
         loadVerificationCancelled();
     }
+
+    if (syncHash) {
+        updateVerificationTabHash(tab);
+    }
 }
+
+window.addEventListener('hashchange', function () {
+    if (currentDeptType !== 'verification') return;
+    const requestedTab = getVerificationTabFromHash();
+    if (getActiveVerificationTab() === requestedTab) return;
+    switchVerificationTab(requestedTab, false);
+});
 
 
 async function loadVerificationUnverified() {
@@ -8949,35 +9562,42 @@ function resetVerificationHistoryFilters() {
 
 async function filterVerificationOrders(mobile) {
     const searchValue = mobile.trim();
+    const activeTabContent = document.querySelector('[id^="verification"][id$="Tab"]:not(.hidden)');
+    if (!activeTabContent) return;
+
     if (!searchValue) {
-        const activeTab = document.querySelector('[id^="verificationTab"].tab-active').id.replace("verificationTab", "").toLowerCase();
-        if (activeTab === 'pending') loadDeptOrders();
-        else if (activeTab === 'history') loadVerificationHistory();
+        if (activeTabContent.id === 'verificationPendingTab') loadDeptOrders();
+        else if (activeTabContent.id === 'verificationHistoryTab') loadVerificationHistory();
         return;
     }
 
     try {
-        const res = await fetch(`${API_URL}/orders`);
-        const data = await res.json();
+        const normalizedSearch = searchValue.toLowerCase();
+        const matchesVerificationSearch = (order) => {
+            return [
+                order.orderId,
+                order.customerName,
+                order.telNo,
+                order.altNo
+            ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch));
+        };
 
-        // Fetch matches
-        let orders = (data.orders || []).filter(o =>
-            (o.telNo && o.telNo.includes(searchValue)) ||
-            (o.altNo && o.altNo.includes(searchValue))
-        );
-
-        const activeTabContent = document.querySelector('[id^="verification"][id$="Tab"]:not(.hidden)');
         let listId = '';
         let isHistory = false;
+        let orders = [];
 
         if (activeTabContent.id === 'verificationPendingTab') {
             listId = 'pendingVerificationList';
-            // Filter pending only logic if strictly needed, or just show all matches? 
-            // Usually search searches everything, but context implies we want actions relevant to the tab.
-            // For now, let's just show the matches but with the "Pending" style card if in pending tab.
+            const { params } = buildVerificationPendingParams(0);
+            const res = await fetch(`${API_URL}/orders?${params.toString()}`);
+            const data = await res.json();
+            orders = (data.orders || []).filter(matchesVerificationSearch);
         } else if (activeTabContent.id === 'verificationHistoryTab') {
             listId = 'verificationHistoryList';
             isHistory = true;
+            const res = await fetch(`${API_URL}/orders`);
+            const data = await res.json();
+            orders = (data.orders || []).filter(matchesVerificationSearch);
         }
 
         if (!listId) return;
@@ -10026,6 +10646,15 @@ async function saveEmployeeChanges() {
 
 function filterDeptOrdersHeader(query) {
     const q = query.toLowerCase();
+
+    if (q.startsWith('#')) {
+        if (currentDeptType === 'verification' && typeof window.handleVerificationCommand === 'function' && window.handleVerificationCommand(q)) {
+            return;
+        }
+        if (currentDeptType === 'dispatch' && typeof window.handleDispatchCommand === 'function' && window.handleDispatchCommand(q)) {
+            return;
+        }
+    }
 
     if (currentDeptType === 'verification') {
         const inputs = ['verificationPendingSearch', 'verificationUnverifiedSearch', 'verificationHistorySearch'];
