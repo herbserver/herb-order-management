@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌿 Herb On Naturals - Employee Panel</title>
+
+    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+
+    <link rel="preload" href="styles.css" as="style">
+    <link rel="preload" href="js/core/config.js?v=2" as="script">
+    <link rel="preload" href="js/core/session.js" as="script">
+
+    <script src="https://cdn.tailwindcss.com" defer></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"
+        media="print" onload="this.media='all'">
+
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js" async></script>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- 👤 EMPLOYEE PANEL -->
+        <div id="employeePanel" class="font-['Poppins']">
+            <div class="flex min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 relative">
+
+                <!-- EMPLOYEE SIDEBAR BACKDROP (Mobile) -->
+                <div id="empSidebarBackdrop" onclick="toggleEmpSidebar()"
+                    class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 opacity-0 pointer-events-none backdrop-fade lg:hidden">
+                </div>
+
+                <!-- EMPLOYEE SIDEBAR -->
+                <aside id="empSidebar"
+                    class="w-64 bg-white border-r border-slate-200 fixed inset-y-0 left-0 z-[60] transform -translate-x-full lg:translate-x-0 sidebar-bouncy shadow-2xl lg:shadow-none flex flex-col h-[100dvh] overflow-y-auto overflow-x-hidden">
+
+                    <!-- Logo Header -->
+                    <div
+                        class="flex-none p-5 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 relative">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-11 h-11 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-emerald-200">
+                                <img src="icon.png" alt="HON" class="w-full h-full object-contain">
+                            </div>
+                            <div>
+                                <h1 class="text-lg font-black tracking-tight text-slate-800">Herb On Naturals</h1>
+                                <p class="text-[10px] text-emerald-600 font-semibold -mt-0.5" id="empSidebarSubtitle">
+                                    Employee Panel</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Navigation -->
+                    <nav class="flex-1 py-4 overflow-y-auto">
+                        <div class="px-3 space-y-1">
+                            <button onclick="openEmployeeTab('order')" id="empTabOrder"
+                                class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all sidebar-active">
+                                <span class="text-lg">📝</span>
+                                <span class="flex-1 text-left">New Order</span>
+                            </button>
+                            <button onclick="openEmployeeTab('tracking')" id="empTabTracking"
+                                class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
+                                <span class="text-lg">📦</span>
+                                <span class="flex-1 text-left">My Orders</span>
+                            </button>
+                            <button onclick="openEmployeeTab('history')" id="empTabHistory"
+                                class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
+                                <span class="text-lg">📋</span>
+                                <span class="flex-1 text-left">History</span>
+                            </button>
+                            <button onclick="openEmployeeTab('progress')" id="empTabProgress"
+                                class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
+                                <span class="text-lg">📊</span>
+                                <span class="flex-1 text-left">Progress</span>
+                            </button>
+                            <button onclick="openEmployeeTab('ofd')" id="empTabOfd"
+                                class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
+                                <span class="text-lg">🚚</span>
+                                <span class="flex-1 text-left">OFD</span>
+                            </button>
+                            <button onclick="openEmployeeTab('cancelled')" id="empTabCancelled"
+                                class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
+                                <span class="text-lg">❌</span>
+                                <span class="flex-1 text-left">Cancelled</span>
+                            </button>
+                        </div>
+                    </nav>
+
+                    <!-- Sidebar Footer -->
+                    <div class="flex-none p-4 border-t border-slate-100 bg-white">
+                        <button onclick="showGlobalSearchBar()"
+                            class="w-full h-10 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all mb-2">
+                            <span>🔍</span> SEARCH ORDER
+                        </button>
+                        <button onclick="logout()"
+                            class="w-full h-10 flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all">
+                            <span>🚪</span> SIGN OUT
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area -->
+                <main class="flex-1 lg:ml-64 overflow-x-hidden animate-fadeIn">
+
+                    <!-- Top Bar (Mobile) -->
+                    <div
+                        class="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shadow-sm">
+                        <button onclick="toggleEmpSidebar()"
+                            class="text-slate-600 hover:text-slate-900 bg-slate-50 p-1.5 rounded-lg transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                        </button>
+                        <h1 class="text-sm font-black text-slate-800 uppercase tracking-widest">Employee Panel</h1>
+                        <div class="w-8"></div>
+                    </div>
+
+                    <!-- Page Header -->
+                    <div
+                        class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 hidden lg:block shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h1 class="text-2xl font-black text-slate-800">Employee Dashboard</h1>
+                                <p class="text-sm text-slate-500 font-medium">Welcome, <span id="empNameDisplay"
+                                        class="font-bold text-emerald-600"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Global Search Bar (Sticky) -->
+                    <div class="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-200 px-6 py-4 -mx-4 mb-6 hidden"
+                        id="globalSearchBar">
+                        <div class="max-w-2xl mx-auto">
+                            <div class="relative">
+                                <input type="text" id="globalSearchInput"
+                                    placeholder="🔍 Search order by Mobile, Order ID, or Customer Name..."
+                                    class="w-full px-5 py-3 pr-32 border-2 border-blue-300 rounded-xl text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                                    onkeypress="if(event.key==='Enter') globalSearchOrder(this.value)">
+                                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
+                                    <button
+                                        onclick="globalSearchOrder(document.getElementById('globalSearchInput').value)"
+                                        class="bg-blue-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-600 transition-all">
+                                        Search
+                                    </button>
+                                    <button
+                                        onclick="document.getElementById('globalSearchInput').value=''; document.getElementById('globalSearchBar').classList.add('hidden')"
+                                        class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-300 transition-all">
+                                        ×
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content Container -->
+                    <div class="p-6">
+
+                        <div id="empMessage"
+                            class="hidden mb-6 p-4 rounded-2xl text-sm glass-card border-l-4 border-blue-500">
+                        </div>
+
+                        <!-- Order Form Tab -->
+                        <div id="empOrderTab" class="animate-fadeIn">
+                            <div class="glass-card p-6 lg:p-8 border-t-4 border-blue-500 relative">
+                                <div class="flex items-center gap-3 mb-8 pb-4 border-b border-dashed border-gray-200">
+                                    <span
+                                        class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-xl">📝</span>
+                                    <div>
+                                        <h2 class="text-xl font-bold text-gray-800">New Order Entry</h2>
+                                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Fill
+                                            details
+                                            carefully
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <form id="orderForm" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <!-- Left Column -->
+                                    <div class="space-y-4">
+                                        <div><label class="block text-sm font-medium mb-1">Customer Name
+                                                *</label><input type="text" name="customerName" required
+                                                style="text-transform: capitalize;"
+                                                oninput="this.value = toTitleCase(this.value)"
+                                                class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none">
+                                        </div>
+                                        <div><label class="block text-sm font-medium mb-1">Address
+                                                (Auto-filled)</label><textarea name="address" readonly rows="2"
+                                                class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 text-sm"></textarea>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div><label class="block text-xs font-medium mb-1">H.
+                                                    NO.</label><input type="text" name="hNo"
+                                                    class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                            </div>
+                                            <div><label class="block text-xs font-medium mb-1">BLOCK/GALI</label><input
+                                                    type="text" name="blockGaliNo"
+                                                    class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div><label class="block text-xs font-medium mb-1">VILL/COLONY
+                                                    *</label><input type="text" name="villColony" required
+                                                    class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                            </div>
+                                            <div><label class="block text-xs font-medium mb-1">LANDMARK</label><input
+                                                    type="text" name="landMark"
+                                                    class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div class="relative"><label
+                                                    class="block text-xs font-medium mb-1">P.O.</label><input
+                                                    type="text" name="po" autocomplete="off"
+                                                    oninput="handlePostOfficeInput(this.value)"
+                                                    class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                                <ul id="poSuggestions"
+                                                    class="absolute z-50 w-full bg-white border border-gray-300 rounded-b-lg shadow-lg max-h-48 overflow-y-auto hidden">
+                                                </ul>
+                                            </div>
+                                            <div><label class="block text-xs font-medium mb-1">TAH/TALUKA</label><input
+                                                    type="text" name="tahTaluka"
+                                                    class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div class="relative"><label class="block text-xs font-medium mb-1">DISTT.
+                                                    *</label><input type="text" name="distt" required autocomplete="off"
+                                                    oninput="handleDistrictInput(this.value)"
+                                                    class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                                <ul id="districtSuggestions"
+                                                    class="absolute z-50 w-full bg-white border border-gray-300 rounded-b-lg shadow-lg max-h-48 overflow-y-auto hidden">
+                                                </ul>
+                                            </div>
+                                            <div><label class="block text-xs font-medium mb-1">STATE
+                                                    *</label><input type="text" name="state" required
+                                                    class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div><label class="block text-xs font-medium mb-1">PIN
+                                                    *</label><input type="text" name="pin" required maxlength="6"
+                                                    oninput="fetchPincodeDetails(this.value)"
+                                                    class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                            </div>
+                                        </div>
+                                        <div><label class="block text-xs font-medium mb-1">TREATMENT</label><input
+                                                type="text" name="treatment"
+                                                class="w-full border-2 rounded-lg px-3 py-2 text-sm">
+                                        </div>
+                                    </div>
+                                    <!-- Right Column -->
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div><label class="block text-sm font-medium mb-1">Date
+                                                    *</label><input type="date" name="date" required
+                                                    class="w-full border-2 rounded-xl px-4 py-2.5 bg-white font-medium text-gray-700">
+                                            </div>
+                                            <div><label class="block text-sm font-medium mb-1">Time</label><input
+                                                    type="time" name="time"
+                                                    class="w-full border-2 rounded-xl px-4 py-2">
+                                            </div>
+                                        </div>
+                                        <div><label class="block text-sm font-medium mb-1">Tel No.
+                                                *</label><input type="tel" name="telNo" required maxlength="10"
+                                                pattern="\d{10}" title="10 digit mobile number"
+                                                class="w-full border-2 rounded-xl px-4 py-2">
+                                        </div>
+                                        <div><label class="block text-sm font-medium mb-1">Alt
+                                                No.</label><input type="tel" name="altNo"
+                                                class="w-full border-2 rounded-xl px-4 py-2">
+                                        </div>
+                                        <div><label class="block text-sm font-medium mb-1">Order
+                                                Type</label>
+                                            <div class="flex gap-4 mt-1"><label class="flex items-center"><input
+                                                        type="radio" name="orderType" value="NEW" checked
+                                                        class="mr-2">NEW</label><label class="flex items-center"><input
+                                                        type="radio" name="orderType" value="REORDER"
+                                                        class="mr-2">REORDER</label></div>
+                                        </div>
+                                        <!-- Items -->
+                                        <div class="bg-emerald-50 p-4 rounded-xl border border-blue-200">
+                                            <div class="flex justify-between items-center mb-3">
+                                                <label class="font-bold text-blue-700">🛒
+                                                    ITEMS</label><button type="button" onclick="addItem()"
+                                                    class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-emerald-700">+Add</button>
+                                            </div>
+                                            <div id="itemsContainer" class="space-y-2 max-h-40 overflow-y-auto">
+                                            </div>
+                                            <div
+                                                class="mt-3 pt-3 border-t border-blue-300 flex justify-between items-center font-bold text-lg">
+                                                <span>Total:</span>
+                                                <div class="flex flex-col items-end">
+                                                    <input type="number" id="totalAmountInput" value="0"
+                                                        oninput="calculateCOD()"
+                                                        class="w-32 bg-white border-2 border-red-200 rounded-lg px-2 py-1 text-red-500 text-right outline-none focus:border-red-500 transition-colors">
+                                                    <span id="comboBadge"
+                                                        class="hidden text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded-full mt-1 animate-bounce">🎁
+                                                        COMBO OFFER</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="block text-sm font-medium mb-1">Remark (Optional)</label>
+                                            <textarea name="remark" id="employeeRemark" rows="2"
+                                                placeholder="Koi khaas baat? (e.g. Call before delivery)"
+                                                class="w-full border-2 rounded-xl px-4 py-2 text-sm resize-none"></textarea>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div><label class="block text-sm font-medium mb-1">Advance</label><input
+                                                    type="number" name="advance" value="0" min="0"
+                                                    oninput="calculateCOD()"
+                                                    class="w-full border-2 rounded-xl px-4 py-2">
+                                            </div>
+                                            <div><label class="block text-sm font-medium mb-1">COD
+                                                    Amount</label><input type="number" name="codAmount" readonly
+                                                    class="w-full border-2 rounded-xl px-4 py-2 bg-red-50 text-red-700 font-bold">
+                                            </div>
+                                        </div><button type="button" onclick="saveOrder()"
+                                            class="w-full btn-primary text-white py-3 rounded-xl font-black text-sm shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all uppercase tracking-widest mt-2">💾
+                                            SAVE ORDER</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Tracking Tab -->
+                        <div id="empTrackingTab" class="hidden animate-fadeIn">
+                            <!-- Modern Compact Header -->
+                            <div class="flex flex-col gap-3 mb-6 px-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-1.5 h-6 bg-blue-500 rounded-full block"></span>
+                                    <div class="relative flex-1">
+                                        <span
+                                            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                                        <input type="text" id="myOrdersSearch" placeholder="Search Mobile/Name/ID..."
+                                            oninput="filterMyOrders(this.value)"
+                                            class="w-full pl-8 pr-4 py-2 border-2 border-slate-100 rounded-xl text-xs focus:border-blue-400 outline-none transition-all bg-white" />
+                                    </div>
+                                    <button type="button" onclick="loadMyOrders()"
+                                        class="bg-blue-50 text-blue-600 p-2 rounded-xl hover:bg-blue-100 transition-all">
+                                        <span class="text-sm">🔄</span>
+                                    </button>
+                                </div>
+
+                                <div class="flex gap-2">
+                                    <input type="date" id="myOrdersDate" onchange="loadMyOrders()"
+                                        class="flex-1 border-2 border-slate-50 rounded-xl px-3 py-1.5 text-xs font-bold outline-none focus:border-blue-400 bg-white">
+                                    <div
+                                        class="bg-blue-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center shadow-sm uppercase tracking-tighter">
+                                        Live Status
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="myOrdersStats" class="grid grid-cols-3 md:grid-cols-6 gap-2 mb-6 px-1"></div>
+                            <div id="myOrdersList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                        </div>
+
+                        <!-- History Tab -->
+                        <div id="empHistoryTab" class="hidden animate-fadeIn">
+                            <div class="flex flex-col gap-3 mb-6 px-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-1.5 h-6 bg-slate-500 rounded-full block"></span>
+                                    <div class="relative flex-1">
+                                        <span
+                                            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                                        <input type="text" id="historySearch" placeholder="Search History Mobile..."
+                                            oninput="filterMyHistory(this.value)"
+                                            class="w-full pl-8 pr-4 py-2 border-2 border-slate-100 rounded-xl text-xs focus:border-slate-400 outline-none transition-all bg-white" />
+                                    </div>
+                                    <input type="date" id="empHistoryDate" onchange="loadMyHistory()"
+                                        class="border-2 border-slate-50 rounded-xl px-2 py-1.5 text-xs font-bold outline-none focus:border-slate-400 bg-white">
+                                </div>
+                            </div>
+                            <div id="myHistoryList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                        </div>
+
+                        <!-- Progress Tab -->
+                        <div id="empProgressTab" class="hidden animate-fadeIn">
+                            <div class="glass-card p-6 mb-6">
+                                <div class="mb-6">
+                                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2 mb-4">
+                                        <span class="w-2 h-8 bg-purple-500 rounded-full block"></span>
+                                        📊 My Progress Report
+                                    </h2>
+                                    <div class="flex flex-col sm:flex-row gap-3">
+                                        <input type="date" id="empProgressStartDate"
+                                            class="border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm w-full sm:w-auto">
+                                        <input type="date" id="empProgressEndDate"
+                                            class="border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm w-full sm:w-auto">
+                                        <button type="button" onclick="loadEmpProgress()"
+                                            class="bg-purple-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-purple-600 transition-all w-full sm:w-auto">
+                                            🔍 Filter
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="empProgressStats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                                <div id="empProgressChart" class="mb-6"></div>
+                                <div id="empProgressTable"></div>
+                            </div>
+                        </div>
+
+                        <!-- OFD Tab -->
+                        <div id="empOfdTab" class="hidden animate-fadeIn">
+                            <div class="flex flex-col gap-3 mb-6 px-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-1.5 h-6 bg-orange-400 rounded-full block"></span>
+                                    <div class="relative flex-1">
+                                        <span
+                                            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                                        <input type="text" id="myOfdOrdersSearch" placeholder="Search OFD Orders..."
+                                            oninput="filterMyOfdOrders(this.value)"
+                                            class="w-full pl-8 pr-4 py-2 border-2 border-orange-100 rounded-xl text-xs focus:border-orange-400 outline-none transition-all bg-white" />
+                                    </div>
+                                    <button type="button" onclick="loadMyOfdOrders()"
+                                        class="bg-orange-50 text-orange-600 p-2 rounded-xl hover:bg-orange-100 transition-all">
+                                        <span class="text-sm">🔄</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="empOfdList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            </div>
+                        </div>
+
+                        <!-- Cancelled Tab -->
+                        <div id="empCancelledTab" class="hidden animate-fadeIn">
+                            <div class="flex flex-col gap-3 mb-6 px-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-1.5 h-6 bg-red-400 rounded-full block"></span>
+                                    <div class="relative flex-1">
+                                        <span
+                                            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                                        <input type="text" id="myCancelledOrdersSearch"
+                                            placeholder="Search Cancelled..."
+                                            oninput="filterMyCancelledOrders(this.value)"
+                                            class="w-full pl-8 pr-4 py-2 border-2 border-red-100 rounded-xl text-xs focus:border-red-400 outline-none transition-all bg-white" />
+                                    </div>
+                                    <button type="button" onclick="loadMyCancelledOrders()"
+                                        class="bg-red-50 text-red-600 p-2 rounded-xl hover:bg-red-100 transition-all">
+                                        <span class="text-sm">🔄</span>
+                                    </button>
+                                </div>
+                                <div class="flex gap-2">
+                                    <input type="date" id="myCancelledOrdersDate" onchange="loadMyCancelledOrders()"
+                                        class="flex-1 border-2 border-red-50 rounded-xl px-2 py-1.5 text-xs font-bold outline-none focus:border-red-400 bg-white">
+                                </div>
+                            </div>
+                            <div id="empCancelledList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="orderModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4"
+        style="z-index: 10000;">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-emerald-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold text-lg">📋 Order Details</h3><button type="button"
+                    onclick="closeModal('orderModal')"
+                    class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
+            </div>
+            <div id="orderModalContent" class="p-6"></div>
+        </div>
+    </div>
+
+    <!-- Order Detail Modal (used by modals.js) -->
+    <div id="orderDetailModal" onclick="closeModal('orderDetailModal')"
+        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div onclick="event.stopPropagation()"
+            class="bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+            <div id="orderDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- Global Search Results Container -->
+    <div id="globalSearchResults" class="hidden fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div class="sticky top-0 bg-blue-600 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold">🔍 Search Results</h3>
+                <button onclick="document.getElementById('globalSearchResults').classList.add('hidden')"
+                    class="text-2xl hover:bg-white/20 w-8 h-8 rounded-full">×</button>
+            </div>
+            <div id="globalSearchResultsContent" class="p-4"></div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS: Only employee-needed -->
+    <script src="js/core/config.js?v=2"></script>
+    <script src="js/core/session.js"></script>
+    <script src="js/core/utils.js"></script>
+    <script src="js/core/page-links.js?v=2" defer></script>
+
+    <script src="js/ui/modals.js?v=3" defer></script>
+    <script src="js/common.js?v=2.1"></script>
+
+    <script src="js/global-search.js" defer></script>
+
+    <!-- Main app.js for shared functions (toggleEmpSidebar, toTitleCase, fetchPincodeDetails, etc.) -->
+    <script src="app.js?v=EmpStandalone-v2" defer></script>
+
+    <!-- Employee Panel (loads after app.js to override legacy functions) -->
+    <script src="js/panels/employee.js?v=8" defer></script>
+
+    <script>
+        (function () {
+            const validTabs = new Set(['order', 'tracking', 'history', 'progress', 'ofd', 'cancelled']);
+
+            function normalizeEmployeeTab(tab) {
+                const normalized = String(tab || '').trim().toLowerCase();
+                return validTabs.has(normalized) ? normalized : 'order';
+            }
+
+            window.openEmployeeTab = function (tab) {
+                const normalizedTab = normalizeEmployeeTab(tab);
+                const nextUrl = `${window.location.pathname}${window.location.search}#${normalizedTab}`;
+
+                if (window.location.hash !== `#${normalizedTab}`) {
+                    if (window.history && typeof window.history.replaceState === 'function') {
+                        window.history.replaceState(null, '', nextUrl);
+                    } else {
+                        window.location.hash = normalizedTab;
+                    }
+                }
+
+                if (typeof window.switchEmpTab === 'function') {
+                    window.switchEmpTab(normalizedTab);
+                }
+            };
+
+            window.addEventListener('hashchange', function () {
+                if (typeof window.switchEmpTab === 'function') {
+                    window.switchEmpTab(normalizeEmployeeTab(window.location.hash.replace(/^#/, '')));
+                }
+            });
+
+            document.addEventListener('DOMContentLoaded', function () {
+                if (window.location.hash && typeof window.switchEmpTab === 'function') {
+                    window.switchEmpTab(normalizeEmployeeTab(window.location.hash.replace(/^#/, '')));
+                }
+            });
+        })();
+    </script>
+
+    <!-- Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+
+</body>
+
+</html>

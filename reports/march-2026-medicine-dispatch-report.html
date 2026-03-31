@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>March 2026 Medicine Dispatch Report</title>
+  <style>
+    :root {
+      --border: #d1d5db;
+      --text: #111827;
+      --muted: #4b5563;
+      --bg: #f8fafc;
+      --accent: #0f766e;
+    }
+
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.35;
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 24px auto;
+      background: #fff;
+      padding: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+    }
+
+    .subtext {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 2px 0;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      padding: 12px;
+      background: #fcfffe;
+    }
+
+    .card-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .card-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      font-size: 13px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f3f4f6;
+      text-align: left;
+    }
+
+    td.num, th.num {
+      text-align: right;
+    }
+
+    .note {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      background: #fafafa;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .footer {
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+
+    .actions {
+      margin-bottom: 16px;
+    }
+
+    .print-btn {
+      border: 0;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page {
+        margin: 0;
+        border: 0;
+        padding: 0;
+        max-width: none;
+      }
+
+      .actions {
+        display: none;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .header {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="actions">
+      <button class="print-btn" onclick="window.print()">Print Report</button>
+    </div>
+
+    <div class="header">
+      <div>
+        <h1>Medicine Dispatch Report</h1>
+        <div class="subtext">Date Range: 01 March 2026 to 31 March 2026</div>
+        <div class="subtext">Timezone: Asia/Calcutta</div>
+        <div class="subtext">Basis: Orders dispatched in the selected period (`dispatchedAt`)</div>
+      </div>
+      <div>
+        <div class="subtext">Generated: 31 March 2026</div>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="card">
+        <div class="card-label">Total Orders</div>
+        <div class="card-value">574</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Units</div>
+        <div class="card-value">3840</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Unique Products</div>
+        <div class="card-value">33</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Delivered Summary</div>
+        <div class="card-value">231 / 1962</div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Product-wise Dispatch Quantity</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>S.No.</th>
+          <th>Product</th>
+          <th class="num">Quantity</th>
+          <th class="num">Orders</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Ostrich-Cap</td><td class="num">925</td><td class="num">40</td></tr>
+        <tr><td>2</td><td>Spray Oil</td><td class="num">891</td><td class="num">448</td></tr>
+        <tr><td>3</td><td>Gaumutra</td><td class="num">673</td><td class="num">19</td></tr>
+        <tr><td>4</td><td>Amlex</td><td class="num">375</td><td class="num">9</td></tr>
+        <tr><td>5</td><td>Black pills</td><td class="num">225</td><td class="num">9</td></tr>
+        <tr><td>6</td><td>Nadiyog</td><td class="num">117</td><td class="num">117</td></tr>
+        <tr><td>7</td><td>Oil</td><td class="num">114</td><td class="num">68</td></tr>
+        <tr><td>8</td><td>Naskhol</td><td class="num">101</td><td class="num">101</td></tr>
+        <tr><td>9</td><td>Vedic-Cap</td><td class="num">81</td><td class="num">22</td></tr>
+        <tr><td>10</td><td>Ostrich-</td><td class="num">60</td><td class="num">1</td></tr>
+        <tr><td>11</td><td>Pain Over Capsule</td><td class="num">57</td><td class="num">57</td></tr>
+        <tr><td>12</td><td>Naskhol Capsule</td><td class="num">40</td><td class="num">40</td></tr>
+        <tr><td>13</td><td>Painover</td><td class="num">36</td><td class="num">36</td></tr>
+        <tr><td>14</td><td>Vena-V</td><td class="num">32</td><td class="num">32</td></tr>
+        <tr><td>15</td><td>Nadi Yog Capsule</td><td class="num">24</td><td class="num">24</td></tr>
+        <tr><td>16</td><td>yellow Cap</td><td class="num">15</td><td class="num">2</td></tr>
+        <tr><td>17</td><td>H.O.S.</td><td class="num">14</td><td class="num">5</td></tr>
+        <tr><td>18</td><td>Pain Snap Prash</td><td class="num">13</td><td class="num">13</td></tr>
+        <tr><td>19</td><td>Vedic Vain's Liquid</td><td class="num">11</td><td class="num">11</td></tr>
+        <tr><td>20</td><td>Tea-400</td><td class="num">9</td><td class="num">9</td></tr>
+        <tr><td>21</td><td>Pangasic Oil</td><td class="num">7</td><td class="num">7</td></tr>
+        <tr><td>22</td><td>Vedic-Tab</td><td class="num">5</td><td class="num">5</td></tr>
+        <tr><td>23</td><td>Ess. capsule</td><td class="num">3</td><td class="num">1</td></tr>
+        <tr><td>24</td><td>KamGold capsule</td><td class="num">3</td><td class="num">1</td></tr>
+        <tr><td>25</td><td>Nadiog</td><td class="num">1</td><td class="num">1</td></tr>
+        <tr><td>26</td><td>Ostrich-Red Oil</td><td class="num">1</td><td class="num">1</td></tr>
+        <tr><td>27</td><td>Other</td><td class="num">1</td><td class="num">1</td></tr>
+        <tr><td>28</td><td>Red Oil</td><td class="num">1</td><td class="num">1</td></tr>
+        <tr><td>29</td><td>Slim fit kit</td><td class="num">1</td><td class="num">1</td></tr>
+        <tr><td>30</td><td>Spray</td><td class="num">1</td><td class="num">1</td></tr>
+        <tr><td>31</td><td>Vedic Cap</td><td class="num">1</td><td class="num">1</td></tr>
+        <tr><td>32</td><td>Vedic Tab</td><td class="num">1</td><td class="num">1</td></tr>
+        <tr><td>33</td><td>Vena -V</td><td class="num">1</td><td class="num">1</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      Note: Product labels are shown exactly as stored in the database. Similar names such as
+      "Vedic-Cap" and "Vedic Cap", or "Vena-V" and "Vena -V", were not merged in this print file.
+    </div>
+
+    <div class="footer">
+      Report prepared from the database for March 2026 dispatch activity.
+      Delivered summary shown above means 231 delivered orders with 1962 total delivered units in the same date range.
+    </div>
+  </div>
+</body>
+</html>

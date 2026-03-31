@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌿 Herb On Naturals - Login</title>
+
+    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+
+    <link rel="preload" href="styles.css" as="style">
+    <link rel="preload" href="js/core/config.js" as="script">
+    <link rel="preload" href="js/core/session.js" as="script">
+
+    <script src="https://cdn.tailwindcss.com" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'">
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="app">
+
+        <!-- LOGIN SCREEN -->
+        <div id="loginScreen" class="min-h-screen flex items-center justify-center relative overflow-hidden py-10 px-4">
+            <!-- Decorative Background Elements -->
+            <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+                <div class="absolute top-[-10%] left-[-10%] w-64 h-64 md:w-96 md:h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-blob"></div>
+                <div class="absolute top-[-10%] right-[-10%] w-64 h-64 md:w-96 md:h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-blob animation-delay-2000"></div>
+                <div class="absolute -bottom-32 left-20 w-64 h-64 md:w-96 md:h-96 bg-sky-300 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-blob animation-delay-4000"></div>
+            </div>
+
+            <!-- Main Card -->
+            <div class="relative z-10 w-full max-w-md animate-fadeIn">
+                <div class="glass-card p-6 md:p-10 shadow-2xl border border-white/50 backdrop-blur-xl bg-white/40">
+                    <!-- Header / Logo -->
+                    <div class="text-center mb-8">
+                        <div class="w-full max-w-sm mx-auto mb-6 mt-6 flex items-center justify-center px-4 relative">
+                            <!-- Animated Gradient Border -->
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-300 via-indigo-300 to-sky-300 rounded-3xl blur-xl opacity-50 animate-pulse"></div>
+                            <div class="relative bg-white rounded-3xl p-6 shadow-2xl logo-float overflow-hidden">
+                                <img src="logo.png" alt="Herb On Naturals"
+                                    class="w-full h-auto object-contain drop-shadow-2xl relative z-10">
+                                <!-- Gradient Overlay on Logo -->
+                                <div class="absolute inset-0 bg-gradient-to-br from-blue-300/20 via-indigo-300/15 to-sky-300/20 mix-blend-overlay pointer-events-none z-20"></div>
+                                <!-- Animated Light Sweep -->
+                                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-shimmer pointer-events-none z-30"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="loginMessage" class="hidden mb-6 p-4 rounded-xl text-sm text-center shadow-sm"></div>
+
+                    <!-- Modern Tabs -->
+                    <div class="flex p-1.5 bg-gray-100/80 rounded-2xl mb-8 relative shadow-inner">
+                        <button type="button" onclick="switchLoginTab('employee')" id="loginTabEmployee"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 shadow-sm tab-active z-10">
+                            👤 Emp
+                        </button>
+                        <button type="button" onclick="switchLoginTab('department')" id="loginTabDept"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:text-gray-700 transition-all duration-300 z-10">
+                            🏢 Dept
+                        </button>
+                        <button type="button" onclick="switchLoginTab('admin')" id="loginTabAdmin"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:text-gray-700 transition-all duration-300 z-10">
+                            🔐 Admin
+                        </button>
+                    </div>
+
+                    <!-- Employee Login Form -->
+                    <div id="employeeLoginForm" class="space-y-5">
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🪪</span>
+                            </div>
+                            <input type="text" id="empLoginId" placeholder="Employee ID"
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                        </div>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🔑</span>
+                            </div>
+                            <input type="password" id="empLoginPass" placeholder="Password"
+                                class="w-full pl-11 pr-12 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
+                                onkeydown="if(event.key==='Enter') employeeLogin()">
+                            <button type="button" onclick="togglePassword('empLoginPass', this)"
+                                class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                <span class="text-lg">👁️</span>
+                            </button>
+                        </div>
+
+                        <button type="button" onclick="employeeLogin()"
+                            class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            Sign In
+                        </button>
+
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" onclick="showRegisterScreen()"
+                                class="flex-1 bg-white border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                                ✚ New Account
+                            </button>
+                            <button type="button" onclick="showResetScreen()"
+                                class="flex-1 bg-white border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                                🔄 Forgot Pass
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Department Login Form -->
+                    <div id="departmentLoginForm" class="hidden space-y-5">
+                        <div class="flex gap-3 mb-2 p-1 bg-gray-50 rounded-xl">
+                            <button type="button" onclick="setDeptType('verification')" id="deptTypeVerify"
+                                class="flex-1 py-2.5 rounded-lg text-sm font-bold bg-white text-blue-600 shadow-sm border border-blue-100 transition-all">
+                                📍 Verify
+                            </button>
+                            <button type="button" onclick="setDeptType('dispatch')" id="deptTypeDispatch"
+                                class="flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 hover:bg-white/50 transition-all">
+                                📦 Dispatch
+                            </button>
+                            <button type="button" onclick="setDeptType('delivery')" id="deptTypeDelivery"
+                                class="flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 hover:bg-white/50 transition-all">
+                                🚚 Delivery
+                            </button>
+                        </div>
+
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🏢</span>
+                            </div>
+                            <input type="text" id="deptLoginId" placeholder="Department ID"
+                                class="w-full pl-11 pr-4 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium">
+                        </div>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="text-gray-400 group-focus-within:text-blue-500 transition-colors">🔑</span>
+                            </div>
+                            <input type="password" id="deptLoginPass" placeholder="Department Password"
+                                class="w-full pl-11 pr-12 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
+                                onkeydown="if(event.key==='Enter') departmentLogin()">
+                            <button type="button" onclick="togglePassword('deptLoginPass', this)"
+                                class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                <span class="text-lg">👁️</span>
+                            </button>
+                        </div>
+
+                        <button type="button" onclick="departmentLogin()"
+                            class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            Login to Panel
+                        </button>
+                    </div>
+
+                    <!-- Admin Login Form -->
+                    <div id="adminLoginForm" class="hidden space-y-5">
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center mb-2">
+                            <span class="text-3xl">🛡️</span>
+                            <p class="text-xs text-gray-500 mt-2 font-medium uppercase tracking-wider">Restricted Access</p>
+                        </div>
+
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span class="text-gray-400 group-focus-within:text-gray-800 transition-colors">🔒</span>
+                            </div>
+                            <input type="password" id="adminLoginPass" placeholder="Admin Access Key"
+                                class="w-full pl-11 pr-12 py-3.5 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-600 focus:border-gray-600 outline-none transition-all placeholder-gray-400 font-medium"
+                                onkeydown="if(event.key==='Enter') adminLogin()">
+                            <button type="button" onclick="togglePassword('adminLoginPass', this)"
+                                class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                <span class="text-lg">👁️</span>
+                            </button>
+                        </div>
+
+                        <button type="button" onclick="adminLogin()"
+                            class="w-full bg-gradient-to-r from-gray-700 to-gray-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            Authenticate
+                        </button>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="mt-8 text-center">
+                        <p class="text-xs text-gray-400 font-medium">© 2025 Herb On Naturals System</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REGISTER SCREEN -->
+        <div id="registerScreen" class="hidden max-w-md mx-auto mt-10 glass-card p-8 animate-fadeIn">
+            <h2 class="text-xl font-bold text-center mb-6">✚ New Employee Registration</h2>
+            <div id="registerMessage" class="hidden mb-4 p-3 rounded-xl text-sm"></div>
+            <div class="space-y-4">
+                <input type="text" id="regName" placeholder="Full Name" class="w-full border-2 rounded-xl px-4 py-3">
+                <input type="text" id="regId" placeholder="Employee ID (e.g., EMP005)" class="w-full border-2 rounded-xl px-4 py-3">
+                <input type="password" id="regPass" placeholder="Password" class="w-full border-2 rounded-xl px-4 py-3">
+                <input type="password" id="regConfirmPass" placeholder="Confirm Password" class="w-full border-2 rounded-xl px-4 py-3">
+                <button type="button" onclick="registerEmployee()" class="w-full btn-primary text-white py-3 rounded-xl font-semibold">✓ Register</button>
+                <button type="button" onclick="showLoginScreen()" class="w-full bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">← Back to Login</button>
+            </div>
+        </div>
+
+        <!-- RESET PASSWORD SCREEN -->
+        <div id="resetScreen" class="hidden max-w-md mx-auto mt-10 glass-card p-8 animate-fadeIn">
+            <h2 class="text-xl font-bold text-center mb-6 text-red-500">🔄 Reset Password</h2>
+            <div id="resetMessage" class="hidden mb-4 p-3 rounded-xl text-sm"></div>
+            <div class="space-y-4">
+                <input type="text" id="resetId" placeholder="Employee ID" class="w-full border-2 rounded-xl px-4 py-3">
+                <input type="password" id="resetNewPass" placeholder="New Password" class="w-full border-2 rounded-xl px-4 py-3">
+                <input type="password" id="resetConfirmPass" placeholder="Confirm New Password" class="w-full border-2 rounded-xl px-4 py-3">
+                <button type="button" onclick="resetPassword()" class="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700">🔒 Reset Password</button>
+                <button type="button" onclick="showLoginScreen()" class="w-full bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">← Back to Login</button>
+            </div>
+        </div>
+
+    </div><!-- end #app -->
+
+    <!-- Core Scripts -->
+    <script src="js/core/config.js"></script>
+    <script src="js/core/session.js"></script>
+    <script src="js/core/utils.js"></script>
+    <script src="js/core/page-links.js?v=2" defer></script>
+    <script src="js/common.js?v=2.1"></script>
+    <script src="app.js?v=DashboardFix-v2" defer></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <!-- Auto-Init: Redirect if already logged in -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('[Login] Checking existing session...');
+
+            // loadSession is from session.js/app.js
+            var sessionLoaded = (typeof loadSession === 'function') ? loadSession() : false;
+
+            if (sessionLoaded) {
+                var type = (typeof currentUserType !== 'undefined') ? currentUserType : null;
+                console.log('[Login] Already logged in as:', type);
+
+                if (type === 'admin') {
+                    window.location.href = '/admin';
+                    return;
+                } else if (type === 'employee') {
+                    window.location.href = '/employee';
+                    return;
+                } else if (type === 'department') {
+                    var deptType = (typeof currentDeptType !== 'undefined') ? currentDeptType : 'verification';
+                    if (deptType === 'dispatch') window.location.href = '/dispatch';
+                    else if (deptType === 'delivery') window.location.href = '/delivery';
+                    else window.location.href = '/verification';
+                    return;
+                }
+            }
+
+            // Not logged in — show login screen normally
+            var loginScreen = document.getElementById('loginScreen');
+            if (loginScreen) loginScreen.classList.remove('hidden');
+
+            // Default to Employee tab
+            if (typeof switchLoginTab === 'function') switchLoginTab('employee');
+
+            console.log('[Login] Showing login form.');
+        });
+
+        // Helper functions used by login form
+        function showLoginScreen() {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('registerScreen').classList.add('hidden');
+            document.getElementById('resetScreen').classList.add('hidden');
+        }
+        function showRegisterScreen() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('registerScreen').classList.remove('hidden');
+            document.getElementById('resetScreen').classList.add('hidden');
+        }
+        function showResetScreen() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('registerScreen').classList.add('hidden');
+            document.getElementById('resetScreen').classList.remove('hidden');
+        }
+        function togglePassword(inputId, btn) {
+            var input = document.getElementById(inputId);
+            if (input) {
+                input.type = (input.type === 'password') ? 'text' : 'password';
+            }
+        }
+    </script>
+</body>
+
+</html>
