@@ -2,23 +2,33 @@ const express = require('express');
 const router = express.Router();
 const { AppConfig } = require('../models');
 const { hashPassword, comparePassword } = require('../auth');
+const {
+    DEFAULT_PRODUCT_NAMES,
+    isCatalogProductName,
+    normalizeConfiguredProducts,
+    normalizeProductName,
+    simplifyProductKey
+} = require('../utils/product-catalog');
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin@2025';
 const LEGACY_DEFAULT_ADMIN_PASSWORDS = ['admin@herb2025', 'admin123'];
 
-// Default product list (used for first-time DB initialization)
-const DEFAULT_PRODUCTS = [
-    "Amlex", "Black pills", "Blue & White capsule", "Blue&White Cap",
-    "Ess Oil", "Ess. Cap", "Ess. capsule", "Gaumutra", "H.O.S.",
-    "Herb On Naturals Herbal Tea", "Herb On Vedic Plus Capsule",
-    "Herbon Daibayog Cap", "Herbon Tulsi Paawan", "Herbon Urja Rasayan Capsule",
-    "HOS Powder", "KamGold capsule", "kamGold Oil", "KamGold Prash",
-    "Mind Fresh Tea", "Nadi Yog Capsule", "Nadiyog", "Naskhol",
-    "Naskhol Capsule", "Oil", "Ostrich-Cap", "Ostrich-Red Oil",
-    "Pain Over Capsule", "Pain Snap Prash", "Painover", "Pangasic Oil",
-    "Same Medicine", "Slim fit kit", "Spray Oil", "Tea-1500",
-    "Tea-1800", "Tea-400", "Vedic Vain's Liquid", "Vedic-Cap",
-    "Vedic-Tab", "Vena-V", "Yellow capsule", "Yellow Cpasule"
-];
+function productListsMatch(currentProducts = [], nextProducts = []) {
+    if (currentProducts.length !== nextProducts.length) {
+        return false;
+    }
+
+    return currentProducts.every((product, index) => {
+        const nextProduct = nextProducts[index];
+        if (!nextProduct) {
+            return false;
+        }
+
+        return String(product?.name || '').trim() === String(nextProduct.name || '').trim()
+            && String(product?.category || 'General').trim() === String(nextProduct.category || 'General').trim()
+            && (product?.active !== false) === (nextProduct.active !== false)
+            && Number(product?.order || 0) === Number(nextProduct.order || 0);
+    });
+}
 
 // Helper: Get or create AppConfig document
 async function getOrCreateConfig() {
@@ -29,11 +39,18 @@ async function getOrCreateConfig() {
         config = new AppConfig({
             configId: 'main',
             adminPassword: hashed,
-            products: DEFAULT_PRODUCTS.map((name, i) => ({ name, order: i, active: true }))
+            products: normalizeConfiguredProducts(DEFAULT_PRODUCT_NAMES, { strictCatalog: true })
         });
         await config.save();
         console.log('✅ AppConfig initialized in DB with default admin password & products');
     }
+    const repairedProducts = normalizeConfiguredProducts(config.products || [], { strictCatalog: true });
+    if (!productListsMatch(config.products || [], repairedProducts)) {
+        config.products = repairedProducts;
+        await config.save();
+        console.log('Product master repaired and synced with canonical employee panel list');
+    }
+
     return config;
 }
 
@@ -147,15 +164,24 @@ router.post('/products', async (req, res) => {
         }
 
         const config = await getOrCreateConfig();
+        const normalizedName = normalizeProductName(
+            name,
+            [...(config.products || []).map((product) => product.name), ...DEFAULT_PRODUCT_NAMES]
+        );
+        const normalizedKey = simplifyProductKey(normalizedName);
+
+        if (!isCatalogProductName(normalizedName)) {
+            return res.status(400).json({ success: false, message: 'Only approved product names are allowed.' });
+        }
 
         // Check duplicate
-        const exists = config.products.some(p => p.name.toLowerCase() === name.trim().toLowerCase());
+        const exists = config.products.some((product) => simplifyProductKey(product.name) === normalizedKey);
         if (exists) {
             return res.status(400).json({ success: false, message: 'Product already exists!' });
         }
 
         config.products.push({
-            name: name.trim(),
+            name: normalizedName,
             category: category || 'General',
             active: true,
             order: config.products.length
@@ -179,7 +205,27 @@ router.put('/products/:id', async (req, res) => {
         const product = config.products.id(req.params.id);
         if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
-        if (name !== undefined) product.name = name.trim();
+        if (name !== undefined) {
+            const normalizedName = normalizeProductName(
+                name,
+                [...(config.products || []).map((item) => item.name), ...DEFAULT_PRODUCT_NAMES]
+            );
+            const normalizedKey = simplifyProductKey(normalizedName);
+
+            if (!isCatalogProductName(normalizedName)) {
+                return res.status(400).json({ success: false, message: 'Only approved product names are allowed.' });
+            }
+
+            const duplicate = config.products.some((item) => {
+                return item._id.toString() !== req.params.id && simplifyProductKey(item.name) === normalizedKey;
+            });
+
+            if (duplicate) {
+                return res.status(400).json({ success: false, message: 'Product already exists!' });
+            }
+
+            product.name = normalizedName;
+        }
         if (category !== undefined) product.category = category;
         if (active !== undefined) product.active = active;
 

@@ -46,19 +46,9 @@ function getCurrentEmployeeName() {
     return normalizeEmployeeUser(currentUser)?.name || '';
 }
 
-const EMPLOYEE_PRODUCT_FALLBACK = [
-    'Amlex', 'Black pills', 'Blue & White capsule', 'Blue&White Cap',
-    'Ess Oil', 'Ess. Cap', 'Ess. capsule', 'Gaumutra', 'H.O.S.',
-    'Herb On Naturals Herbal Tea', 'Herb On Vedic Plus Capsule',
-    'Herbon Daibayog Cap', 'Herbon Tulsi Paawan', 'Herbon Urja Rasayan Capsule',
-    'HOS Powder', 'KamGold capsule', 'kamGold Oil', 'KamGold Prash',
-    'Mind Fresh Tea', 'Nadi Yog Capsule', 'Nadiyog', 'Naskhol',
-    'Naskhol Capsule', 'Oil', 'Ostrich-Cap', 'Ostrich-Red Oil',
-    'Pain Over Capsule', 'Pain Snap Prash', 'Painover', 'Pangasic Oil',
-    'Same Medicine', 'Slim fit kit', 'Spray Oil', 'Tea-1500',
-    'Tea-1800', 'Tea-400', "Vedic Vain's Liquid", 'Vedic-Cap',
-    'Vedic-Tab', 'Vena-V', 'Yellow capsule', 'Yellow Cpasule'
-].map((name) => ({ name, price: 0 }));
+const EMPLOYEE_PRODUCT_FALLBACK = Array.isArray(window.DEFAULT_PRODUCT_LIST)
+    ? window.DEFAULT_PRODUCT_LIST.slice()
+    : [];
 
 function escapeEmployeeProductValue(value) {
     return String(value || '')
@@ -269,7 +259,7 @@ function initOrderForm() {
     if (timeInput) timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
-// PRODUCT_LIST comes from js/core/config.js (source of truth - 42 products)
+// PRODUCT_LIST comes from js/core/config.js (source of truth for employee products)
 // No duplicate list here — uses window.PRODUCT_LIST
 
 function addItem() {

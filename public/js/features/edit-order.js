@@ -321,7 +321,7 @@ async function saveEditOrder() {
 
             // Reload appropriate list
             if (typeof loadDeptOrders === 'function') {
-                setTimeout(() => loadDeptOrders(), 1000);
+                setTimeout(() => loadDeptOrders(null, { preserveScroll: true }), 1000);
             } else if (typeof loadAdminPending === 'function') {
                 setTimeout(() => location.reload(), 1000);
             }

@@ -4579,7 +4579,46 @@ function clearDispatchReadyFilters() {
     loadDeptOrders(1);
 }
 
-async function loadDeptOrders(page) {
+function getDeptMainScrollArea() {
+    return document.getElementById('deptMainScrollArea')
+        || document.querySelector('#departmentPanel .h-screen.flex.flex-col.overflow-hidden > .flex-1.overflow-y-auto')
+        || document.scrollingElement
+        || document.documentElement;
+}
+
+function captureDeptScrollState() {
+    const scrollArea = getDeptMainScrollArea();
+    const isWindowScroll = scrollArea === document.body
+        || scrollArea === document.documentElement
+        || scrollArea === document.scrollingElement;
+
+    return {
+        isWindowScroll,
+        scrollTop: isWindowScroll ? window.scrollY : scrollArea.scrollTop
+    };
+}
+
+function restoreDeptScrollState(scrollState) {
+    if (!scrollState) return;
+
+    const applyScroll = () => {
+        const scrollArea = getDeptMainScrollArea();
+        if (!scrollArea) return;
+
+        if (scrollState.isWindowScroll) {
+            window.scrollTo(0, scrollState.scrollTop);
+            return;
+        }
+
+        scrollArea.scrollTop = scrollState.scrollTop;
+    };
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(applyScroll);
+    });
+}
+
+async function loadDeptOrders(page, options = {}) {
     // DELEGATED: Fast paginated version loaded from department.js
     // Keep verification/dispatch in app.js because these standalone pages rely on tab-specific filters/stats.
     if (window._deptLoadDeptOrders && currentDeptType !== 'verification' && currentDeptType !== 'dispatch') {
@@ -4593,6 +4632,8 @@ async function loadDeptOrders(page) {
     const container = document.getElementById(containerId);
     const itemsPerPage = getDeptItemsPerPage();
     const requestLimit = (isVerification || isDispatch) ? 0 : itemsPerPage;
+    const shouldPreserveScroll = Boolean(options && options.preserveScroll);
+    const scrollState = shouldPreserveScroll ? captureDeptScrollState() : null;
 
     try {
         let currentPage = page || 1;
@@ -4671,6 +4712,7 @@ async function loadDeptOrders(page) {
                         ? `No ${rangeLabel} found for "${searchValue}"`
                         : `No ${rangeLabel} found`;
             container.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400">${emptyLabel}</div>`;
+            restoreDeptScrollState(scrollState);
             return;
         }
 
@@ -4678,12 +4720,14 @@ async function loadDeptOrders(page) {
         if (!isVerification && !isDispatch) {
             renderPaginationControls(container, currentPage, totalPages, 'loadDeptOrders');
         }
+        restoreDeptScrollState(scrollState);
     } catch (e) {
         console.error(e);
         if (container) {
             const errorLabel = isVerification ? 'pending' : isDispatch ? 'ready-to-dispatch' : 'department';
             container.innerHTML = `<div class="col-span-full text-center py-12 text-red-500">Failed to load ${errorLabel} orders</div>`;
         }
+        restoreDeptScrollState(scrollState);
     }
 }
 
@@ -5055,7 +5099,7 @@ async function verifyAddress(orderId, order = null) {
                 whatsappData
             );
             setTimeout(() => {
-                loadDeptOrders();
+                loadDeptOrders(null, { preserveScroll: true });
                 loadVerificationHistory();
             }, 1000);
         }
@@ -5097,7 +5141,7 @@ async function cancelOrder(orderId) {
                 '❌',
                 '#ef4444'
             );
-            setTimeout(() => loadDeptOrders(), 1000);
+            setTimeout(() => loadDeptOrders(null, { preserveScroll: true }), 1000);
         } else {
             alert('Failed to cancel order: ' + data.message);
         }
@@ -5875,7 +5919,7 @@ function _oldEditDispatchOrder(orderId, order) {
                 modal.remove();
                 showSuccessPopup('Order Updated!', 'Order details successfully update ho gaye', '✅', '#10b981');
                 setTimeout(() => {
-                    loadDeptOrders();
+                    loadDeptOrders(null, { preserveScroll: true });
                     loadDispatchHistory();
                 }, 1000);
             } else {
@@ -6233,7 +6277,7 @@ async function saveEditOrder() {
 
             // Reload appropriate list
             if (typeof loadDeptOrders === 'function') {
-                setTimeout(() => loadDeptOrders(), 1000);
+                setTimeout(() => loadDeptOrders(null, { preserveScroll: true }), 1000);
             } else if (typeof loadAdminPending === 'function') {
                 setTimeout(() => location.reload(), 1000);
             }
@@ -9641,7 +9685,7 @@ async function submitHoldOrder(orderId) {
             if (card) card.remove();
 
             const activeTab = document.querySelector('[id^="verificationTab"].tab-active')?.id.replace("verificationTab", "").toLowerCase();
-            if (activeTab === 'pending') loadDeptOrders();
+            if (activeTab === 'pending') loadDeptOrders(null, { preserveScroll: true });
 
             showSuccessPopup(
                 'Order On Hold! ⏸️',
@@ -10558,11 +10602,6 @@ async function saveOrderRemark(orderId) {
                 '📝',
                 '#f59e0b'
             );
-            setTimeout(() => {
-                if (typeof loadDeptOrders === 'function') {
-                    loadDeptOrders();
-                }
-            }, 1000);
         } else {
             console.error('❌ API returned error:', data.message);
             showMessage('❌ ' + data.message, 'error', 'deptMessage');

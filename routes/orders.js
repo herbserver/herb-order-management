@@ -8,6 +8,7 @@ const { validateOrderCreation } = require('../validators');
 const { readJSON, writeJSON } = require('../utils/fileHelpers');
 const { trackSpeedPost } = require('../utils/speedpost-tracker');
 const { trackBlueDart } = require('../utils/bluedart-tracker');
+const { normalizeProductName } = require('../utils/product-catalog');
 const socketManager = require('../socket-manager'); // Import Socket Manager
 
 const DATA_DIR = path.join(__dirname, '../data');
@@ -22,6 +23,32 @@ const apiLimiter = rateLimit({
 });
 
 // Note: Using centralized fileHelpers module for JSON operations
+
+function normalizeOrderItems(rawItems) {
+    if (!Array.isArray(rawItems)) {
+        return rawItems;
+    }
+
+    return rawItems.map((item) => {
+        if (typeof item === 'string') {
+            return normalizeProductName(item);
+        }
+
+        if (!item || typeof item !== 'object') {
+            return item;
+        }
+
+        const currentName = item.product || item.description || item.name || '';
+        const normalizedName = normalizeProductName(currentName);
+
+        return {
+            ...item,
+            ...(item.product !== undefined ? { product: normalizedName } : {}),
+            ...(item.description !== undefined ? { description: normalizedName } : {}),
+            ...(item.name !== undefined ? { name: normalizedName } : {})
+        };
+    });
+}
 
 // Create Order
 // Check for Duplicate Order (by mobile number) - FAST DIRECT QUERY
@@ -106,6 +133,7 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
 
         const newOrder = {
             ...orderData,
+            items: normalizeOrderItems(orderData.items),
             employee: employeeName,
             orderId,
             orderType, // Saved explicitly
@@ -144,6 +172,9 @@ router.put('/:orderId', async (req, res) => {
         }
 
         const updates = { ...req.body, updatedAt: new Date().toISOString() };
+        if (updates.items !== undefined) {
+            updates.items = normalizeOrderItems(updates.items);
+        }
         // Protect critical fields
         delete updates.orderId;
         delete updates.timestamp;
@@ -1030,13 +1061,13 @@ router.get('/export', async (req, res) => {
                     // Normalize item to arrays of product names/objects
                     if (typeof item === 'string') {
                         // Handle "Product A, Product B" string inside array or standalone
-                        const parts = item.split(',').map(s => s.trim()).filter(s => s);
+                        const parts = item.split(',').map(s => normalizeProductName(s.trim())).filter(s => s);
                         parts.forEach(part => {
                             if (counts[part]) counts[part]++;
                             else counts[part] = 1;
                         });
                     } else if (typeof item === 'object' && item !== null) {
-                        const name = (item.product || item.description || 'Unknown').trim();
+                        const name = normalizeProductName((item.product || item.description || 'Unknown').trim());
                         const qty = parseInt(item.quantity || item.qty || 1) || 1;
 
                         if (counts[name]) counts[name] += qty;
@@ -1048,14 +1079,14 @@ router.get('/export', async (req, res) => {
 
             if (Array.isArray(order.items)) {
                 const itemCounts = aggregateItems(order.items);
-                // User requested format: "Spray Oil (x3), Painover (x1)"
+                // User requested format: "Spray Oil (x3), PainOver Capsule (x1)"
                 productNames = Object.entries(itemCounts)
                     .map(([name, count]) => `${name} (x${count})`)
                     .join(', ');
 
             } else if (typeof order.items === 'string' && order.items.trim().length > 0) {
                 // Handling pure string case (just in case)
-                const parts = order.items.split(',').map(s => s.trim()).filter(s => s);
+                const parts = order.items.split(',').map(s => normalizeProductName(s.trim())).filter(s => s);
                 const itemCounts = {};
                 parts.forEach(part => {
                     if (itemCounts[part]) itemCounts[part]++;

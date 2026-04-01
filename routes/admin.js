@@ -2,7 +2,13 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const dataAccess = require('../dataAccess');
+const { AppConfig } = require('../models');
 const { readJSON } = require('../utils/fileHelpers');
+const {
+    DEFAULT_PRODUCT_NAMES,
+    normalizeConfiguredProducts,
+    normalizeProductName
+} = require('../utils/product-catalog');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
@@ -40,11 +46,26 @@ function normalizeInventoryItemName(name) {
     return String(name || '').replace(/\s+/g, ' ').trim();
 }
 
-function extractInventoryItems(rawItems) {
+async function getInventoryReferenceProducts() {
+    try {
+        const config = await AppConfig.findOne({ configId: 'main' }).lean();
+        const normalizedProducts = normalizeConfiguredProducts(config?.products || [], { strictCatalog: true });
+        const activeProductNames = normalizedProducts
+            .filter((product) => product.active !== false)
+            .map((product) => product.name);
+
+        return activeProductNames.length > 0 ? activeProductNames : DEFAULT_PRODUCT_NAMES;
+    } catch (error) {
+        console.error('Inventory product reference load error:', error.message);
+        return DEFAULT_PRODUCT_NAMES;
+    }
+}
+
+function extractInventoryItems(rawItems, referenceProducts = DEFAULT_PRODUCT_NAMES) {
     const items = [];
 
     const pushItem = (name, quantity) => {
-        const normalizedName = normalizeInventoryItemName(name);
+        const normalizedName = normalizeProductName(normalizeInventoryItemName(name), referenceProducts);
         if (!normalizedName) return;
 
         const parsedQty = Number.parseInt(quantity, 10);
@@ -72,7 +93,7 @@ function extractInventoryItems(rawItems) {
     return items;
 }
 
-function summarizeInventoryOrders(orders, dateField) {
+function summarizeInventoryOrders(orders, dateField, referenceProducts = DEFAULT_PRODUCT_NAMES) {
     const dailyMap = new Map();
     const productMap = new Map();
     let processedOrders = 0;
@@ -86,7 +107,7 @@ function summarizeInventoryOrders(orders, dateField) {
 
         processedOrders += 1;
         const orderKey = order.orderId || `order-${dayKey}-${index}`;
-        const items = extractInventoryItems(order.items);
+        const items = extractInventoryItems(order.items, referenceProducts);
 
         if (!dailyMap.has(dayKey)) {
             dailyMap.set(dayKey, {
@@ -424,7 +445,8 @@ router.get('/inventory-summary', async (req, res) => {
         }
 
         const orders = await fetchInventoryOrders(config, startDate, endDate);
-        const report = summarizeInventoryOrders(orders, config.dateField);
+        const referenceProducts = await getInventoryReferenceProducts();
+        const report = summarizeInventoryOrders(orders, config.dateField, referenceProducts);
 
         res.json({
             success: true,
