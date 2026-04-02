@@ -132,6 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize UI
     initOrderForm();
     loadMyOrders();
+    if (typeof initializeOrderNotifications === 'function') {
+        initializeOrderNotifications();
+    }
 
     // Set Name
     const nameEl = document.getElementById('empNameDisplay');

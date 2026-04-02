@@ -50,6 +50,94 @@ function normalizeOrderItems(rawItems) {
     });
 }
 
+function normalizeStatusText(status) {
+    return String(status || '').trim().toLowerCase();
+}
+
+function isHighPriorityOrderAlert({ status, trackingStatus, source }) {
+    const normalizedStatus = normalizeStatusText(status);
+    const normalizedTracking = normalizeStatusText(trackingStatus);
+    const normalizedSource = String(source || '').trim().toLowerCase();
+
+    if (normalizedSource === 'delivery-department') return true;
+    if (normalizedStatus.includes('out for delivery')) return true;
+    if (normalizedStatus === 'delivered' || normalizedStatus === 'rto') return true;
+    if (normalizedTracking.includes('out for delivery')) return true;
+
+    return false;
+}
+
+function buildOrderAlertMessage(previousOrder, updatedOrder, source) {
+    const previousStatus = previousOrder?.status || '';
+    const currentStatus = updatedOrder?.status || '';
+    const normalizedSource = String(source || '').toLowerCase();
+
+    if (previousStatus && currentStatus && previousStatus !== currentStatus) {
+        return `${previousStatus} -> ${currentStatus}`;
+    }
+
+    if (normalizedSource === 'delivery-department' && currentStatus === 'Delivered') {
+        return 'Delivery department marked order as Delivered';
+    }
+    if (normalizedSource === 'delivery-department' && currentStatus === 'RTO') {
+        return 'Delivery department marked order as RTO';
+    }
+    if (normalizedSource === 'employee-delivery-request') {
+        return 'Delivery request submitted';
+    }
+
+    return currentStatus ? `Status: ${currentStatus}` : 'Order details updated';
+}
+
+function buildOrderAlertSignature(updatedOrder) {
+    return [
+        updatedOrder?.status || '',
+        updatedOrder?.tracking?.currentStatus || '',
+        updatedOrder?.verificationRemark?.text || '',
+        updatedOrder?.deliveryRequestedAt || '',
+        updatedOrder?.holdDetails?.holdReason || '',
+        updatedOrder?.holdDetails?.holdAt || '',
+        updatedOrder?.dispatchedAt || '',
+        updatedOrder?.deliveredAt || '',
+        updatedOrder?.rtoAt || '',
+        updatedOrder?.updatedAt || '',
+        updatedOrder?.remark || ''
+    ].join('|');
+}
+
+function emitOrderRealtime(updatedOrder, previousOrder = null, source = 'system') {
+    if (!updatedOrder) return;
+
+    try {
+        const io = socketManager.getIo();
+        io.emit('order-updated', updatedOrder);
+        io.emit('dashboard-update');
+
+        const employeeId = String(updatedOrder.employeeId || '').trim().toUpperCase();
+        if (!employeeId) return;
+
+        io.to(`employee:${employeeId}`).emit('employee-order-alert', {
+            orderId: updatedOrder.orderId,
+            employeeId,
+            customerName: updatedOrder.customerName || '',
+            previousStatus: previousOrder?.status || '',
+            currentStatus: updatedOrder.status || '',
+            trackingStatus: updatedOrder?.tracking?.currentStatus || '',
+            priority: isHighPriorityOrderAlert({
+                status: updatedOrder.status,
+                trackingStatus: updatedOrder?.tracking?.currentStatus,
+                source
+            }) ? 'high' : 'normal',
+            source,
+            message: buildOrderAlertMessage(previousOrder, updatedOrder, source),
+            signature: buildOrderAlertSignature(updatedOrder),
+            updatedAt: updatedOrder.updatedAt || new Date().toISOString()
+        });
+    } catch (e) {
+        console.error('Socket emit error:', e.message);
+    }
+}
+
 // Create Order
 // Check for Duplicate Order (by mobile number) - FAST DIRECT QUERY
 router.post('/check-duplicate', async (req, res) => {
@@ -183,12 +271,7 @@ router.put('/:orderId', async (req, res) => {
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
         console.log(`✏️ Order Updated: ${req.params.orderId}`);
 
-        // Emit Real-time Event
-        try {
-            const io = socketManager.getIo();
-            io.emit('order-updated', updated);
-            io.emit('dashboard-update');
-        } catch (e) { console.error('Socket emit error:', e.message); }
+        emitOrderRealtime(updated, order, 'generic-edit');
 
         res.json({ success: true, message: 'Order updated!', order: updated });
     } catch (error) {
@@ -399,6 +482,10 @@ router.get('/delivery-requests', async (req, res) => {
 router.post('/deliver', async (req, res) => {
     try {
         const { orderId, deliveredBy } = req.body;
+        const previousOrder = await dataAccess.getOrderById(orderId);
+        if (!previousOrder) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
         console.log(`\n📦 [DELIVERY REQUEST] Order: ${orderId}`);
 
         const updates = {
@@ -413,12 +500,7 @@ router.post('/deliver', async (req, res) => {
         if (updatedOrder) {
             console.log(`✅ Success: Order ${orderId} is now marked as Delivered.`);
 
-            // Emit Real-time Event
-            try {
-                const io = socketManager.getIo();
-                io.emit('order-updated', updatedOrder);
-                io.emit('dashboard-update');
-            } catch (e) { console.error('Socket emit error:', e.message); }
+            emitOrderRealtime(updatedOrder, previousOrder, 'delivery-department');
 
             res.json({ success: true, message: 'Order marked as delivered successfully', order: updatedOrder });
         } else {
@@ -435,6 +517,10 @@ router.post('/deliver', async (req, res) => {
 router.post('/rto', async (req, res) => {
     try {
         const { orderId, rtoReason, rtoBy } = req.body;
+        const previousOrder = await dataAccess.getOrderById(orderId);
+        if (!previousOrder) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
         console.log(`\n📦 [RTO REQUEST] Order: ${orderId}`);
 
         const updates = {
@@ -450,12 +536,7 @@ router.post('/rto', async (req, res) => {
         if (updatedOrder) {
             console.log(`✅ Success: Order ${orderId} is now marked as RTO.`);
 
-            // Emit Real-time Event
-            try {
-                const io = socketManager.getIo();
-                io.emit('order-updated', updatedOrder);
-                io.emit('dashboard-update');
-            } catch (e) { console.error('Socket emit error:', e.message); }
+            emitOrderRealtime(updatedOrder, previousOrder, 'delivery-department');
 
             res.json({ success: true, message: 'Order marked as RTO successfully', order: updatedOrder });
         } else {
@@ -521,6 +602,7 @@ router.post('/revert-delivered', async (req, res) => {
         if (updatedOrder) {
             console.log(`✅ Success: Order ${orderId} reverted from Delivered → ${newStatus}`);
             console.log(`   By: ${revertedBy || 'Admin'}`);
+            emitOrderRealtime(updatedOrder, order, 'delivery-department');
             res.json({
                 success: true,
                 message: `Order reverted to ${newStatus} successfully!`,
@@ -604,6 +686,7 @@ router.post('/update-tracking', async (req, res) => {
 
         if (updatedOrder) {
             console.log(`✅ Tracking updated for ${orderId}`);
+            emitOrderRealtime(updatedOrder, order, 'tracking-sync');
             res.json({ success: true, message: 'Tracking updated!', order: updatedOrder });
         } else {
             res.status(404).json({ success: false, message: 'Order not found' });
@@ -653,7 +736,8 @@ router.post('/track-indiapost/:orderId', async (req, res) => {
                 console.log(`✅ Order ${orderId} marked as Delivered via India Post tracking`);
             }
 
-            await dataAccess.updateOrder(orderId, updates);
+            const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+            emitOrderRealtime(updatedOrder, order, 'tracking-sync');
 
             res.json({
                 success: true,
@@ -732,7 +816,8 @@ router.post('/track-bluedart/:orderId', async (req, res) => {
                 console.log(`✅ Order ${orderId} marked as Delivered via BlueDart tracking`);
             }
 
-            await dataAccess.updateOrder(orderId, updates);
+            const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+            emitOrderRealtime(updatedOrder, order, 'tracking-sync');
 
             res.json({
                 success: true,
@@ -787,18 +872,14 @@ router.get('/:orderId', async (req, res) => {
 router.put('/:orderId/status', async (req, res) => {
     try {
         const { status, employee } = req.body;
+        const previousOrder = await dataAccess.getOrderById(req.params.orderId);
+        if (!previousOrder) return res.status(404).json({ success: false, message: 'Order not found!' });
         const updates = { status, updatedAt: new Date().toISOString() };
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
         if (!updated) return res.status(404).json({ success: false, message: 'Order not found!' });
         console.log(`🔄 Status Update: ${req.params.orderId} -> ${status} (${employee || 'Unknown'})`);
 
-        // Emit Real-time Event
-        try {
-            const io = socketManager.getIo();
-            io.emit('order-updated', updated);
-            io.emit('dashboard-update');
-        } catch (e) { console.error('Socket emit error:', e.message); }
-
+        emitOrderRealtime(updated, previousOrder, 'manual-status-update');
         res.json({ success: true, message: 'Status updated!', order: updated });
     } catch (error) {
         console.error('❌ Status update error:', error);
@@ -809,6 +890,8 @@ router.put('/:orderId/status', async (req, res) => {
 // Verify Address
 router.put('/:orderId/verify', async (req, res) => {
     try {
+        const previousOrder = await dataAccess.getOrderById(req.params.orderId);
+        if (!previousOrder) return res.status(404).json({ success: false, message: 'Order not found!' });
         const updates = {
             status: 'Address Verified',
             verifiedAt: new Date().toISOString(),
@@ -818,6 +901,7 @@ router.put('/:orderId/verify', async (req, res) => {
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
         if (!updated) return res.status(404).json({ success: false, message: 'Order not found!' });
         console.log(`✅ Address Verified: ${req.params.orderId}${updates.suggestedCourier ? ` | Suggested: ${updates.suggestedCourier}` : ''}`);
+        emitOrderRealtime(updated, previousOrder, 'verification-department');
         res.json({ success: true, message: 'Address verified!', order: updated });
     } catch (error) {
         console.error('❌ Verify error:', error);
@@ -829,6 +913,8 @@ router.put('/:orderId/verify', async (req, res) => {
 router.put('/:orderId/remark', async (req, res) => {
     try {
         const { remark, remarkBy } = req.body;
+        const previousOrder = await dataAccess.getOrderById(req.params.orderId);
+        if (!previousOrder) return res.status(404).json({ success: false, message: 'Order not found!' });
         const updates = {
             verificationRemark: {
                 text: remark || '',
@@ -839,6 +925,7 @@ router.put('/:orderId/remark', async (req, res) => {
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
         if (!updated) return res.status(404).json({ success: false, message: 'Order not found!' });
         console.log(`📝 Remark Added to ${req.params.orderId}`);
+        emitOrderRealtime(updated, previousOrder, 'verification-department');
         res.json({ success: true, message: 'Remark saved!', order: updated });
     } catch (error) {
         console.error('❌ Remark error:', error);
@@ -850,6 +937,8 @@ router.put('/:orderId/remark', async (req, res) => {
 router.put('/:orderId/dispatch', async (req, res) => {
     try {
         const { courier, trackingId, dispatchedBy } = req.body;
+        const previousOrder = await dataAccess.getOrderById(req.params.orderId);
+        if (!previousOrder) return res.status(404).json({ success: false, message: 'Order not found!' });
         const updates = {
             status: 'Dispatched',
             tracking: {
@@ -863,6 +952,7 @@ router.put('/:orderId/dispatch', async (req, res) => {
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
         if (!updated) return res.status(404).json({ success: false, message: 'Order not found!' });
         console.log(`🚚 Order Dispatched: ${req.params.orderId}`);
+        emitOrderRealtime(updated, previousOrder, 'dispatch-department');
         res.json({ success: true, message: 'Order dispatched!', order: updated });
     } catch (error) {
         console.error('❌ Dispatch error:', error);
@@ -916,6 +1006,7 @@ router.post('/:orderId/revert-dispatch', async (req, res) => {
         console.log(`🔙 Order Reverted: ${orderId} (Dispatched → Address Verified)`);
         console.log(`   Reason: ${reason || 'Not specified'}`);
         console.log(`   By: ${revertedBy || 'Dispatch Dept'}`);
+        emitOrderRealtime(updatedOrder, order, 'dispatch-department');
 
         res.json({
             success: true,
@@ -948,6 +1039,7 @@ router.post('/:orderId/cancel', async (req, res) => {
 
         const updatedOrder = await dataAccess.updateOrder(orderId, updates);
         console.log(`❌ Order Cancelled: ${orderId}`);
+        emitOrderRealtime(updatedOrder, order, 'verification-department');
         res.json({ success: true, message: 'Order cancelled successfully', order: updatedOrder });
     } catch (error) {
         console.error('❌ Cancel order error:', error);
@@ -974,6 +1066,7 @@ router.post('/:orderId/suggest-courier', async (req, res) => {
         };
 
         const updatedOrder = await dataAccess.updateOrder(orderId, updates);
+        emitOrderRealtime(updatedOrder, order, 'verification-department');
         res.json({ success: true, message: `Suggested ${courier} for dispatch`, order: updatedOrder });
     } catch (error) {
         console.error('❌ Suggest courier error:', error);
@@ -986,6 +1079,10 @@ router.put('/:orderId/hold', async (req, res) => {
     try {
         const { orderId } = req.params;
         const { holdReason, expectedDispatchDate, holdBy } = req.body;
+        const previousOrder = await dataAccess.getOrderById(orderId);
+        if (!previousOrder) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
 
         console.log(`\n⏸️ [HOLD REQUEST] Order: ${orderId}`);
 
@@ -1014,6 +1111,7 @@ router.put('/:orderId/hold', async (req, res) => {
 
         if (updatedOrder) {
             console.log(`✅ Success: Order ${orderId} is now on hold.`);
+            emitOrderRealtime(updatedOrder, previousOrder, 'verification-department');
             res.json({ success: true, message: 'Order put on hold successfully', order: updatedOrder });
         } else {
             res.status(404).json({ success: false, message: 'Order not found' });
@@ -1184,6 +1282,7 @@ router.post('/:orderId/request-delivery', async (req, res) => {
 
         if (updated) {
             console.log(`🚚 Delivery Request: ${orderId} by ${employeeName}`);
+            emitOrderRealtime(updated, order, 'employee-delivery-request');
             res.json({ success: true, message: 'Delivery request sent successfully!' });
         } else {
             res.status(500).json({ success: false, message: 'Failed to update order' });
@@ -1195,3 +1294,4 @@ router.post('/:orderId/request-delivery', async (req, res) => {
 });
 
 module.exports = router;
+
