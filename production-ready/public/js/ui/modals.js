@@ -721,7 +721,8 @@ async function openLabelPrintModal(orderId, orderData = null, trackingNo = '', c
                             <div class="sender-name">Herb On Naturals</div>
                             <div class="sender-address">
                                 <strong>Add :-</strong> 24/47 AB, Old Market Rd, Tilak Nagar, Delhi-110018<br>
-                                <strong>Mobile No.:</strong> 8527668466
+                                <strong>Mobile No.:</strong> 8527668466<br>
+                                <strong>GST NO:</strong> 07AAIPM7233P2Z4
                             </div>
                         </div>
                     </div>
