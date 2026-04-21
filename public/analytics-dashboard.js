@@ -1,17 +1,40 @@
 // Analytics Dashboard - Real-time Business Insights
 
+function getLocalDateInputValue(date = new Date()) {
+    const timezoneOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+    return new Date(date.getTime() - timezoneOffsetMs).toISOString().split('T')[0];
+}
+
+function getDefaultAnalyticsFilters() {
+    const today = getLocalDateInputValue();
+    return {
+        startDate: today,
+        endDate: today,
+        employeeId: 'all'
+    };
+}
+
 // Global state
-let currentFilters = {
-    startDate: null,
-    endDate: null,
-    employeeId: 'all'
-};
+let currentFilters = getDefaultAnalyticsFilters();
 
 // Load dashboard
 async function loadAnalyticsDashboard() {
     try {
+        currentFilters = {
+            ...getDefaultAnalyticsFilters(),
+            ...currentFilters
+        };
+
+        renderDashboardFilters();
+
+        const params = new URLSearchParams({
+            startDate: currentFilters.startDate,
+            endDate: currentFilters.endDate,
+            employeeId: currentFilters.employeeId || 'all'
+        });
+
         // Load initial dashboard
-        const res = await fetch(`${API_URL}/analytics/dashboard`);
+        const res = await fetch(`${API_URL}/analytics/dashboard?${params}`);
         const data = await res.json();
 
         console.log('🔍 ANALYTICS DATA:', data);
@@ -25,7 +48,6 @@ async function loadAnalyticsDashboard() {
             return;
         }
 
-        renderDashboardFilters();
         renderMissingOrdersAlert();
         renderDashboardStats(data.today);
         renderOrdersChart(data.charts.ordersTimeline);
@@ -42,22 +64,24 @@ function renderDashboardFilters() {
     const container = document.getElementById('dashboardStats');
     if (!container) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const filterId = 'analyticsFiltersPanel';
+    const startDate = currentFilters.startDate || getLocalDateInputValue();
+    const endDate = currentFilters.endDate || getLocalDateInputValue();
 
     const filtersHTML = `
-        <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+        <div id="${filterId}" class="bg-white rounded-2xl p-6 shadow-lg mb-6">
             <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
                 <span>🔍</span> Analytics Filters
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Start Date</label>
-                    <input type="date" id="filterStartDate" value="${today}"
+                    <input type="date" id="filterStartDate" value="${startDate}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">End Date</label>
-                    <input type="date" id="filterEndDate" value="${today}"
+                    <input type="date" id="filterEndDate" value="${endDate}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 <div>
@@ -80,7 +104,12 @@ function renderDashboardFilters() {
         </div>
     `;
 
-    container.insertAdjacentHTML('beforebegin', filtersHTML);
+    const existingFilters = document.getElementById(filterId);
+    if (existingFilters) {
+        existingFilters.outerHTML = filtersHTML;
+    } else {
+        container.insertAdjacentHTML('beforebegin', filtersHTML);
+    }
     loadEmployeeDropdown();
 }
 
@@ -106,6 +135,11 @@ async function loadEmployeeDropdown() {
             option.textContent = name;
             select.appendChild(option);
         });
+
+        select.value = currentFilters.employeeId || 'all';
+        if (select.value !== (currentFilters.employeeId || 'all')) {
+            select.value = 'all';
+        }
     } catch (error) {
         console.error('Error loading employees:', error);
     }
@@ -116,6 +150,16 @@ async function applyAnalyticsFilters() {
     const startDate = document.getElementById('filterStartDate').value;
     const endDate = document.getElementById('filterEndDate').value;
     const employeeId = document.getElementById('filterEmployee').value;
+
+    if (!startDate || !endDate) {
+        console.error('Analytics filters require both start and end date');
+        return;
+    }
+
+    if (startDate > endDate) {
+        alert('Start Date cannot be after End Date.');
+        return;
+    }
 
     currentFilters = { startDate, endDate, employeeId };
 
@@ -143,11 +187,11 @@ async function applyAnalyticsFilters() {
 
 // Reset filters
 function resetAnalyticsFilters() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('filterStartDate').value = today;
-    document.getElementById('filterEndDate').value = today;
+    currentFilters = getDefaultAnalyticsFilters();
+    document.getElementById('filterStartDate').value = currentFilters.startDate;
+    document.getElementById('filterEndDate').value = currentFilters.endDate;
     document.getElementById('filterEmployee').value = 'all';
-    loadAnalyticsDashboard();
+    applyAnalyticsFilters();
 }
 
 // Update stats after filtering
@@ -199,16 +243,21 @@ function updateFilteredStats(stats) {
 // Render missing orders alert
 async function renderMissingOrdersAlert() {
     try {
+        const alertId = 'missingOrdersAlert';
+        const existingAlert = document.getElementById(alertId);
         const res = await fetch(`${API_URL}/analytics/missing-orders`);
         const data = await res.json();
 
-        if (!data.success || !data.alert) return;
+        if (!data.success || !data.alert) {
+            if (existingAlert) existingAlert.remove();
+            return;
+        }
 
         const container = document.getElementById('dashboardStats');
         if (!container) return;
 
         const alertHTML = `
-            <div class="bg-red-50 border-2 border-red-300 rounded-2xl p-6 mb-6">
+            <div id="${alertId}" class="bg-red-50 border-2 border-red-300 rounded-2xl p-6 mb-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-xl font-black text-red-800 flex items-center gap-2">
                         <span>🚨</span> Stuck Orders Alert
@@ -235,7 +284,11 @@ async function renderMissingOrdersAlert() {
             </div>
         `;
 
-        container.insertAdjacentHTML('afterend', alertHTML);
+        if (existingAlert) {
+            existingAlert.outerHTML = alertHTML;
+        } else {
+            container.insertAdjacentHTML('afterend', alertHTML);
+        }
     } catch (error) {
         console.error('Missing orders alert error:', error);
     }

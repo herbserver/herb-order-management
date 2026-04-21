@@ -8,13 +8,12 @@ const dataAccess = require('../dataAccess');
 router.get('/dashboard', async (req, res) => {
     try {
         const { startDate, endDate, employeeId } = req.query;
-
-        if (!startDate || !endDate) {
-            return res.status(400).json({ success: false, message: 'Date range required' });
-        }
+        const today = new Date().toISOString().split('T')[0];
+        const effectiveStartDate = startDate || today;
+        const effectiveEndDate = endDate || today;
 
         // Use the new optimized aggregation function (Moves processing to MongoDB)
-        const data = await dataAccess.getAnalyticsDashboardData(startDate, endDate, employeeId);
+        const data = await dataAccess.getAnalyticsDashboardData(effectiveStartDate, effectiveEndDate, employeeId);
 
         if (!data) {
             return res.status(500).json({ success: false, message: 'Error fetching analytics' });
