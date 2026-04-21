@@ -248,17 +248,18 @@ async function getDashboardStats(startDate = null, endDate = null) {
     try {
         const isReorder = { $in: ["$orderType", ["Reorder", "REORDER"]] };
         const isFresh = { $not: [{ $in: ["$orderType", ["Reorder", "REORDER"]] }] };
+        const inactiveStatuses = ["Cancelled", "On Hold", "Hold"];
 
         const stats = await Order.aggregate([
             { $match: dateQuery },
             {
                 $group: {
                     _id: null,
-                    totalOrders: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold"]] }, 0, 1] } },
-                    totalFresh: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, 1, 0] } },
-                    totalReorder: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, 1, 0] } },
-                    freshRevenue: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
-                    reorderRevenue: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
+                    totalOrders: { $sum: { $cond: [{ $in: ["$status", inactiveStatuses] }, 0, 1] } },
+                    totalFresh: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", inactiveStatuses] }] }] }, 1, 0] } },
+                    totalReorder: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", inactiveStatuses] }] }] }, 1, 0] } },
+                    freshRevenue: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", inactiveStatuses] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
+                    reorderRevenue: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", inactiveStatuses] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
                     
                     pendingOrders: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
                     pendingFresh: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Pending"] }, isFresh] }, 1, 0] } },
@@ -279,7 +280,7 @@ async function getDashboardStats(startDate = null, endDate = null) {
                     deliveredReorderRevenue: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "Delivered"] }, isReorder] }, { $ifNull: ["$total", 0] }, 0] } },
 
                     cancelledOrders: { $sum: { $cond: [{ $eq: ["$status", "Cancelled"] }, 1, 0] } },
-                    onHoldOrders: { $sum: { $cond: [{ $eq: ["$status", "On Hold"] }, 1, 0] } }
+                    onHoldOrders: { $sum: { $cond: [{ $in: ["$status", ["On Hold", "Hold"]] }, 1, 0] } }
                 }
             }
         ]);
@@ -313,6 +314,7 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
     try {
         const isReorder = { $in: ["$orderType", ["Reorder", "REORDER"]] };
         const isFresh = { $not: [{ $in: ["$orderType", ["Reorder", "REORDER"]] }] };
+        const inactiveStatuses = ["Cancelled", "On Hold", "Hold"];
 
         // Match for orders CREATED in range
         let baseMatch = { timestamp: { $gte: startISO, $lte: endISO } };
@@ -329,12 +331,12 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                         {
                             $group: {
                                 _id: null,
-                                totalOrders: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold"]] }, 0, 1] } },
-                                totalRevenue: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold"]] }, 0, { $ifNull: ["$total", 0] }] } },
-                                freshRevenue: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
-                                reorderRevenue: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
-                                freshCount: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, 1, 0] } },
-                                reorderCount: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", ["Cancelled", "On Hold"]] }] }] }, 1, 0] } },
+                                totalOrders: { $sum: { $cond: [{ $in: ["$status", inactiveStatuses] }, 0, 1] } },
+                                totalRevenue: { $sum: { $cond: [{ $in: ["$status", inactiveStatuses] }, 0, { $ifNull: ["$total", 0] }] } },
+                                freshRevenue: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", inactiveStatuses] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
+                                reorderRevenue: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", inactiveStatuses] }] }] }, { $ifNull: ["$total", 0] }, 0] } },
+                                freshCount: { $sum: { $cond: [{ $and: [isFresh, { $not: [{ $in: ["$status", inactiveStatuses] }] }] }, 1, 0] } },
+                                reorderCount: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", inactiveStatuses] }] }] }, 1, 0] } },
                                 deliveredCount: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },
                                 pending: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
                                 verified: { $sum: { $cond: [{ $eq: ["$status", "Address Verified"] }, 1, 0] } },
@@ -350,57 +352,52 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                             }
                         }
                     ],
-                    // Delivered in Period (Regardless of creation)
+                    // Delivered among orders created in the selected period
                     "deliveredStats": [
                         {
                             $match: {
+                                ...baseMatch,
                                 status: "Delivered",
-                                deliveredAt: { $gte: startISO, $lte: endISO },
-                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
                             }
                         },
                         { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
                     ],
-                    // Dispatched in Period
+                    // Dispatched/currently-in-transit among orders created in the selected period
                     "dispatchedStats": [
                         {
                             $match: {
+                                ...baseMatch,
                                 status: { $in: ["Dispatched", "Delivered", "RTO", "Out For Delivery"] },
-                                dispatchedAt: { $gte: startISO, $lte: endISO },
-                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
                             }
                         },
                         { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
                     ],
-                    // Cancelled in Period
+                    // Cancelled among orders created in the selected period
                     "cancelledStats": [
                         {
                             $match: {
+                                ...baseMatch,
                                 status: "Cancelled",
-                                "cancellationInfo.cancelledAt": { $gte: start, $lte: end },
-                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
                             }
                         },
                         { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
                     ],
-                    // Hold Orders (Booked in period)
+                    // Hold among orders created in the selected period
                     "holdStats": [
                         {
                             $match: {
+                                ...baseMatch,
                                 status: { $in: ["Hold", "On Hold"] },
-                                timestamp: { $gte: startISO, $lte: endISO },
-                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
                             }
                         },
                         { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
                     ],
-                    // RTO in Period
+                    // RTO among orders created in the selected period
                     "rtoStats": [
                         {
                             $match: {
+                                ...baseMatch,
                                 status: "RTO",
-                                rtoAt: { $gte: startISO, $lte: endISO },
-                                ...(employeeId && employeeId !== 'all' && employeeId !== '' ? { employeeId: employeeId.toUpperCase() } : {})
                             }
                         },
                         { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }

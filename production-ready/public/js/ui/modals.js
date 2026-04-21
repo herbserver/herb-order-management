@@ -678,8 +678,13 @@ async function openLabelPrintModal(orderId, orderData = null, trackingNo = '', c
                         
                         <!-- Biller Info -->
                         <div class="biller-info">
+                            <div class="biller-info-left">
                             <div><strong>Customer/Biller ID</strong> – <span id="lbl_billerId">1000059221</span></div>
                             <div><strong>Non-BNPL Code</strong> – <span id="lbl_bnplCode">928-461</span></div>
+                            </div>
+                            <div class="biller-info-right">
+                                <div><strong>GST No.</strong> - <span>07AAIPM7233P2Z4</span></div>
+                            </div>
                         </div>
                         
                         <!-- Delivery Section -->

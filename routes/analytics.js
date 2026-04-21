@@ -103,7 +103,7 @@ router.get('/range', async (req, res) => {
             orders = orders.filter(o => o.employeeId === employeeId.toUpperCase());
         }
 
-        const activeOrders = orders.filter(o => o.status !== 'Cancelled' && o.status !== 'On Hold');
+        const activeOrders = orders.filter(o => !['Cancelled', 'On Hold', 'Hold'].includes(o.status));
         const stats = {
             totalOrders: activeOrders.length,
             totalRevenue: activeOrders.reduce((sum, o) => sum + (o.total || 0), 0),
