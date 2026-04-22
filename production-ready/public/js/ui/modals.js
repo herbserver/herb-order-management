@@ -683,7 +683,7 @@ async function openLabelPrintModal(orderId, orderData = null, trackingNo = '', c
                             <div><strong>Non-BNPL Code</strong> – <span id="lbl_bnplCode">928-461</span></div>
                             </div>
                             <div class="biller-info-right">
-                                <div><strong>GST No.</strong> - <span>07AAIPM7233P2Z4</span></div>
+                                <div class="gst-display-fixed"><strong>GST No.</strong> - <span>07AAIPM7233P2Z4</span></div>
                             </div>
                         </div>
                         

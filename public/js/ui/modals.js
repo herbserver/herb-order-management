@@ -684,7 +684,6 @@ async function openLabelPrintModal(orderId, orderData = null, trackingNo = '', c
                             </div>
                             <div class="biller-info-right">
                                 <div class="gst-display-fixed"><strong>GST No.</strong> - <span>07AAIPM7233P2Z4</span></div>
-                                <div><strong>GST No.</strong> â€“ <span>07AAIPM7233P2Z4</span></div>
                             </div>
                         </div>
                         

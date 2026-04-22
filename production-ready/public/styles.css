@@ -575,14 +575,12 @@ button:active {
 /* Biller/Customer ID Section - Gray */
 .speed-post-label .biller-info {
     background: #F5F5F5;
-    padding: 8px 15px;
+    padding: 10px 210px 10px 15px;
     border-bottom: 2.5px solid #333;
     font-size: 12px;
     color: #333;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
+    position: relative;
+    min-height: 58px;
 }
 
 .speed-post-label .biller-info div {
@@ -590,11 +588,14 @@ button:active {
 }
 
 .speed-post-label .biller-info-left {
-    flex: 1;
+    min-width: 0;
 }
 
 .speed-post-label .biller-info-right {
-    flex-shrink: 0;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
     text-align: right;
     white-space: nowrap;
     font-weight: 800;
