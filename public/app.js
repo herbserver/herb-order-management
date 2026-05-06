@@ -8012,6 +8012,33 @@ function renderAdminHistoryTable(orders) {
     document.getElementById('adminHistoryList').innerHTML = html;
 }
 
+function getAdminAnalyticsDateValue(date = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(date);
+
+    const values = {};
+    parts.forEach(part => {
+        values[part.type] = part.value;
+    });
+
+    return `${values.year}-${values.month}-${values.day}`;
+}
+
+function parseAdminAnalyticsDateBoundary(dateStr, endOfDay = false) {
+    if (!dateStr) return null;
+
+    const [year, month, day] = String(dateStr).split('-').map(Number);
+    if (!year || !month || !day) return null;
+
+    const startUtcMs = Date.UTC(year, month - 1, day) - (330 * 60 * 1000);
+    const boundaryMs = endOfDay ? (startUtcMs + (24 * 60 * 60 * 1000) - 1) : startUtcMs;
+    return new Date(boundaryMs);
+}
+
 async function loadAdminProgress() {
     const container = document.getElementById('adminProgressTab');
     
@@ -8140,8 +8167,9 @@ async function loadAdminProgress() {
     // Set default dates to Today if empty
     const sdInput = document.getElementById('adminProgressStartDate');
     const edInput = document.getElementById('adminProgressEndDate');
-    if (sdInput && !sdInput.value) sdInput.value = new Date().toISOString().split('T')[0];
-    if (edInput && !edInput.value) edInput.value = new Date().toISOString().split('T')[0];
+    const todayValue = getAdminAnalyticsDateValue();
+    if (sdInput && !sdInput.value) sdInput.value = todayValue;
+    if (edInput && !edInput.value) edInput.value = todayValue;
 
     // Initial Filter Call
     filterAdminProgress();
@@ -8165,13 +8193,23 @@ async function filterAdminProgress() {
         const endDate = endDateInput ? endDateInput.value : '';
         const employeeId = employeeSelect ? employeeSelect.value : '';
 
-        // Fetch data from high-performance aggregation API
-        let url = `${API_URL}/analytics/dashboard?`;
-        if (startDate) url += `startDate=${startDate}&`;
-        if (endDate) url += `endDate=${endDate}&`;
-        if (employeeId && employeeId !== '') url += `employeeId=${employeeId}&`;
+        if ((startDate && !endDate) || (!startDate && endDate)) {
+            showToast('Select both start and end date', 'warning');
+            return;
+        }
 
-        const res = await fetch(url + `&_t=${Date.now()}`);
+        if (startDate && endDate && startDate > endDate) {
+            showToast('Start date cannot be after end date', 'warning');
+            return;
+        }
+
+        const params = new URLSearchParams();
+        if (startDate) params.set('startDate', startDate);
+        if (endDate) params.set('endDate', endDate);
+        if (employeeId) params.set('employeeId', employeeId);
+        params.set('_t', String(Date.now()));
+
+        const res = await fetch(`${API_URL}/analytics/dashboard?${params.toString()}`);
         const data = await res.json();
 
         if (!data.success) {
@@ -8869,6 +8907,23 @@ async function exportAnalyticsReport() {
         const startDate = document.getElementById('adminProgressStartDate').value;
         const endDate = document.getElementById('adminProgressEndDate').value;
         const employeeId = document.getElementById('adminProgressEmployee').value;
+        const startBoundary = parseAdminAnalyticsDateBoundary(startDate);
+        const endBoundary = parseAdminAnalyticsDateBoundary(endDate, true);
+
+        if ((startDate && !endDate) || (!startDate && endDate)) {
+            showMessage('Select both start and end date for export.', 'error', 'adminMessage');
+            return;
+        }
+
+        if ((startDate && !startBoundary) || (endDate && !endBoundary)) {
+            showMessage('Invalid analytics date filter.', 'error', 'adminMessage');
+            return;
+        }
+
+        if (startBoundary && endBoundary && startBoundary > endBoundary) {
+            showMessage('Start date cannot be after end date.', 'error', 'adminMessage');
+            return;
+        }
 
         showMessage('⏳ Preparing Analytics Report...', 'success', 'adminMessage');
 
@@ -8878,8 +8933,18 @@ async function exportAnalyticsReport() {
         let orders = data.orders || [];
 
         // Apply filters
-        if (startDate) orders = orders.filter(o => o.timestamp >= startDate);
-        if (endDate) orders = orders.filter(o => o.timestamp <= endDate + 'T23:59:59');
+        if (startBoundary) {
+            orders = orders.filter(o => {
+                const orderTime = new Date(o.timestamp).getTime();
+                return !Number.isNaN(orderTime) && orderTime >= startBoundary.getTime();
+            });
+        }
+        if (endBoundary) {
+            orders = orders.filter(o => {
+                const orderTime = new Date(o.timestamp).getTime();
+                return !Number.isNaN(orderTime) && orderTime <= endBoundary.getTime();
+            });
+        }
         if (employeeId) orders = orders.filter(o => o.employeeId === employeeId);
 
         const wb = XLSX.utils.book_new();
@@ -8888,7 +8953,7 @@ async function exportAnalyticsReport() {
         const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
         const delivered = orders.filter(o => o.status === 'Delivered').length;
         const cancelled = orders.filter(o => o.status === 'Cancelled').length;
-        const hold = orders.filter(o => o.status === 'On Hold').length;
+        const hold = orders.filter(o => o.status === 'On Hold' || o.status === 'Hold').length;
         const pending = orders.filter(o => o.status === 'Pending').length;
 
         const summaryData = [
@@ -8936,8 +9001,9 @@ async function exportAnalyticsReport() {
         // 4. DAILY TREND
         const dailyStats = {};
         orders.forEach(o => {
-            const date = (o.timestamp || '').split('T')[0];
-            if (!date) return;
+            const orderDate = new Date(o.timestamp);
+            if (Number.isNaN(orderDate.getTime())) return;
+            const date = getAdminAnalyticsDateValue(orderDate);
             if (!dailyStats[date]) dailyStats[date] = { Date: date, Orders: 0, Revenue: 0, Delivered: 0 };
             dailyStats[date].Orders++;
             dailyStats[date].Revenue += (o.total || 0);
@@ -8953,7 +9019,7 @@ async function exportAnalyticsReport() {
         XLSX.utils.book_append_sheet(wb, wsRaw, "Source_Data");
 
         // Save File
-        const fileName = `HerbOnNaturals_Analytics_${new Date().toISOString().split('T')[0]}.xlsx`;
+        const fileName = `HerbOnNaturals_Analytics_${getAdminAnalyticsDateValue()}.xlsx`;
         XLSX.writeFile(wb, fileName);
         showMessage('Analytics Report Exported! ✅', 'success', 'adminMessage');
 

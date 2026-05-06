@@ -299,22 +299,39 @@ async function getDashboardStats(startDate = null, endDate = null) {
     }
 }
 
+const ANALYTICS_TIMEZONE = 'Asia/Kolkata';
+const ANALYTICS_DAY_OFFSET_MS = 330 * 60 * 1000;
+
+function getAnalyticsDayRange(dateInput) {
+    const [year, month, day] = String(dateInput || '').split('-').map(Number);
+    if (!year || !month || !day) return null;
+
+    const startUtcMs = Date.UTC(year, month - 1, day) - ANALYTICS_DAY_OFFSET_MS;
+    const endUtcMs = startUtcMs + (24 * 60 * 60 * 1000) - 1;
+
+    return {
+        startISO: new Date(startUtcMs).toISOString(),
+        endISO: new Date(endUtcMs).toISOString()
+    };
+}
+
 // Optimized: Get full analytics data using MongoDB Aggregation
 async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) {
     if (!mongoConnected) return null;
 
-    // 1. Date range for "Created in period"
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-    const startISO = start.toISOString();
-    const endISO = end.toISOString();
+    const startRange = getAnalyticsDayRange(startDate);
+    const endRange = getAnalyticsDayRange(endDate);
+    if (!startRange || !endRange) return null;
+
+    const startISO = startRange.startISO;
+    const endISO = endRange.endISO;
 
     try {
         const isReorder = { $in: ["$orderType", ["Reorder", "REORDER"]] };
         const isFresh = { $not: [{ $in: ["$orderType", ["Reorder", "REORDER"]] }] };
         const inactiveStatuses = ["Cancelled", "On Hold", "Hold"];
+        const verifiedStatuses = ["Address Verified", "Verified"];
+        const transitStatuses = ["Dispatched", "Out For Delivery"];
 
         // Match for orders CREATED in range
         let baseMatch = { timestamp: { $gte: startISO, $lte: endISO } };
@@ -339,7 +356,7 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                                 reorderCount: { $sum: { $cond: [{ $and: [isReorder, { $not: [{ $in: ["$status", inactiveStatuses] }] }] }, 1, 0] } },
                                 deliveredCount: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },
                                 pending: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
-                                verified: { $sum: { $cond: [{ $eq: ["$status", "Address Verified"] }, 1, 0] } },
+                                verified: { $sum: { $cond: [{ $in: ["$status", verifiedStatuses] }, 1, 0] } },
                                 customers: { $addToSet: "$telNo" }
                             }
                         },
@@ -367,7 +384,7 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                         {
                             $match: {
                                 ...baseMatch,
-                                status: { $in: ["Dispatched", "Delivered", "RTO", "Out For Delivery"] },
+                                status: { $in: transitStatuses },
                             }
                         },
                         { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: { $ifNull: ["$total", 0] } } } }
@@ -450,7 +467,13 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                         },
                         {
                             $group: {
-                                _id: { $substr: ["$timestamp", 0, 10] },
+                                _id: {
+                                    $dateToString: {
+                                        format: "%Y-%m-%d",
+                                        date: { $toDate: "$timestamp" },
+                                        timezone: ANALYTICS_TIMEZONE
+                                    }
+                                },
                                 total: { $sum: 1 },
                                 revenue: { $sum: { $ifNull: ["$total", 0] } },
                                 delivered: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },

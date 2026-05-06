@@ -2,13 +2,29 @@ const express = require('express');
 const router = express.Router();
 const dataAccess = require('../dataAccess');
 
+function getAnalyticsTodayValue() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(new Date());
+
+    const values = {};
+    parts.forEach(part => {
+        values[part.type] = part.value;
+    });
+
+    return `${values.year}-${values.month}-${values.day}`;
+}
+
 // ==================== ANALYTICS DASHBOARD API ====================
 
 // Get comprehensive dashboard analytics
 router.get('/dashboard', async (req, res) => {
     try {
         const { startDate, endDate, employeeId } = req.query;
-        const today = new Date().toISOString().split('T')[0];
+        const today = getAnalyticsTodayValue();
         const effectiveStartDate = startDate || today;
         const effectiveEndDate = endDate || today;
 
@@ -18,6 +34,15 @@ router.get('/dashboard', async (req, res) => {
         if (!data) {
             return res.status(500).json({ success: false, message: 'Error fetching analytics' });
         }
+
+        const statusDistributionTotal =
+            (data.created.pending || 0) +
+            (data.created.verified || 0) +
+            (data.dispatched.count || 0) +
+            (data.delivered.count || 0) +
+            (data.cancelled.count || 0) +
+            (data.hold.count || 0) +
+            (data.rto.count || 0);
 
         // Map results to the format expected by the frontend
         res.json({
@@ -42,12 +67,14 @@ router.get('/dashboard', async (req, res) => {
             },
             charts: {
                 statusDistribution: {
-                    total: data.created.totalOrders,
+                    total: statusDistributionTotal,
                     pending: data.created.pending,
                     verified: data.created.verified,
                     dispatched: data.dispatched.count,
                     delivered: data.delivered.count,
                     cancelled: data.cancelled.count,
+                    hold: data.hold.count,
+                    onHold: data.hold.count,
                     rto: data.rto.count
                 },
                 ordersTimeline: data.timeline,
