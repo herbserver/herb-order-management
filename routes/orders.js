@@ -284,6 +284,8 @@ router.put('/:orderId', async (req, res) => {
                     awb_code: newAwb,
                     courier_name: updated.shiprocket?.courierName || updated.tracking?.courier || '',
                     current_status: updated.status === 'Pending' ? 'shipped' : (updated.status || 'shipped')
+                }, {
+                    headers: { 'x-shiprocket-token': '16f464a021e8b3b0aaf298d44dc0b1e35cddcb70d6a97d6b' }
                 }).then(() => console.log(`📡 [Webhook] Sent AWB update to Website for Order: ${updated.orderId}`))
                   .catch(e => console.error(`❌ [Webhook] Error sending to website:`, e.message));
             } catch(e) {}
@@ -716,6 +718,8 @@ router.post('/update-tracking', async (req, res) => {
                         awb_code: newAwb,
                         courier_name: updatedOrder.shiprocket?.courierName || updatedOrder.tracking?.courier || '',
                         current_status: updatedOrder.status === 'Pending' ? 'shipped' : (updatedOrder.status || 'shipped')
+                    }, {
+                        headers: { 'x-shiprocket-token': '16f464a021e8b3b0aaf298d44dc0b1e35cddcb70d6a97d6b' }
                     }).then(() => console.log(`📡 [Webhook] Sent tracking update to Website for Order: ${updatedOrder.orderId}`))
                       .catch(e => console.error(`❌ [Webhook] Error sending to website:`, e.message));
                 } catch(e) {}

@@ -149,6 +149,8 @@ async function syncAWBs() {
                         awb_code: match.awb,
                         courier_name: match.courierName,
                         current_status: 'shipped'
+                    }, {
+                        headers: { 'x-shiprocket-token': '16f464a021e8b3b0aaf298d44dc0b1e35cddcb70d6a97d6b' }
                     });
                     console.log(`📡 [Webhook] Sent AWB update to Website for Order: ${order.orderId}`);
                 } catch (webhookErr) {
