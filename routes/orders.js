@@ -273,6 +273,23 @@ router.put('/:orderId', async (req, res) => {
 
         emitOrderRealtime(updated, order, 'generic-edit');
 
+        // --- NEW: Webhook to Website if AWB changed ---
+        const oldAwb = order.shiprocket?.awb || order.tracking?.trackingId || '';
+        const newAwb = updated.shiprocket?.awb || updated.tracking?.trackingId || '';
+        if (newAwb && newAwb !== oldAwb) {
+            try {
+                const axios = require('axios');
+                axios.post('https://herbonnaturals.com/api/v1/orders/webhooks/shiprocket', {
+                    order_id: String(updated.orderId),
+                    awb_code: newAwb,
+                    courier_name: updated.shiprocket?.courierName || updated.tracking?.courier || '',
+                    current_status: updated.status === 'Pending' ? 'shipped' : (updated.status || 'shipped')
+                }).then(() => console.log(`📡 [Webhook] Sent AWB update to Website for Order: ${updated.orderId}`))
+                  .catch(e => console.error(`❌ [Webhook] Error sending to website:`, e.message));
+            } catch(e) {}
+        }
+        // ----------------------------------------------
+
         res.json({ success: true, message: 'Order updated!', order: updated });
     } catch (error) {
         console.error('❌ Update order error:', error);
@@ -687,6 +704,24 @@ router.post('/update-tracking', async (req, res) => {
         if (updatedOrder) {
             console.log(`✅ Tracking updated for ${orderId}`);
             emitOrderRealtime(updatedOrder, order, 'tracking-sync');
+            
+            // --- NEW: Webhook to Website if AWB changed ---
+            const oldAwb = order.shiprocket?.awb || order.tracking?.trackingId || '';
+            const newAwb = updatedOrder.shiprocket?.awb || updatedOrder.tracking?.trackingId || '';
+            if (newAwb && newAwb !== oldAwb) {
+                try {
+                    const axios = require('axios');
+                    axios.post('https://herbonnaturals.com/api/v1/orders/webhooks/shiprocket', {
+                        order_id: String(updatedOrder.orderId),
+                        awb_code: newAwb,
+                        courier_name: updatedOrder.shiprocket?.courierName || updatedOrder.tracking?.courier || '',
+                        current_status: updatedOrder.status === 'Pending' ? 'shipped' : (updatedOrder.status || 'shipped')
+                    }).then(() => console.log(`📡 [Webhook] Sent tracking update to Website for Order: ${updatedOrder.orderId}`))
+                      .catch(e => console.error(`❌ [Webhook] Error sending to website:`, e.message));
+                } catch(e) {}
+            }
+            // ----------------------------------------------
+            
             res.json({ success: true, message: 'Tracking updated!', order: updatedOrder });
         } else {
             res.status(404).json({ success: false, message: 'Order not found' });

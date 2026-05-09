@@ -141,6 +141,21 @@ async function syncAWBs() {
                     }
                 );
                 console.log(`✅ [Auto-Sync] ${order.orderId} → AWB: ${match.awb} | ${match.courierName}`);
+                
+                // --- NEW: Trigger webhook to website ---
+                try {
+                    await axios.post('https://herbonnaturals.com/api/v1/orders/webhooks/shiprocket', {
+                        order_id: String(order.orderId),
+                        awb_code: match.awb,
+                        courier_name: match.courierName,
+                        current_status: 'shipped'
+                    });
+                    console.log(`📡 [Webhook] Sent AWB update to Website for Order: ${order.orderId}`);
+                } catch (webhookErr) {
+                    console.error(`❌ [Webhook] Failed to send update to Website for Order: ${order.orderId}`, webhookErr.message);
+                }
+                // ---------------------------------------
+
                 updated++;
             }
         }
