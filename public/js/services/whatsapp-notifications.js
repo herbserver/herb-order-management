@@ -83,6 +83,7 @@ async function autoSendMetaMessage(type, order) {
         const result = await response.json();
         if (result.success) {
             console.log(`✅ Auto-sent WhatsApp message for ${type}`);
+            alert(`WhatsApp Sent Successfully! Response: ${JSON.stringify(result)}`);
             // Mark as sent in queue if found
             const notif = window.whatsappQueue.find(n => n.order.orderId === order.orderId && n.type === type);
             if (notif) {
@@ -93,7 +94,7 @@ async function autoSendMetaMessage(type, order) {
             }
         } else {
             console.error(`❌ Failed to auto-send WhatsApp:`, result.message);
-            alert(`WhatsApp Send Failed: ${result.message}`);
+            alert(`WhatsApp Send Failed: ${JSON.stringify(result)}`);
         }
     } catch (error) {
         console.error(`❌ Error in auto-send WhatsApp:`, error);
