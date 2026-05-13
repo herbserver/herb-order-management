@@ -584,13 +584,13 @@ async function forceCreateOrder() {
 window.forceCreateOrder = forceCreateOrder;
 
 // ==================== AUTOCOMPLETE LOGIC (Condensed) ====================
-let districtTimeout;
+let employeeDistrictTimeout;
 async function handleDistrictInput(query) {
     const box = document.getElementById('districtSuggestions');
-    clearTimeout(districtTimeout);
+    clearTimeout(employeeDistrictTimeout);
     if (query.length < 2) { box.classList.add('hidden'); return; }
 
-    districtTimeout = setTimeout(async () => {
+    employeeDistrictTimeout = setTimeout(async () => {
         try {
             const res = await fetch(`${API_URL}/locations/search-district?q=${encodeURIComponent(query)}`);
             const data = await res.json();
