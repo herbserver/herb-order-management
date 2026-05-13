@@ -4,9 +4,7 @@ const axios = require('axios');
 
 // Send WhatsApp Template Message
 router.post('/send', async (req, res) => {
-    const { to, phoneNumber, templateName, parameters, lang } = req.body;
-    
-    const phone = to || phoneNumber;
+    const { to, templateName, parameters, lang } = req.body;
 
     const token = process.env.META_WA_ACCESS_TOKEN;
     const phoneId = process.env.META_WA_PHONE_NUMBER_ID;
@@ -15,12 +13,8 @@ router.post('/send', async (req, res) => {
         return res.status(500).json({ success: false, message: 'WhatsApp API credentials missing on server.' });
     }
 
-    if (!phone) {
-        return res.status(400).json({ success: false, message: 'Phone number is required.' });
-    }
-
     // Format phone number (must be without + or leading zeros, e.g., 91XXXXXXXXXX)
-    let formattedPhone = phone;
+    let formattedPhone = to;
     if (formattedPhone.length === 10) {
         formattedPhone = '91' + formattedPhone;
     }

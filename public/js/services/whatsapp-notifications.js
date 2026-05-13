@@ -5,6 +5,100 @@ if (!window.whatsappQueue) {
     window.whatsappQueue = [];
 }
 
+// Helper to get items list for message
+function getItemsList(order) {
+    if (Array.isArray(order.items) && order.items.length > 0) {
+        return order.items.map(i => `  ▸ ${i.description || 'Item'}${i.qty ? ' x ' + i.qty : ''}`).join('\n');
+    } else if (typeof order.items === 'string' && order.items.trim().length > 0) {
+        return order.items.split(',').map(s => `  ▸ ${s.trim()}`).join('\n');
+    }
+    return '  ▸ Details not available';
+}
+
+// Function to auto-send message via Meta API
+async function autoSendMetaMessage(type, order) {
+    const templateMapping = {
+        'booked': 'order_confirm',
+        'verified': 'address_verify',
+        'dispatched': 'order_dispatch',
+        'out_for_delivery': 'out_for_delivery',
+        'delivered': 'delivered'
+    };
+
+    const templateName = templateMapping[type];
+    if (!templateName) {
+        console.log(`No Meta template mapped for type: ${type}`);
+        return;
+    }
+
+    // Prepare parameters based on template
+    let parameters = [];
+    if (type === 'booked' || type === 'verified') {
+        parameters = [
+            order.customerName,
+            order.orderId,
+            String(order.total || 0),
+            String(order.advance || 0),
+            String(order.codAmount || order.cod || 0),
+            getItemsList(order)
+        ];
+    } else if (type === 'dispatched') {
+        parameters = [
+            order.customerName,
+            order.orderId,
+            order.shiprocket?.awb || order.tracking?.trackingId || 'Processing',
+            order.shiprocket?.courierName || order.tracking?.courier || 'Processing',
+            String(order.total || 0),
+            String(order.codAmount || order.cod || 0),
+            getItemsList(order)
+        ];
+    } else if (type === 'out_for_delivery') {
+        parameters = [
+            order.customerName,
+            order.orderId,
+            String(order.codAmount || order.cod || 0),
+            getItemsList(order)
+        ];
+    } else if (type === 'delivered') {
+        parameters = [
+            order.customerName,
+            order.orderId,
+            getItemsList(order)
+        ];
+    }
+
+    try {
+        const response = await fetch('/api/whatsapp/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: order.telNo,
+                templateName: templateName,
+                parameters: parameters
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            console.log(`✅ Auto-sent WhatsApp message for ${type}`);
+            // Mark as sent in queue if found
+            const notif = window.whatsappQueue.find(n => n.order.orderId === order.orderId && n.type === type);
+            if (notif) {
+                notif.sent = true;
+                notif.sentAt = new Date().toISOString();
+                saveWhatsAppQueue();
+                updateNotificationBadge();
+            }
+        } else {
+            console.error(`❌ Failed to auto-send WhatsApp:`, result.message);
+        }
+    } catch (error) {
+        console.error(`❌ Error in auto-send WhatsApp:`, error);
+    }
+}
+
 // Message Templates - Hinglish Version
 // Use var with check to avoid duplicate declaration if common.js loads first
 if (typeof whatsappTemplates === 'undefined') {
@@ -12,20 +106,22 @@ if (typeof whatsappTemplates === 'undefined') {
         booked: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
-Namaste *${order.customerName}* ji! 🙏
+नमस्ते *${order.customerName}* जी! 🙏
 
-✅ Aapka order confirm ho gaya hai!
+✅ आपका *Order* confirm हो गया है!
 
 📦 *ORDER DETAILS*
 ▸ Order No: *${order.orderId}*
 ▸ Total Amount: *Rs. ${order.total || 0}*
 ▸ Advance Paid: Rs. ${order.advance || 0}
 ▸ COD Amount: *Rs. ${order.codAmount || order.cod || 0}*
+▸ Items:
+${getItemsList(order)}
 
-📞 Hamari team jaldi hi aapko call karegi address verify karne ke liye.
+📞 हमारी team जल्दी ही आपको call करेगी address verify करने के लिए।
 
 ⚠️ *IMPORTANT*
-🚫 Product milne se pehle OTP share NA karein!
+🚫 Product मिलने से पहले OTP share न करें!
 
 _Team Herb On Naturals_ 💚
 🌐 herbonnaturals.in`,
@@ -33,9 +129,9 @@ _Team Herb On Naturals_ 💚
         verified: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
-Namaste *${order.customerName}* ji! 🙏
+नमस्ते *${order.customerName}* जी! 🙏
 
-✅ Aapka order *VERIFY* ho gaya hai!
+✅ आपका Order *VERIFY* हो गया है!
 
 📦 *ORDER: ${order.orderId}*
 
@@ -43,73 +139,76 @@ Namaste *${order.customerName}* ji! 🙏
 ▸ Total: Rs. ${order.total || 0}
 ▸ Paid: Rs. ${order.advance || 0}
 ▸ COD: *Rs. ${order.codAmount || order.cod || 0}*
+▸ Items:
+${getItemsList(order)}
 
-📦 Order packing ho raha hai. Tracking details jaldi milenge!
+📦 Order packing हो रहा है। Tracking details जल्दी मिलेंगे!
 
-🔐 *YAAD RAKHEIN*
-🚫 Product check kiye bina OTP share NA karein!
+🔐 *याद रखें*
+🚫 Product check किए बिना OTP share न करें!
 
 _Team Herb On Naturals_ 💚`,
 
-        dispatched: (order) => `🌿 *_HERB ON NATURALS_* 🌿
-_____________________
+        dispatched: (order) => `🌿 HERB ON NATURALS 🌿
+_______
 
-Namaste *${order.customerName}* ji! 🙏
+नमस्ते ${order.customerName} जी! 🙏
 
-🚚 Aapka order *DISPATCH* ho gaya hai!
+🚚 आपका Order DISPATCH हो गया है!
 
-📦 *ORDER: ${order.orderId}*
+📦 ORDER: ${order.orderId}
 
-📍 *TRACKING INFO*
-▸ AWB No: *${order.shiprocket?.awb || order.tracking?.trackingId || 'Processing'}*
-▸ Courier: *${order.shiprocket?.courierName || order.tracking?.courier || 'Processing'}*
+📍 TRACKING INFO
+▸ AWB No: ${order.shiprocket?.awb || order.tracking?.trackingId || 'Processing'}
+▸ Courier: ${order.shiprocket?.courierName || order.tracking?.courier || 'Processing'}
 
-💰 *PAYMENT*
+💰 PAYMENT
 ▸ Total: Rs. ${order.total || 0}
-▸ COD: *Rs. ${order.codAmount || order.cod || 0}*
+▸ COD: Rs. ${order.codAmount || order.cod || 0}
+▸ Items:
+${getItemsList(order)}
 
-🔗 Track karein: shiprocket.co/tracking
+📋 ज़रूरी बातें
+📱 Phone ON रखें
+💵 COD amount ready रखें
 
-📋 *ZARURI BAATEIN*
-📱 Phone ON rakhein
-💵 COD amount ready rakhein
-👀 Pehle product check karein
-🔐 Phir OTP dein
-
-_Happy Shopping!_ 🛍️
-_Team Herb On Naturals_ 💚`,
+Team Herb On Naturals 💚`,
 
         out_for_delivery: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
-Namaste *${order.customerName}* ji! 🙏
+नमस्ते *${order.customerName}* जी! 🙏
 
-🏃 *AJ DELIVERY HOGI!*
+🏃 *आज DELIVERY होगी!*
 
 📦 Order: *${order.orderId}*
 💵 COD: *Rs. ${order.codAmount || order.cod || 0}*
+▸ Items:
+${getItemsList(order)}
 
-🏠 Aaj aapka parcel aane wala hai, please available rahein.
+🏠 आज आपका parcel आने वाला है, कृपया available रहें।
 
-⚠️ *YAAD RAKHEIN*
-👀 Pehle product check karein, phir OTP dein!
+⚠️ *याद रखें*
+👀 पहले Product check करें, फिर OTP दें!
 
 _Team Herb On Naturals_ 💚`,
 
         delivered: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
 
-Namaste *${order.customerName}* ji! 🙏
+नमस्ते *${order.customerName}* जी! 🙏
 
-🎉 *ORDER DELIVER HO GAYA!*
+🎉 *Order DELIVER हो गया!*
 
 📦 Order: ${order.orderId}
+▸ Items:
+${getItemsList(order)}
 
-🙏 Hamare saath shopping karne ke liye dhanyavaad!
+🙏 हमारे साथ shopping करने के लिए धन्यवाद!
 
-⭐ Hume umeed hai ki aapko products pasand aayenge. Apna feedback zarur share karein - yeh hamare liye bahut important hai!
+⭐ हमें उम्मीद है कि आपको products पसंद आएंगे। अपना feedback ज़रूर share करें - यह हमारे लिए बहुत important है!
 
-🛒 Dobara shopping karein: herbonnaturals.in
+🛒 दोबारा shopping करें: herbonnaturals.in
 
 _Warm regards,_ 💚
 _Team Herb On Naturals_`
@@ -155,17 +254,13 @@ function addWhatsAppNotification(type, order) {
     };
 
     window.whatsappQueue.push(notification);
-
-    // Save to localStorage for persistence
     saveWhatsAppQueue();
-
-    // Show badge update
     updateNotificationBadge();
-
-    // Play sound alert
     playWhatsAppAlert();
-
     console.log('📱 WhatsApp notification added:', notification.id);
+    
+    // Auto-send via Meta API
+    autoSendMetaMessage(type, order);
 }
 
 // Save queue to localStorage
@@ -281,8 +376,24 @@ function playWhatsAppAlert() {
 
 // Open WhatsApp Notification Center
 function openWhatsAppCenter() {
-    const pending = window.whatsappQueue.filter(n => !n.sent);
-    const sent = window.whatsappQueue.filter(n => n.sent);
+    let pending = window.whatsappQueue.filter(n => !n.sent);
+    let sent = window.whatsappQueue.filter(n => n.sent);
+
+    // Filter messages by department
+    const deptAllowedTypes = {
+        'employee': ['booked'],
+        'verification': ['verified'],
+        'dispatch': ['dispatched'],
+        'delivery': ['out_for_delivery', 'delivered']
+    };
+
+    const currentDept = window.currentDeptType;
+    
+    if (currentDept && deptAllowedTypes[currentDept]) {
+        const allowed = deptAllowedTypes[currentDept];
+        pending = pending.filter(n => allowed.includes(n.type));
+        sent = sent.filter(n => allowed.includes(n.type));
+    }
 
     let html = `
     <div id="whatsappCenter" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target.id==='whatsappCenter') closeWhatsAppCenter()">
