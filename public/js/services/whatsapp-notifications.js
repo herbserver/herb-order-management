@@ -93,9 +93,11 @@ async function autoSendMetaMessage(type, order) {
             }
         } else {
             console.error(`❌ Failed to auto-send WhatsApp:`, result.message);
+            alert(`WhatsApp Send Failed: ${result.message}`);
         }
     } catch (error) {
         console.error(`❌ Error in auto-send WhatsApp:`, error);
+        alert(`WhatsApp Error: ${error.message}`);
     }
 }
 
