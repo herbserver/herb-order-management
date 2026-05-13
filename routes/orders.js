@@ -10,6 +10,7 @@ const { trackSpeedPost } = require('../utils/speedpost-tracker');
 const { trackBlueDart } = require('../utils/bluedart-tracker');
 const { normalizeProductName } = require('../utils/product-catalog');
 const socketManager = require('../socket-manager'); // Import Socket Manager
+const waNotify = require('../utils/whatsapp-notify'); // WhatsApp Auto Notifications
 
 const DATA_DIR = path.join(__dirname, '../data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
@@ -241,6 +242,9 @@ router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
             io.emit('order-created', newOrder);
             io.emit('dashboard-update'); // Trigger dashboard refresh
         } catch (e) { console.error('Socket emit error:', e.message); }
+
+        // 📲 WhatsApp: Order Booked Notification (fire-and-forget)
+        waNotify.notifyOrderBooked(newOrder).catch(e => console.error('[WA] Order booked notify error:', e.message));
 
         res.json({ success: true, message: 'Order saved!', orderId });
     } catch (error) {
@@ -521,6 +525,9 @@ router.post('/deliver', async (req, res) => {
 
             emitOrderRealtime(updatedOrder, previousOrder, 'delivery-department');
 
+            // 📲 WhatsApp: Order Delivered Notification (fire-and-forget)
+            waNotify.notifyOrderDelivered(updatedOrder).catch(e => console.error('[WA] Delivered notify error:', e.message));
+
             res.json({ success: true, message: 'Order marked as delivered successfully', order: updatedOrder });
         } else {
             console.warn(`⚠️ Warning: Order ${orderId} not found for delivery update.`);
@@ -698,6 +705,7 @@ router.post('/update-tracking', async (req, res) => {
                 updates.status = 'Out For Delivery';
                 updates.ofdAt = new Date().toISOString();
                 console.log(`🚚 Order ${orderId} marked as Out For Delivery`);
+                // 📲 WhatsApp OFD notification will fire after update below
             }
         }
 
@@ -706,6 +714,11 @@ router.post('/update-tracking', async (req, res) => {
         if (updatedOrder) {
             console.log(`✅ Tracking updated for ${orderId}`);
             emitOrderRealtime(updatedOrder, order, 'tracking-sync');
+
+            // 📲 WhatsApp: OFD Notification (only when status becomes OFD)
+            if (updates.status === 'Out For Delivery') {
+                waNotify.notifyOrderOFD(updatedOrder).catch(e => console.error('[WA] OFD notify error:', e.message));
+            }
             
             // --- NEW: Webhook to Website if AWB changed ---
             const oldAwb = order.shiprocket?.awb || order.tracking?.trackingId || '';
@@ -941,6 +954,10 @@ router.put('/:orderId/verify', async (req, res) => {
         if (!updated) return res.status(404).json({ success: false, message: 'Order not found!' });
         console.log(`✅ Address Verified: ${req.params.orderId}${updates.suggestedCourier ? ` | Suggested: ${updates.suggestedCourier}` : ''}`);
         emitOrderRealtime(updated, previousOrder, 'verification-department');
+
+        // 📲 WhatsApp: Order Verified Notification (fire-and-forget)
+        waNotify.notifyOrderVerified(updated).catch(e => console.error('[WA] Order verified notify error:', e.message));
+
         res.json({ success: true, message: 'Address verified!', order: updated });
     } catch (error) {
         console.error('❌ Verify error:', error);
@@ -992,6 +1009,10 @@ router.put('/:orderId/dispatch', async (req, res) => {
         if (!updated) return res.status(404).json({ success: false, message: 'Order not found!' });
         console.log(`🚚 Order Dispatched: ${req.params.orderId}`);
         emitOrderRealtime(updated, previousOrder, 'dispatch-department');
+
+        // 📲 WhatsApp: Order Dispatched Notification (fire-and-forget)
+        waNotify.notifyOrderDispatched(updated).catch(e => console.error('[WA] Order dispatched notify error:', e.message));
+
         res.json({ success: true, message: 'Order dispatched!', order: updated });
     } catch (error) {
         console.error('❌ Dispatch error:', error);
