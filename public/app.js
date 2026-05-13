@@ -3957,17 +3957,7 @@ async function markAsOFD(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            // Fetch order details for WhatsApp
-            let order = null;
-            try {
-                const orderRes = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}`);
-                const orderData = await orderRes.json();
-                if (orderData.success) order = orderData.order;
-            } catch (err) { console.error(err); }
-
-            const whatsappData = order ? { type: 'out_for_delivery', order: order } : null;
-
-            showSuccessPopup('Order Marked OFD! 🚚', `${orderId} is now Out For Delivery!`, '🚚', '#8b5cf6', whatsappData);
+            showSuccessPopup('Order Marked OFD! 🚚', `${orderId} is now Out For Delivery!`, '🚚', '#8b5cf6');
             if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
             if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
             if (typeof loadOFDOrders === 'function') loadOFDOrders();
@@ -5967,22 +5957,11 @@ async function approveDelivery(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            // Fetch order details for WhatsApp
-            let order = null;
-            try {
-                const orderRes = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}`);
-                const orderData = await orderRes.json();
-                if (orderData.success) order = orderData.order;
-            } catch (err) { console.error(err); }
-
-            const whatsappData = order ? { type: 'delivered', order: order } : null;
-
             showSuccessPopup(
                 'Delivery Confirmed! 🎊',
                 `Order ${orderId} successfully delivered!\n\nCustomer ko product mil gaya hai.`,
                 '🎊',
-                '#f59e0b',
-                whatsappData
+                '#f59e0b'
             );
             setTimeout(() => {
                 loadDeliveryRequests();

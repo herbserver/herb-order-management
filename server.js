@@ -82,7 +82,6 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const searchRoutes = require('./routes/search');
 const fetchAwbRoutes = require('./routes/fetchAwb');
 const configRoutes = require('./routes/config');
-const whatsappRoutes = require('./routes/whatsapp');
 
 // Mount Routes
 app.use('/api/auth', authRoutes); // /api/auth/login, etc.
@@ -99,7 +98,6 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/fetch-awb', fetchAwbRoutes);
 app.use('/api/config', configRoutes);
-app.use('/api/whatsapp', whatsappRoutes);
 
 // Compatibility Mounts (Legacy URLs)
 app.use('/api', authRoutes);
