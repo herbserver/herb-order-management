@@ -961,6 +961,16 @@ async function verifyAddress(orderId) {
         });
         const data = await res.json();
         if (data.success) {
+            // Fetch order details for WhatsApp
+            let order = null;
+            try {
+                const orderRes = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}`);
+                const orderData = await orderRes.json();
+                if (orderData.success) order = orderData.order;
+            } catch (err) { console.error(err); }
+
+            const whatsappData = order ? { type: 'verified', order: order } : null;
+
             // Also save courier suggestion separately if selected
             if (suggestedCourier) {
                 await fetch(`${API_URL}/orders/${orderId}/suggest-courier`, {
@@ -973,7 +983,7 @@ async function verifyAddress(orderId) {
                     })
                 });
             }
-            showSuccessPopup('Verified', `Order verified${suggestedCourier ? ' | Courier: ' + suggestedCourier : ''}`, '✅', '#10b981');
+            showSuccessPopup('Verified', `Order verified${suggestedCourier ? ' | Courier: ' + suggestedCourier : ''}`, '✅', '#10b981', whatsappData);
             loadDeptOrders();
         } else alert(data.message);
     } catch (e) { alert(e.message); }

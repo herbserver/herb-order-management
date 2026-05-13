@@ -254,6 +254,9 @@ function showSuccessPopup(title, msg, icon, color, whatsappData = null) {
 
     let whatsappBtn = '';
     if (whatsappData) {
+        if (typeof addWhatsAppNotification === 'function') {
+            addWhatsAppNotification(whatsappData.type, whatsappData.order);
+        }
         whatsappBtn = `
             <button onclick="sendWhatsAppDirect('${whatsappData.type}', ${JSON.stringify(whatsappData.order).replace(/"/g, '&quot;')}); this.closest('.fixed').remove()" 
                 class="w-full py-3.5 rounded-xl font-bold text-white shadow-lg bg-green-500 hover:bg-green-600 hover:scale-105 transition-all flex items-center justify-center gap-2 mb-3">
