@@ -60,9 +60,9 @@ function buildItemsList(items) {
  * @param {string} to           - Customer phone number (10 or 12 digit)
  * @param {string} templateName - Approved Meta template name
  * @param {string[]} parameters - Array of text parameter values
- * @param {string} [lang='hi']  - Template language code (hi = Hindi)
+ * @param {string} [lang='en']  - Template language code (en = English)
  */
-async function sendWhatsAppTemplate(to, templateName, parameters, lang = 'hi') {
+async function sendWhatsAppTemplate(to, templateName, parameters, lang = 'en') {
     const token   = process.env.META_WA_ACCESS_TOKEN;
     const phoneId = process.env.META_WA_PHONE_NUMBER_ID;
 
