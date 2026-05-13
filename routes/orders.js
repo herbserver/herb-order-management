@@ -299,6 +299,20 @@ router.put('/:orderId', async (req, res) => {
     }
 });
 
+// Get Single Order by ID
+router.get('/:orderId', async (req, res) => {
+    try {
+        const order = await dataAccess.getOrderById(req.params.orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found!' });
+        }
+        res.json({ success: true, order });
+    } catch (error) {
+        console.error('❌ Get order by ID error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // Get All Orders (Modified to support status filter and pagination)
 router.get('/', async (req, res) => {
     try {

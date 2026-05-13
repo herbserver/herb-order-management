@@ -1214,7 +1214,17 @@ window.finalDispatch = async (orderId, dim, courierId, modal) => {
         loading.remove();
 
         if (data.success) {
-            showSuccessPopup('Dispatched!', `AWB: ${data.awb} | Courier: ${data.courier}`, '🚚', '#10b981');
+            // Fetch order details for WhatsApp
+            let order = null;
+            try {
+                const orderRes = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}`);
+                const orderData = await orderRes.json();
+                if (orderData.success) order = orderData.order;
+            } catch (err) { console.error(err); }
+
+            const whatsappData = order ? { type: 'dispatched', order: order } : null;
+
+            showSuccessPopup('Dispatched!', `AWB: ${data.awb} | Courier: ${data.courier}`, '🚚', '#10b981', whatsappData);
             loadDeptOrders(); // Refresh list
         } else {
             alert('Shiprocket Error: ' + data.message);
@@ -1329,7 +1339,17 @@ window.submitManualDispatch = async (orderId, modal) => {
         loading.remove();
 
         if (data.success) {
-            showSuccessPopup('Dispatched!', `Courier: ${courier} | AWB: ${awb}`, '🚚', '#10b981');
+            // Fetch order details for WhatsApp
+            let order = null;
+            try {
+                const orderRes = await fetch(`${API_URL}/orders/${encodeURIComponent(orderId)}`);
+                const orderData = await orderRes.json();
+                if (orderData.success) order = orderData.order;
+            } catch (err) { console.error(err); }
+
+            const whatsappData = order ? { type: 'dispatched', order: order } : null;
+
+            showSuccessPopup('Dispatched!', `Courier: ${courier} | AWB: ${awb}`, '🚚', '#10b981', whatsappData);
             loadDeptOrders();
             if (typeof loadDispatchedOrders === 'function') loadDispatchedOrders();
         } else {
