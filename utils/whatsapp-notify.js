@@ -91,12 +91,12 @@ async function sendWhatsAppTemplate(to, templateName, parameters, lang = 'en') {
                         type: 'body',
                         parameters: parameters.map(p => ({ type: 'text', text: String(p || '') }))
                     },
-                    // "Visit Website" button (index 0) requires a URL suffix parameter
+                    // "Visit Website" button (index 0) requires a non-empty URL suffix
                     {
                         type: 'button',
                         sub_type: 'url',
                         index: '0',
-                        parameters: [{ type: 'text', text: '' }]
+                        parameters: [{ type: 'text', text: 'home' }]
                     }
                 ]
             }
