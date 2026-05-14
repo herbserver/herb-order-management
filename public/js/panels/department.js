@@ -392,36 +392,22 @@ async function loadOnWayOrders(page = null) {
 
 // 4b. OFD (Out For Delivery) Orders - Delivery Panel
 async function loadOFDOrders(page = null) {
-    console.log('🔍 loadOFDOrders called, page:', page);
     try {
         if (page !== null) deptPagination.deliveryOFD = page;
         const currentPage = deptPagination.deliveryOFD || 1;
-        console.log('📄 Current page:', currentPage);
 
-        // Fetch orders with 'Out For Delivery' status specifically
         const url = `${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}&page=${currentPage}&limit=${DEPT_ITEMS_PER_PAGE}`;
-        console.log('🌐 Fetching from:', url);
-
         const res = await fetch(url);
         const data = await res.json();
-        console.log('📦 Response data:', data);
 
         let orders = data.orders || [];
-        console.log('📋 Orders array length:', orders.length);
-
         const totalItems = data.pagination ? data.pagination.total : orders.length;
         const totalPages = Math.ceil(totalItems / DEPT_ITEMS_PER_PAGE) || 1;
-        console.log('📊 Total items:', totalItems, 'Total pages:', totalPages);
 
         const container = document.getElementById('ofdOrdersList');
-        console.log('🎯 Container element:', container ? 'Found' : 'NOT FOUND');
-        if (!container) {
-            console.error('❌ ofdOrdersList container not found!');
-            return;
-        }
+        if (!container) return;
 
         if (orders.length === 0) {
-            console.log('⚠️ No OFD orders found');
             container.innerHTML = `
                 <div class="col-span-full text-center py-8">
                     <p class="text-gray-500 mb-4">Koi OFD (Out For Delivery) order nahi hai</p>
@@ -434,25 +420,18 @@ async function loadOFDOrders(page = null) {
             return;
         }
 
-        console.log('✅ Rendering', orders.length, 'orders');
-        // Add Sync Button at top if orders exist
         const syncBtnHtml = `
             <div class="col-span-full mb-4 flex justify-end">
-                 <button onclick="syncOFDStatus()" class="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-100 border border-blue-200 flex items-center gap-1">
+                <button onclick="syncOFDStatus()" class="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-100 border border-blue-200 flex items-center gap-1">
                     🔄 Sync Status
                 </button>
             </div>
         `;
 
-        let html = syncBtnHtml || '';
-        orders.forEach(order => {
-            console.log('🎨 Rendering card for:', order.orderId);
-            html += generateOrderCardHTML(order);
-        });
+        let html = syncBtnHtml;
+        orders.forEach(order => { html += generateOrderCardHTML(order); });
         container.innerHTML = html;
-        console.log('✅ Container updated with HTML');
         renderPaginationControls(container, currentPage, totalPages, 'loadOFDOrders');
-        console.log('✅ Pagination controls rendered');
 
     } catch (e) {
         console.error('❌ Error in loadOFDOrders:', e);

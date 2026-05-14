@@ -3395,41 +3395,23 @@ async function loadOnWayOrders() {
 
 // Load OFD Orders (Delivery Panel - OFD Tab)
 async function loadOFDOrders() {
-    console.log('🔍 loadOFDOrders called from app.js');
     try {
-        // Fetch orders with "Out For Delivery" status
         const url = `${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}`;
-        console.log('🌐 Fetching from:', url);
-
         const res = await fetch(url);
         const data = await res.json();
-        console.log('📦 Response:', data);
-
         const orders = data.orders || [];
-        console.log('📋 Orders count:', orders.length);
 
         const container = document.getElementById('ofdOrdersList');
-        console.log('🎯 Container:', container ? 'Found' : 'NOT FOUND');
-
-        if (!container) {
-            console.error('❌ ofdOrdersList container not found!');
-            return;
-        }
+        if (!container) return;
 
         if (orders.length === 0) {
-            console.log('⚠️ No OFD orders');
             container.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-gray-500">Koi OFD order nahi hai</p></div>';
             return;
         }
 
-        console.log('✅ Rendering', orders.length, 'orders');
         let html = '';
-        orders.forEach(order => {
-            console.log('🎨 Rendering:', order.orderId);
-            html += renderDeliveryCardModern(order);
-        });
+        orders.forEach(order => { html += renderDeliveryDeptCard(order, 'orange'); });
         container.innerHTML = html;
-        console.log('✅ Container updated!');
     } catch (e) {
         console.error('❌ Error in loadOFDOrders:', e);
     }
@@ -3446,55 +3428,7 @@ function renderDeliveryDeptCard(order, fallbackColor) {
     return '';
 }
 
-async function loadOnWayOrders() {
-    try {
-        const res = await fetch(`${API_URL}/orders/dispatched`);
-        const data = await res.json();
-        let orders = data.orders || [];
-
-        orders = orders.filter(order => {
-            const trackingStatus = String(order.tracking?.currentStatus || '').toLowerCase();
-            return !trackingStatus.includes('out for delivery') && !trackingStatus.includes('ofd');
-        });
-
-        orders = filterOrdersByDate(orders);
-
-        const container = document.getElementById('onWayOrdersList');
-        if (!container) return;
-
-        if (orders.length === 0) {
-            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi On Way order nahi hai</p>';
-            return;
-        }
-
-        container.innerHTML = orders.map(order => renderDeliveryDeptCard(order, 'blue')).join('');
-    } catch (e) {
-        console.error('Error in loadOnWayOrders:', e);
-    }
-}
-
-async function loadOFDOrders() {
-    try {
-        const res = await fetch(`${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}`);
-        const data = await res.json();
-        let orders = data.orders || [];
-
-        orders = filterOrdersByDate(orders);
-
-        const container = document.getElementById('ofdOrdersList');
-        if (!container) return;
-
-        if (orders.length === 0) {
-            container.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-gray-500">Koi OFD order nahi hai</p></div>';
-            return;
-        }
-
-        container.innerHTML = orders.map(order => renderDeliveryDeptCard(order, 'orange')).join('');
-        startAutoTrackingRefresh();
-    } catch (e) {
-        console.error('Error in loadOFDOrders:', e);
-    }
-}
+// NOTE: loadOnWayOrders and loadOFDOrders are defined above — no duplicate needed here.
 
 async function trackShiprocketOrder(orderId, awb) {
     // Get all elements first
@@ -3918,9 +3852,12 @@ async function updateOrderTracking(orderId, awb) {
     }
 }
 
-// Mark order as delivered
+// Mark order as delivered — INSTANT DOM removal for speed
 async function markAsDelivered(orderId) {
     if (!confirm('Mark this order as delivered?')) return;
+
+    // Instantly remove the card from UI (optimistic update)
+    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/deliver`, {
@@ -3931,19 +3868,24 @@ async function markAsDelivered(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            showSuccessPopup('Order Delivered! ✅', `${orderId} marked as delivered successfully!`, '📦', '#10b981');
-            loadDeliveryOrders(); // Refresh list
+            // silent ✅
         } else {
+            // Rollback: reload the current tab
             alert('❌ ' + data.message);
+            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
+        _refreshCurrentDeliveryTab();
     }
 }
 
-// Mark order as Out For Delivery (OFD)
+// Mark order as Out For Delivery (OFD) — INSTANT DOM removal
 async function markAsOFD(orderId) {
     if (!confirm('Mark this order as Out For Delivery (OFD)?')) return;
+
+    // Instantly remove from current tab
+    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/update-tracking`, {
@@ -3957,21 +3899,24 @@ async function markAsOFD(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            showSuccessPopup('Order Marked OFD! 🚚', `${orderId} is now Out For Delivery!`, '🚚', '#8b5cf6');
-            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
-            if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
-            if (typeof loadOFDOrders === 'function') loadOFDOrders();
+            // silent ✅
         } else {
             alert('❌ ' + data.message);
+            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
+        _refreshCurrentDeliveryTab();
     }
 }
 
+// Mark order as RTO — INSTANT DOM removal
 async function markAsRTO(orderId) {
     const reason = prompt('RTO ka kaaran batayein (Reason for RTO):');
     if (reason === null) return; // Cancelled
+
+    // Instantly remove from current tab
+    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/rto`, {
@@ -3986,20 +3931,22 @@ async function markAsRTO(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            showSuccessPopup('Order RTO! ↩️', `${orderId} marked as RTO successfully!`, '↩️', '#6366f1');
-            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
-            if (typeof loadRTOOrders === 'function') loadRTOOrders();
+            // silent ✅
         } else {
             alert('❌ ' + data.message);
+            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
+        _refreshCurrentDeliveryTab();
     }
 }
 
-// Mark order as On Way (move back from RTO/OFD to Dispatched)
+// Mark order as On Way — INSTANT DOM removal
 async function markAsOnWay(orderId) {
     if (!confirm('Is order ko wapas "On Way" (Dispatched) mein move karein?')) return;
+
+    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
@@ -4013,23 +3960,90 @@ async function markAsOnWay(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            showSuccessPopup('Order On Way! 🚛', `${orderId} wapas On Way mein move ho gaya!`, '🚛', '#f59e0b');
-            if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
-            if (typeof loadOFDOrders === 'function') loadOFDOrders();
-            if (typeof loadRTOOrders === 'function') loadRTOOrders();
-            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+            // silent ✅
         } else {
             alert('❌ ' + data.message);
+            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
+        _refreshCurrentDeliveryTab();
     }
 }
 window.markAsOnWay = markAsOnWay;
 
-// Revert Delivered Order back to On Way
+// ===== HELPER: Instantly remove a delivery card from DOM =====
+function _removeDeliveryCard(orderId) {
+    try {
+        // Cards contain the orderId as text in a span — find and remove parent card
+        const allContainers = [
+            document.getElementById('onWayOrdersList'),
+            document.getElementById('ofdOrdersList'),
+            document.getElementById('deliveredOrdersList'),
+            document.getElementById('rtoOrdersList'),
+            document.getElementById('deliveryRequestsList')
+        ];
+        let removed = false;
+        allContainers.forEach(container => {
+            if (!container) return;
+            // Find any element that contains the orderId text (e.g. the badge span)
+            const spans = container.querySelectorAll('span, p, button');
+            spans.forEach(el => {
+                if (el.textContent.trim() === orderId) {
+                    // Walk up to find the card (div with border classes)
+                    let card = el;
+                    for (let i = 0; i < 6; i++) {
+                        card = card.parentElement;
+                        if (!card || card === container) break;
+                        if (card.tagName === 'DIV' && (card.classList.contains('bg-gradient-to-br') || card.classList.contains('bg-white') || card.classList.contains('glass-card'))) {
+                            card.style.transition = 'opacity 0.25s, transform 0.25s';
+                            card.style.opacity = '0';
+                            card.style.transform = 'scale(0.95)';
+                            setTimeout(() => card.remove(), 250);
+                            removed = true;
+                            return;
+                        }
+                    }
+                }
+            });
+        });
+        // If card not found by text, do a silent reload after short delay
+        if (!removed) {
+            setTimeout(_refreshCurrentDeliveryTab, 600);
+        }
+    } catch(e) {
+        // Fallback to normal reload
+        setTimeout(_refreshCurrentDeliveryTab, 600);
+    }
+}
+
+// ===== HELPER: Refresh only the currently visible delivery tab =====
+function _refreshCurrentDeliveryTab() {
+    try {
+        const tabs = [
+            { tabId: 'deliveryOnWayTab',    fn: () => { if (typeof loadOnWayOrders === 'function') loadOnWayOrders(); } },
+            { tabId: 'deliveryOFDTab',      fn: () => { if (typeof loadOFDOrders === 'function') loadOFDOrders(); } },
+            { tabId: 'deliveryDeliveredTab',fn: () => { if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders(); } },
+            { tabId: 'deliveryRTOTab',      fn: () => { if (typeof loadRTOOrders === 'function') loadRTOOrders(); } },
+            { tabId: 'deliveryRequestsTab', fn: () => { if (typeof loadDeliveryRequests === 'function') loadDeliveryRequests(); } }
+        ];
+        for (const t of tabs) {
+            const el = document.getElementById(t.tabId);
+            if (el && !el.classList.contains('hidden')) {
+                t.fn();
+                return;
+            }
+        }
+    } catch(e) {}
+}
+window._removeDeliveryCard = _removeDeliveryCard;
+window._refreshCurrentDeliveryTab = _refreshCurrentDeliveryTab;
+
+// Revert Delivered Order back to On Way — INSTANT DOM removal
 async function revertToOnWay(orderId) {
     if (!confirm('Kya aap sure hain? Is order ko wapas "On Way" mein move karein?')) return;
+
+    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/revert-delivered`, {
@@ -4044,22 +4058,23 @@ async function revertToOnWay(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            showSuccessPopup('Order Reverted! ↩️', `${orderId} wapas On Way mein move ho gaya!`, '↩️', '#3b82f6');
-            if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
-            if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
-            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+            // silent ✅
         } else {
             alert('❌ ' + (data.message || 'Revert failed'));
+            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
+        _refreshCurrentDeliveryTab();
     }
 }
 
-// Mark Delivered Order as RTO (from Delivered tab)
+// Mark Delivered Order as RTO (from Delivered tab) — INSTANT DOM removal
 async function markDeliveredAsRTO(orderId) {
     const reason = prompt('RTO ka kaaran batayein (Reason for RTO):');
     if (reason === null) return;
+
+    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/revert-delivered`, {
@@ -4075,14 +4090,14 @@ async function markDeliveredAsRTO(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            showSuccessPopup('Order RTO! ↩️', `${orderId} RTO mein move ho gaya!`, '↩️', '#ef4444');
-            if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
-            if (typeof loadRTOOrders === 'function') loadRTOOrders();
+            // silent ✅
         } else {
             alert('❌ ' + (data.message || 'RTO failed'));
+            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
+        _refreshCurrentDeliveryTab();
     }
 }
 

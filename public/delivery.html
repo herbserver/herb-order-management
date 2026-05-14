@@ -402,13 +402,13 @@
     <script src="js/core/page-links.js?v=2" defer></script>
 
     <script src="js/ui/modals.js?v=4" defer></script>
-    <script src="js/common.js?v=2.1"></script>
+    <script src="js/common.js?v=3.0"></script>
 
     <script src="js/global-search.js" defer></script>
     <script src="js/cards/delivery-card.js" defer></script>
 
     <!-- Main app.js for shared functions -->
-    <script src="app.js?v=DeliveryStandalone" defer></script>
+    <script src="app.js?v=DeliveryStandalone2" defer></script>
     <script src="js/department-search.js" defer></script>
 
     <!-- Socket.io -->
@@ -463,6 +463,21 @@
             
             console.log('✅ Delivery panel ready!');
         });
+    </script>
+
+    <!-- Override: Delivery panel mein popup nahi chahiye -->
+    <script>
+        // This runs LAST — overrides any showSuccessPopup from common.js / app.js
+        window.showSuccessPopup = function(title, msg, icon, color, whatsappData) {
+            // Silently do nothing — delivery actions are instant (card removes itself)
+            // Only show WhatsApp button if needed (rare case)
+            if (whatsappData) {
+                const ok = confirm('\u2705 ' + title + '\n' + msg + '\n\nWhatsApp bhejein?');
+                if (ok && typeof sendWhatsAppDirect === 'function') {
+                    sendWhatsAppDirect(whatsappData.type, whatsappData.order);
+                }
+            }
+        };
     </script>
 
 </body>

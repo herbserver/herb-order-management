@@ -21,130 +21,86 @@ function showSuccessPopup(title, msg, icon = '✅', color = '#10b981', whatsappD
     const existing = document.getElementById('successPopup');
     if (existing) existing.remove();
 
-    // Create overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'successPopup';
-    overlay.style.cssText = `
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
-        display: flex; align-items: center; justify-content: center;
-        z-index: 99999; padding: 20px;
-        animation: fadeIn 0.2s ease-out;
-    `;
-
-    // Determine gradient based on color
-    let gradient = 'linear-gradient(135deg, #10b981, #059669)';
-    if (color.includes('f59e0b') || color.includes('orange') || icon === '⚠️') {
-        gradient = 'linear-gradient(135deg, #f59e0b, #d97706)';
-    } else if (color.includes('ef4444') || color.includes('red') || icon === '❌') {
-        gradient = 'linear-gradient(135deg, #ef4444, #dc2626)';
-    } else if (color.includes('3b82f6') || color.includes('blue') || icon === '👋') {
-        gradient = 'linear-gradient(135deg, #3b82f6, #2563eb)';
-    } else if (color.includes('9333ea') || color.includes('purple') || icon === '🚀') {
-        gradient = 'linear-gradient(135deg, #9333ea, #7c3aed)';
+    // Inject animations once
+    if (!document.getElementById('popupAnimations')) {
+        const style = document.createElement('style');
+        style.id = 'popupAnimations';
+        style.textContent = `
+            @keyframes _popIn  { from { opacity:0; transform: translateY(-16px) scale(0.93); } to { opacity:1; transform: translateY(0) scale(1); } }
+            @keyframes _popOut { from { opacity:1; transform: translateY(0) scale(1); } to { opacity:0; transform: translateY(-12px) scale(0.95); } }
+            #successPopup { animation: _popIn 0.15s cubic-bezier(0.34,1.56,0.64,1) both; }
+            #successPopup.closing { animation: _popOut 0.2s ease-in both; }
+        `;
+        document.head.appendChild(style);
     }
+
+    // Determine accent color
+    let accent = color || '#10b981';
+    if (color.includes('f59e0b')) accent = '#f59e0b';
+    else if (color.includes('ef4444')) accent = '#ef4444';
+    else if (color.includes('3b82f6')) accent = '#3b82f6';
+    else if (color.includes('6366f1')) accent = '#6366f1';
+    else if (color.includes('8b5cf6')) accent = '#8b5cf6';
+    else if (color.includes('9333ea')) accent = '#9333ea';
 
     let whatsappBtn = '';
     if (whatsappData) {
         whatsappBtn = `
             <button onclick="sendWhatsAppDirect('${whatsappData.type}', ${JSON.stringify(whatsappData.order).replace(/"/g, '&quot;')})"
-                style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; border: none; 
-                padding: 14px 28px; border-radius: 14px; font-weight: 600; cursor: pointer; 
-                font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;
-                box-shadow: 0 4px 15px rgba(37,211,102,0.3); transition: all 0.2s ease;">
-                <span style="font-size: 18px;">📱</span> Send WhatsApp
+                style="background:#25D366;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:6px;margin:0 auto 8px;">
+                📱 Send WhatsApp
             </button>
         `;
     }
 
-    overlay.innerHTML = `
-        <div style="
-            background: white; border-radius: 24px; 
-            max-width: 400px; width: 100%;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-            animation: slideUp 0.3s ease-out;
-        ">
-            <!-- Header with gradient -->
-            <div style="
-                background: ${gradient}; 
-                padding: 32px 24px;
-                text-align: center;
-            ">
-                <div style="
-                    width: 80px; height: 80px; 
-                    background: rgba(255,255,255,0.2); 
-                    border-radius: 50%; 
-                    display: flex; align-items: center; justify-content: center;
-                    margin: 0 auto 16px;
-                    font-size: 42px;
-                    backdrop-filter: blur(10px);
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-                ">${icon}</div>
-                <h3 style="
-                    color: white; 
-                    font-size: 22px; 
-                    font-weight: 700; 
-                    margin: 0;
-                    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                ">${title}</h3>
-            </div>
-            
-            <!-- Content -->
-            <div style="padding: 24px; text-align: center;">
-                <p style="
-                    color: #4b5563; 
-                    font-size: 15px; 
-                    line-height: 1.6;
-                    margin: 0 0 20px 0;
-                    white-space: pre-line;
-                ">${msg}</p>
-                
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    ${whatsappBtn}
-                    <button onclick="document.getElementById('successPopup').remove()" 
-                        style="
-                            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
-                            border: none; 
-                            padding: 14px 28px; 
-                            border-radius: 14px; 
-                            cursor: pointer; 
-                            font-weight: 600;
-                            font-size: 15px;
-                            color: #374151;
-                            transition: all 0.2s ease;
-                        ">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
+    // Compact card — no dark overlay
+    const card = document.createElement('div');
+    card.id = 'successPopup';
+    card.style.cssText = `
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 99999;
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 0 0 1px ${accent}22;
+        border-top: 4px solid ${accent};
+        padding: 18px 24px 16px;
+        min-width: 260px;
+        max-width: 360px;
+        text-align: center;
+        cursor: pointer;
+    `;
+    card.innerHTML = `
+        <div style="font-size:32px;margin-bottom:6px;">${icon}</div>
+        <div style="font-size:16px;font-weight:800;color:#111;margin-bottom:4px;">${title}</div>
+        <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:${whatsappData ? '10px' : '0'};">${msg}</div>
+        ${whatsappBtn}
+        <div id="_popupBar" style="height:3px;border-radius:2px;background:${accent};margin-top:12px;transition:width 2s linear;width:100%;"></div>
     `;
 
-    // Add animations
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-    `;
-    if (!document.getElementById('popupAnimations')) {
-        style.id = 'popupAnimations';
-        document.head.appendChild(style);
-    }
+    // Click to dismiss
+    card.addEventListener('click', () => _dismissPopup(card));
 
-    document.body.appendChild(overlay);
+    document.body.appendChild(card);
 
-    // Close on overlay click
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.remove();
+    // Start progress bar shrink (visual timer)
+    requestAnimationFrame(() => {
+        const bar = document.getElementById('_popupBar');
+        if (bar) { bar.style.width = '0%'; }
     });
 
-    // Auto close after 6 seconds
-    setTimeout(() => {
-        if (document.getElementById('successPopup')) {
-            overlay.remove();
-        }
-    }, 6000);
+    // Auto-dismiss after 2 seconds
+    const timer = setTimeout(() => _dismissPopup(card), 2000);
+    card._timer = timer;
+}
+
+function _dismissPopup(card) {
+    if (!card || !card.parentNode) return;
+    clearTimeout(card._timer);
+    card.classList.add('closing');
+    setTimeout(() => { if (card.parentNode) card.remove(); }, 200);
 }
 
 /**
