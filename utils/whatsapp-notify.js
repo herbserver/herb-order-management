@@ -57,12 +57,13 @@ function buildItemsList(items) {
 
 /**
  * Sends a WhatsApp template message via Meta Cloud API.
- * @param {string} to           - Customer phone number (10 or 12 digit)
- * @param {string} templateName - Approved Meta template name
- * @param {string[]} parameters - Array of text parameter values
- * @param {string} [lang='en']  - Template language code (en = English)
+ * @param {string} to               - Customer phone number (10 or 12 digit)
+ * @param {string} templateName     - Approved Meta template name
+ * @param {string[]} parameters     - Array of text parameter values
+ * @param {string} [lang='en']      - Template language code
+ * @param {boolean} [hasDynamicButton=false] - true if template has dynamic URL button {{1}}
  */
-async function sendWhatsAppTemplate(to, templateName, parameters, lang = 'en') {
+async function sendWhatsAppTemplate(to, templateName, parameters, lang = 'en', hasDynamicButton = false) {
     const token   = process.env.META_WA_ACCESS_TOKEN;
     const phoneId = process.env.META_WA_PHONE_NUMBER_ID;
 
@@ -79,6 +80,23 @@ async function sendWhatsAppTemplate(to, templateName, parameters, lang = 'en') {
 
     try {
         const url  = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
+
+        // Build components — only add button component if template has a dynamic URL button
+        const components = [
+            {
+                type: 'body',
+                parameters: parameters.map(p => ({ type: 'text', text: String(p || '') }))
+            }
+        ];
+        if (hasDynamicButton) {
+            components.push({
+                type: 'button',
+                sub_type: 'url',
+                index: '0',
+                parameters: [{ type: 'text', text: 'home' }]
+            });
+        }
+
         const body = {
             messaging_product: 'whatsapp',
             to: formattedPhone,
@@ -86,19 +104,7 @@ async function sendWhatsAppTemplate(to, templateName, parameters, lang = 'en') {
             template: {
                 name: templateName,
                 language: { code: lang },
-                components: [
-                    {
-                        type: 'body',
-                        parameters: parameters.map(p => ({ type: 'text', text: String(p || '') }))
-                    },
-                    // "Visit Website" button (index 0) requires a non-empty URL suffix
-                    {
-                        type: 'button',
-                        sub_type: 'url',
-                        index: '0',
-                        parameters: [{ type: 'text', text: 'home' }]
-                    }
-                ]
+                components
             }
         };
 
@@ -182,7 +188,8 @@ async function notifyOrderDispatched(order) {
         const items   = buildItemsList(order.items);
 
         console.log(`📲 [WA] DISPATCHED → ${phone} | ${oid} | AWB: ${awb}`);
-        return await sendWhatsAppTemplate(phone, 'order_dispatch', [name, oid, awb, courier, total, cod, items]);
+        // order_dispatch has DYNAMIC URL button → hasDynamicButton = true
+        return await sendWhatsAppTemplate(phone, 'order_dispatch', [name, oid, awb, courier, total, cod, items], 'en', true);
     } catch (e) {
         console.error('❌ [WA] notifyOrderDispatched:', e.message);
         return { success: false };
@@ -221,7 +228,8 @@ async function notifyOrderDelivered(order) {
         const items  = buildItemsList(order.items);
 
         console.log(`📲 [WA] DELIVERED → ${phone} | ${oid}`);
-        return await sendWhatsAppTemplate(phone, 'delivered', [name, oid, items]);
+        // delivered has DYNAMIC URL button → hasDynamicButton = true
+        return await sendWhatsAppTemplate(phone, 'delivered', [name, oid, items], 'en', true);
     } catch (e) {
         console.error('❌ [WA] notifyOrderDelivered:', e.message);
         return { success: false };
