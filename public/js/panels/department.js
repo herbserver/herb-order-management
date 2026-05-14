@@ -874,6 +874,14 @@ function renderVerificationCard(o) {
             <label class="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 block">📝 Internal Notes</label>
             <textarea id="remark-${o.orderId}" placeholder="Add verification notes, special instructions..." 
                 class="w-full text-sm p-3 border-2 border-gray-200 rounded-xl h-20 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all resize-none">${o.remark || ''}</textarea>
+            <!-- WhatsApp Toggle -->
+            <label class="flex items-center gap-2 mt-2 cursor-pointer select-none" title="Save karte waqt customer ko WhatsApp message bhi jayega">
+                <input type="checkbox" id="remark-wa-${o.orderId}" 
+                    class="w-4 h-4 accent-green-500 cursor-pointer">
+                <span class="text-xs font-semibold text-green-700 flex items-center gap-1">
+                    <span>📱</span> Customer ko WhatsApp bhejo (Callback request)
+                </span>
+            </label>
         </div>
         
         <!-- Courier Suggestion -->
@@ -977,15 +985,41 @@ async function cancelOrder(orderId) {
 }
 
 async function saveOrderRemark(orderId) {
-    const val = document.getElementById(`remark-${orderId}`).value;
+    const remarkEl = document.getElementById(`remark-${orderId}`);
+    const val = remarkEl ? remarkEl.value.trim() : '';
+    if (!val) { alert('❌ Remark khali nahi hona chahiye!'); return; }
+
+    // Check if employee wants to send WA to customer
+    const waCheckbox = document.getElementById(`remark-wa-${orderId}`);
+    const sendWhatsApp = waCheckbox ? waCheckbox.checked : false;
+
     try {
-        await fetch(`${API_URL}/orders/${orderId}/remark`, {
+        const res = await fetch(`${API_URL}/orders/${orderId}/remark`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ remark: val, remarkBy: currentUser.id })
+            body: JSON.stringify({
+                remark: val,
+                remarkBy: currentUser?.id || 'Verification Dept',
+                sendWhatsApp: sendWhatsApp
+            })
         });
-        showSuccessPopup('Saved', 'Remark updated', '📝', '#F59E0B');
-    } catch (e) { }
+        const data = await res.json();
+        if (data.success) {
+            // Visual feedback on button
+            const btn = document.querySelector(`[onclick="saveOrderRemark('${orderId}')"]`);
+            if (btn) {
+                const orig = btn.innerHTML;
+                btn.innerHTML = sendWhatsApp ? '✅ Saved + WA Sent' : '✅ Saved';
+                btn.style.background = '#10b981';
+                btn.style.color = '#fff';
+                setTimeout(() => { btn.innerHTML = orig; btn.style = ''; }, 2000);
+            }
+        } else {
+            alert('❌ ' + (data.message || 'Save failed'));
+        }
+    } catch (e) {
+        alert('❌ Error: ' + e.message);
+    }
 }
 
 // ==================== DISPATCH FUNCTIONS ====================

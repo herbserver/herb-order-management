@@ -968,7 +968,7 @@ router.put('/:orderId/verify', async (req, res) => {
 // Save Remark
 router.put('/:orderId/remark', async (req, res) => {
     try {
-        const { remark, remarkBy } = req.body;
+        const { remark, remarkBy, sendWhatsApp } = req.body;
         const previousOrder = await dataAccess.getOrderById(req.params.orderId);
         if (!previousOrder) return res.status(404).json({ success: false, message: 'Order not found!' });
         const updates = {
@@ -980,8 +980,15 @@ router.put('/:orderId/remark', async (req, res) => {
         };
         const updated = await dataAccess.updateOrder(req.params.orderId, updates);
         if (!updated) return res.status(404).json({ success: false, message: 'Order not found!' });
-        console.log(`📝 Remark Added to ${req.params.orderId}`);
+        console.log(`📝 Remark Added to ${req.params.orderId}: "${remark}" | WA: ${sendWhatsApp ? 'YES' : 'NO'}`);
         emitOrderRealtime(updated, previousOrder, 'verification-department');
+
+        // 📲 WhatsApp: Send callback request to customer (only if sendWhatsApp flag is true)
+        if (sendWhatsApp && remark) {
+            waNotify.notifyOrderRemark(updated, remark)
+                .catch(e => console.error('[WA] Remark notify error:', e.message));
+        }
+
         res.json({ success: true, message: 'Remark saved!', order: updated });
     } catch (error) {
         console.error('❌ Remark error:', error);
@@ -1098,8 +1105,12 @@ router.post('/:orderId/cancel', async (req, res) => {
         };
 
         const updatedOrder = await dataAccess.updateOrder(orderId, updates);
-        console.log(`❌ Order Cancelled: ${orderId}`);
+        console.log(`❌ Order Cancelled: ${orderId} | Reason: ${reason || 'N/A'}`);
         emitOrderRealtime(updatedOrder, order, 'verification-department');
+
+        // 📲 WhatsApp: Order Cancelled Notification (fire-and-forget)
+        waNotify.notifyOrderCancelled(updatedOrder).catch(e => console.error('[WA] Cancel notify error:', e.message));
+
         res.json({ success: true, message: 'Order cancelled successfully', order: updatedOrder });
     } catch (error) {
         console.error('❌ Cancel order error:', error);
@@ -1170,8 +1181,12 @@ router.put('/:orderId/hold', async (req, res) => {
         const updatedOrder = await dataAccess.updateOrder(orderId, updates);
 
         if (updatedOrder) {
-            console.log(`✅ Success: Order ${orderId} is now on hold.`);
+            console.log(`✅ Success: Order ${orderId} is now on hold. Reason: ${holdReason || 'N/A'}`);
             emitOrderRealtime(updatedOrder, previousOrder, 'verification-department');
+
+            // 📲 WhatsApp: Order On Hold Notification (fire-and-forget)
+            waNotify.notifyOrderHold(updatedOrder).catch(e => console.error('[WA] Hold notify error:', e.message));
+
             res.json({ success: true, message: 'Order put on hold successfully', order: updatedOrder });
         } else {
             res.status(404).json({ success: false, message: 'Order not found' });
