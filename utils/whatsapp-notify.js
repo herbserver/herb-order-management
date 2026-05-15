@@ -16,6 +16,7 @@
  */
 
 const axios = require('axios');
+const { WhatsAppMessage } = require('../models');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -119,7 +120,25 @@ async function sendWhatsAppTemplate(to, templateName, parameters, lang = 'en', h
             timeout: 12000
         });
 
+        const metaMsgId = response.data?.messages?.[0]?.id || null;
         console.log(`✅ [WA Notify] Sent "${templateName}" → ${formattedPhone}`);
+
+        // Save to chat history so it shows in WhatsApp Chat panel
+        try {
+            await WhatsAppMessage.create({
+                phone: formattedPhone,
+                name: 'Customer',
+                direction: 'out',
+                type: 'template',
+                body: `[Auto] ${templateName}: ${parameters.join(' | ')}`,
+                templateName,
+                status: 'sent',
+                metaMsgId
+            });
+        } catch(dbErr) {
+            console.warn('[WA Notify] DB save failed:', dbErr.message);
+        }
+
         return { success: true, data: response.data };
 
     } catch (error) {

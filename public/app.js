@@ -1,4 +1,4 @@
-// API Configuration
+﻿// API Configuration
 console.log('🚀 app.js version: AnalyticsRestore-v1 [LIVE]');
 // If API_URL is defined in HTML, use it, else default
 var API_URL = typeof API_URL !== 'undefined' ? API_URL : (window.location.origin + '/api');
@@ -4825,14 +4825,20 @@ function generateOrderCardHTML(order) {
 
         <!-- Remarks Section -->
         ${isVerification ? `
-        <div class="px-4 py-2.5 bg-amber-50/50 border-t border-amber-100 flex items-center gap-2">
+        <div class="px-4 py-2.5 bg-amber-50/50 border-t border-amber-100">
+            <div class="flex items-center gap-2 mb-2">
             <input type="text" id="remark-${order.orderId}" placeholder="Add remark..."
                 class="flex-grow text-xs border border-amber-200 rounded-lg px-3 py-2 focus:border-amber-400 outline-none bg-white font-bold text-gray-600 shadow-inner"
                 value="${order.verificationRemark?.text || ''}">
-            <button type="button" onclick="saveOrderRemark('${order.orderId}')"
+            <button type="button" onclick="saveOrderRemark('${order.orderId}')" 
                 class="bg-amber-500 text-white p-2 rounded-lg hover:bg-amber-600 transition-all shadow-sm active:scale-90 flex items-center justify-center shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
             </button>
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+                <input type="checkbox" id="remark-wa-${order.orderId}" class="w-4 h-4 accent-green-500 cursor-pointer">
+                <span class="text-xs font-semibold text-green-700">📱 Customer ko WhatsApp bhejo (Callback request)</span>
+            </label>
         </div>
         ` : ''}
 
@@ -6376,7 +6382,7 @@ function toggleAdminSidebar() {
 
 function normalizeAdminTab(tab) {
     const normalizedTab = String(tab || '').toLowerCase();
-    return ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress', 'whatsapp'].includes(normalizedTab)
+    return ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress'].includes(normalizedTab)
         ? normalizedTab
         : 'pending';
 }
@@ -6484,7 +6490,6 @@ function switchAdminTab(tab, syncHash = true) {
     if (tab === 'cancelled') loadAdminCancelled();
     if (tab === 'onhold') loadAdminOnHold();
     if (tab === 'rto') loadRTOOrders();
-    if (tab === 'whatsapp') loadWAConversations();
 
     updateAdminBadges();
 
@@ -10636,48 +10641,73 @@ async function saveOrderRemark(orderId) {
     }
 
     const remark = textarea.value.trim();
+    if (!remark) {
+        alert('❌ Remark khali nahi hona chahiye!');
+        return;
+    }
+
+    // ✅ Read WhatsApp checkbox
+    const waCheckbox = document.getElementById(`remark-wa-${orderId}`);
+    const sendWhatsApp = waCheckbox ? waCheckbox.checked : false;
+
     console.log('📝 Saving remark for order:', orderId);
     console.log('Remark text:', remark);
-    console.log('Current user:', currentUser);
+    console.log('Send WhatsApp:', sendWhatsApp);
+
+    // Visual feedback on save button
+    const btn = document.querySelector(`[onclick="saveOrderRemark('${orderId}')"]`);
+    const origHTML = btn ? btn.innerHTML : null;
+    if (btn) {
+        btn.innerHTML = '⏳';
+        btn.disabled = true;
+    }
 
     try {
         const requestBody = {
             remark,
-            remarkBy: currentUser.id
+            remarkBy: currentUser.id,
+            sendWhatsApp: sendWhatsApp   // ✅ WA flag
         };
-        console.log('Request body:', requestBody);
 
-        const remarkURL = `${API_URL}/orders/${orderId}/remark`;
-        console.log('🌐 Fetch URL:', remarkURL);
-        console.log('API_URL:', API_URL);
-        console.log('orderId:', orderId);
-
-        const res = await fetch(remarkURL, {
+        const res = await fetch(`${API_URL}/orders/${orderId}/remark`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
 
-        console.log('Response status:', res.status);
         const data = await res.json();
-        console.log('Response data:', data);
 
         if (data.success) {
+            // Button feedback
+            if (btn) {
+                btn.innerHTML = sendWhatsApp ? '✅' : '💾';
+                btn.style.background = '#10b981';
+                setTimeout(() => {
+                    btn.innerHTML = origHTML;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                }, 2000);
+            }
             showSuccessPopup(
-                'Remark Saved! 📝',
-                `Remark successfully save ho gaya!`,
-                '📝',
+                sendWhatsApp ? 'Remark Saved + WA Sent! 📱' : 'Remark Saved! 📝',
+                sendWhatsApp
+                    ? `Remark save ho gaya aur customer ko WhatsApp bhi bhej diya!`
+                    : `Remark successfully save ho gaya!`,
+                sendWhatsApp ? '📱' : '📝',
                 '#f59e0b'
             );
         } else {
+            if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
             console.error('❌ API returned error:', data.message);
             showMessage('❌ ' + data.message, 'error', 'deptMessage');
         }
     } catch (e) {
+        if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
         console.error('❌ Error saving remark:', e);
         showMessage('❌ Failed to save remark: ' + e.message, 'error', 'deptMessage');
     }
 }
+
 
 // ==================== SHIPROCKET FUNCTIONS ====================
 function showShiprocketModal() {
@@ -11190,188 +11220,137 @@ function filterDeptOrdersHeader(query) {
 // ==================== WHATSAPP CHAT PANEL ====================
 
 let waCurrentPhone = null;
-let waCurrentName  = null;
-let waCurrentOrderId = null;
+let waCurrentName = null;
 let waAllConversations = [];
-let waAllTemplates = [];
-let waPollingInterval = null;
-
-function startWAPolling() {
-    stopWAPolling();
-    waPollingInterval = setInterval(async () => {
-        if (!waCurrentPhone) return;
-        try {
-            const res = await fetch(`${API_URL}/whatsapp/messages/${waCurrentPhone}`);
-            const data = await res.json();
-            if (data.success && data.messages.length > 0) renderWAMessages(data.messages);
-        } catch(e) {}
-    }, 5000);
-}
-function stopWAPolling() {
-    if (waPollingInterval) { clearInterval(waPollingInterval); waPollingInterval = null; }
-}
-
-async function loadWATemplates() {
-    try {
-        const res = await fetch(`${API_URL}/whatsapp/templates`);
-        const data = await res.json();
-        if (data.success) waAllTemplates = data.templates;
-    } catch(e) {}
-}
 
 async function loadWAConversations() {
     const list = document.getElementById('waConversationList');
     if (!list) return;
-    list.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="w-8 h-8 border-4 border-green-200 border-t-green-500 rounded-full animate-spin mb-3"></div><p class="text-xs font-medium">Loading chats...</p></div>`;
-    if (waAllTemplates.length === 0) await loadWATemplates();
+    list.innerHTML = '<div class="flex items-center justify-center py-12 text-slate-400"><div class="text-center"><div class="text-3xl mb-2">⏳</div><p class="text-sm">Loading conversations...</p></div></div>';
+
     try {
         const res = await fetch(`${API_URL}/whatsapp/conversations`);
         const data = await res.json();
-        if (data.success) { waAllConversations = data.conversations; renderWAConversations(data.conversations); }
-        else throw new Error(data.message);
-    } catch(e) {
-        list.innerHTML = `<div class="flex flex-col items-center justify-center py-10 text-red-400"><div class="text-3xl mb-2">!</div><p class="text-xs font-medium mb-3">Failed to load</p><button onclick="loadWAConversations()" class="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-bold">Retry</button></div>`;
+
+        if (data.success && data.conversations && data.conversations.length > 0) {
+            waAllConversations = data.conversations;
+            renderWAConversations(data.conversations);
+        } else {
+            // No conversations from API - show orders with phone as fallback
+            const ordRes = await fetch(`${API_URL}/orders?limit=30&status=Pending`);
+            const ordData = await ordRes.json();
+            if (ordData.orders && ordData.orders.length > 0) {
+                const convs = ordData.orders.map(o => ({
+                    id: o.telNo,
+                    phone: o.telNo,
+                    name: o.customerName || 'Customer',
+                    lastMsg: `Order: ${o.orderId}`,
+                    time: o.createdAt,
+                    orderId: o.orderId
+                }));
+                waAllConversations = convs;
+                renderWAConversations(convs);
+            } else {
+                list.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="text-3xl mb-2">📭</div><p class="text-sm font-medium">No conversations found</p><p class="text-xs mt-1">Messages will appear as customers reply</p></div>';
+            }
+        }
+    } catch (e) {
+        // Fallback: Load from recent orders
+        try {
+            const ordRes = await fetch(`${API_URL}/orders?limit=30`);
+            const ordData = await ordRes.json();
+            if (ordData.orders) {
+                const convs = ordData.orders.slice(0, 20).map(o => ({
+                    id: o.telNo,
+                    phone: o.telNo,
+                    name: o.customerName || 'Customer',
+                    lastMsg: `Order: ${o.orderId} • ${o.status}`,
+                    time: o.createdAt,
+                    orderId: o.orderId
+                }));
+                waAllConversations = convs;
+                renderWAConversations(convs);
+            }
+        } catch (e2) {
+            list.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-red-400"><div class="text-3xl mb-2">❌</div><p class="text-sm font-medium">Failed to load</p><button onclick="loadWAConversations()" class="mt-3 px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-bold">Retry</button></div>';
+        }
     }
 }
 
 function renderWAConversations(convs) {
     const list = document.getElementById('waConversationList');
     if (!convs || convs.length === 0) {
-        list.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="text-4xl mb-3">💬</div><p class="text-xs font-medium text-center">No chats yet.</p><button onclick="loadWAConversations()" class="mt-3 px-4 py-2 bg-green-500 text-white rounded-lg text-xs font-bold">Refresh</button></div>`;
+        list.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="text-3xl mb-2">📭</div><p class="text-sm">No conversations</p></div>';
         return;
     }
-    const colors = ['bg-emerald-500','bg-blue-500','bg-purple-500','bg-rose-500','bg-amber-500','bg-teal-500','bg-indigo-500'];
+
     list.innerHTML = convs.map(c => {
-        const initials = (c.name||'C').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-        const color = colors[(c.phone||'').charCodeAt(0) % colors.length];
-        const isActive = waCurrentPhone === c.phone;
+        const initials = (c.name || 'C').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-rose-500', 'bg-amber-500', 'bg-teal-500'];
+        const color = colors[(c.phone || '').charCodeAt(0) % colors.length];
+        const timeStr = c.time ? new Date(c.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
 
-        // Smart time - like WhatsApp
-        let timeStr = '';
-        if (c.time) {
-            const msgDate = new Date(c.time);
-            const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const yesterdayStart = new Date(todayStart - 86400000);
-            const weekStart = new Date(todayStart - 6 * 86400000);
-
-            if (msgDate >= todayStart) {
-                // Today → show time only
-                timeStr = msgDate.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
-            } else if (msgDate >= yesterdayStart) {
-                // Yesterday
-                timeStr = 'Yesterday';
-            } else if (msgDate >= weekStart) {
-                // Within last 7 days → show day name
-                timeStr = msgDate.toLocaleDateString('en-IN', {weekday: 'short'}); // Mon, Tue...
-            } else {
-                // Older → show date
-                timeStr = msgDate.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
-            }
-        }
-
-        return `<button onclick="openWAChat('${c.phone}','${(c.name||'Customer').replace(/'/g,"\\'")}','${c.orderId||''}')"
-            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 border-b border-slate-100 transition-colors text-left ${isActive?'bg-green-50':''}">
+        return `
+        <button onclick="openWAChat('${c.phone}', '${(c.name || 'Customer').replace(/'/g, "\\'")}', '${c.orderId || ''}')"
+            class="wa-conv-item w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 border-b border-slate-100 transition-colors text-left ${waCurrentPhone === c.phone ? 'bg-green-50' : ''}">
             <div class="w-10 h-10 ${color} rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${initials}</div>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
-                    <span class="font-semibold text-sm text-slate-800 truncate">${c.name||'Customer'}</span>
-                    <span class="text-[10px] ${c.unread>0?'text-green-600 font-bold':'text-slate-400'} flex-shrink-0 ml-1">${timeStr}</span>
+                    <span class="font-semibold text-sm text-slate-800 truncate">${c.name || 'Customer'}</span>
+                    <span class="text-[10px] text-slate-400 flex-shrink-0 ml-1">${timeStr}</span>
                 </div>
-                <p class="text-xs text-slate-400 truncate">${c.phone}</p>
-                <p class="text-xs ${c.unread>0?'text-slate-600 font-medium':'text-slate-400'} truncate mt-0.5">${c.lastMsg||''}</p>
+                <p class="text-xs text-slate-500 truncate mt-0.5">${c.phone}</p>
+                <p class="text-xs text-slate-400 truncate">${c.lastMsg || ''}</p>
             </div>
-            ${c.unread>0?`<span class="w-5 h-5 bg-green-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold flex-shrink-0">${c.unread}</span>`:''}
         </button>`;
     }).join('');
 }
 
-function filterWAConversations(q) {
-    if (!q) { renderWAConversations(waAllConversations); return; }
-    const ql = q.toLowerCase();
-    renderWAConversations(waAllConversations.filter(c =>
-        (c.name||'').toLowerCase().includes(ql) || (c.phone||'').includes(ql) || (c.orderId||'').toLowerCase().includes(ql)
-    ));
+function filterWAConversations(query) {
+    if (!query) { renderWAConversations(waAllConversations); return; }
+    const q = query.toLowerCase();
+    const filtered = waAllConversations.filter(c =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.phone || '').includes(q) ||
+        (c.orderId || '').toLowerCase().includes(q)
+    );
+    renderWAConversations(filtered);
 }
 
-async function openWAChat(phone, name, orderId) {
+function openWAChat(phone, name, orderId) {
     waCurrentPhone = phone;
-    waCurrentName  = name;
-    waCurrentOrderId = orderId || null;
+    waCurrentName = name;
+
     document.getElementById('waChatEmpty').classList.add('hidden');
     document.getElementById('waChatActive').classList.remove('hidden');
-    const initials = (name||'C').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
+    const initials = (name || 'C').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     document.getElementById('waChatAvatar').textContent = initials;
     document.getElementById('waChatName').textContent = name;
-    document.getElementById('waChatPhone').textContent = `+91-${phone.replace(/^91/,'')}`;
-    await loadWAMessages(phone);
-    renderWAConversations(waAllConversations);
-    startWAPolling();
+    document.getElementById('waChatPhone').textContent = `+91-${phone}`;
 
-    // Mark all incoming as read → clears green badge
-    fetch(`${API_URL}/whatsapp/messages/${phone}/markread`, { method: 'POST' })
-        .then(() => {
-            const conv = waAllConversations.find(c => c.phone === phone);
-            if (conv) { conv.unread = 0; renderWAConversations(waAllConversations); }
-        }).catch(() => {});
-}
-
-async function loadWAMessages(phone) {
+    // Load messages area with order info
     const msgContent = document.getElementById('waMessagesContent');
-    msgContent.innerHTML = `<div class="flex justify-center py-4"><div class="w-6 h-6 border-4 border-green-200 border-t-green-500 rounded-full animate-spin"></div></div>`;
-    try {
-        const res = await fetch(`${API_URL}/whatsapp/messages/${phone}`);
-        const data = await res.json();
-        if (data.success && data.messages.length > 0) { renderWAMessages(data.messages); }
-        else { msgContent.innerHTML = `<div class="flex justify-center"><div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-4 py-2 rounded-xl text-center max-w-xs">No message history yet.<br>Template bhejo ya message karo.</div></div>`; }
-    } catch(e) {
-        msgContent.innerHTML = `<div class="flex justify-center"><div class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-xl">Messages load failed</div></div>`;
-    }
-    const msgArea = document.getElementById('waChatMessages');
-    if (msgArea) msgArea.scrollTop = msgArea.scrollHeight;
-}
+    msgContent.innerHTML = `
+        <div class="flex justify-center mb-4">
+            <span class="bg-white/80 text-slate-500 text-xs px-3 py-1 rounded-full shadow-sm">
+                📱 Chat with ${name} (${phone})${orderId ? ` • Order: ${orderId}` : ''}
+            </span>
+        </div>
+        <div class="flex justify-center">
+            <div class="bg-amber-100 border border-amber-200 text-amber-800 text-xs px-4 py-2 rounded-xl shadow-sm max-w-xs text-center">
+                ⚠️ Customer ke previous messages yahan load honge jab Meta Webhooks configured honge.<br><br>
+                Abhi aap Templates bhej sakte hain ya free-form reply kar sakte hain.
+            </div>
+        </div>`;
 
-function renderWAMessages(messages) {
-    const msgContent = document.getElementById('waMessagesContent');
-    let html = '';
-    let lastDate = '';
-    messages.forEach(msg => {
-        const d = new Date(msg.timestamp);
-        const dateStr = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-        if (dateStr !== lastDate) {
-            html += `<div class="flex justify-center my-3"><span class="bg-white/80 text-slate-500 text-[10px] px-3 py-1 rounded-full shadow-sm border border-slate-100">${dateStr}</span></div>`;
-            lastDate = dateStr;
-        }
-        const timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-        const isOut = msg.direction === 'out';
-        const isFailed = msg.status === 'failed';
-        if (isOut) {
-            html += `<div class="flex justify-end mb-2"><div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] shadow-sm">
-                ${isFailed?'<p class="text-[10px] text-red-500 font-bold mb-1">Failed to send</p>':''}
-                <p class="text-sm text-slate-800 whitespace-pre-wrap">${waEscapeHtml(msg.body||'')}</p>
-                <div class="flex items-center justify-end gap-1 mt-1">
-                    <span class="text-[10px] text-slate-400">${timeStr}</span>
-                    <span class="text-[10px] ${msg.status==='read'?'text-blue-500':'text-slate-400'}">${msg.status==='read'?'✓✓':msg.status==='delivered'?'✓✓':'✓'}</span>
-                </div></div></div>`;
-        } else {
-            html += `<div class="flex justify-start mb-2"><div class="bg-white rounded-2xl rounded-tl-sm px-4 py-2 max-w-[75%] shadow-sm border border-slate-100">
-                <p class="text-sm text-slate-800 whitespace-pre-wrap">${waEscapeHtml(msg.body||'')}</p>
-                <span class="text-[10px] text-slate-400 block text-right mt-1">${timeStr}</span>
-                </div></div>`;
-        }
-    });
-    msgContent.innerHTML = html;
     const msgArea = document.getElementById('waChatMessages');
-    if (msgArea) msgArea.scrollTop = msgArea.scrollHeight;
-}
-
-function waEscapeHtml(text) {
-    return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    msgArea.scrollTop = msgArea.scrollHeight;
 }
 
 function closeWAChat() {
-    stopWAPolling();
-    waCurrentPhone = null; waCurrentName = null; waCurrentOrderId = null;
+    waCurrentPhone = null;
+    waCurrentName = null;
     document.getElementById('waChatEmpty').classList.remove('hidden');
     document.getElementById('waChatActive').classList.add('hidden');
 }
@@ -11379,92 +11358,94 @@ function closeWAChat() {
 async function sendWAFreeMessage() {
     if (!waCurrentPhone) return;
     const input = document.getElementById('waMessageInput');
-    const text = (input ? input.value : '').trim();
+    const text = input.value.trim();
     if (!text) return;
+
     const btn = document.getElementById('waSendBtn');
-    if (btn) btn.disabled = true;
-    if (input) { input.value = ''; input.style.height = 'auto'; }
-    appendWAMessage(text, 'out', 'sent');
+    btn.disabled = true;
+    input.value = '';
+    input.style.height = 'auto';
+
+    // Show sent message in UI
+    appendWAMessage(text, 'sent');
+
     try {
         const res = await fetch(`${API_URL}/whatsapp/send`, {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ to: waCurrentPhone, type: 'text', text, customerName: waCurrentName, orderId: waCurrentOrderId })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to: waCurrentPhone,
+                type: 'text',
+                text: text
+            })
         });
         const data = await res.json();
-        if (!data.success) appendWAMessage('Message failed - 24h window expired', 'error');
-        await loadWAConversations();
-    } catch(e) { appendWAMessage('Network error', 'error'); }
-    if (btn) btn.disabled = false;
-}
-
-async function openWATemplatePanel() {
-    if (!waCurrentPhone) return;
-    if (waAllTemplates.length === 0) await loadWATemplates();
-    const panel = document.getElementById('waTemplatePanel');
-    const list = document.getElementById('waTemplatePanelList');
-    const colors = {emerald:'bg-emerald-50 border-emerald-200 text-emerald-800',blue:'bg-blue-50 border-blue-200 text-blue-800',purple:'bg-purple-50 border-purple-200 text-purple-800',orange:'bg-orange-50 border-orange-200 text-orange-800',teal:'bg-teal-50 border-teal-200 text-teal-800',amber:'bg-amber-50 border-amber-200 text-amber-800',red:'bg-red-50 border-red-200 text-red-800',indigo:'bg-indigo-50 border-indigo-200 text-indigo-800'};
-    if (list) list.innerHTML = waAllTemplates.map(t => {
-        const cls = colors[t.color] || colors.indigo;
-        return `<button onclick="sendWATemplate('${t.name}')" class="w-full text-left p-3 border rounded-xl hover:opacity-80 transition-opacity ${cls}">
-            <p class="font-bold text-sm">${t.label}</p>
-            <p class="text-xs opacity-70 mt-0.5">${t.desc}</p>
-            <p class="text-[10px] opacity-50 mt-1">Params: ${t.params.join(', ')}</p></button>`;
-    }).join('');
-    if (panel) panel.classList.remove('hidden');
+        if (!data.success) {
+            appendWAMessage('❌ Message send nahi hua. Customer 24h window mein nahi hai.', 'error');
+        }
+    } catch (e) {
+        appendWAMessage('❌ Network error. Try again.', 'error');
+    }
+    btn.disabled = false;
 }
 
 async function sendWATemplate(templateName) {
-    const tpl = waAllTemplates.find(t => t.name === templateName);
-    if (!tpl) return;
+    if (!waCurrentPhone) return;
     document.getElementById('waTemplatePanel').classList.add('hidden');
+
     const name = waCurrentName || 'Customer';
-    const oid  = waCurrentOrderId || 'N/A';
-    let params = tpl.params.map(() => '');
-    if (templateName === 'order_confirm')       params = [name, oid, '', '', '', ''];
-    else if (templateName === 'address_verify') params = [name, oid, '', '', '', ''];
-    else if (templateName === 'order_dispatch') params = [name, oid, '', '', '', '', ''];
-    else if (templateName === 'out_for_delivery') params = [name, oid, '', new Date().toLocaleDateString('en-IN')];
-    else if (templateName === 'delivered')      params = [name, oid, new Date().toLocaleDateString('en-IN')];
-    else if (templateName === 'order_on_hold')  params = [name, oid, 'Call not answered', 'Jaldi'];
-    else if (templateName === 'order_cancelled') params = [name, oid, 'As discussed'];
-    else if (templateName === 'order_remark')   params = [name, oid, 'Aapke order ke baare mein baat karni thi'];
-    const preview = params.map((p,i) => `Param ${i+1}: ${p||'[empty]'}`).join('\n');
-    if (!confirm(`Send: ${tpl.label}\nTo: ${waCurrentName} (${waCurrentPhone})\n\n${preview}\n\nBhejein?`)) return;
-    appendWAMessage(`[Template: ${tpl.label}]\n${params.join(' | ')}`, 'out', 'sent');
+    let params = [];
+
+    if (templateName === 'order_on_hold') params = [name, 'N/A', 'Verification pending', 'Jaldi'];
+    else if (templateName === 'order_remark') params = [name, 'N/A', 'Aapke order ke baare mein baat karni thi'];
+    else if (templateName === 'order_cancelled') params = [name, 'N/A', 'As discussed'];
+
     try {
         const res = await fetch(`${API_URL}/whatsapp/send`, {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ to: waCurrentPhone, templateName, parameters: params, lang: 'en', customerName: waCurrentName, orderId: waCurrentOrderId })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to: waCurrentPhone,
+                templateName: templateName,
+                parameters: params,
+                lang: 'en'
+            })
         });
         const data = await res.json();
-        if (!data.success) appendWAMessage(`Template failed: ${JSON.stringify(data.error?.error_data?.details||data.message)}`, 'error');
-        else appendWAMessage('Template sent!', 'info');
-        await loadWAConversations();
-    } catch(e) { appendWAMessage('Network error', 'error'); }
+        if (data.success) {
+            appendWAMessage(`✅ Template "${templateName}" successfully bheja gaya!`, 'sent');
+        } else {
+            appendWAMessage(`❌ Template send failed: ${JSON.stringify(data.error || data.message)}`, 'error');
+        }
+    } catch (e) {
+        appendWAMessage('❌ Template send failed. Check console.', 'error');
+    }
 }
 
-function appendWAMessage(text, direction, status) {
+function appendWAMessage(text, type) {
     const msgContent = document.getElementById('waMessagesContent');
-    if (!msgContent) return;
-    const now = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
     const div = document.createElement('div');
-    if (direction === 'error' || direction === 'info') {
-        div.className = 'flex justify-center mb-2';
-        div.innerHTML = `<div class="${direction==='error'?'bg-red-50 text-red-600':'bg-green-50 text-green-700'} text-xs px-4 py-2 rounded-xl shadow-sm">${text}</div>`;
-    } else if (direction === 'out') {
-        div.className = 'flex justify-end mb-2';
-        div.innerHTML = `<div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] shadow-sm">
-            <p class="text-sm text-slate-800 whitespace-pre-wrap">${waEscapeHtml(text)}</p>
-            <div class="flex items-center justify-end gap-1 mt-1"><span class="text-[10px] text-slate-400">${now}</span><span class="text-[10px] text-slate-400">✓</span></div></div>`;
+    div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} mb-2`;
+
+    if (type === 'error') {
+        div.innerHTML = `<div class="bg-red-100 text-red-700 text-xs px-3 py-2 rounded-xl max-w-xs">${text}</div>`;
+    } else {
+        div.innerHTML = `
+            <div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-xs shadow-sm">
+                <p class="text-sm text-slate-800">${text}</p>
+                <p class="text-[10px] text-slate-400 text-right mt-1">${now} ✓✓</p>
+            </div>`;
     }
     msgContent.appendChild(div);
     const msgArea = document.getElementById('waChatMessages');
-    if (msgArea) msgArea.scrollTop = msgArea.scrollHeight;
+    msgArea.scrollTop = msgArea.scrollHeight;
 }
 
-function closeWATemplatePanel() {
-    const p = document.getElementById('waTemplatePanel');
-    if (p) p.classList.add('hidden');
+function openWATemplatePanel() {
+    if (!waCurrentPhone) return;
+    document.getElementById('waTemplatePanel').classList.remove('hidden');
 }
 
 // ==================== END WHATSAPP CHAT PANEL ====================
