@@ -17,9 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ==================== MIDDLEWARE ====================
-// Enable compression for all responses (70% size reduction)
 app.use(compression());
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -29,7 +27,6 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
     origin: function (origin, callback) {
-        // EMERGENCY FIX: Allow all origins for presentation demo
         return callback(null, true);
     },
     credentials: true
@@ -41,16 +38,23 @@ const apiLimiter = rateLimit({
     message: { success: false, message: 'Too many requests. Please slow down.' }
 });
 
-// Fix for Render / Heroku proxy configuration
-// Prevents ERR_ERL_UNEXPECTED_X_FORWARDED_FOR crash in express-rate-limit
 app.set('trust proxy', 1);
-
 app.use('/api/', apiLimiter);
 
 // ==================== ROUTES ====================
 
-// Static Files
-app.use(express.static(path.join(__dirname, 'public')));
+// Static Files — serve with UTF-8 charset so emojis render correctly in JS files
+app.use(express.static(path.join(__dirname, 'public'), {
+    setHeaders: function (res, filePath) {
+        if (filePath.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        } else if (filePath.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
+        } else if (filePath.endsWith('.html')) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        }
+    }
+}));
 
 // Frontend Routes
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
@@ -60,7 +64,7 @@ app.get('/verification', (req, res) => res.sendFile(path.join(__dirname, 'public
 app.get('/dispatch', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dispatch.html')));
 app.get('/delivery', (req, res) => res.sendFile(path.join(__dirname, 'public', 'delivery.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/department', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verification.html'))); // Default dept = verification
+app.get('/department', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verification.html')));
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -84,15 +88,15 @@ const fetchAwbRoutes = require('./routes/fetchAwb');
 const configRoutes = require('./routes/config');
 const whatsappRoutes = require('./routes/whatsapp');
 
-// Mount Routes
-app.use('/api/auth', authRoutes); // /api/auth/login, etc.
+// Mount API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/shiprocket', shiprocketRoutes);
-app.use('/api/shiprocket', shiprocketWebhookRoutes); // Webhook endpoint
+app.use('/api/shiprocket', shiprocketWebhookRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
@@ -105,24 +109,17 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api', authRoutes);
 app.use('/api', locationRoutes);
 
-// Page Routing (MPA)
-app.get('/admin', (req, res) => res.redirect('/'));
-app.get('/employee', (req, res) => res.sendFile(path.join(__dirname, 'public/employee.html')));
-app.get('/dispatch', (req, res) => res.sendFile(path.join(__dirname, 'public/dispatch.html')));
-app.get('/verification', (req, res) => res.sendFile(path.join(__dirname, 'public/verification.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public/login.html')));
-
 // Support for old .html paths
 app.get('/*.html', (req, res) => {
     const page = req.path.split('/').pop().replace('.html', '');
-    if (['admin', 'employee', 'dispatch', 'verification', 'login'].includes(page)) {
+    if (['admin', 'employee', 'dispatch', 'verification', 'login', 'delivery'].includes(page)) {
         return res.redirect(`/${page}`);
     }
     res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
-// Catch-all
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
+// Catch-all — redirect unknown routes to login (no index.html exists)
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 
 // ==================== START SERVER ====================
 const http = require('http');
@@ -132,26 +129,23 @@ async function startServer() {
     const dbConnected = await connectDatabase();
     await initializeDefaultData();
     console.log('Database initialized!');
-    // Start Auto AWB Sync (har 5 minute me Shiprocket se AWB sync karega)
+
     startAutoSync(5);
     console.log('Auto AWB Sync enabled (every 5 minutes)');
 
-    // Create HTTP Server for Socket.io
     const server = http.createServer(app);
-
-    // Initialize Socket.io
     const io = socketManager.init(server, allowedOrigins);
-    console.log('ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ…â€™ Socket.io initialized');
+    console.log('Socket.io initialized');
 
     server.listen(PORT, '0.0.0.0', () => {
         console.log('HERB ON NATURALS MODULAR SERVER STARTED');
-        console.log(`Port: ${PORT}`);
+        console.log('Port: ' + PORT);
         console.log('Status: MongoDB Connected');
         console.log('Realtime: Socket.io Active');
     });
 }
 
 startServer().catch(err => {
-    console.error('ÃƒÂ¢Ã‚ÂÃ…â€™ Failed to start server:', err);
+    console.error('Failed to start server:', err);
     process.exit(1);
 });

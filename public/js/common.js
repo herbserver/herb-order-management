@@ -249,66 +249,33 @@ function closeModal(id) {
 }
 
 function showSuccessPopup(title, msg, icon, color, whatsappData = null) {
-    // Delegate to the unified fast popup in popups.js if available
-    if (typeof _dismissPopup !== 'undefined' && document.getElementById('popupAnimations')) {
-        // popups.js version is loaded — use it directly
-    }
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn';
 
-    // Remove any existing popup
-    const existing = document.getElementById('successPopup');
-    if (existing) existing.remove();
-
-    // Inject animations once
-    if (!document.getElementById('popupAnimations')) {
-        const s = document.createElement('style');
-        s.id = 'popupAnimations';
-        s.textContent = `
-            @keyframes _popIn  { from { opacity:0; transform: translateY(-16px) scale(0.93); } to { opacity:1; transform: translateY(0) scale(1); } }
-            @keyframes _popOut { from { opacity:1; transform: translateY(0) scale(1); } to { opacity:0; transform: translateY(-12px) scale(0.95); } }
-            #successPopup { animation: _popIn 0.15s cubic-bezier(0.34,1.56,0.64,1) both; }
-            #successPopup.closing { animation: _popOut 0.2s ease-in both; }
-        `;
-        document.head.appendChild(s);
-    }
-
-    const accent = color || '#10b981';
     let whatsappBtn = '';
     if (whatsappData) {
-        whatsappBtn = `<button onclick="sendWhatsAppDirect('${whatsappData.type}', ${JSON.stringify(whatsappData.order).replace(/"/g, '&quot;')})"
-            style="background:#25D366;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:6px;margin:0 auto 8px;">
-            📱 Send WhatsApp</button>`;
+        whatsappBtn = `
+            <button onclick="sendWhatsAppDirect('${whatsappData.type}', ${JSON.stringify(whatsappData.order).replace(/"/g, '&quot;')}); this.closest('.fixed').remove()" 
+                class="w-full py-3.5 rounded-xl font-bold text-white shadow-lg bg-green-500 hover:bg-green-600 hover:scale-105 transition-all flex items-center justify-center gap-2 mb-3">
+                <span>📱</span> Send WhatsApp
+            </button>
+        `;
     }
 
-    const card = document.createElement('div');
-    card.id = 'successPopup';
-    card.style.cssText = `position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:99999;
-        background:#fff;border-radius:18px;box-shadow:0 8px 40px rgba(0,0,0,0.18);
-        border-top:4px solid ${accent};padding:18px 24px 16px;
-        min-width:260px;max-width:360px;text-align:center;cursor:pointer;`;
-    card.innerHTML = `
-        <div style="font-size:32px;margin-bottom:6px;">${icon}</div>
-        <div style="font-size:16px;font-weight:800;color:#111;margin-bottom:4px;">${title}</div>
-        <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:${whatsappData ? '10px' : '0'};">${String(msg).replace(/\n/g, '<br>')}</div>
-        ${whatsappBtn}
-        <div id="_popupBar" style="height:3px;border-radius:2px;background:${accent};margin-top:12px;transition:width 2s linear;width:100%;"></div>
+    modal.innerHTML = `
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl transform transition-all scale-100">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-lg" style="background:${color}20; color:${color}">
+                ${icon}
+            </div>
+            <h3 class="text-2xl font-black text-gray-800 mb-3">${title}</h3>
+            <p class="text-gray-500 font-medium mb-8 leading-relaxed">${msg.replace(/\n/g, '<br>')}</p>
+            ${whatsappBtn}
+            <button onclick="this.closest('.fixed').remove()" class="w-full py-3.5 rounded-xl font-bold text-white shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-105 transition-all" style="background:${color}">
+                Continue
+            </button>
+        </div>
     `;
-
-    const dismiss = () => {
-        clearTimeout(card._t);
-        card.classList.add('closing');
-        setTimeout(() => { if (card.parentNode) card.remove(); }, 200);
-    };
-    card.addEventListener('click', dismiss);
-    document.body.appendChild(card);
-
-    // Start shrinking progress bar
-    requestAnimationFrame(() => {
-        const bar = document.getElementById('_popupBar');
-        if (bar) bar.style.width = '0%';
-    });
-
-    // Auto-dismiss in 2 seconds
-    card._t = setTimeout(dismiss, 2000);
+    document.body.appendChild(modal);
 }
 
 // Helper for direct WhatsApp redirect

@@ -465,21 +465,6 @@
         });
     </script>
 
-    <!-- Override: Delivery panel mein popup nahi chahiye -->
-    <script>
-        // This runs LAST — overrides any showSuccessPopup from common.js / app.js
-        window.showSuccessPopup = function(title, msg, icon, color, whatsappData) {
-            // Silently do nothing — delivery actions are instant (card removes itself)
-            // Only show WhatsApp button if needed (rare case)
-            if (whatsappData) {
-                const ok = confirm('\u2705 ' + title + '\n' + msg + '\n\nWhatsApp bhejein?');
-                if (ok && typeof sendWhatsAppDirect === 'function') {
-                    sendWhatsAppDirect(whatsappData.type, whatsappData.order);
-                }
-            }
-        };
-    </script>
-
 </body>
 
 </html>

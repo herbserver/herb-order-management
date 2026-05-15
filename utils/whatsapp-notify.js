@@ -271,7 +271,7 @@ async function notifyOrderHold(order) {
                 `Aapka Order *${oid}* ke liye hamne call kiya tha, lekin connect nahi hua.\n\n` +
                 `📋 *Note:* ${reason}\n\n` +
                 `Ham aapko *${date}* ko wapas call karenge.\n\n` +
-                `Agar aap khud call karna chahein:\n📞 *+91-XXXXXXXXXX*\n\n` +
+                `Agar aap khud call karna chahein:\n📞 *+91-9911799660*\n\n` +
                 `_Team Herb On Naturals_ 💚`
             );
         }
@@ -385,7 +385,7 @@ async function notifyOrderRemark(order, remarkText) {
 
         console.log(`📲 [WA] REMARK NOTIFY → ${phone} | ${oid} | "${remark}"`);
 
-        // Try Meta approved template first
+        // Try Meta approved template
         const result = await sendWhatsAppTemplate(
             phone,
             'order_remark',

@@ -3395,23 +3395,41 @@ async function loadOnWayOrders() {
 
 // Load OFD Orders (Delivery Panel - OFD Tab)
 async function loadOFDOrders() {
+    console.log('🔍 loadOFDOrders called from app.js');
     try {
+        // Fetch orders with "Out For Delivery" status
         const url = `${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}`;
+        console.log('🌐 Fetching from:', url);
+
         const res = await fetch(url);
         const data = await res.json();
+        console.log('📦 Response:', data);
+
         const orders = data.orders || [];
+        console.log('📋 Orders count:', orders.length);
 
         const container = document.getElementById('ofdOrdersList');
-        if (!container) return;
+        console.log('🎯 Container:', container ? 'Found' : 'NOT FOUND');
+
+        if (!container) {
+            console.error('❌ ofdOrdersList container not found!');
+            return;
+        }
 
         if (orders.length === 0) {
+            console.log('⚠️ No OFD orders');
             container.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-gray-500">Koi OFD order nahi hai</p></div>';
             return;
         }
 
+        console.log('✅ Rendering', orders.length, 'orders');
         let html = '';
-        orders.forEach(order => { html += renderDeliveryDeptCard(order, 'orange'); });
+        orders.forEach(order => {
+            console.log('🎨 Rendering:', order.orderId);
+            html += renderDeliveryCardModern(order);
+        });
         container.innerHTML = html;
+        console.log('✅ Container updated!');
     } catch (e) {
         console.error('❌ Error in loadOFDOrders:', e);
     }
@@ -3428,7 +3446,55 @@ function renderDeliveryDeptCard(order, fallbackColor) {
     return '';
 }
 
-// NOTE: loadOnWayOrders and loadOFDOrders are defined above — no duplicate needed here.
+async function loadOnWayOrders() {
+    try {
+        const res = await fetch(`${API_URL}/orders/dispatched`);
+        const data = await res.json();
+        let orders = data.orders || [];
+
+        orders = orders.filter(order => {
+            const trackingStatus = String(order.tracking?.currentStatus || '').toLowerCase();
+            return !trackingStatus.includes('out for delivery') && !trackingStatus.includes('ofd');
+        });
+
+        orders = filterOrdersByDate(orders);
+
+        const container = document.getElementById('onWayOrdersList');
+        if (!container) return;
+
+        if (orders.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-500 py-8">Koi On Way order nahi hai</p>';
+            return;
+        }
+
+        container.innerHTML = orders.map(order => renderDeliveryDeptCard(order, 'blue')).join('');
+    } catch (e) {
+        console.error('Error in loadOnWayOrders:', e);
+    }
+}
+
+async function loadOFDOrders() {
+    try {
+        const res = await fetch(`${API_URL}/orders?status=${encodeURIComponent('Out For Delivery')}`);
+        const data = await res.json();
+        let orders = data.orders || [];
+
+        orders = filterOrdersByDate(orders);
+
+        const container = document.getElementById('ofdOrdersList');
+        if (!container) return;
+
+        if (orders.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-gray-500">Koi OFD order nahi hai</p></div>';
+            return;
+        }
+
+        container.innerHTML = orders.map(order => renderDeliveryDeptCard(order, 'orange')).join('');
+        startAutoTrackingRefresh();
+    } catch (e) {
+        console.error('Error in loadOFDOrders:', e);
+    }
+}
 
 async function trackShiprocketOrder(orderId, awb) {
     // Get all elements first
@@ -3852,12 +3918,9 @@ async function updateOrderTracking(orderId, awb) {
     }
 }
 
-// Mark order as delivered — INSTANT DOM removal for speed
+// Mark order as delivered
 async function markAsDelivered(orderId) {
     if (!confirm('Mark this order as delivered?')) return;
-
-    // Instantly remove the card from UI (optimistic update)
-    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/deliver`, {
@@ -3868,24 +3931,19 @@ async function markAsDelivered(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            // silent ✅
+            showSuccessPopup('Order Delivered! ✅', `${orderId} marked as delivered successfully!`, '📦', '#10b981');
+            loadDeliveryOrders(); // Refresh list
         } else {
-            // Rollback: reload the current tab
             alert('❌ ' + data.message);
-            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
-        _refreshCurrentDeliveryTab();
     }
 }
 
-// Mark order as Out For Delivery (OFD) — INSTANT DOM removal
+// Mark order as Out For Delivery (OFD)
 async function markAsOFD(orderId) {
     if (!confirm('Mark this order as Out For Delivery (OFD)?')) return;
-
-    // Instantly remove from current tab
-    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/update-tracking`, {
@@ -3899,24 +3957,21 @@ async function markAsOFD(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            // silent ✅
+            showSuccessPopup('Order Marked OFD! 🚚', `${orderId} is now Out For Delivery!`, '🚚', '#8b5cf6');
+            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+            if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
+            if (typeof loadOFDOrders === 'function') loadOFDOrders();
         } else {
             alert('❌ ' + data.message);
-            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
-        _refreshCurrentDeliveryTab();
     }
 }
 
-// Mark order as RTO — INSTANT DOM removal
 async function markAsRTO(orderId) {
     const reason = prompt('RTO ka kaaran batayein (Reason for RTO):');
     if (reason === null) return; // Cancelled
-
-    // Instantly remove from current tab
-    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/rto`, {
@@ -3931,22 +3986,20 @@ async function markAsRTO(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            // silent ✅
+            showSuccessPopup('Order RTO! ↩️', `${orderId} marked as RTO successfully!`, '↩️', '#6366f1');
+            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
+            if (typeof loadRTOOrders === 'function') loadRTOOrders();
         } else {
             alert('❌ ' + data.message);
-            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
-        _refreshCurrentDeliveryTab();
     }
 }
 
-// Mark order as On Way — INSTANT DOM removal
+// Mark order as On Way (move back from RTO/OFD to Dispatched)
 async function markAsOnWay(orderId) {
     if (!confirm('Is order ko wapas "On Way" (Dispatched) mein move karein?')) return;
-
-    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
@@ -3960,90 +4013,23 @@ async function markAsOnWay(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            // silent ✅
+            showSuccessPopup('Order On Way! 🚛', `${orderId} wapas On Way mein move ho gaya!`, '🚛', '#f59e0b');
+            if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
+            if (typeof loadOFDOrders === 'function') loadOFDOrders();
+            if (typeof loadRTOOrders === 'function') loadRTOOrders();
+            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
         } else {
             alert('❌ ' + data.message);
-            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
-        _refreshCurrentDeliveryTab();
     }
 }
 window.markAsOnWay = markAsOnWay;
 
-// ===== HELPER: Instantly remove a delivery card from DOM =====
-function _removeDeliveryCard(orderId) {
-    try {
-        // Cards contain the orderId as text in a span — find and remove parent card
-        const allContainers = [
-            document.getElementById('onWayOrdersList'),
-            document.getElementById('ofdOrdersList'),
-            document.getElementById('deliveredOrdersList'),
-            document.getElementById('rtoOrdersList'),
-            document.getElementById('deliveryRequestsList')
-        ];
-        let removed = false;
-        allContainers.forEach(container => {
-            if (!container) return;
-            // Find any element that contains the orderId text (e.g. the badge span)
-            const spans = container.querySelectorAll('span, p, button');
-            spans.forEach(el => {
-                if (el.textContent.trim() === orderId) {
-                    // Walk up to find the card (div with border classes)
-                    let card = el;
-                    for (let i = 0; i < 6; i++) {
-                        card = card.parentElement;
-                        if (!card || card === container) break;
-                        if (card.tagName === 'DIV' && (card.classList.contains('bg-gradient-to-br') || card.classList.contains('bg-white') || card.classList.contains('glass-card'))) {
-                            card.style.transition = 'opacity 0.25s, transform 0.25s';
-                            card.style.opacity = '0';
-                            card.style.transform = 'scale(0.95)';
-                            setTimeout(() => card.remove(), 250);
-                            removed = true;
-                            return;
-                        }
-                    }
-                }
-            });
-        });
-        // If card not found by text, do a silent reload after short delay
-        if (!removed) {
-            setTimeout(_refreshCurrentDeliveryTab, 600);
-        }
-    } catch(e) {
-        // Fallback to normal reload
-        setTimeout(_refreshCurrentDeliveryTab, 600);
-    }
-}
-
-// ===== HELPER: Refresh only the currently visible delivery tab =====
-function _refreshCurrentDeliveryTab() {
-    try {
-        const tabs = [
-            { tabId: 'deliveryOnWayTab',    fn: () => { if (typeof loadOnWayOrders === 'function') loadOnWayOrders(); } },
-            { tabId: 'deliveryOFDTab',      fn: () => { if (typeof loadOFDOrders === 'function') loadOFDOrders(); } },
-            { tabId: 'deliveryDeliveredTab',fn: () => { if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders(); } },
-            { tabId: 'deliveryRTOTab',      fn: () => { if (typeof loadRTOOrders === 'function') loadRTOOrders(); } },
-            { tabId: 'deliveryRequestsTab', fn: () => { if (typeof loadDeliveryRequests === 'function') loadDeliveryRequests(); } }
-        ];
-        for (const t of tabs) {
-            const el = document.getElementById(t.tabId);
-            if (el && !el.classList.contains('hidden')) {
-                t.fn();
-                return;
-            }
-        }
-    } catch(e) {}
-}
-window._removeDeliveryCard = _removeDeliveryCard;
-window._refreshCurrentDeliveryTab = _refreshCurrentDeliveryTab;
-
-// Revert Delivered Order back to On Way — INSTANT DOM removal
+// Revert Delivered Order back to On Way
 async function revertToOnWay(orderId) {
     if (!confirm('Kya aap sure hain? Is order ko wapas "On Way" mein move karein?')) return;
-
-    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/revert-delivered`, {
@@ -4058,23 +4044,22 @@ async function revertToOnWay(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            // silent ✅
+            showSuccessPopup('Order Reverted! ↩️', `${orderId} wapas On Way mein move ho gaya!`, '↩️', '#3b82f6');
+            if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
+            if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
+            if (typeof loadDeliveryOrders === 'function') loadDeliveryOrders();
         } else {
             alert('❌ ' + (data.message || 'Revert failed'));
-            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
-        _refreshCurrentDeliveryTab();
     }
 }
 
-// Mark Delivered Order as RTO (from Delivered tab) — INSTANT DOM removal
+// Mark Delivered Order as RTO (from Delivered tab)
 async function markDeliveredAsRTO(orderId) {
     const reason = prompt('RTO ka kaaran batayein (Reason for RTO):');
     if (reason === null) return;
-
-    _removeDeliveryCard(orderId);
 
     try {
         const res = await fetch(`${API_URL}/orders/revert-delivered`, {
@@ -4090,14 +4075,14 @@ async function markDeliveredAsRTO(orderId) {
         const data = await res.json();
 
         if (data.success) {
-            // silent ✅
+            showSuccessPopup('Order RTO! ↩️', `${orderId} RTO mein move ho gaya!`, '↩️', '#ef4444');
+            if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
+            if (typeof loadRTOOrders === 'function') loadRTOOrders();
         } else {
             alert('❌ ' + (data.message || 'RTO failed'));
-            _refreshCurrentDeliveryTab();
         }
     } catch (e) {
         alert('❌ Error: ' + e.message);
-        _refreshCurrentDeliveryTab();
     }
 }
 
@@ -4840,14 +4825,20 @@ function generateOrderCardHTML(order) {
 
         <!-- Remarks Section -->
         ${isVerification ? `
-        <div class="px-4 py-2.5 bg-amber-50/50 border-t border-amber-100 flex items-center gap-2">
+        <div class="px-4 py-2.5 bg-amber-50/50 border-t border-amber-100">
+            <div class="flex items-center gap-2 mb-2">
             <input type="text" id="remark-${order.orderId}" placeholder="Add remark..."
                 class="flex-grow text-xs border border-amber-200 rounded-lg px-3 py-2 focus:border-amber-400 outline-none bg-white font-bold text-gray-600 shadow-inner"
                 value="${order.verificationRemark?.text || ''}">
-            <button type="button" onclick="saveOrderRemark('${order.orderId}')"
+            <button type="button" onclick="saveOrderRemark('${order.orderId}')" 
                 class="bg-amber-500 text-white p-2 rounded-lg hover:bg-amber-600 transition-all shadow-sm active:scale-90 flex items-center justify-center shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
             </button>
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+                <input type="checkbox" id="remark-wa-${order.orderId}" class="w-4 h-4 accent-green-500 cursor-pointer">
+                <span class="text-xs font-semibold text-green-700">📱 Customer ko WhatsApp bhejo (Callback request)</span>
+            </label>
         </div>
         ` : ''}
 
@@ -6391,7 +6382,7 @@ function toggleAdminSidebar() {
 
 function normalizeAdminTab(tab) {
     const normalizedTab = String(tab || '').toLowerCase();
-    return ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress'].includes(normalizedTab)
+    return ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress', 'whatsapp'].includes(normalizedTab)
         ? normalizedTab
         : 'pending';
 }
@@ -6417,7 +6408,7 @@ function getAdminTabFromHash() {
 }
 
 function getActiveAdminTab() {
-    const adminTabs = ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress'];
+    const adminTabs = ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress', 'whatsapp'];
     for (const tab of adminTabs) {
         const contentEl = document.getElementById(getAdminTabContentId(tab));
         if (contentEl && !contentEl.classList.contains('hidden')) return tab;
@@ -6499,7 +6490,7 @@ function switchAdminTab(tab, syncHash = true) {
     if (tab === 'cancelled') loadAdminCancelled();
     if (tab === 'onhold') loadAdminOnHold();
     if (tab === 'rto') loadRTOOrders();
-
+    if (tab === 'whatsapp') { const wt = document.getElementById('adminWhatsappTab'); if(wt) { wt.style.height = (window.innerHeight - 130) + 'px'; wt.style.minHeight = '500px'; } loadWAConversations(); }
     updateAdminBadges();
 
     if (syncHash) {
@@ -10650,48 +10641,73 @@ async function saveOrderRemark(orderId) {
     }
 
     const remark = textarea.value.trim();
+    if (!remark) {
+        alert('❌ Remark khali nahi hona chahiye!');
+        return;
+    }
+
+    // ✅ Read WhatsApp checkbox
+    const waCheckbox = document.getElementById(`remark-wa-${orderId}`);
+    const sendWhatsApp = waCheckbox ? waCheckbox.checked : false;
+
     console.log('📝 Saving remark for order:', orderId);
     console.log('Remark text:', remark);
-    console.log('Current user:', currentUser);
+    console.log('Send WhatsApp:', sendWhatsApp);
+
+    // Visual feedback on save button
+    const btn = document.querySelector(`[onclick="saveOrderRemark('${orderId}')"]`);
+    const origHTML = btn ? btn.innerHTML : null;
+    if (btn) {
+        btn.innerHTML = '⏳';
+        btn.disabled = true;
+    }
 
     try {
         const requestBody = {
             remark,
-            remarkBy: currentUser.id
+            remarkBy: currentUser.id,
+            sendWhatsApp: sendWhatsApp   // ✅ WA flag
         };
-        console.log('Request body:', requestBody);
 
-        const remarkURL = `${API_URL}/orders/${orderId}/remark`;
-        console.log('🌐 Fetch URL:', remarkURL);
-        console.log('API_URL:', API_URL);
-        console.log('orderId:', orderId);
-
-        const res = await fetch(remarkURL, {
+        const res = await fetch(`${API_URL}/orders/${orderId}/remark`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
 
-        console.log('Response status:', res.status);
         const data = await res.json();
-        console.log('Response data:', data);
 
         if (data.success) {
+            // Button feedback
+            if (btn) {
+                btn.innerHTML = sendWhatsApp ? '✅' : '💾';
+                btn.style.background = '#10b981';
+                setTimeout(() => {
+                    btn.innerHTML = origHTML;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                }, 2000);
+            }
             showSuccessPopup(
-                'Remark Saved! 📝',
-                `Remark successfully save ho gaya!`,
-                '📝',
+                sendWhatsApp ? 'Remark Saved + WA Sent! 📱' : 'Remark Saved! 📝',
+                sendWhatsApp
+                    ? `Remark save ho gaya aur customer ko WhatsApp bhi bhej diya!`
+                    : `Remark successfully save ho gaya!`,
+                sendWhatsApp ? '📱' : '📝',
                 '#f59e0b'
             );
         } else {
+            if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
             console.error('❌ API returned error:', data.message);
             showMessage('❌ ' + data.message, 'error', 'deptMessage');
         }
     } catch (e) {
+        if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
         console.error('❌ Error saving remark:', e);
         showMessage('❌ Failed to save remark: ' + e.message, 'error', 'deptMessage');
     }
 }
+
 
 // ==================== SHIPROCKET FUNCTIONS ====================
 function showShiprocketModal() {
@@ -11200,3 +11216,236 @@ function filterDeptOrdersHeader(query) {
 }
 
 // Note: openEditOrderModal, calculateEditCOD, and submitEditOrder functions are defined at line 4387+
+
+// ==================== WHATSAPP CHAT PANEL ====================
+
+let waCurrentPhone = null;
+let waCurrentName = null;
+let waAllConversations = [];
+
+async function loadWAConversations() {
+    const list = document.getElementById('waConversationList');
+    if (!list) return;
+    list.innerHTML = '<div class="flex items-center justify-center py-12 text-slate-400"><div class="text-center"><div class="text-3xl mb-2">⏳</div><p class="text-sm">Loading conversations...</p></div></div>';
+
+    try {
+        const res = await fetch(`${API_URL}/whatsapp/conversations`);
+        const data = await res.json();
+
+        if (data.success && data.conversations && data.conversations.length > 0) {
+            waAllConversations = data.conversations;
+            renderWAConversations(data.conversations);
+        } else {
+            // No conversations from API - show orders with phone as fallback
+            const ordRes = await fetch(`${API_URL}/orders?limit=30&status=Pending`);
+            const ordData = await ordRes.json();
+            if (ordData.orders && ordData.orders.length > 0) {
+                const convs = ordData.orders.map(o => ({
+                    id: o.telNo,
+                    phone: o.telNo,
+                    name: o.customerName || 'Customer',
+                    lastMsg: `Order: ${o.orderId}`,
+                    time: o.createdAt,
+                    orderId: o.orderId
+                }));
+                waAllConversations = convs;
+                renderWAConversations(convs);
+            } else {
+                list.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="text-3xl mb-2">📭</div><p class="text-sm font-medium">No conversations found</p><p class="text-xs mt-1">Messages will appear as customers reply</p></div>';
+            }
+        }
+    } catch(e) {
+        // Fallback: Load from recent orders
+        try {
+            const ordRes = await fetch(`${API_URL}/orders?limit=30`);
+            const ordData = await ordRes.json();
+            if (ordData.orders) {
+                const convs = ordData.orders.slice(0, 20).map(o => ({
+                    id: o.telNo,
+                    phone: o.telNo,
+                    name: o.customerName || 'Customer',
+                    lastMsg: `Order: ${o.orderId} • ${o.status}`,
+                    time: o.createdAt,
+                    orderId: o.orderId
+                }));
+                waAllConversations = convs;
+                renderWAConversations(convs);
+            }
+        } catch(e2) {
+            list.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-red-400"><div class="text-3xl mb-2">❌</div><p class="text-sm font-medium">Failed to load</p><button onclick="loadWAConversations()" class="mt-3 px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-bold">Retry</button></div>';
+        }
+    }
+}
+
+function renderWAConversations(convs) {
+    const list = document.getElementById('waConversationList');
+    if (!convs || convs.length === 0) {
+        list.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="text-3xl mb-2">📭</div><p class="text-sm">No conversations</p></div>';
+        return;
+    }
+
+    list.innerHTML = convs.map(c => {
+        const initials = (c.name || 'C').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-rose-500', 'bg-amber-500', 'bg-teal-500'];
+        const color = colors[(c.phone || '').charCodeAt(0) % colors.length];
+        const timeStr = c.time ? new Date(c.time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit'}) : '';
+
+        return `
+        <button onclick="openWAChat('${c.phone}', '${(c.name||'Customer').replace(/'/g,"\\'")}', '${c.orderId||''}')"
+            class="wa-conv-item w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 border-b border-slate-100 transition-colors text-left ${waCurrentPhone === c.phone ? 'bg-green-50' : ''}">
+            <div class="w-10 h-10 ${color} rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${initials}</div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                    <span class="font-semibold text-sm text-slate-800 truncate">${c.name || 'Customer'}</span>
+                    <span class="text-[10px] text-slate-400 flex-shrink-0 ml-1">${timeStr}</span>
+                </div>
+                <p class="text-xs text-slate-500 truncate mt-0.5">${c.phone}</p>
+                <p class="text-xs text-slate-400 truncate">${c.lastMsg || ''}</p>
+            </div>
+        </button>`;
+    }).join('');
+}
+
+function filterWAConversations(query) {
+    if (!query) { renderWAConversations(waAllConversations); return; }
+    const q = query.toLowerCase();
+    const filtered = waAllConversations.filter(c =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.phone || '').includes(q) ||
+        (c.orderId || '').toLowerCase().includes(q)
+    );
+    renderWAConversations(filtered);
+}
+
+function openWAChat(phone, name, orderId) {
+    waCurrentPhone = phone;
+    waCurrentName = name;
+
+    document.getElementById('waChatEmpty').classList.add('hidden');
+    document.getElementById('waChatActive').classList.remove('hidden');
+
+    const initials = (name || 'C').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('waChatAvatar').textContent = initials;
+    document.getElementById('waChatName').textContent = name;
+    document.getElementById('waChatPhone').textContent = `+91-${phone}`;
+
+    // Load messages area with order info
+    const msgContent = document.getElementById('waMessagesContent');
+    msgContent.innerHTML = `
+        <div class="flex justify-center mb-4">
+            <span class="bg-white/80 text-slate-500 text-xs px-3 py-1 rounded-full shadow-sm">
+                📱 Chat with ${name} (${phone})${orderId ? ` • Order: ${orderId}` : ''}
+            </span>
+        </div>
+        <div class="flex justify-center">
+            <div class="bg-amber-100 border border-amber-200 text-amber-800 text-xs px-4 py-2 rounded-xl shadow-sm max-w-xs text-center">
+                ⚠️ Customer ke previous messages yahan load honge jab Meta Webhooks configured honge.<br><br>
+                Abhi aap Templates bhej sakte hain ya free-form reply kar sakte hain.
+            </div>
+        </div>`;
+
+    const msgArea = document.getElementById('waChatMessages');
+    msgArea.scrollTop = msgArea.scrollHeight;
+}
+
+function closeWAChat() {
+    waCurrentPhone = null;
+    waCurrentName = null;
+    document.getElementById('waChatEmpty').classList.remove('hidden');
+    document.getElementById('waChatActive').classList.add('hidden');
+}
+
+async function sendWAFreeMessage() {
+    if (!waCurrentPhone) return;
+    const input = document.getElementById('waMessageInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('waSendBtn');
+    btn.disabled = true;
+    input.value = '';
+    input.style.height = 'auto';
+
+    // Show sent message in UI
+    appendWAMessage(text, 'sent');
+
+    try {
+        const res = await fetch(`${API_URL}/whatsapp/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to: waCurrentPhone,
+                type: 'text',
+                text: text
+            })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            appendWAMessage('❌ Message send nahi hua. Customer 24h window mein nahi hai.', 'error');
+        }
+    } catch(e) {
+        appendWAMessage('❌ Network error. Try again.', 'error');
+    }
+    btn.disabled = false;
+}
+
+async function sendWATemplate(templateName) {
+    if (!waCurrentPhone) return;
+    document.getElementById('waTemplatePanel').classList.add('hidden');
+
+    const name = waCurrentName || 'Customer';
+    let params = [];
+
+    if (templateName === 'order_on_hold') params = [name, 'N/A', 'Verification pending', 'Jaldi'];
+    else if (templateName === 'order_remark') params = [name, 'N/A', 'Aapke order ke baare mein baat karni thi'];
+    else if (templateName === 'order_cancelled') params = [name, 'N/A', 'As discussed'];
+
+    try {
+        const res = await fetch(`${API_URL}/whatsapp/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to: waCurrentPhone,
+                templateName: templateName,
+                parameters: params,
+                lang: 'en'
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            appendWAMessage(`✅ Template "${templateName}" successfully bheja gaya!`, 'sent');
+        } else {
+            appendWAMessage(`❌ Template send failed: ${JSON.stringify(data.error || data.message)}`, 'error');
+        }
+    } catch(e) {
+        appendWAMessage('❌ Template send failed. Check console.', 'error');
+    }
+}
+
+function appendWAMessage(text, type) {
+    const msgContent = document.getElementById('waMessagesContent');
+    const now = new Date().toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit'});
+
+    const div = document.createElement('div');
+    div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} mb-2`;
+
+    if (type === 'error') {
+        div.innerHTML = `<div class="bg-red-100 text-red-700 text-xs px-3 py-2 rounded-xl max-w-xs">${text}</div>`;
+    } else {
+        div.innerHTML = `
+            <div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-xs shadow-sm">
+                <p class="text-sm text-slate-800">${text}</p>
+                <p class="text-[10px] text-slate-400 text-right mt-1">${now} ✓✓</p>
+            </div>`;
+    }
+    msgContent.appendChild(div);
+    const msgArea = document.getElementById('waChatMessages');
+    msgArea.scrollTop = msgArea.scrollHeight;
+}
+
+function openWATemplatePanel() {
+    if (!waCurrentPhone) return;
+    document.getElementById('waTemplatePanel').classList.remove('hidden');
+}
+
+// ==================== END WHATSAPP CHAT PANEL ====================
