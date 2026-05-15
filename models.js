@@ -279,6 +279,25 @@ const pincodeEntrySchema = new mongoose.Schema({
 pincodeEntrySchema.index({ districtName: 1, stateName: 1 });
 pincodeEntrySchema.index({ officeName: 1, pincode: 1 });
 
+// WhatsApp Message Schema - Store all sent/received messages
+const whatsappMessageSchema = new mongoose.Schema({
+    phone:     { type: String, required: true, index: true },  // 91XXXXXXXXXX
+    name:      { type: String, default: 'Customer' },
+    direction: { type: String, enum: ['out', 'in'], default: 'out' },  // out = sent by admin, in = received from customer
+    type:      { type: String, enum: ['text', 'template'], default: 'text' },
+    body:      { type: String },            // actual message text (for display)
+    templateName: { type: String },         // template name if type=template
+    status:    { type: String, enum: ['sent', 'delivered', 'read', 'failed'], default: 'sent' },
+    orderId:   { type: String },            // linked order if any
+    metaMsgId: { type: String },            // Meta message ID from API response
+    isRead:    { type: Boolean, default: false }, // true when admin has opened and seen this message
+    timestamp: { type: Date, default: Date.now, index: true }
+}, {
+    timestamps: true,
+    collection: 'whatsapp_messages'
+});
+whatsappMessageSchema.index({ phone: 1, timestamp: -1 });
+
 // Create models
 const Order = mongoose.model('Order', orderSchema);
 const Department = mongoose.model('Department', departmentSchema);
@@ -287,6 +306,7 @@ const ShiprocketConfig = mongoose.model('ShiprocketConfig', shiprocketConfigSche
 const Notification = mongoose.model('Notification', notificationSchema);
 const AppConfig = mongoose.model('AppConfig', appConfigSchema);
 const PincodeEntry = mongoose.model('PincodeEntry', pincodeEntrySchema);
+const WhatsAppMessage = mongoose.model('WhatsAppMessage', whatsappMessageSchema);
 
 module.exports = {
     Order,
@@ -295,5 +315,6 @@ module.exports = {
     ShiprocketConfig,
     Notification,
     AppConfig,
-    PincodeEntry
+    PincodeEntry,
+    WhatsAppMessage
 };
