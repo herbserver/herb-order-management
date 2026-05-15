@@ -1,4 +1,4 @@
-// MongoDB Data Access Layer
+﻿// MongoDB Data Access Layer
 // This module provides functions to interact with MongoDB collections only.
 
 const path = require('path');
@@ -426,8 +426,8 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                             $group: {
                                 _id: "$employeeId",
                                 name: { $first: { $ifNull: ["$employee", "$employeeId"] } },
-                                total: { $sum: 1 },
-                                revenue: { $sum: { $ifNull: ["$total", 0] } },
+                                total: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold", "Hold"]] }, 0, 1] } },
+                                revenue: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold", "Hold"]] }, 0, { $ifNull: ["$total", 0] }] } },
                                 hold: { $sum: { $cond: [{ $in: ["$status", ["Hold", "On Hold"]] }, 1, 0] } },
                                 holdRev: { $sum: { $cond: [{ $in: ["$status", ["Hold", "On Hold"]] }, { $ifNull: ["$total", 0] }, 0] } },
                                 dispatched: { $sum: { $cond: [{ $in: ["$status", ["Dispatched", "Out For Delivery"]] }, 1, 0] } },
@@ -441,8 +441,7 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                             }
                         },
                         { $addFields: { id: "$_id" } },
-                        { $sort: { revenue: -1 } },
-                        { $limit: 10 }
+                        { $sort: { total: -1 } }
                     ],
                     // City Distribution
                     "cityDistribution": [
@@ -474,8 +473,8 @@ async function getAnalyticsDashboardData(startDate, endDate, employeeId = null) 
                                         timezone: ANALYTICS_TIMEZONE
                                     }
                                 },
-                                total: { $sum: 1 },
-                                revenue: { $sum: { $ifNull: ["$total", 0] } },
+                                total: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold", "Hold"]] }, 0, 1] } },
+                                revenue: { $sum: { $cond: [{ $in: ["$status", ["Cancelled", "On Hold", "Hold"]] }, 0, { $ifNull: ["$total", 0] }] } },
                                 delivered: { $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] } },
                                 cancelled: { $sum: { $cond: [{ $eq: ["$status", "Cancelled"] }, 1, 0] } }
                             }
