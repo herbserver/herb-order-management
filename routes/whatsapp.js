@@ -4,6 +4,32 @@ const axios = require('axios');
 const { WhatsAppMessage } = require('../models');
 const dataAccess = require('../dataAccess');
 
+// ─── SSE: Real-time push to admin panel ──────────────────────────────────────
+const sseClients = [];
+
+function broadcastSSE(event, data) {
+    const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    sseClients.forEach((res, i) => {
+        try { res.write(payload); } catch(e) { sseClients.splice(i, 1); }
+    });
+}
+
+// SSE endpoint - admin connects here for instant updates
+router.get('/events', (req, res) => {
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+    });
+    res.write('event: connected\ndata: {}\n\n');
+    sseClients.push(res);
+    req.on('close', () => {
+        const idx = sseClients.indexOf(res);
+        if (idx !== -1) sseClients.splice(idx, 1);
+    });
+});
+
 // ─── All approved templates with display info ────────────────────────────────
 const TEMPLATES = [
     {
@@ -11,35 +37,35 @@ const TEMPLATES = [
         label: '✅ Order Confirmed',
         desc: 'Order book hone pe',
         color: 'emerald',
-        params: ['Customer Name', 'Order ID', 'Total Amount', 'Product', 'Payment Mode', 'Address']
+        params: ['Customer Name', 'Order ID', 'Total', 'Advance', 'COD Amount', 'Products']
     },
     {
         name: 'address_verify',
         label: '📍 Address Verified',
         desc: 'Address verify hone pe',
         color: 'blue',
-        params: ['Customer Name', 'Order ID', 'Address', 'City', 'State', 'Pincode']
+        params: ['Customer Name', 'Order ID', 'Total', 'Advance', 'COD Amount', 'Products']
     },
     {
         name: 'order_dispatch',
         label: '🚚 Order Dispatched',
         desc: 'Dispatch hone pe AWB ke saath',
         color: 'purple',
-        params: ['Customer Name', 'Order ID', 'AWB Number', 'Courier', 'City', 'Estimated Date', 'Tracking Link']
+        params: ['Customer Name', 'Order ID', 'AWB Number', 'Courier', 'Total', 'COD Amount', 'Products']
     },
     {
         name: 'out_for_delivery',
         label: '🛵 Out For Delivery',
         desc: 'Delivery ke din',
         color: 'orange',
-        params: ['Customer Name', 'Order ID', 'City', 'Date']
+        params: ['Customer Name', 'Order ID', 'COD Amount', 'Products']
     },
     {
         name: 'delivered',
         label: '🎉 Order Delivered',
         desc: 'Deliver hone ke baad',
         color: 'teal',
-        params: ['Customer Name', 'Order ID', 'Date']
+        params: ['Customer Name', 'Order ID', 'Products']
     },
     {
         name: 'order_on_hold',
@@ -303,28 +329,53 @@ router.post('/webhook', async (req, res) => {
                 const contact = contacts.find(c => c.wa_id === phone);
                 const name = contact?.profile?.name || 'Customer';
 
-                // Get message text based on type
+                // Get message text and media info
                 let text = '[media]';
-                if (msg.type === 'text') text = msg.text?.body || '';
-                else if (msg.type === 'image') text = '[Image]';
-                else if (msg.type === 'audio') text = '[Voice Message]';
-                else if (msg.type === 'video') text = '[Video]';
-                else if (msg.type === 'document') text = '[Document]';
-                else if (msg.type === 'sticker') text = '[Sticker]';
-                else if (msg.type === 'location') text = '[Location]';
-                else if (msg.type === 'button') text = msg.button?.text || '[Button Reply]';
+                let mediaId = null;
+                let msgType = 'text';
+
+                if (msg.type === 'text') {
+                    text = msg.text?.body || '';
+                } else if (msg.type === 'image') {
+                    text = msg.image?.caption || '[Image]';
+                    mediaId = msg.image?.id;
+                    msgType = 'image';
+                } else if (msg.type === 'audio') {
+                    text = '[Voice Message]';
+                    mediaId = msg.audio?.id;
+                    msgType = 'audio';
+                } else if (msg.type === 'video') {
+                    text = msg.video?.caption || '[Video]';
+                    mediaId = msg.video?.id;
+                    msgType = 'video';
+                } else if (msg.type === 'document') {
+                    text = msg.document?.filename || '[Document]';
+                    mediaId = msg.document?.id;
+                    msgType = 'document';
+                } else if (msg.type === 'sticker') {
+                    text = '[Sticker]';
+                    mediaId = msg.sticker?.id;
+                    msgType = 'image';
+                } else if (msg.type === 'location') {
+                    text = '[Location: ' + (msg.location?.latitude || '') + ', ' + (msg.location?.longitude || '') + ']';
+                } else if (msg.type === 'button') {
+                    text = msg.button?.text || '[Button Reply]';
+                }
 
                 // Avoid duplicate saves
                 const existing = await WhatsAppMessage.findOne({ metaMsgId: msg.id });
                 if (!existing) {
-                    await WhatsAppMessage.create({
+                    const saved = await WhatsAppMessage.create({
                         phone, name,
                         direction: 'in',
-                        type: 'text',
+                        type: msgType,
                         body: text,
+                        mediaId: mediaId || undefined,
                         status: 'read',
                         metaMsgId: msg.id
                     });
+                    // Instant push to admin
+                    broadcastSSE('newMessage', { phone, name, message: saved.toObject() });
                 }
             }
         }
@@ -338,11 +389,13 @@ router.post('/webhook', async (req, res) => {
                 if (!metaMsgId || !newStatus) continue;
 
                 // Update our message status in DB
-                await WhatsAppMessage.findOneAndUpdate(
+                const updated = await WhatsAppMessage.findOneAndUpdate(
                     { metaMsgId },
                     { status: newStatus },
                     { new: true }
                 );
+                // Instant push status change to admin
+                if (updated) broadcastSSE('statusUpdate', { phone: updated.phone, metaMsgId, status: newStatus });
             }
         }
 
@@ -359,6 +412,39 @@ router.get('/webhook', (req, res) => {
         res.send(req.query['hub.challenge']);
     } else {
         res.sendStatus(403);
+    }
+});
+
+// ─── GET /whatsapp/media/:mediaId - Proxy media from Meta ─────────────────────
+router.get('/media/:mediaId', async (req, res) => {
+    try {
+        const token = process.env.META_WA_ACCESS_TOKEN;
+        if (!token) return res.status(500).json({ error: 'No token' });
+
+        // Step 1: Get the download URL from Meta
+        const metaRes = await axios.get('https://graph.facebook.com/v20.0/' + req.params.mediaId, {
+            headers: { 'Authorization': 'Bearer ' + token },
+            timeout: 10000
+        });
+
+        const mediaUrl = metaRes.data && metaRes.data.url;
+        if (!mediaUrl) return res.status(404).json({ error: 'Media not found' });
+
+        // Step 2: Download and stream the actual media
+        const mediaStream = await axios.get(mediaUrl, {
+            headers: { 'Authorization': 'Bearer ' + token },
+            responseType: 'stream',
+            timeout: 30000
+        });
+
+        const contentType = mediaStream.headers['content-type'] || 'application/octet-stream';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        mediaStream.data.pipe(res);
+
+    } catch (e) {
+        console.error('Media proxy error:', e.message);
+        res.status(500).json({ error: 'Failed to fetch media' });
     }
 });
 

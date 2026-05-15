@@ -284,9 +284,10 @@ const whatsappMessageSchema = new mongoose.Schema({
     phone:     { type: String, required: true, index: true },  // 91XXXXXXXXXX
     name:      { type: String, default: 'Customer' },
     direction: { type: String, enum: ['out', 'in'], default: 'out' },  // out = sent by admin, in = received from customer
-    type:      { type: String, enum: ['text', 'template'], default: 'text' },
+    type:      { type: String, enum: ['text', 'template', 'image', 'audio', 'video', 'document'], default: 'text' },
     body:      { type: String },            // actual message text (for display)
     templateName: { type: String },         // template name if type=template
+    mediaId:   { type: String },            // Meta media ID for images/videos/audio
     status:    { type: String, enum: ['sent', 'delivered', 'read', 'failed'], default: 'sent' },
     orderId:   { type: String },            // linked order if any
     metaMsgId: { type: String },            // Meta message ID from API response

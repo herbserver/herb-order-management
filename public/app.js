@@ -11195,10 +11195,67 @@ let waCurrentOrderId = null;
 let waAllConversations = [];
 let waAllTemplates = [];
 let waPollingInterval = null;      // Message polling (current chat)
-let waConvPollingInterval = null;  // Conversation list polling (sidebar)
-let waLastMsgCount = 0;            // Track new messages
+let waConvPollingInterval = null;  // Fallback polling
+let waLastMsgCount = 0;
+let waSSE = null;                  // SSE connection
 
-// ── Message Polling: refresh current chat every 4 sec ─────────────────────────
+// ── SSE: Instant real-time updates ────────────────────────────────────────────
+function startWASSE() {
+    if (waSSE) return; // Already connected
+    try {
+        waSSE = new EventSource(API_URL + '/whatsapp/events');
+
+        waSSE.addEventListener('newMessage', async (e) => {
+            const data = JSON.parse(e.data);
+            // If this chat is open, reload messages instantly
+            if (waCurrentPhone && data.phone === waCurrentPhone) {
+                const res = await fetch(API_URL + '/whatsapp/messages/' + waCurrentPhone);
+                const msgData = await res.json();
+                if (msgData.success) {
+                    waLastMsgCount = msgData.messages.length;
+                    renderWAMessages(msgData.messages, true);
+                }
+                // Auto mark-read since chat is open
+                fetch(API_URL + '/whatsapp/messages/' + waCurrentPhone + '/markread', { method: 'POST' }).catch(() => {});
+            }
+            // Always refresh conversation list (for badges)
+            refreshWAConversations();
+        });
+
+        waSSE.addEventListener('statusUpdate', async (e) => {
+            const data = JSON.parse(e.data);
+            // If this chat is open, refresh messages for tick update
+            if (waCurrentPhone && data.phone === waCurrentPhone) {
+                const res = await fetch(API_URL + '/whatsapp/messages/' + waCurrentPhone);
+                const msgData = await res.json();
+                if (msgData.success) renderWAMessages(msgData.messages, false);
+            }
+        });
+
+        waSSE.onerror = () => {
+            // Reconnect after 5 sec on error
+            waSSE.close();
+            waSSE = null;
+            setTimeout(startWASSE, 5000);
+        };
+    } catch(e) {
+        console.warn('SSE not available, using polling fallback');
+    }
+}
+
+// Quick conversation list refresh (no loading spinner)
+async function refreshWAConversations() {
+    try {
+        const res = await fetch(API_URL + '/whatsapp/conversations');
+        const data = await res.json();
+        if (data.success) {
+            waAllConversations = data.conversations;
+            renderWAConversations(data.conversations);
+        }
+    } catch(e) {}
+}
+
+// ── Message Polling: fallback, refresh current chat every 10 sec ──────────────
 function startWAPolling() {
     stopWAPolling();
     waPollingInterval = setInterval(async () => {
@@ -11209,40 +11266,20 @@ function startWAPolling() {
             if (data.success && data.messages.length > 0) {
                 const prevCount = waLastMsgCount;
                 waLastMsgCount = data.messages.length;
-                renderWAMessages(data.messages, prevCount < data.messages.length); // scroll only on new
+                renderWAMessages(data.messages, prevCount < data.messages.length);
             }
         } catch(e) {}
-    }, 4000);
+    }, 10000); // 10 sec fallback (SSE handles instant)
 }
 
 function stopWAPolling() {
     if (waPollingInterval) { clearInterval(waPollingInterval); waPollingInterval = null; }
 }
 
-// ── Conversation Polling: refresh sidebar every 8 sec ─────────────────────────
+// ── Conversation Polling: fallback, refresh sidebar every 15 sec ──────────────
 function startWAConvPolling() {
     stopWAConvPolling();
-    waConvPollingInterval = setInterval(async () => {
-        try {
-            const res = await fetch(API_URL + '/whatsapp/conversations');
-            const data = await res.json();
-            if (!data.success) return;
-
-            const newConvs = data.conversations;
-            // Check if any unread count changed
-            let changed = newConvs.length !== waAllConversations.length;
-            if (!changed) {
-                for (const nc of newConvs) {
-                    const old = waAllConversations.find(c => c.phone === nc.phone);
-                    if (!old || old.unread !== nc.unread || old.lastMsg !== nc.lastMsg) { changed = true; break; }
-                }
-            }
-            if (changed) {
-                waAllConversations = newConvs;
-                renderWAConversations(newConvs);
-            }
-        } catch(e) {}
-    }, 8000);
+    waConvPollingInterval = setInterval(refreshWAConversations, 15000); // 15 sec fallback
 }
 
 function stopWAConvPolling() {
@@ -11268,7 +11305,8 @@ async function loadWAConversations() {
         if (data.success) {
             waAllConversations = data.conversations;
             renderWAConversations(data.conversations);
-            startWAConvPolling(); // Start sidebar real-time updates
+            startWAConvPolling(); // Fallback polling
+            startWASSE();         // Instant SSE updates
         }
         else throw new Error(data.message);
     } catch(e) {
@@ -11390,19 +11428,91 @@ function renderWAMessages(messages, scrollToBottom = true) {
         const timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
         const isOut = msg.direction === 'out';
         const isFailed = msg.status === 'failed';
-        if (isOut) {
-            html += `<div class="flex justify-end mb-2"><div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] shadow-sm">
-                ${isFailed?'<p class="text-[10px] text-red-500 font-bold mb-1">Failed to send</p>':''}
-                <p class="text-sm text-slate-800 whitespace-pre-wrap">${waEscapeHtml(msg.body||'')}</p>
-                <div class="flex items-center justify-end gap-1 mt-1">
-                    <span class="text-[10px] text-slate-400">${timeStr}</span>
-                    <span class="text-[10px] ${msg.status==='read'?'text-blue-500':'text-slate-400'}">${msg.status==='read'?'✓✓':msg.status==='delivered'?'✓✓':'✓'}</span>
-                </div></div></div>`;
+        // Detect template: type=template OR has templateName OR body starts with [Auto]
+        const bodyStartsAuto = (msg.body || '').startsWith('[Auto]');
+        const isTemplate = msg.type === 'template' || (msg.templateName && msg.templateName.length > 0) || bodyStartsAuto;
+
+        // Extract templateName from body if not set: "[Auto] order_confirm: ..."
+        let tplName = msg.templateName || '';
+        if (!tplName && bodyStartsAuto) {
+            const match = (msg.body || '').match(/\[Auto\]\s*([^:]+)/);
+            if (match) tplName = match[1].trim();
+        }
+
+        const hasMedia = msg.mediaId && (msg.type === 'image' || msg.type === 'video' || msg.type === 'audio' || msg.type === 'document');
+        const mediaUrl = hasMedia ? (API_URL + '/whatsapp/media/' + msg.mediaId) : '';
+        let mediaHtml = '';
+        if (hasMedia) {
+            if (msg.type === 'image') mediaHtml = '<img src="' + mediaUrl + '" class="rounded-lg max-w-full max-h-60 mb-1 cursor-pointer" onclick="window.open(this.src)" loading="lazy">';
+            else if (msg.type === 'video') mediaHtml = '<video src="' + mediaUrl + '" controls class="rounded-lg max-w-full max-h-60 mb-1"></video>';
+            else if (msg.type === 'audio') mediaHtml = '<audio src="' + mediaUrl + '" controls class="w-full mb-1"></audio>';
+            else if (msg.type === 'document') mediaHtml = '<a href="' + mediaUrl + '" target="_blank" class="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2 mb-1 text-xs text-blue-600">📄 ' + waEscapeHtml(msg.body||'Document') + '</a>';
+        }
+
+        const tickHtml = '<span class="text-[10px] ' + (msg.status==='read'?'text-blue-500':'text-slate-400') + '">' + (msg.status==='read'?'✓✓':msg.status==='delivered'?'✓✓':'✓') + '</span>';
+
+        if (isOut && isTemplate) {
+            // Beautiful template card
+            const tplMap = {
+                order_confirm:    { icon:'✅', label:'Order Confirmed', bg:'bg-emerald-50', bd:'border-emerald-200', tx:'text-emerald-700' },
+                address_verify:   { icon:'📍', label:'Address Verified', bg:'bg-blue-50', bd:'border-blue-200', tx:'text-blue-700' },
+                order_dispatch:   { icon:'🚚', label:'Order Dispatched', bg:'bg-purple-50', bd:'border-purple-200', tx:'text-purple-700' },
+                out_for_delivery: { icon:'🛵', label:'Out For Delivery', bg:'bg-orange-50', bd:'border-orange-200', tx:'text-orange-700' },
+                delivered:        { icon:'🎉', label:'Order Delivered', bg:'bg-teal-50', bd:'border-teal-200', tx:'text-teal-700' },
+                order_on_hold:    { icon:'⏸', label:'Order On Hold', bg:'bg-amber-50', bd:'border-amber-200', tx:'text-amber-700' },
+                order_cancelled:  { icon:'❌', label:'Order Cancelled', bg:'bg-red-50', bd:'border-red-200', tx:'text-red-700' },
+                order_remark:     { icon:'📞', label:'Callback Request', bg:'bg-indigo-50', bd:'border-indigo-200', tx:'text-indigo-700' }
+            };
+            const t = tplMap[tplName] || { icon:'📋', label: tplName||'Template', bg:'bg-slate-50', bd:'border-slate-200', tx:'text-slate-700' };
+            const paramLabels = {
+                order_confirm:['Customer','Order ID','Total ₹','Advance ₹','COD ₹','Products'],
+                address_verify:['Customer','Order ID','Total ₹','Advance ₹','COD ₹','Products'],
+                order_dispatch:['Customer','Order ID','AWB No.','Courier','Total ₹','COD ₹','Products'],
+                out_for_delivery:['Customer','Order ID','COD ₹','Products'],
+                delivered:['Customer','Order ID','Products'],
+                order_on_hold:['Customer','Order ID','Hold Reason','Callback Date'],
+                order_cancelled:['Customer','Order ID','Cancel Reason'],
+                order_remark:['Customer','Order ID','Remark']
+            };
+            const lbls = paramLabels[tplName] || [];
+            let params = [];
+            const bodyStr = msg.body || '';
+            const ci = bodyStr.indexOf(':');
+            if (ci > 0) params = bodyStr.substring(ci + 1).trim().split(' | ').filter(function(p) { return p.trim(); });
+            let pHtml = '';
+            params.forEach(function(p, i) {
+                pHtml += '<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-400">' + waEscapeHtml(lbls[i]||'Param '+(i+1)) + ':</span><span class="font-medium text-slate-700 text-right">' + waEscapeHtml(p.trim()) + '</span></div>';
+            });
+            html += '<div class="flex justify-end mb-2"><div class="' + t.bg + ' border ' + t.bd + ' rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%] shadow-sm">'
+                + '<div class="flex items-center gap-2 mb-2"><span class="text-lg">' + t.icon + '</span><span class="font-bold text-sm ' + t.tx + '">' + t.label + '</span></div>'
+                + (pHtml ? '<div class="bg-white/70 rounded-lg px-3 py-2 mb-2">' + pHtml + '</div>' : '')
+                + '<div class="flex items-center justify-between"><span class="text-[9px] text-slate-400 italic">Auto-sent template</span><div class="flex items-center gap-1"><span class="text-[10px] text-slate-400">' + timeStr + '</span>' + tickHtml + '</div></div>'
+                + '</div></div>';
+        } else if (isOut) {
+            html += '<div class="flex justify-end mb-2"><div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] shadow-sm">'
+                + (isFailed ? '<p class="text-[10px] text-red-500 font-bold mb-1">Failed to send</p>' : '')
+                + mediaHtml
+                + '<p class="text-sm text-slate-800 whitespace-pre-wrap">' + waEscapeHtml(msg.body||'') + '</p>'
+                + '<div class="flex items-center justify-end gap-1 mt-1"><span class="text-[10px] text-slate-400">' + timeStr + '</span>' + tickHtml + '</div></div></div>';
         } else {
-            html += `<div class="flex justify-start mb-2"><div class="bg-white rounded-2xl rounded-tl-sm px-4 py-2 max-w-[75%] shadow-sm border border-slate-100">
-                <p class="text-sm text-slate-800 whitespace-pre-wrap">${waEscapeHtml(msg.body||'')}</p>
-                <span class="text-[10px] text-slate-400 block text-right mt-1">${timeStr}</span>
-                </div></div>`;
+            // For old media messages without mediaId, show styled placeholder
+            let placeholderHtml = '';
+            if (!hasMedia && msg.body) {
+                if (msg.body === '[Image]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">📷</span><span class="text-xs font-medium">Photo</span></div>';
+                else if (msg.body === '[Video]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">🎬</span><span class="text-xs font-medium">Video</span></div>';
+                else if (msg.body === '[Voice Message]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">🎤</span><span class="text-xs font-medium">Voice Message</span></div>';
+                else if (msg.body === '[Document]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">📄</span><span class="text-xs font-medium">Document</span></div>';
+                else if (msg.body === '[Sticker]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">🏷️</span><span class="text-xs font-medium">Sticker</span></div>';
+                else if (msg.body.startsWith('[Location')) placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">📍</span><span class="text-xs font-medium">Location</span></div>';
+            }
+
+            html += '<div class="flex justify-start mb-2"><div class="bg-white rounded-2xl rounded-tl-sm px-4 py-2 max-w-[75%] shadow-sm border border-slate-100">'
+                + mediaHtml
+                + placeholderHtml
+                + (hasMedia && msg.type !== 'document' && msg.body && !['[Image]','[Video]','[Voice Message]','[Sticker]'].includes(msg.body)
+                    ? '<p class="text-sm text-slate-800 whitespace-pre-wrap">' + waEscapeHtml(msg.body) + '</p>'
+                    : (!hasMedia && !placeholderHtml ? '<p class="text-sm text-slate-800 whitespace-pre-wrap">' + waEscapeHtml(msg.body||'') + '</p>' : ''))
+                + '<span class="text-[10px] text-slate-400 block text-right mt-1">' + timeStr + '</span></div></div>';
         }
     });
     msgContent.innerHTML = html;
