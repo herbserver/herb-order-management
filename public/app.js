@@ -11244,18 +11244,42 @@ function renderWAConversations(convs) {
     list.innerHTML = convs.map(c => {
         const initials = (c.name||'C').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
         const color = colors[(c.phone||'').charCodeAt(0) % colors.length];
-        const timeStr = c.time ? new Date(c.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '';
         const isActive = waCurrentPhone === c.phone;
+
+        // Smart time - like WhatsApp
+        let timeStr = '';
+        if (c.time) {
+            const msgDate = new Date(c.time);
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const yesterdayStart = new Date(todayStart - 86400000);
+            const weekStart = new Date(todayStart - 6 * 86400000);
+
+            if (msgDate >= todayStart) {
+                // Today → show time only
+                timeStr = msgDate.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+            } else if (msgDate >= yesterdayStart) {
+                // Yesterday
+                timeStr = 'Yesterday';
+            } else if (msgDate >= weekStart) {
+                // Within last 7 days → show day name
+                timeStr = msgDate.toLocaleDateString('en-IN', {weekday: 'short'}); // Mon, Tue...
+            } else {
+                // Older → show date
+                timeStr = msgDate.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
+            }
+        }
+
         return `<button onclick="openWAChat('${c.phone}','${(c.name||'Customer').replace(/'/g,"\\'")}','${c.orderId||''}')"
             class="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 border-b border-slate-100 transition-colors text-left ${isActive?'bg-green-50':''}">
             <div class="w-10 h-10 ${color} rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${initials}</div>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
                     <span class="font-semibold text-sm text-slate-800 truncate">${c.name||'Customer'}</span>
-                    <span class="text-[10px] text-slate-400 flex-shrink-0 ml-1">${timeStr}</span>
+                    <span class="text-[10px] ${c.unread>0?'text-green-600 font-bold':'text-slate-400'} flex-shrink-0 ml-1">${timeStr}</span>
                 </div>
                 <p class="text-xs text-slate-400 truncate">${c.phone}</p>
-                <p class="text-xs text-slate-400 truncate mt-0.5">${c.lastMsg||''}</p>
+                <p class="text-xs ${c.unread>0?'text-slate-600 font-medium':'text-slate-400'} truncate mt-0.5">${c.lastMsg||''}</p>
             </div>
             ${c.unread>0?`<span class="w-5 h-5 bg-green-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold flex-shrink-0">${c.unread}</span>`:''}
         </button>`;
@@ -11283,6 +11307,13 @@ async function openWAChat(phone, name, orderId) {
     await loadWAMessages(phone);
     renderWAConversations(waAllConversations);
     startWAPolling();
+
+    // Mark all incoming as read → clears green badge
+    fetch(`${API_URL}/whatsapp/messages/${phone}/markread`, { method: 'POST' })
+        .then(() => {
+            const conv = waAllConversations.find(c => c.phone === phone);
+            if (conv) { conv.unread = 0; renderWAConversations(waAllConversations); }
+        }).catch(() => {});
 }
 
 async function loadWAMessages(phone) {

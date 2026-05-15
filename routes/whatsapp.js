@@ -92,7 +92,7 @@ router.get('/conversations', async (req, res) => {
                     name: { $first: '$name' },
                     lastMsg: { $first: '$body' },
                     lastTime: { $first: '$timestamp' },
-                    unread: { $sum: { $cond: [{ $eq: ['$direction', 'in'] }, 1, 0] } }
+                    unread: { $sum: { $cond: [{ $and: [{ $eq: ['$direction', 'in'] }, { $ne: ['$isRead', true] }] }, 1, 0] } }
                 }
             },
             { $sort: { lastTime: -1 } }
@@ -150,6 +150,21 @@ router.get('/messages/:phone', async (req, res) => {
             .sort({ timestamp: 1 })
             .lean();
         res.json({ success: true, messages });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// ─── POST /whatsapp/messages/:phone/markread ──────────────────────────────────
+// Mark all incoming messages as read when chat is opened
+router.post('/messages/:phone/markread', async (req, res) => {
+    try {
+        const phone = formatPhone(req.params.phone) || req.params.phone;
+        await WhatsAppMessage.updateMany(
+            { phone, direction: 'in', isRead: { $ne: true } },
+            { $set: { isRead: true } }
+        );
+        res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }
