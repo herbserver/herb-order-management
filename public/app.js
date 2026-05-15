@@ -4825,20 +4825,14 @@ function generateOrderCardHTML(order) {
 
         <!-- Remarks Section -->
         ${isVerification ? `
-        <div class="px-4 py-2.5 bg-amber-50/50 border-t border-amber-100">
-            <div class="flex items-center gap-2 mb-2">
+        <div class="px-4 py-2.5 bg-amber-50/50 border-t border-amber-100 flex items-center gap-2">
             <input type="text" id="remark-${order.orderId}" placeholder="Add remark..."
                 class="flex-grow text-xs border border-amber-200 rounded-lg px-3 py-2 focus:border-amber-400 outline-none bg-white font-bold text-gray-600 shadow-inner"
                 value="${order.verificationRemark?.text || ''}">
-            <button type="button" onclick="saveOrderRemark('${order.orderId}')" 
+            <button type="button" onclick="saveOrderRemark('${order.orderId}')"
                 class="bg-amber-500 text-white p-2 rounded-lg hover:bg-amber-600 transition-all shadow-sm active:scale-90 flex items-center justify-center shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
             </button>
-            </div>
-            <label class="flex items-center gap-2 cursor-pointer bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
-                <input type="checkbox" id="remark-wa-${order.orderId}" class="w-4 h-4 accent-green-500 cursor-pointer">
-                <span class="text-xs font-semibold text-green-700">📱 Customer ko WhatsApp bhejo (Callback request)</span>
-            </label>
         </div>
         ` : ''}
 
@@ -6408,7 +6402,7 @@ function getAdminTabFromHash() {
 }
 
 function getActiveAdminTab() {
-    const adminTabs = ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress', 'whatsapp'];
+    const adminTabs = ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress'];
     for (const tab of adminTabs) {
         const contentEl = document.getElementById(getAdminTabContentId(tab));
         if (contentEl && !contentEl.classList.contains('hidden')) return tab;
@@ -6490,7 +6484,8 @@ function switchAdminTab(tab, syncHash = true) {
     if (tab === 'cancelled') loadAdminCancelled();
     if (tab === 'onhold') loadAdminOnHold();
     if (tab === 'rto') loadRTOOrders();
-    if (tab === 'whatsapp') { const wt = document.getElementById('adminWhatsappTab'); if(wt) { wt.style.height = (window.innerHeight - 130) + 'px'; wt.style.minHeight = '500px'; } loadWAConversations(); }
+    if (tab === 'whatsapp') loadWAConversations();
+
     updateAdminBadges();
 
     if (syncHash) {
@@ -8047,7 +8042,7 @@ function parseAdminAnalyticsDateBoundary(dateStr, endOfDay = false) {
 
 async function loadAdminProgress() {
     const container = document.getElementById('adminProgressTab');
-    
+
     // Only inject HTML if it's not already initialized with the correct structure
     if (!document.getElementById('analyticsSummaryGrid')) {
         container.innerHTML = `
@@ -10641,73 +10636,48 @@ async function saveOrderRemark(orderId) {
     }
 
     const remark = textarea.value.trim();
-    if (!remark) {
-        alert('❌ Remark khali nahi hona chahiye!');
-        return;
-    }
-
-    // ✅ Read WhatsApp checkbox
-    const waCheckbox = document.getElementById(`remark-wa-${orderId}`);
-    const sendWhatsApp = waCheckbox ? waCheckbox.checked : false;
-
     console.log('📝 Saving remark for order:', orderId);
     console.log('Remark text:', remark);
-    console.log('Send WhatsApp:', sendWhatsApp);
-
-    // Visual feedback on save button
-    const btn = document.querySelector(`[onclick="saveOrderRemark('${orderId}')"]`);
-    const origHTML = btn ? btn.innerHTML : null;
-    if (btn) {
-        btn.innerHTML = '⏳';
-        btn.disabled = true;
-    }
+    console.log('Current user:', currentUser);
 
     try {
         const requestBody = {
             remark,
-            remarkBy: currentUser.id,
-            sendWhatsApp: sendWhatsApp   // ✅ WA flag
+            remarkBy: currentUser.id
         };
+        console.log('Request body:', requestBody);
 
-        const res = await fetch(`${API_URL}/orders/${orderId}/remark`, {
+        const remarkURL = `${API_URL}/orders/${orderId}/remark`;
+        console.log('🌐 Fetch URL:', remarkURL);
+        console.log('API_URL:', API_URL);
+        console.log('orderId:', orderId);
+
+        const res = await fetch(remarkURL, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
 
+        console.log('Response status:', res.status);
         const data = await res.json();
+        console.log('Response data:', data);
 
         if (data.success) {
-            // Button feedback
-            if (btn) {
-                btn.innerHTML = sendWhatsApp ? '✅' : '💾';
-                btn.style.background = '#10b981';
-                setTimeout(() => {
-                    btn.innerHTML = origHTML;
-                    btn.style.background = '';
-                    btn.disabled = false;
-                }, 2000);
-            }
             showSuccessPopup(
-                sendWhatsApp ? 'Remark Saved + WA Sent! 📱' : 'Remark Saved! 📝',
-                sendWhatsApp
-                    ? `Remark save ho gaya aur customer ko WhatsApp bhi bhej diya!`
-                    : `Remark successfully save ho gaya!`,
-                sendWhatsApp ? '📱' : '📝',
+                'Remark Saved! 📝',
+                `Remark successfully save ho gaya!`,
+                '📝',
                 '#f59e0b'
             );
         } else {
-            if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
             console.error('❌ API returned error:', data.message);
             showMessage('❌ ' + data.message, 'error', 'deptMessage');
         }
     } catch (e) {
-        if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
         console.error('❌ Error saving remark:', e);
         showMessage('❌ Failed to save remark: ' + e.message, 'error', 'deptMessage');
     }
 }
-
 
 // ==================== SHIPROCKET FUNCTIONS ====================
 function showShiprocketModal() {
@@ -11217,7 +11187,6 @@ function filterDeptOrdersHeader(query) {
 
 // Note: openEditOrderModal, calculateEditCOD, and submitEditOrder functions are defined at line 4387+
 
-
 // ==================== WHATSAPP CHAT PANEL ====================
 
 let waCurrentPhone = null;
@@ -11225,8 +11194,23 @@ let waCurrentName  = null;
 let waCurrentOrderId = null;
 let waAllConversations = [];
 let waAllTemplates = [];
+let waPollingInterval = null;
 
-// ── Load Templates from backend ───────────────────────────────────────────────
+function startWAPolling() {
+    stopWAPolling();
+    waPollingInterval = setInterval(async () => {
+        if (!waCurrentPhone) return;
+        try {
+            const res = await fetch(`${API_URL}/whatsapp/messages/${waCurrentPhone}`);
+            const data = await res.json();
+            if (data.success && data.messages.length > 0) renderWAMessages(data.messages);
+        } catch(e) {}
+    }, 5000);
+}
+function stopWAPolling() {
+    if (waPollingInterval) { clearInterval(waPollingInterval); waPollingInterval = null; }
+}
+
 async function loadWATemplates() {
     try {
         const res = await fetch(`${API_URL}/whatsapp/templates`);
@@ -11235,42 +11219,27 @@ async function loadWATemplates() {
     } catch(e) {}
 }
 
-// ── Load Conversations ────────────────────────────────────────────────────────
 async function loadWAConversations() {
     const list = document.getElementById('waConversationList');
     if (!list) return;
-    list.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-slate-400">
-        <div class="w-8 h-8 border-4 border-green-200 border-t-green-500 rounded-full animate-spin mb-3"></div>
-        <p class="text-xs font-medium">Loading chats...</p></div>`;
-
+    list.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="w-8 h-8 border-4 border-green-200 border-t-green-500 rounded-full animate-spin mb-3"></div><p class="text-xs font-medium">Loading chats...</p></div>`;
     if (waAllTemplates.length === 0) await loadWATemplates();
-
     try {
         const res = await fetch(`${API_URL}/whatsapp/conversations`);
         const data = await res.json();
-        if (data.success) {
-            waAllConversations = data.conversations;
-            renderWAConversations(data.conversations);
-        } else throw new Error(data.message);
+        if (data.success) { waAllConversations = data.conversations; renderWAConversations(data.conversations); }
+        else throw new Error(data.message);
     } catch(e) {
-        list.innerHTML = `<div class="flex flex-col items-center justify-center py-10 text-red-400">
-            <div class="text-3xl mb-2">❌</div>
-            <p class="text-xs font-medium mb-3">Failed to load</p>
-            <button onclick="loadWAConversations()" class="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-bold">Retry</button></div>`;
+        list.innerHTML = `<div class="flex flex-col items-center justify-center py-10 text-red-400"><div class="text-3xl mb-2">!</div><p class="text-xs font-medium mb-3">Failed to load</p><button onclick="loadWAConversations()" class="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-bold">Retry</button></div>`;
     }
 }
 
-// ── Render conversation list ──────────────────────────────────────────────────
 function renderWAConversations(convs) {
     const list = document.getElementById('waConversationList');
     if (!convs || convs.length === 0) {
-        list.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-slate-400">
-            <div class="text-4xl mb-3">💬</div>
-            <p class="text-xs font-medium text-center">No chats yet.<br>Orders se customers load honge.</p>
-            <button onclick="loadWAConversations()" class="mt-3 px-4 py-2 bg-green-500 text-white rounded-lg text-xs font-bold">Refresh</button></div>`;
+        list.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="text-4xl mb-3">💬</div><p class="text-xs font-medium text-center">No chats yet.</p><button onclick="loadWAConversations()" class="mt-3 px-4 py-2 bg-green-500 text-white rounded-lg text-xs font-bold">Refresh</button></div>`;
         return;
     }
-
     const colors = ['bg-emerald-500','bg-blue-500','bg-purple-500','bg-rose-500','bg-amber-500','bg-teal-500','bg-indigo-500'];
     list.innerHTML = convs.map(c => {
         const initials = (c.name||'C').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
@@ -11278,7 +11247,7 @@ function renderWAConversations(convs) {
         const timeStr = c.time ? new Date(c.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '';
         const isActive = waCurrentPhone === c.phone;
         return `<button onclick="openWAChat('${c.phone}','${(c.name||'Customer').replace(/'/g,"\\'")}','${c.orderId||''}')"
-            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 border-b border-slate-100 transition-colors text-left ${isActive?'bg-green-50':''}" >
+            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 border-b border-slate-100 transition-colors text-left ${isActive?'bg-green-50':''}">
             <div class="w-10 h-10 ${color} rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${initials}</div>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
@@ -11293,193 +11262,134 @@ function renderWAConversations(convs) {
     }).join('');
 }
 
-// ── Filter conversations ───────────────────────────────────────────────────────
 function filterWAConversations(q) {
     if (!q) { renderWAConversations(waAllConversations); return; }
     const ql = q.toLowerCase();
     renderWAConversations(waAllConversations.filter(c =>
-        (c.name||'').toLowerCase().includes(ql) ||
-        (c.phone||'').includes(ql) ||
-        (c.orderId||'').toLowerCase().includes(ql)
+        (c.name||'').toLowerCase().includes(ql) || (c.phone||'').includes(ql) || (c.orderId||'').toLowerCase().includes(ql)
     ));
 }
 
-// ── Open Chat ─────────────────────────────────────────────────────────────────
 async function openWAChat(phone, name, orderId) {
     waCurrentPhone = phone;
     waCurrentName  = name;
     waCurrentOrderId = orderId || null;
-
     document.getElementById('waChatEmpty').classList.add('hidden');
     document.getElementById('waChatActive').classList.remove('hidden');
-
     const initials = (name||'C').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
     document.getElementById('waChatAvatar').textContent = initials;
     document.getElementById('waChatName').textContent = name;
     document.getElementById('waChatPhone').textContent = `+91-${phone.replace(/^91/,'')}`;
-
-    // Load messages
     await loadWAMessages(phone);
-    renderWAConversations(waAllConversations); // Re-render to show active state
+    renderWAConversations(waAllConversations);
+    startWAPolling();
 }
 
-// ── Load messages for a phone ──────────────────────────────────────────────────
 async function loadWAMessages(phone) {
     const msgContent = document.getElementById('waMessagesContent');
     msgContent.innerHTML = `<div class="flex justify-center py-4"><div class="w-6 h-6 border-4 border-green-200 border-t-green-500 rounded-full animate-spin"></div></div>`;
-
     try {
         const res = await fetch(`${API_URL}/whatsapp/messages/${phone}`);
         const data = await res.json();
-
-        if (data.success && data.messages.length > 0) {
-            renderWAMessages(data.messages);
-        } else {
-            msgContent.innerHTML = `<div class="flex justify-center">
-                <div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-4 py-2 rounded-xl text-center max-w-xs">
-                    ⚠️ No message history yet.<br>Template bhejo ya free-form message karo.
-                </div></div>`;
-        }
+        if (data.success && data.messages.length > 0) { renderWAMessages(data.messages); }
+        else { msgContent.innerHTML = `<div class="flex justify-center"><div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-4 py-2 rounded-xl text-center max-w-xs">No message history yet.<br>Template bhejo ya message karo.</div></div>`; }
     } catch(e) {
-        msgContent.innerHTML = `<div class="flex justify-center"><div class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-xl">❌ Messages load failed</div></div>`;
+        msgContent.innerHTML = `<div class="flex justify-center"><div class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-xl">Messages load failed</div></div>`;
     }
-
     const msgArea = document.getElementById('waChatMessages');
-    msgArea.scrollTop = msgArea.scrollHeight;
+    if (msgArea) msgArea.scrollTop = msgArea.scrollHeight;
 }
 
-// ── Render messages ────────────────────────────────────────────────────────────
 function renderWAMessages(messages) {
     const msgContent = document.getElementById('waMessagesContent');
     let html = '';
     let lastDate = '';
-
     messages.forEach(msg => {
         const d = new Date(msg.timestamp);
         const dateStr = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
         if (dateStr !== lastDate) {
-            html += `<div class="flex justify-center my-3">
-                <span class="bg-white/80 text-slate-500 text-[10px] px-3 py-1 rounded-full shadow-sm border border-slate-100">${dateStr}</span>
-            </div>`;
+            html += `<div class="flex justify-center my-3"><span class="bg-white/80 text-slate-500 text-[10px] px-3 py-1 rounded-full shadow-sm border border-slate-100">${dateStr}</span></div>`;
             lastDate = dateStr;
         }
         const timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
         const isOut = msg.direction === 'out';
         const isFailed = msg.status === 'failed';
-
         if (isOut) {
-            html += `<div class="flex justify-end mb-2">
-                <div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] shadow-sm">
-                    ${isFailed ? '<p class="text-[10px] text-red-500 font-bold mb-1">⚠️ Failed to send</p>' : ''}
-                    <p class="text-sm text-slate-800 whitespace-pre-wrap">${escapeHtml(msg.body||'')}</p>
-                    <div class="flex items-center justify-end gap-1 mt-1">
-                        <span class="text-[10px] text-slate-400">${timeStr}</span>
-                        <span class="text-[10px] ${msg.status==='read'?'text-blue-500':'text-slate-400'}">${msg.status==='read'?'✓✓':msg.status==='delivered'?'✓✓':'✓'}</span>
-                    </div>
-                </div>
-            </div>`;
+            html += `<div class="flex justify-end mb-2"><div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] shadow-sm">
+                ${isFailed?'<p class="text-[10px] text-red-500 font-bold mb-1">Failed to send</p>':''}
+                <p class="text-sm text-slate-800 whitespace-pre-wrap">${waEscapeHtml(msg.body||'')}</p>
+                <div class="flex items-center justify-end gap-1 mt-1">
+                    <span class="text-[10px] text-slate-400">${timeStr}</span>
+                    <span class="text-[10px] ${msg.status==='read'?'text-blue-500':'text-slate-400'}">${msg.status==='read'?'✓✓':msg.status==='delivered'?'✓✓':'✓'}</span>
+                </div></div></div>`;
         } else {
-            html += `<div class="flex justify-start mb-2">
-                <div class="bg-white rounded-2xl rounded-tl-sm px-4 py-2 max-w-[75%] shadow-sm border border-slate-100">
-                    <p class="text-sm text-slate-800 whitespace-pre-wrap">${escapeHtml(msg.body||'')}</p>
-                    <span class="text-[10px] text-slate-400 block text-right mt-1">${timeStr}</span>
-                </div>
-            </div>`;
+            html += `<div class="flex justify-start mb-2"><div class="bg-white rounded-2xl rounded-tl-sm px-4 py-2 max-w-[75%] shadow-sm border border-slate-100">
+                <p class="text-sm text-slate-800 whitespace-pre-wrap">${waEscapeHtml(msg.body||'')}</p>
+                <span class="text-[10px] text-slate-400 block text-right mt-1">${timeStr}</span>
+                </div></div>`;
         }
     });
-
     msgContent.innerHTML = html;
     const msgArea = document.getElementById('waChatMessages');
-    msgArea.scrollTop = msgArea.scrollHeight;
+    if (msgArea) msgArea.scrollTop = msgArea.scrollHeight;
 }
 
-function escapeHtml(text) {
+function waEscapeHtml(text) {
     return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Close Chat ─────────────────────────────────────────────────────────────────
 function closeWAChat() {
+    stopWAPolling();
     waCurrentPhone = null; waCurrentName = null; waCurrentOrderId = null;
     document.getElementById('waChatEmpty').classList.remove('hidden');
     document.getElementById('waChatActive').classList.add('hidden');
 }
 
-// ── Send free-form text ────────────────────────────────────────────────────────
 async function sendWAFreeMessage() {
     if (!waCurrentPhone) return;
     const input = document.getElementById('waMessageInput');
-    const text = input.value.trim();
+    const text = (input ? input.value : '').trim();
     if (!text) return;
-
     const btn = document.getElementById('waSendBtn');
-    btn.disabled = true;
-    input.value = '';
-    input.style.height = 'auto';
-
-    // Optimistic render
+    if (btn) btn.disabled = true;
+    if (input) { input.value = ''; input.style.height = 'auto'; }
     appendWAMessage(text, 'out', 'sent');
-
     try {
         const res = await fetch(`${API_URL}/whatsapp/send`, {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
+            method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ to: waCurrentPhone, type: 'text', text, customerName: waCurrentName, orderId: waCurrentOrderId })
         });
         const data = await res.json();
-        if (!data.success) appendWAMessage('❌ Message failed: 24h window expired', 'error');
+        if (!data.success) appendWAMessage('Message failed - 24h window expired', 'error');
         await loadWAConversations();
-    } catch(e) {
-        appendWAMessage('❌ Network error', 'error');
-    }
-    btn.disabled = false;
+    } catch(e) { appendWAMessage('Network error', 'error'); }
+    if (btn) btn.disabled = false;
 }
 
-// ── Open Template Panel ───────────────────────────────────────────────────────
 async function openWATemplatePanel() {
     if (!waCurrentPhone) return;
     if (waAllTemplates.length === 0) await loadWATemplates();
-
     const panel = document.getElementById('waTemplatePanel');
     const list = document.getElementById('waTemplatePanelList');
-
-    const colors = {
-        emerald:'bg-emerald-50 border-emerald-200 text-emerald-800',
-        blue:'bg-blue-50 border-blue-200 text-blue-800',
-        purple:'bg-purple-50 border-purple-200 text-purple-800',
-        orange:'bg-orange-50 border-orange-200 text-orange-800',
-        teal:'bg-teal-50 border-teal-200 text-teal-800',
-        amber:'bg-amber-50 border-amber-200 text-amber-800',
-        red:'bg-red-50 border-red-200 text-red-800',
-        indigo:'bg-indigo-50 border-indigo-200 text-indigo-800'
-    };
-
-    list.innerHTML = waAllTemplates.map((t,i) => {
+    const colors = {emerald:'bg-emerald-50 border-emerald-200 text-emerald-800',blue:'bg-blue-50 border-blue-200 text-blue-800',purple:'bg-purple-50 border-purple-200 text-purple-800',orange:'bg-orange-50 border-orange-200 text-orange-800',teal:'bg-teal-50 border-teal-200 text-teal-800',amber:'bg-amber-50 border-amber-200 text-amber-800',red:'bg-red-50 border-red-200 text-red-800',indigo:'bg-indigo-50 border-indigo-200 text-indigo-800'};
+    if (list) list.innerHTML = waAllTemplates.map(t => {
         const cls = colors[t.color] || colors.indigo;
-        return `<button onclick="sendWATemplate('${t.name}')"
-            class="w-full text-left p-3 border rounded-xl hover:opacity-80 transition-opacity ${cls}">
+        return `<button onclick="sendWATemplate('${t.name}')" class="w-full text-left p-3 border rounded-xl hover:opacity-80 transition-opacity ${cls}">
             <p class="font-bold text-sm">${t.label}</p>
             <p class="text-xs opacity-70 mt-0.5">${t.desc}</p>
-            <p class="text-[10px] opacity-50 mt-1">Params: ${t.params.join(', ')}</p>
-        </button>`;
+            <p class="text-[10px] opacity-50 mt-1">Params: ${t.params.join(', ')}</p></button>`;
     }).join('');
-
-    panel.classList.remove('hidden');
+    if (panel) panel.classList.remove('hidden');
 }
 
-// ── Send Template ─────────────────────────────────────────────────────────────
 async function sendWATemplate(templateName) {
     const tpl = waAllTemplates.find(t => t.name === templateName);
     if (!tpl) return;
-
     document.getElementById('waTemplatePanel').classList.add('hidden');
-
-    // Auto-fill params from order if available
-    let params = tpl.params.map(p => p); // placeholder labels initially
     const name = waCurrentName || 'Customer';
     const oid  = waCurrentOrderId || 'N/A';
-
-    // Smart auto-fill based on template
-    if (templateName === 'order_confirm')      params = [name, oid, '', '', '', ''];
+    let params = tpl.params.map(() => '');
+    if (templateName === 'order_confirm')       params = [name, oid, '', '', '', ''];
     else if (templateName === 'address_verify') params = [name, oid, '', '', '', ''];
     else if (templateName === 'order_dispatch') params = [name, oid, '', '', '', '', ''];
     else if (templateName === 'out_for_delivery') params = [name, oid, '', new Date().toLocaleDateString('en-IN')];
@@ -11487,65 +11397,40 @@ async function sendWATemplate(templateName) {
     else if (templateName === 'order_on_hold')  params = [name, oid, 'Call not answered', 'Jaldi'];
     else if (templateName === 'order_cancelled') params = [name, oid, 'As discussed'];
     else if (templateName === 'order_remark')   params = [name, oid, 'Aapke order ke baare mein baat karni thi'];
-
-    // Show confirm dialog with param preview
     const preview = params.map((p,i) => `Param ${i+1}: ${p||'[empty]'}`).join('\n');
-    if (!confirm(`Send template: ${tpl.label}\nTo: ${waCurrentName} (${waCurrentPhone})\n\n${preview}\n\nBhejein?`)) return;
-
-    // Optimistic render
+    if (!confirm(`Send: ${tpl.label}\nTo: ${waCurrentName} (${waCurrentPhone})\n\n${preview}\n\nBhejein?`)) return;
     appendWAMessage(`[Template: ${tpl.label}]\n${params.join(' | ')}`, 'out', 'sent');
-
     try {
         const res = await fetch(`${API_URL}/whatsapp/send`, {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({
-                to: waCurrentPhone,
-                templateName,
-                parameters: params,
-                lang: 'en',
-                customerName: waCurrentName,
-                orderId: waCurrentOrderId
-            })
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ to: waCurrentPhone, templateName, parameters: params, lang: 'en', customerName: waCurrentName, orderId: waCurrentOrderId })
         });
         const data = await res.json();
-        if (!data.success) {
-            appendWAMessage(`❌ Template failed: ${JSON.stringify(data.error?.error_data?.details||data.message)}`, 'error');
-        } else {
-            appendWAMessage('✅ Template sent!', 'info');
-        }
+        if (!data.success) appendWAMessage(`Template failed: ${JSON.stringify(data.error?.error_data?.details||data.message)}`, 'error');
+        else appendWAMessage('Template sent!', 'info');
         await loadWAConversations();
-    } catch(e) {
-        appendWAMessage('❌ Network error', 'error');
-    }
+    } catch(e) { appendWAMessage('Network error', 'error'); }
 }
 
-// ── Append message to UI (optimistic) ────────────────────────────────────────
 function appendWAMessage(text, direction, status) {
     const msgContent = document.getElementById('waMessagesContent');
+    if (!msgContent) return;
     const now = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     const div = document.createElement('div');
-
     if (direction === 'error' || direction === 'info') {
         div.className = 'flex justify-center mb-2';
         div.innerHTML = `<div class="${direction==='error'?'bg-red-50 text-red-600':'bg-green-50 text-green-700'} text-xs px-4 py-2 rounded-xl shadow-sm">${text}</div>`;
     } else if (direction === 'out') {
         div.className = 'flex justify-end mb-2';
         div.innerHTML = `<div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] shadow-sm">
-            <p class="text-sm text-slate-800 whitespace-pre-wrap">${escapeHtml(text)}</p>
-            <div class="flex items-center justify-end gap-1 mt-1">
-                <span class="text-[10px] text-slate-400">${now}</span>
-                <span class="text-[10px] text-slate-400">✓</span>
-            </div>
-        </div>`;
+            <p class="text-sm text-slate-800 whitespace-pre-wrap">${waEscapeHtml(text)}</p>
+            <div class="flex items-center justify-end gap-1 mt-1"><span class="text-[10px] text-slate-400">${now}</span><span class="text-[10px] text-slate-400">✓</span></div></div>`;
     }
-
     msgContent.appendChild(div);
     const msgArea = document.getElementById('waChatMessages');
-    msgArea.scrollTop = msgArea.scrollHeight;
+    if (msgArea) msgArea.scrollTop = msgArea.scrollHeight;
 }
 
-// ── Close template panel helper ───────────────────────────────────────────────
 function closeWATemplatePanel() {
     const p = document.getElementById('waTemplatePanel');
     if (p) p.classList.add('hidden');

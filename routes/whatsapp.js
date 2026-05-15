@@ -255,37 +255,71 @@ router.post('/send', async (req, res) => {
     }
 });
 
-// ─── POST /whatsapp/webhook - Receive incoming messages ───────────────────────
+// ─── POST /whatsapp/webhook - Receive incoming messages + delivery receipts ───
 router.post('/webhook', async (req, res) => {
-    res.sendStatus(200); // Acknowledge immediately
+    res.sendStatus(200); // Acknowledge immediately to Meta
 
     try {
         const body = req.body;
-        if (!body?.entry?.[0]?.changes?.[0]?.value?.messages) return;
+        const value = body?.entry?.[0]?.changes?.[0]?.value;
+        if (!value) return;
 
-        const messages = body.entry[0].changes[0].value.messages;
-        const contacts = body.entry[0].changes[0].value.contacts || [];
+        // ── 1. Incoming messages (customer replied) ──────────────────────────
+        if (value.messages && value.messages.length > 0) {
+            const contacts = value.contacts || [];
+            for (const msg of value.messages) {
+                const phone = msg.from;
+                const contact = contacts.find(c => c.wa_id === phone);
+                const name = contact?.profile?.name || 'Customer';
 
-        for (const msg of messages) {
-            const phone = msg.from;
-            const contact = contacts.find(c => c.wa_id === phone);
-            const name = contact?.profile?.name || 'Customer';
-            const text = msg.text?.body || msg.type || '[media]';
+                // Get message text based on type
+                let text = '[media]';
+                if (msg.type === 'text') text = msg.text?.body || '';
+                else if (msg.type === 'image') text = '[Image]';
+                else if (msg.type === 'audio') text = '[Voice Message]';
+                else if (msg.type === 'video') text = '[Video]';
+                else if (msg.type === 'document') text = '[Document]';
+                else if (msg.type === 'sticker') text = '[Sticker]';
+                else if (msg.type === 'location') text = '[Location]';
+                else if (msg.type === 'button') text = msg.button?.text || '[Button Reply]';
 
-            await WhatsAppMessage.create({
-                phone,
-                name,
-                direction: 'in',
-                type: 'text',
-                body: text,
-                status: 'read',
-                metaMsgId: msg.id
-            });
+                // Avoid duplicate saves
+                const existing = await WhatsAppMessage.findOne({ metaMsgId: msg.id });
+                if (!existing) {
+                    await WhatsAppMessage.create({
+                        phone, name,
+                        direction: 'in',
+                        type: 'text',
+                        body: text,
+                        status: 'read',
+                        metaMsgId: msg.id
+                    });
+                }
+            }
         }
+
+        // ── 2. Delivery/Read status updates (our sent messages) ───────────────
+        if (value.statuses && value.statuses.length > 0) {
+            for (const statusUpdate of value.statuses) {
+                const metaMsgId = statusUpdate.id;
+                const newStatus = statusUpdate.status; // 'sent' | 'delivered' | 'read' | 'failed'
+
+                if (!metaMsgId || !newStatus) continue;
+
+                // Update our message status in DB
+                await WhatsAppMessage.findOneAndUpdate(
+                    { metaMsgId },
+                    { status: newStatus },
+                    { new: true }
+                );
+            }
+        }
+
     } catch (e) {
-        console.error('WA webhook save error:', e.message);
+        console.error('WA webhook error:', e.message);
     }
 });
+
 
 // ─── GET /whatsapp/webhook - Verification ─────────────────────────────────────
 router.get('/webhook', (req, res) => {
