@@ -14,6 +14,7 @@ function setDeliveryDateFilter(dateValue) {
     // Refresh the active tab
     if (typeof loadOnWayOrders === 'function') loadOnWayOrders();
     if (typeof loadOFDOrders === 'function') loadOFDOrders();
+    if (typeof loadUndeliveredOrders === 'function') loadUndeliveredOrders();
     if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
     if (typeof loadRTOOrders === 'function') loadRTOOrders();
 }
@@ -1009,9 +1010,10 @@ function switchEmpTab(tab) {
     document.getElementById('empProgressTab').classList.add('hidden');
     document.getElementById('empOfdTab').classList.add('hidden');
     document.getElementById('empCancelledTab').classList.add('hidden');
+    document.getElementById('empUndeliveredTab')?.classList.add('hidden');
 
     // Update sidebar button states
-    ['empSidebarOrder', 'empSidebarTracking', 'empSidebarHistory', 'empSidebarProgress', 'empSidebarOfd', 'empSidebarCancelled'].forEach(id => {
+    ['empSidebarOrder', 'empSidebarTracking', 'empSidebarHistory', 'empSidebarProgress', 'empSidebarOfd', 'empSidebarCancelled', 'empTabUndelivered'].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) {
             btn.classList.remove('sidebar-active');
@@ -1042,6 +1044,10 @@ function switchEmpTab(tab) {
         document.getElementById('empCancelledTab').classList.remove('hidden');
         document.getElementById('empSidebarCancelled')?.classList.add('sidebar-active');
         loadMyCancelledOrders();
+    } else if (tab === 'undelivered') {
+        document.getElementById('empUndeliveredTab')?.classList.remove('hidden');
+        document.getElementById('empTabUndelivered')?.classList.add('sidebar-active');
+        if (typeof loadMyUndeliveredOrders === 'function') loadMyUndeliveredOrders();
     }
 
     // Auto-close sidebar on mobile after tab selection
@@ -3263,7 +3269,7 @@ window.addEventListener('hashchange', function () {
 // Delivery Department Tab Switching
 function normalizeDeliveryTab(tab) {
     const normalizedTab = String(tab || '').toLowerCase();
-    return ['requests', 'onway', 'ofd', 'delivered', 'rto'].includes(normalizedTab) ? normalizedTab : 'onway';
+    return ['requests', 'onway', 'ofd', 'undelivered', 'delivered', 'rto'].includes(normalizedTab) ? normalizedTab : 'onway';
 }
 
 function getDeliveryTabFromHash() {
@@ -3274,6 +3280,7 @@ function getActiveDeliveryTab() {
     if (!document.getElementById('deliveryRequestsTab')?.classList.contains('hidden')) return 'requests';
     if (!document.getElementById('deliveryOnWayTab')?.classList.contains('hidden')) return 'onway';
     if (!document.getElementById('deliveryOFDTab')?.classList.contains('hidden')) return 'ofd';
+    if (!document.getElementById('deliveryUndeliveredTab')?.classList.contains('hidden')) return 'undelivered';
     if (!document.getElementById('deliveryDeliveredTab')?.classList.contains('hidden')) return 'delivered';
     if (!document.getElementById('deliveryRTOTab')?.classList.contains('hidden')) return 'rto';
     return 'onway';
@@ -3296,7 +3303,7 @@ function updateDeliveryTabHash(tab, replaceOnly = false) {
 function switchDeliveryTab(tab, syncHash = true) {
     tab = normalizeDeliveryTab(tab);
     // Hide all tabs
-    ['deliveryRequestsTab', 'deliveryOnWayTab', 'deliveryOFDTab', 'deliveryDeliveredTab', 'deliveryRTOTab'].forEach(id => {
+    ['deliveryRequestsTab', 'deliveryOnWayTab', 'deliveryOFDTab', 'deliveryUndeliveredTab', 'deliveryDeliveredTab', 'deliveryRTOTab'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
@@ -3306,6 +3313,7 @@ function switchDeliveryTab(tab, syncHash = true) {
         'requests': 'deptTabRequests',
         'onway': 'deptTabOnWay',
         'ofd': 'deptTabOFD',
+        'undelivered': 'deptTabUndelivered',
         'delivered': 'deptTabDelivered',
         'rto': 'deptTabRTO'
     };
@@ -3325,6 +3333,9 @@ function switchDeliveryTab(tab, syncHash = true) {
     } else if (tab === 'ofd') {
         document.getElementById('deliveryOFDTab').classList.remove('hidden');
         if (typeof loadOFDOrders === 'function') loadOFDOrders();
+    } else if (tab === 'undelivered') {
+        document.getElementById('deliveryUndeliveredTab').classList.remove('hidden');
+        if (typeof loadUndeliveredOrders === 'function') loadUndeliveredOrders();
     } else if (tab === 'delivered') {
         document.getElementById('deliveryDeliveredTab').classList.remove('hidden');
         if (typeof loadDeliveredOrders === 'function') loadDeliveredOrders();
@@ -6376,7 +6387,7 @@ function toggleAdminSidebar() {
 
 function normalizeAdminTab(tab) {
     const normalizedTab = String(tab || '').toLowerCase();
-    return ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress', 'whatsapp'].includes(normalizedTab)
+    return ['pending', 'verified', 'dispatched', 'ofd', 'undelivered', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress', 'whatsapp'].includes(normalizedTab)
         ? normalizedTab
         : 'pending';
 }
@@ -6402,7 +6413,7 @@ function getAdminTabFromHash() {
 }
 
 function getActiveAdminTab() {
-    const adminTabs = ['pending', 'verified', 'dispatched', 'ofd', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress'];
+    const adminTabs = ['pending', 'verified', 'dispatched', 'ofd', 'undelivered', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress'];
     for (const tab of adminTabs) {
         const contentEl = document.getElementById(getAdminTabContentId(tab));
         if (contentEl && !contentEl.classList.contains('hidden')) return tab;
@@ -6480,6 +6491,7 @@ function switchAdminTab(tab, syncHash = true) {
     if (tab === 'verified') loadAdminVerified();
     if (tab === 'dispatched') loadAdminDispatched();
     if (tab === 'ofd') loadAdminOFD();
+    if (tab === 'undelivered' && typeof loadAdminUndelivered === 'function') loadAdminUndelivered();
     if (tab === 'delivered') loadAdminDelivered();
     if (tab === 'cancelled') loadAdminCancelled();
     if (tab === 'onhold') loadAdminOnHold();
@@ -11651,3 +11663,89 @@ async function deleteWAConversation() {
 }
 
 // ==================== END WHATSAPP CHAT PANEL ====================
+
+// Load Undelivered Orders
+async function loadUndeliveredOrders() {
+    console.log('🔍 loadUndeliveredOrders called from app.js');
+    try {
+        const url = `${API_URL}/orders?status=${encodeURIComponent('Undelivered')}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        let orders = data.orders || [];
+        orders = filterOrdersByDate(orders);
+
+        const container = document.getElementById('undeliveredOrdersList');
+        
+        if (!container) return;
+
+        if (orders.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-gray-500">Koi Undelivered order nahi hai</p></div>';
+            return;
+        }
+
+        let html = '';
+        orders.forEach(order => {
+            html += renderDeliveryCardModern(order);
+        });
+        container.innerHTML = html;
+    } catch (e) {
+        console.error('❌ Error in loadUndeliveredOrders:', e);
+    }
+}
+
+function filterUndeliveredOrders(query) {
+    query = query.toLowerCase();
+    const cards = document.querySelectorAll('#undeliveredOrdersList > div');
+    cards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        if (text.includes(query)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Mark order as Undelivered
+async function markAsUndelivered(orderId) {
+    if (!confirm('Mark this order as Undelivered?')) return;
+
+    try {
+        const res = await fetch(`${API_URL}/orders/update-tracking`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                orderId,
+                tracking: { currentStatus: 'Undelivered' }
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showSuccessPopup('Order Marked Undelivered! ⏳', `${orderId} is now Undelivered!`, '⏳', '#f97316');
+            if (typeof loadOFDOrders === 'function') loadOFDOrders();
+            if (typeof loadUndeliveredOrders === 'function') loadUndeliveredOrders();
+        } else {
+            alert('Failed to mark as Undelivered: ' + data.message);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Error: ' + e.message);
+    }
+}
+
+// Global handler for delivery status dropdown
+window.handleDeliveryStatusChange = function(statusAction, orderId) {
+    if (!statusAction) return;
+    
+    if (statusAction === 'onway') {
+        if (typeof markAsOnWay === 'function') markAsOnWay(orderId);
+    } else if (statusAction === 'ofd') {
+        if (typeof markAsOFD === 'function') markAsOFD(orderId);
+    } else if (statusAction === 'undelivered') {
+        if (typeof markAsUndelivered === 'function') markAsUndelivered(orderId);
+    } else if (statusAction === 'rto') {
+        if (typeof markAsRTO === 'function') markAsRTO(orderId);
+    }
+};

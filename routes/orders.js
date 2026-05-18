@@ -706,6 +706,9 @@ router.post('/update-tracking', async (req, res) => {
                 updates.ofdAt = new Date().toISOString();
                 console.log(`🚚 Order ${orderId} marked as Out For Delivery`);
                 // 📲 WhatsApp OFD notification will fire after update below
+            } else if (tracking.currentStatus === 'Undelivered') {
+                updates.status = 'Undelivered';
+                console.log(`⏳ Order ${orderId} marked as Undelivered`);
             }
         }
 

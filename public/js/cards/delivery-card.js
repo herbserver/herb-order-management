@@ -112,33 +112,18 @@ function renderDeliveryCardModern(o) {
                 ` : ''}
                 
                 <button onclick="viewOrder('${o.orderId}')" 
-                    class="bg-slate-50 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-100 transition-all border-2 border-slate-200 shadow-sm flex items-center justify-center gap-2 text-xs">
+                    class="${hasTracking ? '' : 'col-span-2'} bg-slate-50 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-100 transition-all border-2 border-slate-200 shadow-sm flex items-center justify-center gap-2 text-xs">
                     <span>👁️</span> View
                 </button>
 
-                ${(o.status === 'RTO' || o.status === 'Out For Delivery') ? `
-                <button onclick="markAsOnWay('${o.orderId}')" 
-                    class="bg-amber-50 text-amber-600 font-bold py-3 rounded-xl hover:bg-amber-100 transition-all border-2 border-amber-100 shadow-sm flex items-center justify-center gap-2 text-xs">
-                    <span>🚛</span> On Way
-                </button>
-                ` : `
-                <button onclick="markAsRTO('${o.orderId}')" 
-                    class="bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-all border-2 border-rose-100 shadow-sm flex items-center justify-center gap-2 text-xs">
-                    <span>↩️</span> RTO
-                </button>
-                `}
-                
-                ${o.status !== 'Out For Delivery' ? `
-                <button onclick="markAsOFD('${o.orderId}')" 
-                    class="bg-purple-50 text-purple-600 font-bold py-3 rounded-xl hover:bg-purple-100 transition-all border-2 border-purple-100 shadow-sm flex items-center justify-center gap-2 text-xs">
-                    <span>🚚</span> OFD
-                </button>
-                ` : `
-                <button onclick="markAsRTO('${o.orderId}')" 
-                    class="bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-all border-2 border-rose-100 shadow-sm flex items-center justify-center gap-2 text-xs">
-                    <span>↩️</span> RTO
-                </button>
-                `}
+                <select onchange="handleDeliveryStatusChange(this.value, '${o.orderId}'); this.value='';" 
+                    class="col-span-2 bg-indigo-50 text-indigo-700 font-bold py-3 px-4 rounded-xl border-2 border-indigo-200 shadow-sm text-xs outline-none focus:border-indigo-400 cursor-pointer text-center" style="text-align-last: center;">
+                    <option value="" disabled selected>⚙️ UPDATE STATUS...</option>
+                    <option value="onway" ${o.status === 'On Way' ? 'disabled' : ''}>🚛 Mark On Way</option>
+                    <option value="ofd" ${o.status === 'Out For Delivery' ? 'disabled' : ''}>🚚 Mark OFD</option>
+                    <option value="undelivered" ${o.status === 'Undelivered' ? 'disabled' : ''}>⏳ Mark Undelivered</option>
+                    <option value="rto" ${o.status === 'RTO' ? 'disabled' : ''}>↩️ Mark RTO</option>
+                </select>
             </div>
             <button onclick="markAsDelivered('${o.orderId}')" 
                 class="bg-gradient-to-r from-emerald-500 to-green-600 text-white font-black py-4 rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-3">

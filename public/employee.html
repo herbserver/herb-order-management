@@ -84,6 +84,7 @@
                                 <span class="text-lg">📊</span>
                                 <span class="flex-1 text-left">Progress</span>
                             </button>
+                            <button onclick="openEmployeeTab('undelivered')" id="empTabUndelivered" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all"><span class="text-lg">⏳</span><span class="flex-1 text-left">Undelivered</span></button>
                             <button onclick="openEmployeeTab('ofd')" id="empTabOfd"
                                 class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
                                 <span class="text-lg">🚚</span>
@@ -433,6 +434,23 @@
                             </div>
                         </div>
 
+                        <!-- Undelivered Tab -->
+                        <div id="empUndeliveredTab" class="hidden animate-fadeIn">
+                            <div class="flex flex-col gap-3 mb-6 px-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-1.5 h-6 bg-orange-500 rounded-full block"></span>
+                                    <div class="relative flex-1">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                                        <input type="text" id="myUndeliveredOrdersSearch" placeholder="Search Undelivered..." oninput="filterMyUndeliveredOrders(this.value)" class="w-full pl-8 pr-4 py-2 border-2 border-orange-200 rounded-xl text-xs focus:border-orange-500 outline-none transition-all bg-white" />
+                                    </div>
+                                    <button type="button" onclick="loadMyUndeliveredOrders()" class="bg-orange-50 text-orange-600 p-2 rounded-xl hover:bg-orange-100 transition-all">
+                                        <span class="text-sm">🔄</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="empUndeliveredList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                        </div>
+                        
                         <!-- Cancelled Tab -->
                         <div id="empCancelledTab" class="hidden animate-fadeIn">
                             <div class="flex flex-col gap-3 mb-6 px-2">
@@ -511,15 +529,15 @@
     <script src="js/global-search.js" defer></script>
 
     <!-- Main app.js for shared functions (toggleEmpSidebar, toTitleCase, fetchPincodeDetails, etc.) -->
-    <script src="app.js?v=EmpStandalone-v2" defer></script>
+    <script src="app.js?v=EmpStandalone-v5" defer></script>
 
     <!-- Employee Panel (loads after app.js to override legacy functions) -->
-    <script src="js/panels/employee.js?v=8" defer></script>
+    <script src="js/panels/employee.js?v=9" defer></script>
     <script src="js/services/order-notifications.js?v=3" defer></script>
 
     <script>
         (function () {
-            const validTabs = new Set(['order', 'tracking', 'history', 'progress', 'ofd', 'cancelled']);
+            const validTabs = new Set(['order', 'tracking', 'history', 'progress', 'ofd', 'undelivered', 'cancelled']);
 
             function normalizeEmployeeTab(tab) {
                 const normalized = String(tab || '').trim().toLowerCase();
@@ -563,5 +581,6 @@
 </body>
 
 </html>
+
 
 

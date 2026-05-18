@@ -147,13 +147,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== TAB SWITCHING ====================
 function switchEmpTab(tab) {
     // Hide all contents
-    ['empOrderTab', 'empTrackingTab', 'empHistoryTab', 'empProgressTab', 'empOfdTab', 'empCancelledTab'].forEach(id => {
+    ['empOrderTab', 'empTrackingTab', 'empHistoryTab', 'empProgressTab', 'empOfdTab', 'empUndeliveredTab', 'empCancelledTab'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
 
     // Reset buttons
-    ['empTabOrder', 'empTabTracking', 'empTabHistory', 'empTabProgress', 'empTabOfd', 'empTabCancelled'].forEach(id => {
+    ['empTabOrder', 'empTabTracking', 'empTabHistory', 'empTabProgress', 'empTabOfd', 'empTabUndelivered', 'empTabCancelled'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             // Remove old styling classes
@@ -170,6 +170,7 @@ function switchEmpTab(tab) {
     else if (tab === 'history') { contentId = 'empHistoryTab'; buttonId = 'empTabHistory'; loadMyHistory(); }
     else if (tab === 'progress') { contentId = 'empProgressTab'; buttonId = 'empTabProgress'; loadEmpProgress(); }
     else if (tab === 'ofd') { contentId = 'empOfdTab'; buttonId = 'empTabOfd'; if (typeof loadMyOfdOrders === 'function') loadMyOfdOrders(); }
+    else if (tab === 'undelivered') { contentId = 'empUndeliveredTab'; buttonId = 'empTabUndelivered'; if (typeof loadMyUndeliveredOrders === 'function') loadMyUndeliveredOrders(); }
     else if (tab === 'cancelled') { contentId = 'empCancelledTab'; buttonId = 'empTabCancelled'; loadCancelledOrders(); }
 
     const content = document.getElementById(contentId);
@@ -1286,3 +1287,55 @@ window.loadCancelledOrders = loadCancelledOrders;
 window.loadEmpProgress = loadEmpProgress;
 window.loadMyOfdOrders = loadMyOfdOrders;
 
+
+async function loadMyUndeliveredOrders(page = 1) {
+    if (!currentUser) return;
+    try {
+        const employeeId = getCurrentEmployeeId();
+        if (!employeeId) return;
+
+        const statuses = 'Undelivered';
+        const res = await fetch(`${API_URL}/orders/employee/${employeeId}?status=${encodeURIComponent(statuses)}&page=${page}&limit=${EMP_ITEMS_PER_PAGE}`);
+        const data = await res.json();
+
+        const list = document.getElementById('empUndeliveredList');
+        if (!list) return;
+
+        if (!data.success || !data.orders || data.orders.length === 0) {
+            list.innerHTML = '<div class="col-span-full text-center py-12 bg-orange-50 rounded-2xl border-dashed border-2 border-orange-100"><p class="text-4xl mb-3">⏳</p><p class="text-gray-500">No undelivered orders</p></div>';
+            return;
+        }
+
+        list.innerHTML = data.orders.map(o => renderEmpOrderCard(o)).join('');
+        
+        const totalItems = data.pagination ? data.pagination.total : data.orders.length;
+        const totalPages = Math.ceil(totalItems / EMP_ITEMS_PER_PAGE) || 1;
+        renderPaginationControls(list, page, totalPages, 'loadMyUndeliveredOrders');
+    } catch (e) {
+        console.error('Error loading Undelivered orders:', e);
+    }
+}
+
+function filterMyUndeliveredOrders(q) {
+    const query = (q || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('#empUndeliveredList [data-mobile]');
+
+    if (!query) {
+        cards.forEach(c => c.style.display = '');
+        return;
+    }
+
+    cards.forEach(c => {
+        const mobile = (c.dataset.mobile || '').toLowerCase();
+        const text = (c.innerText || '').toLowerCase();
+
+        if (mobile.includes(query) || text.includes(query)) {
+            c.style.display = '';
+        } else {
+            c.style.display = 'none';
+        }
+    });
+}
+
+window.loadMyUndeliveredOrders = loadMyUndeliveredOrders;
+window.filterMyUndeliveredOrders = filterMyUndeliveredOrders;

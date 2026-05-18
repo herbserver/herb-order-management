@@ -1,4 +1,4 @@
-// ==================== ADMIN PANEL LOGIC ====================
+﻿// ==================== ADMIN PANEL LOGIC ====================
 
 // Cache for admin stats to prevent redundant API calls
 let adminStatsCache = {
@@ -213,6 +213,7 @@ function updateAdminStatsUI(data) {
     // Update other missing stats if elements exist
     if (document.getElementById('cancelledCount')) document.getElementById('cancelledCount').innerText = data.stats.cancelledOrders || 0;
     if (document.getElementById('onholdCount')) document.getElementById('onholdCount').innerText = data.stats.onHoldOrders || 0;
+    if (document.getElementById('undeliveredCount')) document.getElementById('undeliveredCount').innerText = data.stats.undeliveredOrders || 0;
 
     // Update Pending Tab Revenue Stats
     updateRevenueStats('Pending',
@@ -385,8 +386,14 @@ var adminPagination = typeof adminPagination !== 'undefined' ? adminPagination :
     pending: 1,
     verified: 1,
     dispatched: 1,
-    delivered: 1
+    delivered: 1,
+    ofd: 1,
+    undelivered: 1,
+    cancelled: 1,
+    onhold: 1,
+    rto: 1
 };
+
 
 function generateAdminOrderCard(o) {
     const statusColors = {
@@ -669,7 +676,7 @@ window.switchAdminTab = function (tabName) {
 
     // 3. Hide all tabs
     const allTabs = [
-        'adminPendingTab', 'adminVerifiedTab', 'adminDispatchedTab', 'adminOfdTab',
+        'adminPendingTab', 'adminVerifiedTab', 'adminDispatchedTab', 'adminOfdTab', 'adminUndeliveredTab',
         'adminDeliveredTab', 'adminCancelledTab', 'adminOnholdTab', 'adminRTOTab',
         'adminEmployeesTab', 'adminDepartmentsTab', 'adminHistoryTab', 'adminProgressTab'
     ];
@@ -698,6 +705,7 @@ window.switchAdminTab = function (tabName) {
     else if (tabName === 'verified') loadAdminVerified();
     else if (tabName === 'dispatched') loadAdminDispatched();
     else if (tabName === 'ofd') loadAdminOFD();
+    else if (tabName === 'undelivered') { if (typeof loadAdminUndelivered === 'function') loadAdminUndelivered(); }
     else if (tabName === 'delivered') loadAdminDelivered();
     else if (tabName === 'cancelled') loadAdminCancelled();
     else if (tabName === 'onhold') loadAdminOnHold();
@@ -1013,5 +1021,9 @@ function animateValue(id, end) {
     const target = parseInt(end) || 0;
     obj.innerText = target.toLocaleString();
 }
+
+
+window.loadAdminUndelivered = (page = null) => loadAdminOrdersGeneric('Undelivered', 'adminUndeliveredList', 'undelivered', page);
+
 
 
