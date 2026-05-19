@@ -1832,6 +1832,7 @@ async function saveOrder() {
 
         if (desc) items.push({
             description: desc,
+            product: desc,
             quantity: qty,
             amount: 0,  // Will calculate below
             rate: 0     // Will calculate below
@@ -2214,15 +2215,14 @@ async function editOrder(orderId) {
         container.innerHTML = '';
         (order.items || []).forEach(item => {
             const div = document.createElement('div');
-            div.className = 'grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 mb-2';
-
+            div.className = 'grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 mb-2';            const currentItemName = item.description || item.product || item.name || '';
             let options = PRODUCT_LIST.map(p =>
-                `<option value="${p.name}" ${p.name === item.description ? 'selected' : ''}>${p.name}</option>`
+                `<option value="${p.name}">${p.name}</option>`
             ).join('');
 
             // Add "Other" if description is not in list
-            if (!PRODUCT_LIST.find(p => p.name === item.description)) {
-                options += `<option value="${item.description}" selected>${item.description}</option>`;
+            if (currentItemName && !PRODUCT_LIST.find(p => p.name === currentItemName)) {
+                options += `<option value="${currentItemName}">${currentItemName}</option>`;
             } else {
                 options += `<option value="Other">Other</option>`;
             }
@@ -2239,7 +2239,18 @@ async function editOrder(orderId) {
                         oninput="calculateTotal()"> 
                     
                     <button type="button" onclick="this.parentElement.remove(); calculateTotal();" class="col-span-4 md:col-span-1 text-red-500 font-bold hover:bg-red-50 rounded p-1 transition-colors text-center">×</button> `;
+            
+            // Append first so DOM API works perfectly
             container.appendChild(div);
+            
+            // Explicitly set the value via DOM API to prevent browser HTML parsing quirks
+            if (currentItemName) {
+                const selectEl = div.querySelector('.item-desc');
+                if (selectEl) {
+                    selectEl.value = currentItemName;
+                }
+            }
+
         });
         if (order.items.length === 0) {
             addItem();
@@ -6021,7 +6032,7 @@ async function openEditOrderModal(orderId) {
             const amount = item.amount || (rate * qty) || 0;
             itemsHtml += `
                 <div class="grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 edit-item-row">
-                    <input type="text" value="${item.description || item.name || ''}" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500">
+                    <input type="text" value="${item.description || item.product || item.name || ''}" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500">
                     <input type="number" value="${qty}" min="1" placeholder="Qty" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-qty outline-none focus:border-emerald-500 text-center font-bold" oninput="updateEditItemAmount(this)">
                     <input type="number" value="${rate}" placeholder="Rate" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-rate outline-none focus:border-emerald-500" oninput="updateEditItemAmount(this)">
                     <input type="number" value="${amount}" placeholder="Amt" class="col-span-4 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-amount outline-none focus:border-emerald-500 bg-gray-50 font-bold" oninput="updateEditTotal()">
