@@ -1684,530 +1684,6 @@ var PRODUCT_LIST = PRODUCT_LIST || [
 
 function addItem() {
     const container = document.getElementById('itemsContainer');
-    const div = document.createElement('div');
-    div.className = 'grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 mb-2';
-
-    let options = PRODUCT_LIST.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
-
-    div.innerHTML = ` 
-            <select class="col-span-12 md:col-span-8 border rounded-lg px-3 py-2 text-sm item-desc bg-white outline-none focus:border-emerald-500 transition-colors"
-                onchange="calculateTotal()"> 
-                <option value="">Select Product...</option> 
-                ${options}
-                <option value="Other">Other</option> 
-            </select> 
-            
-            <input type="number" placeholder="Qty" value="1" min="1"
-                class="col-span-8 md:col-span-3 border rounded-lg px-2 py-2 text-sm item-qty outline-none focus:border-emerald-500"
-                oninput="calculateTotal()"> 
-            
-            <button type="button" onclick="this.parentElement.remove(); calculateTotal();" class="col-span-4 md:col-span-1 text-red-500 font-bold hover:bg-red-50 rounded p-1 transition-colors text-center">×</button> `;
-    container.appendChild(div);
-}
-
-function calculateTotal() {
-    const items = document.querySelectorAll('#itemsContainer > div');
-    const totalInput = document.getElementById('totalAmountInput');
-    const comboBadge = document.getElementById('comboBadge');
-
-    let itemCount = 0;
-    items.forEach(div => {
-        const desc = div.querySelector('.item-desc').value;
-        const qty = parseInt(div.querySelector('.item-qty').value) || 0;
-        if (desc) itemCount += qty;
-    });
-
-    // Automatic calculation disabled as per user request
-    if (itemCount === 0) totalInput.value = 0;
-
-    calculateCOD();
-}
-
-function calculateCOD() {
-    const total = parseFloat(document.getElementById('totalAmountInput').value) || 0;
-    const advance = parseFloat(document.querySelector('input[name="advance"]').value) || 0;
-    document.querySelector('input[name="codAmount"]').value = Math.max(0, total - advance).toFixed(2);
-}
-
-// Show validation popup for missing fields
-function showValidationPopup(missingFields) {
-    const popup = document.createElement('div');
-
-    // Create list of missing fields
-    const fieldsList = missingFields.map(field =>
-        `<li class="flex items-center gap-2 text-gray-700">
-            <span class="text-red-500 font-bold">❌</span>
-            <span>${field}</span>
-        </li>`
-    ).join('');
-
-    popup.innerHTML = `
-        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s;">
-            <div style="background: white; border-radius: 20px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s;">
-                <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; animation: shake 0.5s;">
-                    <span style="font-size: 40px;">⚠️</span>
-                </div>
-                <h2 style="font-size: 22px; font-weight: bold; color: #1f2937; margin-bottom: 12px; text-align: center;">Form Incomplete!</h2>
-                <p style="font-size: 14px; color: #6b7280; margin-bottom: 16px; text-align: center;">Kripya ye fields bharein:</p>
-                
-                <ul style="list-style: none; padding: 0; margin: 0 0 24px 0; max-height: 200px; overflow-y: auto;">
-                    ${fieldsList}
-                </ul>
-                
-                <button onclick="this.closest('div[style*=fixed]').remove()" 
-                    style="width: 100%; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 14px 24px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(239,68,68,0.3);" 
-                    onmouseover="this.style.transform='scale(1.02)'" 
-                    onmouseout="this.style.transform='scale(1)'">
-                    ठीक है, भर देता हूं
-                </button>
-            </div>
-        </div>
-        <style>
-            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-            @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-            @keyframes shake { 
-                0%, 100% { transform: rotate(0deg); }
-                25% { transform: rotate(-5deg); }
-                75% { transform: rotate(5deg); }
-            }
-        </style>
-    `;
-
-    document.body.appendChild(popup);
-
-    // Auto-scroll to first missing field after closing popup
-    popup.querySelector('button').addEventListener('click', () => {
-        const firstEmptyField = document.querySelector('.border-red-500');
-        if (firstEmptyField) {
-            firstEmptyField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(() => firstEmptyField.focus(), 300);
-        }
-    });
-}
-
-async function saveOrder() {
-    const form = document.getElementById('orderForm');
-    const customerName = form.customerName.value.trim();
-    const telNo = form.telNo.value.trim();
-
-    // Enhanced Validation: Check ALL required fields
-    let missingFields = [];
-    const inputs = form.querySelectorAll('input[required], select[required]');
-
-    inputs.forEach(input => {
-        if (!input.value.trim()) {
-            input.classList.add('border-red-500', 'bg-red-50');
-
-            // Get field name from placeholder or name attribute
-            const fieldName = input.placeholder || input.name || 'Unknown field';
-            missingFields.push(fieldName);
-
-            // Add listener to remove error on type
-            input.addEventListener('input', () => {
-                input.classList.remove('border-red-500', 'bg-red-50');
-            }, { once: true });
-        } else {
-            input.classList.remove('border-red-500', 'bg-red-50');
-        }
-    });
-
-    if (missingFields.length > 0) {
-        // Show custom popup with list of missing fields
-        showValidationPopup(missingFields);
-        return;
-    }
-
-    // Additional phone number validation
-    if (telNo && telNo.length !== 10) {
-        showValidationPopup(['Tel No. - 10 digits hone chahiye (currently ' + telNo.length + ' digits)']);
-        document.querySelector('input[name="telNo"]').classList.add('border-red-500', 'bg-red-50');
-        return;
-    }
-
-    const items = [];
-
-    document.querySelectorAll('#itemsContainer > div').forEach(div => {
-        const desc = div.querySelector('.item-desc').value.trim();
-        const qty = parseFloat(div.querySelector('.item-qty').value) || 0;
-
-        if (desc) items.push({
-            description: desc,
-            product: desc,
-            quantity: qty,
-            amount: 0,  // Will calculate below
-            rate: 0     // Will calculate below
-        });
-    });
-
-    if (items.length === 0) {
-        return showMessage('Kam se kam ek item add karein!', 'error', 'empMessage');
-    }
-
-    const total = parseFloat(document.getElementById('totalAmountInput').value) || 0;
-
-    // Calculate total quantity
-    const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
-
-    // Distribute total amount proportionally based on quantity
-    if (totalQty > 0) {
-        items.forEach(item => {
-            const proportion = item.quantity / totalQty;
-            item.amount = Math.round(total * proportion);
-            item.rate = item.quantity > 0 ? Math.round(item.amount / item.quantity) : 0;
-        });
-    }
-
-    const orderData = {
-        employeeId: currentUser.id,
-        employee: currentUser.name,
-        customerName: toTitleCase(customerName),
-        address: form.address.value,
-        hNo: form.hNo.value.trim(),
-        blockGaliNo: toTitleCase(form.blockGaliNo.value.trim()),
-        villColony: toTitleCase(form.villColony.value.trim()),
-        po: toTitleCase(form.po.value.trim()),
-        tahTaluka: toTitleCase(form.tahTaluka.value.trim()),
-        distt: toTitleCase(form.distt.value.trim()),
-        state: toTitleCase(form.state.value.trim()),
-        pin: form.pin.value.trim(),
-        landMark: toTitleCase(form.landMark.value.trim()),
-        treatment: form.treatment.value, // Added treatment field
-        date: form.date.value,
-        time: form.time.value,
-        telNo,
-        altNo: form.altNo.value,
-        orderType: form.orderType.value === 'REORDER' ? 'Reorder' : 'Fresh',
-        items,
-        total: total,
-        advance: parseFloat(form.advance.value) || 0,
-        codAmount: parseFloat(form.codAmount.value) || 0,
-        remark: document.getElementById('employeeRemark')?.value?.trim() || ''
-    };
-
-    // LOGIC CHANGE: Decide URL and Method based on Create or Edit mode
-    const url = currentEditingOrderId ? `${API_URL}/orders/${currentEditingOrderId}` : `${API_URL}/orders`;
-    const method = currentEditingOrderId ? 'PUT' : 'POST';
-
-    try {
-        const btn = document.querySelector('#orderForm button[onclick="saveOrder()"]');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '⏳ Checking...';
-        btn.disabled = true;
-
-        // ========== DUPLICATE CHECK (Only for new orders) ==========
-        if (!currentEditingOrderId) {
-            console.log('🔍 Checking duplicate for:', telNo);
-            const dupRes = await fetch(`${API_URL}/orders/check-duplicate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ telNo: telNo, customerName: customerName })
-            });
-            const dupData = await dupRes.json();
-            console.log('🔍 Duplicate check response:', dupData);
-
-            if (dupData.success && dupData.isDuplicate) {
-                console.log('⚠️ DUPLICATE FOUND:', dupData.existingOrder);
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-
-                // Show duplicate warning popup
-                showDuplicateOrderWarning(dupData.existingOrder, orderData, btn, originalText);
-                return;
-            }
-        }
-        // =============================================================
-
-        btn.innerHTML = '⏳ Saving...';
-
-        const res = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(orderData)
-        });
-        const data = await res.json();
-
-        if (data.success) {
-            const bookedOrder = {
-                orderId: data.order?.orderId || data.orderId || 'Updated',
-                customerName: orderData.customerName,
-                total: orderData.total,
-                telNo: orderData.telNo
-            };
-
-            showSuccessPopup(
-                currentEditingOrderId ? 'Order Updated!' : 'Order Saved!',
-                currentEditingOrderId ? 'Order details successfully update ho gaye' : 'Order successfully Verification Department mein chala gaya',
-                '✅',
-                '#10b981',
-                currentEditingOrderId ? null : { type: 'booked', order: bookedOrder }
-            );
-
-            form.reset();
-            currentEditingOrderId = null; // Reset edit mode
-
-            // Reset Button
-            btn.innerHTML = '💾 SAVE ORDER';
-            btn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
-            btn.classList.add('btn-primary'); // Assuming btn-primary is the default class
-
-            initOrderForm();
-
-            // Switch to My Orders tab to see the updated/new order
-            switchEmpTab('tracking');
-            loadMyOrders();
-        }
-
-        else {
-            // Check if it's a duplicate order error
-            if (data.existingOrder) {
-                const popup = document.createElement('div');
-                popup.innerHTML = `
-                    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s;">
-                        <div style="background: white; border-radius: 20px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s;">
-                            <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
-                                <span style="font-size: 40px;">⚠️</span>
-                            </div>
-                            <h2 style="font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 12px; text-align: center;">Duplicate Order Alert!</h2>
-                            <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px; text-align: center;">
-                                Is mobile number par pehle se ek order hai!<br>
-                                Doosre employee ne already order le liya hai.
-                            </p>
-                            
-                            <div style="background: #fef3c7; padding: 16px; border-radius: 12px; border: 1px solid #fcd34d; margin-bottom: 20px;">
-                                <div style="display: grid; gap: 8px; font-size: 14px;">
-                                    <div style="display: flex; justify-content: space-between;">
-                                        <span style="color: #92400e;">📦 Order ID:</span>
-                                        <span style="font-weight: bold; color: #1f2937;">${data.existingOrder.orderId}</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between;">
-                                        <span style="color: #92400e;">📊 Status:</span>
-                                        <span style="font-weight: bold; color: #1f2937;">${data.existingOrder.status}</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between;">
-                                        <span style="color: #92400e;">👤 Employee:</span>
-                                        <span style="font-weight: bold; color: #1f2937;">${data.existingOrder.employeeName || data.existingOrder.createdBy || 'Unknown'}</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between;">
-                                        <span style="color: #92400e;">📅 Created:</span>
-                                        <span style="font-weight: bold; color: #1f2937;">${new Date(data.existingOrder.createdAt).toLocaleDateString('hi-IN')}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <button onclick="this.closest('div[style*=fixed]').remove()" 
-                                style="width: 100%; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 14px 24px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(245,158,11,0.3);" 
-                                onmouseover="this.style.transform='scale(1.02)'" 
-                                onmouseout="this.style.transform='scale(1)'">
-                                समझ गया!
-                            </button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(popup);
-            } else {
-                showMessage(data.message || 'Order save nahi hua!', 'error', 'empMessage');
-            }
-        }
-
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }
-
-    catch (e) {
-        console.error('Save order error:', e);
-        const btn = document.querySelector('#orderForm button[onclick="saveOrder()"]');
-        if (btn) {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-        showMessage('Server se connect nahi ho paya! Check karo server chal raha hai?', 'error', 'empMessage');
-    }
-}
-
-// ========== DUPLICATE ORDER WARNING POPUP ==========
-function showDuplicateOrderWarning(existingOrder, newOrderData, btn, originalText) {
-    // Remove existing popup if any
-    document.getElementById('duplicateWarningModal')?.remove();
-
-    const createdDate = new Date(existingOrder.createdAt).toLocaleString('en-IN', {
-        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-
-    const modal = document.createElement('div');
-    modal.id = 'duplicateWarningModal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
-    modal.innerHTML = `
-        <div style="background:white;border-radius:20px;max-width:450px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.3);overflow:hidden;animation:slideUp 0.3s ease-out;">
-            <!-- Header -->
-            <div style="background:linear-gradient(135deg,#f97316,#dc2626);padding:24px;color:white;">
-                <div style="display:flex;align-items:center;gap:16px;">
-                    <span style="font-size:48px;">⚠️</span>
-                    <div>
-                        <h3 style="font-size:22px;font-weight:bold;margin-bottom:4px;">Duplicate Order Warning!</h3>
-                        <p style="font-size:14px;opacity:0.9;">Same mobile number ka order already hai</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Existing Order Details -->
-            <div style="padding:20px;background:#fff7ed;border-bottom:1px solid #fed7aa;">
-                <p style="font-size:12px;font-weight:bold;color:#c2410c;text-transform:uppercase;margin-bottom:12px;">📋 Existing Order Details:</p>
-                <div style="background:white;border-radius:12px;padding:16px;border:1px solid #fed7aa;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                        <span style="color:#6b7280;">Order ID:</span>
-                        <span style="font-weight:bold;color:#1f2937;">${existingOrder.orderId}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                        <span style="color:#6b7280;">Customer:</span>
-                        <span style="font-weight:bold;color:#1f2937;">${existingOrder.customerName}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                        <span style="color:#6b7280;">Mobile:</span>
-                        <span style="font-family:monospace;color:#1f2937;">${existingOrder.telNo}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                        <span style="color:#6b7280;">Status:</span>
-                        <span style="font-weight:bold;color:#2563eb;">${existingOrder.status}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                        <span style="color:#6b7280;">Amount:</span>
-                        <span style="font-weight:bold;color:#059669;">₹${existingOrder.total}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                        <span style="color:#6b7280;">Created:</span>
-                        <span style="color:#4b5563;font-size:13px;">${createdDate}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;">
-                        <span style="color:#6b7280;">Created By:</span>
-                        <span style="color:#4b5563;">${existingOrder.employeeName || existingOrder.createdBy}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Actions -->
-            <div style="padding:20px;">
-                <p style="font-size:14px;color:#6b7280;text-align:center;margin-bottom:16px;">Kya aap phir bhi naya order create karna chahte ho?</p>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <button onclick="document.getElementById('duplicateWarningModal').remove()" 
-                        style="background:#f3f4f6;color:#374151;font-weight:bold;padding:14px;border-radius:12px;border:none;cursor:pointer;font-size:15px;">
-                        ❌ Cancel
-                    </button>
-                    <button onclick="forceCreateOrderFromMain()" 
-                        style="background:linear-gradient(135deg,#22c55e,#059669);color:white;font-weight:bold;padding:14px;border-radius:12px;border:none;cursor:pointer;font-size:15px;">
-                        ✅ Create Anyway
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    // Store order data for force create
-    window._pendingOrderData = newOrderData;
-}
-
-// Force create order (after user confirms duplicate)
-async function forceCreateOrderFromMain() {
-    const orderData = window._pendingOrderData;
-    if (!orderData) return;
-
-    document.getElementById('duplicateWarningModal')?.remove();
-
-    const btn = document.querySelector('#orderForm button[onclick="saveOrder()"]');
-    if (btn) {
-        btn.innerHTML = '⏳ Saving...';
-        btn.disabled = true;
-    }
-
-    try {
-        const res = await fetch(`${API_URL}/orders`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orderData)
-        });
-        const data = await res.json();
-
-        if (data.success) {
-            const bookedOrder = {
-                orderId: data.orderId,
-                customerName: orderData.customerName,
-                total: orderData.total,
-                telNo: orderData.telNo
-            };
-
-            showSuccessPopup(
-                'Order Saved!',
-                'Order successfully Verification Department mein chala gaya',
-                '✅',
-                '#10b981',
-                { type: 'booked', order: bookedOrder }
-            );
-
-            document.getElementById('orderForm').reset();
-            initOrderForm();
-            switchEmpTab('tracking');
-            loadMyOrders();
-        } else {
-            showMessage(data.message || 'Order save nahi hua!', 'error', 'empMessage');
-        }
-    } catch (e) {
-        console.error('Force create error:', e);
-        showMessage('Server error!', 'error', 'empMessage');
-    }
-
-    if (btn) {
-        btn.innerHTML = '💾 SAVE ORDER';
-        btn.disabled = false;
-    }
-    window._pendingOrderData = null;
-}
-
-// Edit Order Function
-async function editOrder(orderId) {
-    try {
-        const res = await fetch(`${API_URL}/orders/${orderId}`);
-        const data = await res.json();
-
-        if (!data.success || !data.order) {
-            return showMessage('Order fetch failed!', 'error', 'empMessage');
-        }
-
-        const order = data.order;
-        const form = document.getElementById('orderForm');
-
-        // Populate Fields
-        form.customerName.value = order.customerName || '';
-        form.telNo.value = order.telNo || '';
-        form.altNo.value = order.altNo || '';
-        form.hNo.value = order.hNo || '';
-        form.blockGaliNo.value = order.blockGaliNo || '';
-        form.villColony.value = order.villColony || '';
-        form.landMark.value = order.landmark || order.landMark || '';
-        form.po.value = order.po || order.postOfficeName || '';
-        form.tahTaluka.value = order.tahTaluka || '';
-        form.distt.value = order.distt || '';
-        form.state.value = order.state || '';
-        form.pin.value = order.pin || order.pincode || '';
-        form.address.value = order.address || '';
-        form.treatment.value = order.treatment || '';
-
-        form.date.value = order.date || '';
-        form.time.value = order.time || '';
-        form.advance.value = order.advance || 0;
-        const employeeRemarkInput = document.getElementById('employeeRemark');
-        if (employeeRemarkInput) {
-            employeeRemarkInput.value = order.remark || '';
-        }
-        // Radio Button - handle both old "REORDER" and new "Reorder" format
-        if (order.orderType === 'REORDER' || order.orderType === 'Reorder') {
-            document.querySelector('input[name="orderType"][value="REORDER"]').checked = true;
-        } else {
-            document.querySelector('input[name="orderType"][value="NEW"]').checked = true;
-        }
-
-        const container = document.getElementById('itemsContainer');
         container.innerHTML = '';
         
         (order.items || []).forEach(item => {
@@ -2215,64 +1691,57 @@ async function editOrder(orderId) {
             const qty = item.quantity || 1;
             const amt = item.amount || item.rate || 0;
             
-            // Delegate to the global addItem function if it exists, otherwise fallback to legacy UI
-            if (typeof window.addItem === 'function') {
-                window.addItem();
-                const div = container.lastElementChild;
-                if (!div) return;
-                
+            const div = document.createElement('div');
+            div.className = 'item-row grid grid-cols-12 gap-2 mb-2 items-center';
+            
+            // Build options array to perfectly match employee.js format
+            let options = (window.PRODUCT_LIST || []).map((product) => {
+                return \`<option value="\${product.name}" data-price="\${product.price || 0}">\${product.name}</option>\`;
+            }).join('');
+            
+            // If current item is not in PRODUCT_LIST, add it to options
+            if (currentItemName && !(window.PRODUCT_LIST || []).find(p => p.name === currentItemName)) {
+                options += \`<option value="\${currentItemName}" data-price="\${amt/qty}">\${currentItemName}</option>\`;
+            }
+            
+            div.innerHTML = \`
+                <div class="col-span-6">
+                    <select class="item-desc w-full p-2 border rounded" onchange="if(typeof updateTotal === 'function') updateTotal(this); else calculateTotal();">
+                        <option value="">Select Product...</option>
+                        \${options}
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <input type="number" class="item-qty w-full p-2 border rounded text-center" value="\${qty}" min="1" oninput="if(typeof updateTotal === 'function') updateTotal(this); else calculateTotal();">
+                </div>
+                <div class="col-span-3">
+                    <input type="number" class="w-full p-2 border rounded text-right item-row-total" value="\${amt}" oninput="calculateTotal()">
+                </div>
+                <div class="col-span-1 text-center">
+                    <button type="button" onclick="this.closest('.item-row').remove(); calculateTotal();" class="text-red-500 font-bold text-xl">×</button>
+                </div>
+            \`;
+            
+            container.appendChild(div);
+            
+            if (currentItemName) {
                 const selectEl = div.querySelector('.item-desc');
-                if (selectEl && currentItemName) {
-                    if (!Array.from(selectEl.options).some(opt => opt.value === currentItemName)) {
-                        selectEl.add(new Option(currentItemName, currentItemName));
-                    }
-                    selectEl.value = currentItemName;
-                }
-                
-                const qtyEl = div.querySelector('.item-qty');
-                if (qtyEl) qtyEl.value = qty;
-                
-                const amtEl = div.querySelector('.item-row-total');
-                if (amtEl) amtEl.value = amt;
-            } else {
-                // Legacy fallback if no addItem exists
-                const div = document.createElement('div');
-                div.className = 'grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 mb-2';
-                let options = PRODUCT_LIST.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
-                if (currentItemName && !PRODUCT_LIST.find(p => p.name === currentItemName)) {
-                    options += `<option value="${currentItemName}">${currentItemName}</option>`;
-                } else {
-                    options += `<option value="Other">Other</option>`;
-                }
-                div.innerHTML = `
-                    <select class="col-span-12 md:col-span-8 border rounded-lg px-3 py-2 text-sm item-desc bg-white outline-none focus:border-emerald-500 transition-colors" onchange="calculateTotal()"> 
-                        <option value="">Select Product...</option> 
-                        ${options}
-                    </select> 
-                    <input type="number" placeholder="Qty" value="${qty}" min="1" class="col-span-8 md:col-span-3 border rounded-lg px-2 py-2 text-sm item-qty outline-none focus:border-emerald-500" oninput="calculateTotal()"> 
-                    <button type="button" onclick="this.parentElement.remove(); calculateTotal();" class="col-span-4 md:col-span-1 text-red-500 font-bold hover:bg-red-50 rounded p-1 transition-colors text-center">×</button>
-                `;
-                container.appendChild(div);
-                if (currentItemName) {
-                    const selectEl = div.querySelector('.item-desc');
-                    if (selectEl) selectEl.value = currentItemName;
-                }
+                if (selectEl) selectEl.value = currentItemName;
             }
         });
         
-        if (order.items.length === 0 && typeof window.addItem === 'function') {
-            window.addItem();
-        } else if (order.items.length === 0 && typeof addItem === 'function') {
-            addItem();
+        if (order.items.length === 0) {
+            if (typeof window.addItem === 'function') {
+                window.addItem();
+            } else if (typeof addItem === 'function') {
+                addItem();
+            }
         }
 
-        // Final recalculate total if applicable
         if (typeof calculateTotal === 'function') {
             calculateTotal();
         }
         
-        // **CRITICAL FIX**: Force the total to be order.total again AFTER ALL ITEMS ARE RENDERED
-        // and calculateTotal has run, because calculateTotal might have reset it
         document.getElementById('totalAmountInput').value = order.total || 0;
         if (typeof calculateCOD === 'function') calculateCOD();
 
