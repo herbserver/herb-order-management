@@ -121,16 +121,35 @@
 
     function calculateTotal() {
         let sum = 0;
-        document.querySelectorAll('.item-row .item-row-total').forEach((input) => {
-            sum += Number(input.value || 0);
-        });
+        const empItems = document.querySelectorAll('.item-row .item-row-total');
+        if (empItems.length > 0) {
+            empItems.forEach((input) => {
+                sum += Number(input.value || 0);
+            });
 
-        const totalInput = document.getElementById('totalAmountInput');
-        if (totalInput) {
-            totalInput.value = String(sum);
+            const totalInput = document.getElementById('totalAmountInput');
+            if (totalInput) {
+                totalInput.value = String(sum);
+            }
+
+            calculateCOD();
+        } else {
+            // Fallback for app.js Edit Order legacy UI
+            let itemCount = 0;
+            document.querySelectorAll('#itemsContainer > div').forEach(div => {
+                const descEl = div.querySelector('.item-desc');
+                const desc = descEl ? descEl.value : null;
+                const qtyEl = div.querySelector('.item-qty');
+                const qty = qtyEl ? parseInt(qtyEl.value) || 0 : 0;
+                if (desc) itemCount += qty;
+            });
+            
+            if (itemCount === 0) {
+                const totalInput = document.getElementById('totalAmountInput');
+                if (totalInput) totalInput.value = 0;
+            }
+            calculateCOD();
         }
-
-        calculateCOD();
     }
 
     function calculateCOD() {
@@ -321,6 +340,13 @@
     }
 
     async function saveOrder() {
+        // If editing an existing order via app.js editOrder, delegate to app.js saveOrder instead
+        if (typeof currentEditingOrderId !== 'undefined' && currentEditingOrderId) {
+            if (typeof window._appSaveOrder === 'function') {
+                return window._appSaveOrder();
+            }
+        }
+
         const form = getForm();
         if (!form) {
             return;
