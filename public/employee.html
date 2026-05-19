@@ -173,6 +173,9 @@
                     <!-- Content Container -->
                     <div class="p-6">
 
+                        <!-- Performance Card Container -->
+                        <div id="empPerformanceCard" class="mb-6"></div>
+
                         <div id="empMessage"
                             class="hidden mb-6 p-4 rounded-2xl text-sm glass-card border-l-4 border-blue-500">
                         </div>
@@ -526,18 +529,51 @@
                                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Employee Details</p>
                                     </div>
                                 </div>
-                                <div class="space-y-4 max-w-lg">
-                                    <div>
-                                        <label class="block text-sm font-medium mb-1 text-gray-600">Employee ID</label>
-                                        <div class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 font-mono text-gray-800 font-bold" id="profileEmpId">-</div>
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <!-- Left Column: Details -->
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium mb-1 text-gray-600">Employee ID</label>
+                                            <div class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 font-mono text-gray-800 font-bold" id="profileEmpId">-</div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium mb-1 text-gray-600">Name</label>
+                                            <div class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 text-gray-800 font-bold" id="profileEmpName">-</div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium mb-1 text-gray-600">Department</label>
+                                            <div class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 text-gray-800 font-bold">Employee</div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-sm font-medium mb-1 text-gray-600">Name</label>
-                                        <div class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 text-gray-800 font-bold" id="profileEmpName">-</div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium mb-1 text-gray-600">Department</label>
-                                        <div class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 text-gray-800 font-bold">Employee</div>
+                                    <!-- Right Column: Performance and Recent Orders -->
+                                    <div class="lg:col-span-2 space-y-6">
+                                        <div>
+                                            <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">📊 My Performance Stats</h3>
+                                            <div id="empProfileStats" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                <!-- Dynamic stats cards -->
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">📜 My Recent Orders</h3>
+                                            <div class="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                                                <div class="overflow-x-auto max-h-[300px]">
+                                                    <table class="w-full text-left text-xs">
+                                                        <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                                            <tr>
+                                                                <th class="px-4 py-3 font-bold text-gray-500 uppercase">Order ID</th>
+                                                                <th class="px-4 py-3 font-bold text-gray-500 uppercase">Customer</th>
+                                                                <th class="px-4 py-3 font-bold text-gray-500 uppercase text-right">Amount</th>
+                                                                <th class="px-4 py-3 font-bold text-gray-500 uppercase text-center">Status</th>
+                                                                <th class="px-4 py-3 font-bold text-gray-500 uppercase text-right">Date</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="empProfileOrders" class="divide-y divide-gray-50 text-gray-700">
+                                                            <!-- Dynamic orders -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -594,10 +630,10 @@
     <script src="js/global-search.js?v=2" defer></script>
 
     <!-- Main app.js for shared functions (toggleEmpSidebar, toTitleCase, fetchPincodeDetails, etc.) -->
-    <script src="app.js?v=EmpStandalone-v12" defer></script>
+    <script src="app.js?v=EmpStandalone-v13" defer></script>
 
     <!-- Employee Panel (loads after app.js to override legacy functions) -->
-    <script src="js/panels/employee.js?v=15" defer></script>
+    <script src="js/panels/employee.js?v=16" defer></script>
     <script src="js/services/order-notifications.js?v=3" defer></script>
 
     <script>

@@ -7545,15 +7545,63 @@ async function viewEmployeeProfile(empId, startDate = '', endDate = '') {
             { label: 'RTO', count: stats.rto, amount: revenue.rto, color: 'indigo', icon: '↩️' }
         ];
 
-        const cardsHtml = cards.map(c => `
-                    <div class="bg-${c.color}-50 border border-${c.color}-100 rounded-xl p-4 text-center hover:shadow-md transition-all">
-                        <p class="text-3xl font-black text-${c.color}-600 mb-1">${c.count || 0}</p>
-                        <p class="text-[10px] text-${c.color}-400 uppercase font-black tracking-wider mb-2">${c.label}</p>
-                        <div class="bg-white/60 rounded-lg py-1 px-2 border border-${c.color}-100 inline-block">
-                             <p class="text-xs font-bold text-${c.color}-700">₹${(c.amount || 0).toLocaleString()}</p>
+        const colorMap = {
+            gray: {
+                bg: 'bg-gray-50',
+                border: 'border-gray-100',
+                text600: 'text-gray-600',
+                text400: 'text-gray-400',
+                text700: 'text-gray-700'
+            },
+            yellow: {
+                bg: 'bg-yellow-50',
+                border: 'border-yellow-100',
+                text600: 'text-yellow-600',
+                text400: 'text-yellow-400',
+                text700: 'text-yellow-700'
+            },
+            red: {
+                bg: 'bg-red-50',
+                border: 'border-red-100',
+                text600: 'text-red-600',
+                text400: 'text-red-400',
+                text700: 'text-red-700'
+            },
+            green: {
+                bg: 'bg-green-50',
+                border: 'border-green-100',
+                text600: 'text-green-600',
+                text400: 'text-green-400',
+                text700: 'text-green-700'
+            },
+            purple: {
+                bg: 'bg-purple-50',
+                border: 'border-purple-100',
+                text600: 'text-purple-600',
+                text400: 'text-purple-400',
+                text700: 'text-purple-700'
+            },
+            indigo: {
+                bg: 'bg-indigo-50',
+                border: 'border-indigo-100',
+                text600: 'text-indigo-600',
+                text400: 'text-indigo-400',
+                text700: 'text-indigo-700'
+            }
+        };
+
+        const cardsHtml = cards.map(c => {
+            const cls = colorMap[c.color] || colorMap.gray;
+            return `
+                    <div class="${cls.bg} border ${cls.border} rounded-xl p-4 text-center hover:shadow-md transition-all">
+                        <p class="text-3xl font-black ${cls.text600} mb-1">${c.count || 0}</p>
+                        <p class="text-[10px] ${cls.text400} uppercase font-black tracking-wider mb-2">${c.label}</p>
+                        <div class="bg-white/60 rounded-lg py-1 px-2 border ${cls.border} inline-block">
+                             <p class="text-xs font-bold ${cls.text700}">₹${(c.amount || 0).toLocaleString()}</p>
                         </div>
                     </div>
-                `).join('');
+            `;
+        }).join('');
 
         content.innerHTML = `
                 <!-- FANCY HEADER CARD -->

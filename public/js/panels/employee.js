@@ -166,7 +166,19 @@ function switchEmpTab(tab) {
     let contentId = 'empOrderTab';
     let buttonId = 'empTabOrder';
 
-    if (tab === 'tracking') { contentId = 'empTrackingTab'; buttonId = 'empTabTracking'; loadMyOrders(); }
+    if (tab === 'tracking') { 
+        contentId = 'empTrackingTab'; 
+        buttonId = 'empTabTracking'; 
+        const dateInput = document.getElementById('myOrdersDate');
+        if (dateInput && !dateInput.value) {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            dateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+        loadMyOrders(); 
+    }
     else if (tab === 'history') { contentId = 'empHistoryTab'; buttonId = 'empTabHistory'; loadMyHistory(); }
     else if (tab === 'progress') { contentId = 'empProgressTab'; buttonId = 'empTabProgress'; loadEmpProgress(); }
     else if (tab === 'ofd') { contentId = 'empOfdTab'; buttonId = 'empTabOfd'; if (typeof loadMyOfdOrders === 'function') loadMyOfdOrders(); }
@@ -246,11 +258,123 @@ function handleEmployeeCommand(cmd) {
 
 window.handleEmployeeCommand = handleEmployeeCommand;
 
-function loadMyProfile() {
+async function loadMyProfile() {
     const profileEmpId = document.getElementById('profileEmpId');
     const profileEmpName = document.getElementById('profileEmpName');
-    if (profileEmpId) profileEmpId.textContent = getCurrentEmployeeId() || '-';
+    const employeeId = getCurrentEmployeeId();
+    
+    if (profileEmpId) profileEmpId.textContent = employeeId || '-';
     if (profileEmpName) profileEmpName.textContent = getCurrentEmployeeName() || '-';
+
+    if (!employeeId) return;
+
+    const statsList = document.getElementById('empProfileStats');
+    const ordersList = document.getElementById('empProfileOrders');
+
+    if (statsList) {
+        statsList.innerHTML = `
+            <div class="col-span-full text-center py-6">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto"></div>
+                <p class="mt-2 text-xs text-gray-500">Loading performance data...</p>
+            </div>
+        `;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/employees/${employeeId}`);
+        const data = await res.json();
+
+        if (data.success) {
+            const stats = data.stats || { total: 0, pending: 0, verified: 0, dispatched: 0, delivered: 0, cancelled: 0, hold: 0, rto: 0 };
+            const orders = data.orders || [];
+
+            const revenue = {
+                total: orders.reduce((sum, o) => sum + (o.total || 0), 0),
+                hold: orders.filter(o => o.status === 'On Hold').reduce((sum, o) => sum + (o.total || 0), 0),
+                cancelled: orders.filter(o => o.status === 'Cancelled').reduce((sum, o) => sum + (o.total || 0), 0),
+                delivered: orders.filter(o => o.status === 'Delivered').reduce((sum, o) => sum + (o.total || 0), 0),
+                dispatched: orders.filter(o => o.status === 'Dispatched').reduce((sum, o) => sum + (o.total || 0), 0),
+                rto: orders.filter(o => o.status === 'RTO').reduce((sum, o) => sum + (o.total || 0), 0)
+            };
+
+            const cards = [
+                { label: 'Total', count: stats.total, amount: revenue.total, color: 'gray', icon: '📊' },
+                { label: 'On Hold', count: stats.hold, amount: revenue.hold, color: 'yellow', icon: '⏳' },
+                { label: 'Cancelled', count: stats.cancelled, amount: revenue.cancelled, color: 'red', icon: '❌' },
+                { label: 'Delivered', count: stats.delivered, amount: revenue.delivered, color: 'green', icon: '✅' },
+                { label: 'Dispatched', count: stats.dispatched, amount: revenue.dispatched, color: 'purple', icon: '🚚' },
+                { label: 'RTO', count: stats.rto, amount: revenue.rto, color: 'indigo', icon: '↩️' }
+            ];
+
+            const colorMap = {
+                gray: { bg: 'bg-gray-50', border: 'border-gray-100', text600: 'text-gray-600', text400: 'text-gray-400', text700: 'text-gray-700' },
+                yellow: { bg: 'bg-yellow-50', border: 'border-yellow-100', text600: 'text-yellow-600', text400: 'text-yellow-400', text700: 'text-yellow-700' },
+                red: { bg: 'bg-red-50', border: 'border-red-100', text600: 'text-red-600', text400: 'text-red-400', text700: 'text-red-700' },
+                green: { bg: 'bg-emerald-50', border: 'border-emerald-100', text600: 'text-emerald-600', text400: 'text-emerald-400', text700: 'text-emerald-700' },
+                purple: { bg: 'bg-purple-50', border: 'border-purple-100', text600: 'text-purple-600', text400: 'text-purple-400', text700: 'text-purple-700' },
+                indigo: { bg: 'bg-indigo-50', border: 'border-indigo-100', text600: 'text-indigo-600', text400: 'text-indigo-400', text700: 'text-indigo-700' }
+            };
+
+            if (statsList) {
+                statsList.innerHTML = cards.map(c => {
+                    const cls = colorMap[c.color] || colorMap.gray;
+                    return `
+                        <div class="${cls.bg} border ${cls.border} rounded-xl p-3 text-center transition-all">
+                            <p class="text-xl font-black ${cls.text600} mb-0.5">${c.count || 0}</p>
+                            <p class="text-[9px] ${cls.text400} uppercase font-bold tracking-wider mb-1">${c.label}</p>
+                            <div class="bg-white/60 rounded py-0.5 px-1.5 border ${cls.border} inline-block">
+                                <p class="text-[10px] font-bold ${cls.text700}">₹${(c.amount || 0).toLocaleString()}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            if (ordersList) {
+                if (orders.length === 0) {
+                    ordersList.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="px-4 py-6 text-center text-gray-400">
+                                No orders booked yet.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    ordersList.innerHTML = orders.slice(0, 30).map(o => {
+                        let statusClass = 'bg-gray-100 text-gray-600';
+                        if (o.status === 'Pending') statusClass = 'bg-red-100 text-red-700';
+                        if (o.status === 'Address Verified') statusClass = 'bg-blue-100 text-blue-700';
+                        if (o.status === 'Dispatched') statusClass = 'bg-purple-100 text-purple-700';
+                        if (o.status === 'Delivered') statusClass = 'bg-green-100 text-green-700';
+                        if (o.status === 'Cancelled') statusClass = 'bg-red-100 text-red-700';
+                        if (o.status === 'On Hold') statusClass = 'bg-yellow-100 text-yellow-700';
+                        if (o.status === 'RTO') statusClass = 'bg-indigo-100 text-indigo-700';
+
+                        const orderDate = o.timestamp ? new Date(o.timestamp).toLocaleDateString() : '';
+
+                        return `
+                            <tr class="hover:bg-gray-50 border-b border-gray-100">
+                                <td class="px-4 py-2 font-mono font-bold text-blue-600 text-xs">${o.orderId || '-'}</td>
+                                <td class="px-4 py-2 font-medium text-gray-800 text-xs truncate max-w-[120px]" title="${o.customerName}">${o.customerName || 'Unknown'}</td>
+                                <td class="px-4 py-2 text-right font-bold text-gray-700 text-xs">₹${o.total || 0}</td>
+                                <td class="px-4 py-2 text-center">
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${statusClass}">${o.status}</span>
+                                </td>
+                                <td class="px-4 py-2 text-right text-gray-400 text-xs font-mono">${orderDate}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            }
+        } else {
+            if (statsList) statsList.innerHTML = '<div class="col-span-full text-center text-red-500 text-xs">Failed to load performance metrics</div>';
+            if (ordersList) ordersList.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Failed to load order history</td></tr>';
+        }
+    } catch (e) {
+        console.error('Profile metrics error:', e);
+        if (statsList) statsList.innerHTML = '<div class="col-span-full text-center text-red-500 text-xs">Error loading data</div>';
+        if (ordersList) ordersList.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Error loading order history</td></tr>';
+    }
 }
 
 // ==================== ORDER FORM LOGIC ====================
@@ -602,13 +726,13 @@ async function forceCreateOrder() {
 window.forceCreateOrder = forceCreateOrder;
 
 // ==================== AUTOCOMPLETE LOGIC (Condensed) ====================
-let districtTimeout;
+let empDistrictTimeout;
 async function handleDistrictInput(query) {
     const box = document.getElementById('districtSuggestions');
-    clearTimeout(districtTimeout);
+    clearTimeout(empDistrictTimeout);
     if (query.length < 2) { box.classList.add('hidden'); return; }
 
-    districtTimeout = setTimeout(async () => {
+    empDistrictTimeout = setTimeout(async () => {
         try {
             const res = await fetch(`${API_URL}/locations/search-district?q=${encodeURIComponent(query)}`);
             const data = await res.json();
@@ -764,7 +888,7 @@ async function loadMyOrders(page = null) {
         const employeeId = getCurrentEmployeeId();
         const selectedDate = getMyOrdersDateValue();
         const itemsPerPage = getEmployeeItemsPerPage();
-        const activeStatuses = 'Pending,Address Verified,Dispatched,Out For Delivery,On Hold,Hold';
+        const activeStatuses = 'Pending,Address Verified,Dispatched,On Hold,Hold';
         const showDateSummary = Boolean(selectedDate);
 
         if (!employeeId) {
@@ -785,16 +909,15 @@ async function loadMyOrders(page = null) {
 
         const currentPage = empMyOrdersPage;
 
-        const params = new URLSearchParams({
+                const params = new URLSearchParams({
             page: String(currentPage),
-            limit: String(itemsPerPage)
+            limit: String(itemsPerPage),
+            status: activeStatuses
         });
         if (selectedDate) {
             params.set('startDate', selectedDate);
             params.set('endDate', selectedDate);
             params.set('dateField', 'date');
-        } else {
-            params.set('status', activeStatuses);
         }
         const res = await fetch(`${API_URL}/employees/${employeeId}?${params.toString()}`);
         const data = await res.json();
@@ -1143,56 +1266,134 @@ function renderProgressCards(stats) {
 }
 
 function renderEmpOrderCard(o, isHistory = false) {
-    const statusColor = o.status === 'Pending' ? 'text-orange-500 bg-orange-50' :
-        o.status === 'Dispatched' ? 'text-blue-500 bg-blue-50' :
-            o.status === 'Out For Delivery' ? 'text-purple-500 bg-purple-50' :
-                o.status === 'Delivered' ? 'text-green-500 bg-green-50' : 'text-gray-500 bg-gray-50';
-    const savedDate = String(o.date || '').trim();
-    const displayDate = /^\d{4}-\d{2}-\d{2}$/.test(savedDate)
-        ? savedDate
-        : new Date(o.timestamp).toLocaleDateString();
+    let statusColor = 'gray';
+    if (o.status === 'Pending') statusColor = 'yellow';
+    else if (o.status === 'Address Verified') statusColor = 'emerald';
+    else if (o.status === 'Dispatched') statusColor = 'indigo';
+    else if (o.status === 'Delivered') statusColor = 'green';
+    else if (o.status === 'On Hold') statusColor = 'orange';
+
+    const hasRequestedDelivery = o.deliveryRequests && o.deliveryRequests.some(r => r.employeeId === (currentUser?.id || ''));
+
+    const displayDate = o.timestamp ? new Date(o.timestamp).toLocaleDateString() : '';
+    const displayTime = o.timestamp ? new Date(o.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
 
     const hasTracking = (o.shiprocket && o.shiprocket.awb) || (o.tracking && o.tracking.trackingId);
     const trackingId = (o.shiprocket && o.shiprocket.awb) || (o.tracking && o.tracking.trackingId) || '';
 
-    let actionBtn = `<button onclick="viewOrder('${o.orderId}')" class="text-blue-500 text-xs font-bold hover:bg-blue-50 px-3 py-2 rounded-lg">View</button>`;
-
-    if (hasTracking) {
-        actionBtn = `
-            <button onclick="trackShiprocketOrder('${o.orderId}', '${trackingId}')" class="text-orange-600 text-xs font-bold hover:bg-orange-50 px-3 py-2 rounded-lg mr-1">
-                🔍 Track
-            </button>
-            ${actionBtn}
-        `;
-    }
-
-    if (isHistory) {
-        actionBtn += `<button onclick='reorderFromHistory(${JSON.stringify(o).replace(/'/g, "&#39;")})' class="text-green-600 text-xs font-bold hover:bg-green-50 px-3 py-2 rounded-lg ml-2">🔄 Reorder</button>`;
-    }
-
     return `
-    <div class="bg-white border rounded-xl p-4 hover:shadow-md transition-shadow" data-mobile="${o.telNo}">
-        <div class="flex justify-between items-start mb-2">
-            <div>
-                <span class="text-xs font-bold ${statusColor} px-2 py-1 rounded rounded-lg mb-1 inline-block">${o.status}</span>
-                <h4 class="font-bold text-gray-800">${o.customerName}</h4>
-            </div>
-            <div class="text-right">
-                <p class="font-bold text-sm">₹${o.total}</p>
-                <p class="text-xs text-gray-400">${displayDate}</p>
+    <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-${statusColor}-100 flex flex-col h-full bg-white" data-mobile="${o.telNo}">
+        <!-- Card Header -->
+        <div class="p-4 border-b border-${statusColor}-50 bg-gradient-to-r from-${statusColor}-50/50 to-white relative">
+             <div class="absolute top-0 right-0 w-24 h-24 bg-${statusColor}-400 rounded-bl-full opacity-5 pointer-events-none"></div>
+            <div class="flex justify-between items-start relative z-10">
+                <div>
+                     <div class="flex items-center gap-2 mb-1">
+                        <span class="bg-${statusColor}-100 text-${statusColor}-700 text-xs font-bold px-2 py-0.5 rounded-md border border-${statusColor}-200 uppercase tracking-wide font-mono">
+                            ORDER #${o.orderId}
+                        </span>
+                        <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
+                            class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                            ${WHATSAPP_ICON}
+                        </button>
+                        ${(o.orderType === 'REORDER' || o.orderType === 'Reorder') ?
+                            '<span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-200">REORDER</span>' : ''}
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[150px]" title="${o.customerName}">
+                        ${o.customerName}
+                    </h3>
+                </div>
+                <div class="text-right">
+                     <p class="text-xl font-black text-gray-800 tracking-tight">₹${o.total}</p>
+                     <div class="flex flex-col items-end">
+                        <span class="text-xs font-bold text-${statusColor}-600 mt-1">${o.status}</span>
+                     </div>
+                </div>
             </div>
         </div>
-        ${o.remark ? `<div class="bg-yellow-50 border border-yellow-100 p-2 rounded-lg mb-3 text-xs text-yellow-800"><strong>📝 Remark:</strong> ${o.remark}</div>` : ''}
-        <p class="text-xs text-gray-500 mb-3 truncate">📍 ${o.address}</p>
-        <div class="flex justify-between items-center border-t border-gray-100 pt-3">
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-mono text-gray-400">#${o.orderId}</span>
-                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
-                    class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
-                    ${WHATSAPP_ICON}
-                </button>
+
+        <!-- Card Body -->
+        <div class="p-4 space-y-3 flex-grow bg-white/60">
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-600 flex-shrink-0">
+                    📍
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</p>
+                    <p class="text-sm font-medium text-gray-700 leading-snug line-clamp-2" title="${o.address}">
+                        ${o.villColony || ''}, ${o.distt || o.tahTaluka || o.district || ''}
+                    </p>
+                </div>
             </div>
-            <div>${actionBtn}</div>
+
+            ${trackingId ? `
+            <div class="flex items-start gap-3">
+                 <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+                     🧾
+                 </div>
+                 <div>
+                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Tracking ID</p>
+                     <div class="flex items-center gap-2">
+                        <p class="text-sm font-mono font-bold text-blue-700 tracking-wide">${trackingId}</p>
+                        <button onclick="copyTracking('${trackingId}')" class="text-xs text-blue-400 hover:text-blue-600">📋</button>
+                     </div>
+                 </div>
+            </div>
+            ` : ''}
+
+            ${o.remark ? `
+            <div class="bg-yellow-50 border border-yellow-100 p-2 rounded-lg mb-2">
+                <p class="text-[10px] font-bold text-yellow-800 uppercase mb-0.5">📝 Remark</p>
+                <p class="text-xs text-gray-700 italic">"${o.remark}"</p>
+            </div>
+            ` : ''}
+
+            ${o.verificationRemark && o.verificationRemark.text ? `
+            <div class="mt-2 bg-amber-50 border border-amber-100 p-2 rounded-lg mb-2">
+                <p class="text-[10px] font-bold text-amber-600 uppercase mb-0.5">⚠️ Verification Remark</p>
+                <p class="text-xs text-gray-700 italic">"${o.verificationRemark.text}"</p>
+            </div>
+            ` : ''}
+
+            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+                <span class="text-xs text-gray-400">📅 ${displayDate} ⏰ ${displayTime}</span>
+                ${o.status === 'Dispatched' && !hasRequestedDelivery ?
+                    `<button onclick="requestDelivery('${o.orderId}')" class="text-xs bg-pink-50 text-pink-600 px-2 py-1 rounded-lg font-bold hover:bg-pink-100 transition-colors">
+                                ✋ Request Delivery
+                        </button>` : ''
+                }
+                ${hasRequestedDelivery && o.status === 'Dispatched' ?
+                    `<span class="text-[10px] bg-pink-100 text-pink-700 px-2 py-1 rounded-lg font-bold">⏳ Req Pending</span>` : ''
+                }
+            </div>
+        </div>
+
+        ${['Dispatched', 'Delivered'].includes(o.status) && typeof getTrackingStatusBadge === 'function' ? getTrackingStatusBadge(o) : ''}
+
+        <!-- Footer Actions -->
+        <div class="p-3 bg-gray-50/50 border-t border-gray-100 grid grid-cols-1 gap-2 mt-auto">
+            <button type="button" onclick="viewOrder('${o.orderId}')" 
+                class="w-full bg-white border border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2">
+                <span>👁️</span> View Details
+            </button>
+            ${['Pending', 'On Hold', 'Address Verified', 'Unverified'].includes(o.status) ? `
+            <button type="button" onclick="editOrder('${o.orderId}')" 
+                class="w-full bg-amber-50 border border-amber-200 text-amber-600 hover:bg-amber-100 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2">
+                <span>✏️</span> Edit Order
+            </button>
+            ` : ''}
+            ${isHistory ? `
+            <button onclick='reorderFromHistory(${JSON.stringify(o).replace(/'/g, "&#39;")})' 
+                class="w-full bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2">
+                <span>🔄</span> Reorder
+            </button>
+            ` : ''}
+            ${trackingId ? `
+             <button type="button" onclick="trackShiprocketOrder('${o.orderId}', '${trackingId}')" 
+                class="w-full bg-indigo-500 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2">
+                <span>🛰️</span> Track Package
+            </button>
+            ` : ''}
         </div>
     </div>`;
 }
