@@ -26,7 +26,8 @@ function productListsMatch(currentProducts = [], nextProducts = []) {
         return String(product?.name || '').trim() === String(nextProduct.name || '').trim()
             && String(product?.category || 'General').trim() === String(nextProduct.category || 'General').trim()
             && (product?.active !== false) === (nextProduct.active !== false)
-            && Number(product?.order || 0) === Number(nextProduct.order || 0);
+            && Number(product?.order || 0) === Number(nextProduct.order || 0)
+            && Number(product?.rate || 0) === Number(nextProduct.rate || 0);
     });
 }
 
@@ -184,7 +185,8 @@ router.post('/products', async (req, res) => {
             name: normalizedName,
             category: category || 'General',
             active: true,
-            order: config.products.length
+            order: config.products.length,
+            rate: req.body.rate || 0
         });
         await config.save();
 
@@ -228,6 +230,7 @@ router.put('/products/:id', async (req, res) => {
         }
         if (category !== undefined) product.category = category;
         if (active !== undefined) product.active = active;
+        if (req.body.rate !== undefined) product.rate = req.body.rate;
 
         await config.save();
         res.json({ success: true, message: 'Product updated!', products: config.products });

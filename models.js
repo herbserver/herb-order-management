@@ -11,6 +11,10 @@ const orderSchema = new mongoose.Schema({
 
     // Customer Info
     customerName: { type: String, required: true },
+    fatherOrHusbandName: String,
+    gender: String,
+    age: Number,
+    problem: String,
     telNo: String,
     mobile: String,
     altNo: String,
@@ -39,6 +43,8 @@ const orderSchema = new mongoose.Schema({
     treatment: String,
     paymentMode: { type: String, default: 'COD' },
     total: { type: Number, required: true },
+    subtotal: Number,
+    discount: { type: Number, default: 0 },
     advance: Number,
     codAmount: Number,
 
@@ -257,7 +263,7 @@ const appConfigSchema = new mongoose.Schema({
         name: { type: String, required: true },
         category: { type: String, default: 'General' },
         active: { type: Boolean, default: true },
-        order: { type: Number, default: 0 }
+        order: { type: Number, default: 0 }, rate: { type: Number, default: 0 }
     }]
 }, {
     timestamps: true,

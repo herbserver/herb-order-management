@@ -47,7 +47,7 @@ async function openEditOrderModal(orderId) {
             const amount = item.amount || (rate * qty) || 0;
             itemsHtml += `
                 <div class="grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 edit-item-row">
-                    <input type="text" value="${item.description || item.product || item.name || ''}" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500">
+                    <input type="text" value="${item.description || item.name || ''}" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500">
                     <input type="number" value="${qty}" min="1" placeholder="Qty" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-qty outline-none focus:border-emerald-500 text-center font-bold" oninput="updateEditItemAmount(this)">
                     <input type="number" value="${rate}" placeholder="Rate" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-rate outline-none focus:border-emerald-500" oninput="updateEditItemAmount(this)">
                     <input type="number" value="${amount}" placeholder="Amt" class="col-span-4 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-amount outline-none focus:border-emerald-500 bg-gray-50 font-bold" oninput="updateEditTotal()">
@@ -65,10 +65,14 @@ async function openEditOrderModal(orderId) {
                 <div style="padding:24px;">
                     <form id="editOrderForm" class="space-y-4">
                         <input type="hidden" id="editOrderId" value="${orderId}">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label class="block text-sm font-medium mb-1">Customer Name *</label>
                                 <input type="text" id="editCustomerName" value="${order.customerName || ''}" required class="w-full border-2 rounded-xl px-4 py-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Father / Husband Name</label>
+                                <input type="text" id="editFatherOrHusbandName" value="${order.fatherOrHusbandName || ''}" class="w-full border-2 rounded-xl px-4 py-2">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium mb-1">Tel No. *</label>
@@ -241,7 +245,6 @@ async function saveEditOrder() {
         if (desc) items.push({
             description: desc,
             name: desc,
-            product: desc,
             quantity: qty,
             rate: parseFloat(rate) || 0,
             price: parseFloat(rate) || 0,
@@ -265,6 +268,7 @@ async function saveEditOrder() {
 
     const updateData = {
         customerName: toTitleCase(document.getElementById('editCustomerName').value.trim()),
+        fatherOrHusbandName: toTitleCase((document.getElementById('editFatherOrHusbandName')?.value || '').trim()),
         telNo: document.getElementById('editTelNo').value.trim(),
         altNo: document.getElementById('editAltNo').value.trim(),
         hNo: document.getElementById('editHNo').value.trim(),

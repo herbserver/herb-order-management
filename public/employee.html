@@ -10,7 +10,7 @@
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
 
     <link rel="preload" href="styles.css" as="style">
-    <link rel="preload" href="js/core/config.js?v=2" as="script">
+    <link rel="preload" href="js/core/config.js?v=4" as="script">
     <link rel="preload" href="js/core/session.js" as="script">
     <script src="js/core/page-loader.js?v=4"></script>
     <script src="js/core/pwa.js?v=1" defer></script>
@@ -94,6 +94,11 @@
                                 class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
                                 <span class="text-lg">❌</span>
                                 <span class="flex-1 text-left">Cancelled</span>
+                            </button>
+                            <button onclick="openEmployeeTab('profile')" id="empTabProfile"
+                                class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
+                                <span class="text-lg">👤</span>
+                                <span class="flex-1 text-left">Profile</span>
                             </button>
                         </div>
                     </nav>
@@ -190,11 +195,40 @@
                                 <form id="orderForm" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     <!-- Left Column -->
                                     <div class="space-y-4">
-                                        <div><label class="block text-sm font-medium mb-1">Customer Name
-                                                *</label><input type="text" name="customerName" required
-                                                style="text-transform: capitalize;"
-                                                oninput="this.value = toTitleCase(this.value)"
-                                                class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                            <div>
+                                                <label class="block text-sm font-medium mb-1">Customer Name *</label>
+                                                <input type="text" name="customerName" required
+                                                    style="text-transform: capitalize;"
+                                                    oninput="this.value = toTitleCase(this.value)"
+                                                    class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium mb-1">Father / Husband Name</label>
+                                                <input type="text" name="fatherOrHusbandName"
+                                                    style="text-transform: capitalize;"
+                                                    oninput="this.value = toTitleCase(this.value)"
+                                                    class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none">
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3 mb-4">
+                                            <div>
+                                                <label class="block text-sm font-medium mb-1">Gender *</label>
+                                                <select name="gender" required class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none bg-white">
+                                                    <option value="" disabled selected>Select</option>
+                                                    <option value="Male">Male</option>
+                                                    <option value="Female">Female</option>
+                                                    <option value="Other">Other</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium mb-1">Age *</label>
+                                                <input type="number" name="age" required min="1" class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium mb-1">Problem / Disease *</label>
+                                            <input type="text" name="problem" required placeholder="e.g. Joint Pain, Hair fall..." class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none">
                                         </div>
                                         <div><label class="block text-sm font-medium mb-1">Address
                                                 (Auto-filled)</label><textarea name="address" readonly rows="2"
@@ -299,16 +333,20 @@
                                             </div>
                                             <div id="itemsContainer" class="space-y-2 max-h-40 overflow-y-auto">
                                             </div>
-                                            <div
-                                                class="mt-3 pt-3 border-t border-blue-300 flex justify-between items-center font-bold text-lg">
-                                                <span>Total:</span>
-                                                <div class="flex flex-col items-end">
-                                                    <input type="number" id="totalAmountInput" value="0"
-                                                        oninput="calculateCOD()"
-                                                        class="w-32 bg-white border-2 border-red-200 rounded-lg px-2 py-1 text-red-500 text-right outline-none focus:border-red-500 transition-colors">
-                                                    <span id="comboBadge"
-                                                        class="hidden text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded-full mt-1 animate-bounce">🎁
-                                                        COMBO OFFER</span>
+                                            <div class="mt-3 pt-3 border-t border-blue-300 space-y-2 text-sm font-bold">
+                                                <div class="flex justify-between items-center">
+                                                    <span class="text-gray-600">Subtotal:</span>
+                                                    <span id="subtotalDisplay" class="text-gray-800 text-right w-32 px-2 text-lg">0</span>
+                                                </div>
+                                                <div class="flex justify-between items-center">
+                                                    <span class="text-gray-600">Discount:</span>
+                                                    <input type="number" id="discountInput" value="0" min="0" oninput="calculateTotal()"
+                                                        class="w-32 bg-white border-2 border-green-200 rounded-lg px-2 py-1 text-green-600 text-right outline-none focus:border-green-500 transition-colors">
+                                                </div>
+                                                <div class="flex justify-between items-center text-lg">
+                                                    <span class="text-blue-700">Gross Total:</span>
+                                                    <input type="number" id="totalAmountInput" value="0" oninput="calculateDiscountFromTotal()"
+                                                        class="w-32 bg-white border-2 border-blue-400 rounded-lg px-2 py-1 text-blue-700 text-right outline-none font-bold focus:border-blue-600 transition-colors">
                                                 </div>
                                             </div>
                                         </div>
@@ -477,6 +515,33 @@
                             <div id="empCancelledList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             </div>
                         </div>
+
+                        <!-- Profile Tab -->
+                        <div id="empProfileTab" class="hidden animate-fadeIn">
+                            <div class="glass-card p-6 border-t-4 border-emerald-500 relative">
+                                <div class="flex items-center gap-3 mb-8 pb-4 border-b border-dashed border-gray-200">
+                                    <span class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-xl">👤</span>
+                                    <div>
+                                        <h2 class="text-xl font-bold text-gray-800">My Profile</h2>
+                                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Employee Details</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-4 max-w-lg">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1 text-gray-600">Employee ID</label>
+                                        <div class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 font-mono text-gray-800 font-bold" id="profileEmpId">-</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1 text-gray-600">Name</label>
+                                        <div class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 text-gray-800 font-bold" id="profileEmpName">-</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1 text-gray-600">Department</label>
+                                        <div class="w-full border-2 rounded-xl px-4 py-2.5 bg-gray-50 text-gray-800 font-bold">Employee</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </main>
             </div>
@@ -518,26 +583,26 @@
     </div>
 
     <!-- SCRIPTS: Only employee-needed -->
-    <script src="js/core/config.js?v=2"></script>
-    <script src="js/core/session.js"></script>
-    <script src="js/core/utils.js"></script>
-    <script src="js/core/page-links.js?v=2" defer></script>
+    <script src="js/core/config.js?v=4"></script>
+    <script src="js/core/session.js?v=2"></script>
+    <script src="js/core/utils.js?v=2"></script>
+    <script src="js/core/page-links.js?v=3" defer></script>
 
-    <script src="js/ui/modals.js?v=4" defer></script>
-    <script src="js/common.js?v=2.1"></script>
+    <script src="js/ui/modals.js?v=5" defer></script>
+    <script src="js/common.js?v=2.2"></script>
 
-    <script src="js/global-search.js" defer></script>
+    <script src="js/global-search.js?v=2" defer></script>
 
     <!-- Main app.js for shared functions (toggleEmpSidebar, toTitleCase, fetchPincodeDetails, etc.) -->
-    <script src="app.js?v=1779175204644" defer></script>
+    <script src="app.js?v=EmpStandalone-v12" defer></script>
 
     <!-- Employee Panel (loads after app.js to override legacy functions) -->
-    <script src="js/panels/employee.js?v=1779175204644" defer></script>
+    <script src="js/panels/employee.js?v=15" defer></script>
     <script src="js/services/order-notifications.js?v=3" defer></script>
 
     <script>
         (function () {
-            const validTabs = new Set(['order', 'tracking', 'history', 'progress', 'ofd', 'undelivered', 'cancelled']);
+            const validTabs = new Set(['order', 'tracking', 'history', 'progress', 'ofd', 'undelivered', 'cancelled', 'profile']);
 
             function normalizeEmployeeTab(tab) {
                 const normalized = String(tab || '').trim().toLowerCase();

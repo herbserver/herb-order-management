@@ -75,7 +75,7 @@ function getEmployeeProductList() {
             return {
                 ...product,
                 name,
-                price: Number(product?.price || 0)
+                price: Number(product?.price !== undefined ? product.price : (product?.rate || 0))
             };
         })
         .filter(Boolean);
@@ -147,13 +147,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== TAB SWITCHING ====================
 function switchEmpTab(tab) {
     // Hide all contents
-    ['empOrderTab', 'empTrackingTab', 'empHistoryTab', 'empProgressTab', 'empOfdTab', 'empUndeliveredTab', 'empCancelledTab'].forEach(id => {
+    ['empOrderTab', 'empTrackingTab', 'empHistoryTab', 'empProgressTab', 'empOfdTab', 'empUndeliveredTab', 'empCancelledTab', 'empProfileTab'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
 
     // Reset buttons
-    ['empTabOrder', 'empTabTracking', 'empTabHistory', 'empTabProgress', 'empTabOfd', 'empTabUndelivered', 'empTabCancelled'].forEach(id => {
+    ['empTabOrder', 'empTabTracking', 'empTabHistory', 'empTabProgress', 'empTabOfd', 'empTabUndelivered', 'empTabCancelled', 'empTabProfile'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             // Remove old styling classes
@@ -172,6 +172,7 @@ function switchEmpTab(tab) {
     else if (tab === 'ofd') { contentId = 'empOfdTab'; buttonId = 'empTabOfd'; if (typeof loadMyOfdOrders === 'function') loadMyOfdOrders(); }
     else if (tab === 'undelivered') { contentId = 'empUndeliveredTab'; buttonId = 'empTabUndelivered'; if (typeof loadMyUndeliveredOrders === 'function') loadMyUndeliveredOrders(); }
     else if (tab === 'cancelled') { contentId = 'empCancelledTab'; buttonId = 'empTabCancelled'; loadCancelledOrders(); }
+    else if (tab === 'profile') { contentId = 'empProfileTab'; buttonId = 'empTabProfile'; loadMyProfile(); }
 
     const content = document.getElementById(contentId);
     const btn = document.getElementById(buttonId);
@@ -223,7 +224,9 @@ function handleEmployeeCommand(cmd) {
         'delivery': 'ofd',
         'outfordelivery': 'ofd',
         'cancelled': 'cancelled',
-        'cancel': 'cancelled'
+        'cancel': 'cancelled',
+        'profile': 'profile',
+        'me': 'profile'
     };
 
     if (mapping[command]) {
@@ -242,6 +245,13 @@ function handleEmployeeCommand(cmd) {
 }
 
 window.handleEmployeeCommand = handleEmployeeCommand;
+
+function loadMyProfile() {
+    const profileEmpId = document.getElementById('profileEmpId');
+    const profileEmpName = document.getElementById('profileEmpName');
+    if (profileEmpId) profileEmpId.textContent = getCurrentEmployeeId() || '-';
+    if (profileEmpName) profileEmpName.textContent = getCurrentEmployeeName() || '-';
+}
 
 // ==================== ORDER FORM LOGIC ====================
 function initOrderForm() {
@@ -299,31 +309,12 @@ function updateTotal(el) {
 
 function calculateTotal() {
     let sum = 0;
-    const empItems = document.querySelectorAll('.item-row .item-row-total');
-    if (empItems.length > 0) {
-        empItems.forEach(i => sum += Number(i.value || 0));
-        const totalInput = document.getElementById('totalAmountInput');
-        if (totalInput) {
-            totalInput.value = sum;
-        }
-        calculateCOD();
-    } else {
-        // Fallback for app.js Edit Order legacy UI
-        let itemCount = 0;
-        document.querySelectorAll('#itemsContainer > div').forEach(div => {
-            const descEl = div.querySelector('.item-desc');
-            const desc = descEl ? descEl.value : null;
-            const qtyEl = div.querySelector('.item-qty');
-            const qty = qtyEl ? parseInt(qtyEl.value) || 0 : 0;
-            if (desc) itemCount += qty;
-        });
-        
-        if (itemCount === 0) {
-            const totalInput = document.getElementById('totalAmountInput');
-            if (totalInput) totalInput.value = 0;
-        }
-        calculateCOD();
+    document.querySelectorAll('.item-row .item-row-total').forEach(i => sum += Number(i.value || 0));
+    const totalInput = document.getElementById('totalAmountInput');
+    if (totalInput) {
+        totalInput.value = sum;
     }
+    calculateCOD();
 }
 
 function calculateCOD() {
@@ -333,15 +324,6 @@ function calculateCOD() {
 }
 
 async function saveOrder() {
-    // If editing an existing order via app.js editOrder, delegate to app.js saveOrder instead
-    if (typeof currentEditingOrderId !== 'undefined' && currentEditingOrderId) {
-        // Find the ORIGINAL app.js saveOrder logic or prevent overriding
-        // Since we already overrode it globally, let's execute the legacy saveOrder logic here:
-        if (typeof window._appSaveOrder === 'function') {
-            return window._appSaveOrder();
-        }
-    }
-
     const form = document.getElementById('orderForm');
     const employeeId = getCurrentEmployeeId();
     const employeeName = getCurrentEmployeeName();
@@ -371,6 +353,9 @@ async function saveOrder() {
     // --- ENHANCED VALIDATION ---
     const requiredFields = [
         { field: form.customerName, label: 'Customer Name' },
+        { field: form.gender, label: 'Gender' },
+        { field: form.age, label: 'Age' },
+        { field: form.problem, label: 'Problem' },
         { field: form.telNo, label: 'Mobile Number' },
         { field: form.villColony, label: 'Village/Colony' },
         { field: form.distt, label: 'District' },
@@ -403,6 +388,10 @@ async function saveOrder() {
         employee: employeeName,
         employeeName, // Ensure this is sent
         customerName: form.customerName.value,
+        fatherOrHusbandName: form.fatherOrHusbandName ? form.fatherOrHusbandName.value : '',
+        gender: form.gender.value,
+        age: Number(form.age.value),
+        problem: form.problem.value,
         telNo: form.telNo.value,
         address: form.address.value, // Full address string
         // Individual fields for better data
@@ -1279,6 +1268,7 @@ function filterMyCancelledOrders(q) {
 function reorderFromHistory(order) {
     const f = document.getElementById('orderForm');
     f.customerName.value = order.customerName;
+    f.fatherOrHusbandName.value = order.fatherOrHusbandName || '';
     f.telNo.value = order.telNo;
     // Attempt parsing address if possible, or just raw fill if fields match
     // Simplified: Just clear fields then user fills. 

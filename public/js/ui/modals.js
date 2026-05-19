@@ -136,10 +136,21 @@ async function viewOrder(orderId) {
                                             ${WHATSAPP_ICON}
                                         </button>
                                     </div>
+                                    ${order.fatherOrHusbandName ? `<p class="text-xs text-gray-500 font-bold mb-1">S/O, W/O: ${order.fatherOrHusbandName}</p>` : ''}
                                     <p class="text-xs text-blue-500 font-black uppercase tracking-widest mt-0.5">Verified Client</p>
                                     </div>
                                 </div>
-                                <div class="space-y-4">
+                                 <div class="space-y-4">
+                                    <div class="flex flex-row justify-between border-b border-gray-100 pb-3 mb-3">
+                                        <div class="flex flex-col">
+                                            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Gender / Age</span>
+                                            <span class="text-sm font-bold text-gray-800">${order.gender || '-'} / ${order.age || '-'}</span>
+                                        </div>
+                                        <div class="flex flex-col text-right">
+                                            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Problem</span>
+                                            <span class="text-sm font-bold text-rose-600 capitalize">${order.problem || '-'}</span>
+                                        </div>
+                                    </div>
                                    <div class="flex flex-col">
                                        <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Mobile Contact</span>
                                        <span class="text-xl font-black text-gray-800 font-mono tracking-wide">${order.telNo}</span>
@@ -691,7 +702,7 @@ async function openLabelPrintModal(orderId, orderData = null, trackingNo = '', c
                         <div class="deliver-section">
                             <div class="address-block">
                                 <div class="label-title">DELIVER To:</div>
-                                <div class="customer-name">${order.customerName || 'Customer Name'}</div>
+                                <div class="customer-name">${order.customerName || 'Customer Name'}${order.fatherOrHusbandName ? ` <span style="font-size: 13px; font-weight: normal; color: #374151;">(S/O, W/O: ${order.fatherOrHusbandName})</span>` : ''}</div>
                                 <div class="address-text">
                                     ${fullAddress}<br>
                                     ${order.landMark ? `<strong>Landmark:</strong> ${order.landMark}<br>` : ''}

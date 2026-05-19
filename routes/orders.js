@@ -191,6 +191,12 @@ router.post('/check-duplicate', async (req, res) => {
 router.post('/', apiLimiter, validateOrderCreation, async (req, res) => {
     try {
         const orderData = req.body;
+        console.log("📥 [DEBUG] Incoming New Order Data:", {
+            gender: orderData.gender, 
+            age: orderData.age, 
+            problem: orderData.problem, 
+            customerName: orderData.customerName
+        });
         const employeeName = orderData.employeeName || orderData.employee || '';
 
 

@@ -1,36 +1,29 @@
 const DEFAULT_PRODUCT_CATALOG = [
-    { name: 'Amlex' },
-    { name: 'Black pills' },
-    { name: 'Blue & White capsule', aliases: ['Blue&White Cap'] },
-    { name: 'Ess. Oil', aliases: ['Ess Oil', 'Ess. oil'] },
-    { name: 'Ess. capsule', aliases: ['Ess. Cap'] },
-    { name: 'Gaumutra' },
-    { name: 'H.O.S.' },
-    { name: 'Herbon Daibayog Cap' },
-    { name: 'Herbon Tulsi Paawan' },
-    { name: 'Herbon Urja Rasayan Cap', aliases: ['Herbon Urja Rasayan Capsule'] },
-    { name: 'HOS Powder' },
-    { name: 'KamGold capsule' },
-    { name: 'KamGold Oil', aliases: ['kamGold Oil'] },
-    { name: 'KamGold Prash' },
-    { name: 'Mind Fresh Tea' },
-    { name: 'NadiYog Capsule', aliases: ['Nadi Yog Capsule', 'Nadiyog', 'Nadiog'] },
-    { name: 'Naskhol Capsule', aliases: ['Naskhol'] },
-    { name: 'Ostrich-Cap', aliases: ['Ostrich-'] },
-    { name: 'Ostrich-Red Oil', aliases: ['Red Oil'] },
-    { name: 'PainOver Capsule', aliases: ['Pain Over Capsule', 'Painover'] },
-    { name: 'Pain Snap Prash' },
-    { name: 'Same Medicine' },
-    { name: 'Slim fit kit' },
-    { name: 'Spray Oil', aliases: ['Spray'] },
-    { name: 'Tea-1500' },
-    { name: 'Tea-1800' },
-    { name: 'Tea-400' },
-    { name: "Vedic Vain's Liquid" },
-    { name: 'Vedic-Cap', aliases: ['Vedic Cap'] },
-    { name: 'Vedic-Tab', aliases: ['Vedic Tab'] },
-    { name: 'Vena-V', aliases: ['Vena -V'] },
-    { name: 'Yellow Capsule', aliases: ['Yellow capsule', 'Yellow Cpasule', 'yellow Cap', 'Yellow Cap'] }
+    { name: 'Amlex', rate: 6.66 },
+    { name: 'Black pills', rate: 666 },
+    { name: 'Ess. Oil', rate: 500, aliases: ['Ess Oil', 'Ess. oil'] },
+    { name: 'Ess. capsule', rate: 999, aliases: ['Ess. Cap'] },
+    { name: 'Gaumutra', rate: 6.66 },
+    { name: 'H.O.S.', rate: 3300 },
+    { name: 'Herbon Daibayog Cap', rate: 780 },
+    { name: 'Herbon Tulsi Paawan', rate: 499 },
+    { name: 'Herbon Urja Rasayan Cap', rate: 1590, aliases: ['Herbon Urja Rasayan Capsule'] },
+    { name: 'HOS Powder', rate: 1500 },
+    { name: 'NadiYog Capsule', rate: 1460, aliases: ['Nadi Yog Capsule', 'Nadiyog', 'Nadiog'] },
+    { name: 'Namo Tea', rate: 1500 },
+    { name: 'Naskhol Capsule', rate: 1990, aliases: ['Naskhol'] },
+    { name: 'Ostrich-Cap', rate: 0, aliases: ['Ostrich-'] },
+    { name: 'PainOver Capsule', rate: 960, aliases: ['Pain Over Capsule', 'Painover'] },
+    { name: 'Pain Snap Prash', rate: 2499 },
+    { name: 'Same Medicine', rate: 0 },
+    { name: 'Spray Oil', rate: 800, aliases: ['Spray'] },
+    { name: 'Tea-1500', rate: 1500 },
+    { name: 'Tea-1800', rate: 1800 },
+    { name: 'Tea-400', rate: 400 },
+    { name: "Vedic Vain's Liquid", rate: 2499 },
+    { name: 'Vedic-Cap', rate: 1399, aliases: ['Vedic Cap'] },
+    { name: 'Vedic-Tab', rate: 1199, aliases: ['Vedic Tab'] },
+    { name: 'Vena-V', rate: 1599, aliases: ['Vena -V'] }
 ];
 
 const DEFAULT_PRODUCT_NAMES = DEFAULT_PRODUCT_CATALOG.map((product) => product.name);
@@ -131,7 +124,8 @@ function normalizeConfiguredProducts(products = [], options = {}) {
             active: typeof product === 'object' ? product.active !== false : true,
             order: typeof product === 'object' && Number.isFinite(Number(product?.order))
                 ? Number(product.order)
-                : index
+                : index,
+            rate: typeof product === 'object' ? (product.rate || 0) : 0
         };
 
         if (!dedupedProducts.has(productKey)) {
@@ -142,6 +136,9 @@ function normalizeConfiguredProducts(products = [], options = {}) {
         const existingProduct = dedupedProducts.get(productKey);
         existingProduct.active = existingProduct.active || nextProduct.active;
         existingProduct.order = Math.min(existingProduct.order, nextProduct.order);
+        if (nextProduct.rate) {
+            existingProduct.rate = nextProduct.rate;
+        }
 
         if ((!existingProduct.category || existingProduct.category === 'General') && nextProduct.category !== 'General') {
             existingProduct.category = nextProduct.category;
@@ -151,11 +148,13 @@ function normalizeConfiguredProducts(products = [], options = {}) {
     if (strictCatalog) {
         return DEFAULT_PRODUCT_NAMES.map((productName, index) => {
             const existingProduct = dedupedProducts.get(simplifyProductKey(productName));
+            const canonicalProduct = DEFAULT_PRODUCT_CATALOG.find(p => p.name === productName) || {};
             return {
                 name: productName,
                 category: existingProduct?.category || 'General',
                 active: existingProduct ? existingProduct.active !== false : true,
-                order: index
+                order: index,
+                rate: existingProduct && existingProduct.rate ? existingProduct.rate : (canonicalProduct.rate || 0)
             };
         });
     }
@@ -167,11 +166,13 @@ function normalizeConfiguredProducts(products = [], options = {}) {
                 return;
             }
 
+            const canonicalProduct = DEFAULT_PRODUCT_CATALOG.find(p => p.name === productName) || {};
             dedupedProducts.set(productKey, {
                 name: productName,
                 category: 'General',
                 active: true,
-                order: sourceProducts.length + index
+                order: sourceProducts.length + index,
+                rate: canonicalProduct.rate || 0
             });
         });
     }
@@ -182,7 +183,8 @@ function normalizeConfiguredProducts(products = [], options = {}) {
             name: product.name,
             category: product.category || 'General',
             active: product.active !== false,
-            order: index
+            order: index,
+            rate: product.rate || 0
         }));
 }
 
