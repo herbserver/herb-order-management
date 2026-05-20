@@ -120,14 +120,46 @@
     }
 
     function calculateTotal() {
-        let sum = 0;
+        let subtotal = 0;
         document.querySelectorAll('.item-row .item-row-total').forEach((input) => {
-            sum += Number(input.value || 0);
+            subtotal += Number(input.value || 0);
         });
 
+        const subtotalDisplay = document.getElementById('subtotalDisplay');
+        if (subtotalDisplay) {
+            subtotalDisplay.innerText = String(subtotal);
+        }
+
+        const discountInput = document.getElementById('discountInput');
+        const discount = discountInput ? Number(discountInput.value || 0) : 0;
+
+        const grossTotal = Math.max(0, subtotal - discount);
         const totalInput = document.getElementById('totalAmountInput');
         if (totalInput) {
-            totalInput.value = String(sum);
+            totalInput.value = String(grossTotal);
+        }
+
+        calculateCOD();
+    }
+
+    function calculateDiscountFromTotal() {
+        let subtotal = 0;
+        document.querySelectorAll('.item-row .item-row-total').forEach((input) => {
+            subtotal += Number(input.value || 0);
+        });
+
+        const subtotalDisplay = document.getElementById('subtotalDisplay');
+        if (subtotalDisplay) {
+            subtotalDisplay.innerText = String(subtotal);
+        }
+
+        const totalInput = document.getElementById('totalAmountInput');
+        const enteredGrossTotal = totalInput ? Number(totalInput.value || 0) : 0;
+
+        const calculatedDiscount = Math.max(0, subtotal - enteredGrossTotal);
+        const discountInput = document.getElementById('discountInput');
+        if (discountInput) {
+            discountInput.value = String(calculatedDiscount);
         }
 
         calculateCOD();
@@ -613,6 +645,7 @@
     panel.shared.orderForm = {
         addItem,
         calculateCOD,
+        calculateDiscountFromTotal,
         calculateTotal,
         fetchPincodeDetails,
         filterPOList,
@@ -630,6 +663,7 @@
 
     window.addItem = addItem;
     window.calculateCOD = calculateCOD;
+    window.calculateDiscountFromTotal = calculateDiscountFromTotal;
     window.calculateTotal = calculateTotal;
     window.fetchPincodeDetails = fetchPincodeDetails;
     window.filterPOList = filterPOList;

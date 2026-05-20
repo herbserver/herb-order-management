@@ -12,6 +12,7 @@ const dataAccess = require('./dataAccess');
 const { authenticateToken } = require('./auth');
 const { startTracking } = require('./background-tracking');
 const { startAutoSync } = require('./auto-awb-sync');
+const { startFollowUpService } = require('./delivery-followup');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -132,6 +133,9 @@ async function startServer() {
 
     startAutoSync(5);
     console.log('Auto AWB Sync enabled (every 5 minutes)');
+
+    startFollowUpService(30);
+    console.log('Automated WhatsApp 24h Delivery Follow-up Service enabled (every 30 minutes)');
 
     const server = http.createServer(app);
     const io = socketManager.init(server, allowedOrigins);

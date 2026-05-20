@@ -49,7 +49,7 @@ function normalizeInventoryItemName(name) {
 async function getInventoryReferenceProducts() {
     try {
         const config = await AppConfig.findOne({ configId: 'main' }).lean();
-        const normalizedProducts = normalizeConfiguredProducts(config?.products || [], { strictCatalog: true });
+        const normalizedProducts = normalizeConfiguredProducts(config?.products || [], { strictCatalog: false });
         const activeProductNames = normalizedProducts
             .filter((product) => product.active !== false)
             .map((product) => product.name);

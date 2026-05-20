@@ -84,6 +84,7 @@ const orderSchema = new mongoose.Schema({
     deliveredAt: String,
     rtoAt: String,
     deliveryRequested: Boolean,
+    followUpSent: { type: Boolean, default: false },
     deliveryRequestedBy: {
         employeeId: String,
         employeeName: String,

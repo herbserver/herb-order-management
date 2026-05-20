@@ -123,21 +123,75 @@ function addItem() {
 }
 
 function updateTotal(el) {
-    // Automatic calculation disabled as per user request
+    const row = el.closest('.item-row');
+    if (row) {
+        const select = row.querySelector('select');
+        const qtyInput = row.querySelector('input[type="number"]:not(.item-row-total)');
+        const totalInput = row.querySelector('.item-row-total');
+        
+        if (select && qtyInput && totalInput) {
+            const selectedOption = select.options[select.selectedIndex];
+            const price = selectedOption ? Number(selectedOption.dataset.price || 0) : 0;
+            const qty = Number(qtyInput.value || 0);
+            totalInput.value = price * qty;
+        }
+    }
     calculateTotal();
 }
 
 function calculateTotal() {
-    let sum = 0;
-    document.querySelectorAll('.item-row .item-row-total').forEach(i => sum += Number(i.value || 0));
-    document.getElementById('total').value = sum;
+    let subtotal = 0;
+    document.querySelectorAll('.item-row .item-row-total').forEach(i => subtotal += Number(i.value || 0));
+    
+    const subtotalDisplay = document.getElementById('subtotalDisplay');
+    if (subtotalDisplay) {
+        subtotalDisplay.innerText = subtotal;
+    }
+
+    const discountInput = document.getElementById('discountInput');
+    const discount = discountInput ? Number(discountInput.value || 0) : 0;
+    
+    const grossTotal = Math.max(0, subtotal - discount);
+    const totalInput = document.getElementById('totalAmountInput') || document.getElementById('total');
+    if (totalInput) {
+        totalInput.value = grossTotal;
+    }
+
+    calculateCOD();
+}
+
+function calculateDiscountFromTotal() {
+    let subtotal = 0;
+    document.querySelectorAll('.item-row .item-row-total').forEach(i => subtotal += Number(i.value || 0));
+    
+    const subtotalDisplay = document.getElementById('subtotalDisplay');
+    if (subtotalDisplay) {
+        subtotalDisplay.innerText = subtotal;
+    }
+
+    const totalInput = document.getElementById('totalAmountInput') || document.getElementById('total');
+    const enteredGrossTotal = totalInput ? Number(totalInput.value || 0) : 0;
+
+    const calculatedDiscount = Math.max(0, subtotal - enteredGrossTotal);
+    const discountInput = document.getElementById('discountInput');
+    if (discountInput) {
+        discountInput.value = calculatedDiscount;
+    }
+
     calculateCOD();
 }
 
 function calculateCOD() {
-    const total = Number(document.getElementById('totalAmountInput').value) || 0;
-    const advance = Number(document.querySelector('input[name="advance"]').value) || 0;
-    document.querySelector('input[name="codAmount"]').value = total - advance;
+    const totalInput = document.getElementById('totalAmountInput') || document.getElementById('total');
+    const total = totalInput ? Number(totalInput.value || 0) : 0;
+    
+    const advanceInput = document.querySelector('input[name="advance"]');
+    const advance = advanceInput ? Number(advanceInput.value || 0) : 0;
+    
+    const codInput = document.querySelector('input[name="codAmount"]');
+    if (codInput) {
+        codInput.value = Math.max(0, total - advance);
+    }
 }
 
 async function saveOrder() {
@@ -932,6 +986,8 @@ window.switchEmpTab = switchEmpTab;
 window.addItem = addItem;
 window.updateTotal = updateTotal;
 window.calculateTotal = calculateTotal;
+window.calculateDiscountFromTotal = calculateDiscountFromTotal;
+window.calculateCOD = calculateCOD;
 window.filterMyOrders = filterMyOrders;
 window.filterMyHistory = filterMyHistory;
 window.filterMyCancelledOrders = filterMyCancelledOrders;

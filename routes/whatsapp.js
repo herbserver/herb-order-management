@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { WhatsAppMessage } = require('../models');
+const { WhatsAppMessage, Order, Notification } = require('../models');
 const dataAccess = require('../dataAccess');
 
 // ─── SSE: Real-time push to admin panel ──────────────────────────────────────
@@ -32,6 +32,13 @@ router.get('/events', (req, res) => {
 
 // ─── All approved templates with display info ────────────────────────────────
 const TEMPLATES = [
+    {
+        name: 'delivery_followup',
+        label: '💊 Delivery Follow-up (24h)',
+        desc: 'Delivery ke 24 ghante baad medicine follow-up ke liye',
+        color: 'rose',
+        params: ['Customer Name', 'Order ID']
+    },
     {
         name: 'order_confirm',
         label: '✅ Order Confirmed',
@@ -212,103 +219,86 @@ router.delete('/conversations/:phone', async (req, res) => {
     }
 });
 
-// ─── POST /whatsapp/send ──────────────────────────────────────────────────────
-router.post('/send', async (req, res) => {
-    const { to, type, text, templateName, parameters, lang, customerName, orderId } = req.body;
-
+// Helper function to send WhatsApp messages using Meta Cloud API
+async function sendMetaMessageInternal({ to, type, text, templateName, parameters, lang, customerName, orderId }) {
     const token = process.env.META_WA_ACCESS_TOKEN;
     const phoneId = process.env.META_WA_PHONE_NUMBER_ID;
 
     if (!token || !phoneId) {
-        return res.status(500).json({ success: false, message: 'WhatsApp API credentials missing.' });
+        throw new Error('WhatsApp API credentials missing.');
     }
 
     const formattedPhone = formatPhone(to);
     if (!formattedPhone) {
-        return res.status(400).json({ success: false, message: 'Invalid phone number.' });
+        throw new Error('Invalid phone number.');
     }
 
     const name = customerName || 'Customer';
+    const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
+    let data;
+    let msgBody = '';
 
-    try {
-        const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
-        let data;
-        let msgBody = '';
-
-        if (type === 'text') {
-            // Free-form text
-            data = {
-                messaging_product: 'whatsapp',
-                to: formattedPhone,
-                type: 'text',
-                text: { body: text }
-            };
-            msgBody = text;
-        } else {
-            // Template message
-            if (!templateName || !parameters) {
-                return res.status(400).json({ success: false, message: 'templateName and parameters required.' });
-            }
-            data = {
-                messaging_product: 'whatsapp',
-                to: formattedPhone,
-                type: 'template',
-                template: {
-                    name: templateName,
-                    language: { code: lang || 'en' },
-                    components: [{
-                        type: 'body',
-                        parameters: parameters.map(p => ({ type: 'text', text: String(p) }))
-                    }]
-                }
-            };
-            // Build display body
-            const tpl = TEMPLATES.find(t => t.name === templateName);
-            msgBody = tpl ? `[Template: ${tpl.label}]\n${parameters.join(' | ')}` : `[Template: ${templateName}]`;
+    if (type === 'text') {
+        data = {
+            messaging_product: 'whatsapp',
+            to: formattedPhone,
+            type: 'text',
+            text: { body: text }
+        };
+        msgBody = text;
+    } else {
+        if (!templateName || !parameters) {
+            throw new Error('templateName and parameters required.');
         }
-
-        const response = await axios.post(url, data, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+        data = {
+            messaging_product: 'whatsapp',
+            to: formattedPhone,
+            type: 'template',
+            template: {
+                name: templateName,
+                language: { code: lang || 'en' },
+                components: [{
+                    type: 'body',
+                    parameters: parameters.map(p => ({ type: 'text', text: String(p) }))
+                }]
             }
-        });
+        };
+        const tpl = TEMPLATES.find(t => t.name === templateName);
+        msgBody = tpl ? `[Template: ${tpl.label}]\n${parameters.join(' | ')}` : `[Template: ${templateName}]`;
+    }
 
-        // Save message to DB
-        const metaMsgId = response.data?.messages?.[0]?.id || null;
-        await WhatsAppMessage.create({
-            phone: formattedPhone,
-            name: name,
-            direction: 'out',
-            type: type === 'text' ? 'text' : 'template',
-            body: msgBody,
-            templateName: type !== 'text' ? templateName : undefined,
-            status: 'sent',
-            orderId: orderId || undefined,
-            metaMsgId
-        });
+    const response = await axios.post(url, data, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    });
 
-        res.json({ success: true, data: response.data });
+    const metaMsgId = response.data?.messages?.[0]?.id || null;
+    await WhatsAppMessage.create({
+        phone: formattedPhone,
+        name: name,
+        direction: 'out',
+        type: type === 'text' ? 'text' : 'template',
+        body: msgBody,
+        templateName: type !== 'text' ? templateName : undefined,
+        status: 'sent',
+        orderId: orderId || undefined,
+        metaMsgId
+    });
 
+    return response.data;
+}
+
+// ─── POST /whatsapp/send ──────────────────────────────────────────────────────
+router.post('/send', async (req, res) => {
+    try {
+        const data = await sendMetaMessageInternal(req.body);
+        res.json({ success: true, data });
     } catch (error) {
         const errData = error.response ? error.response.data : error.message;
         console.error('WhatsApp API Error:', errData);
-
-        // Save failed message too
-        try {
-            await WhatsAppMessage.create({
-                phone: formattedPhone,
-                name,
-                direction: 'out',
-                type: type === 'text' ? 'text' : 'template',
-                body: text || `[Template: ${templateName}]`,
-                templateName: type !== 'text' ? templateName : undefined,
-                status: 'failed',
-                orderId: orderId || undefined
-            });
-        } catch(e2) {}
-
-        res.status(500).json({ success: false, message: 'Failed to send', error: errData });
+        res.status(500).json({ success: false, message: error.message, error: errData });
     }
 });
 
@@ -376,6 +366,11 @@ router.post('/webhook', async (req, res) => {
                     });
                     // Instant push to admin
                     broadcastSSE('newMessage', { phone, name, message: saved.toObject() });
+                    
+                    // Trigger chatbot automatic reply in background
+                    handleChatbotReply(phone, text, name).catch(err => {
+                        console.error('Chatbot trigger error:', err.message);
+                    });
                 }
             }
         }
@@ -448,5 +443,152 @@ router.get('/media/:mediaId', async (req, res) => {
     }
 });
 
+
+// ─── Automated Chatbot Reply Handler ──────────────────────────────────────────
+async function handleChatbotReply(phone, text, customerName) {
+    try {
+        const cleanText = text.toLowerCase().trim();
+        
+        // Find most recent order for this phone
+        const order = await Order.findOne({
+            $or: [
+                { telNo: phone },
+                { mobile: phone },
+                { altNo: phone }
+            ]
+        }).sort({ createdAt: -1 });
+
+        if (!order) {
+            console.log(`ℹ️ No order context found for ${phone}, ignoring chatbot reply.`);
+            return;
+        }
+
+        // Only handle follow-up replies for Delivered orders
+        if (order.status !== 'Delivered') {
+            console.log(`ℹ️ Order status for ${phone} is ${order.status}, skipping chatbot reply.`);
+            return;
+        }
+
+        // Standard positive and negative keywords in Hindi/Hinglish
+        const positiveKeywords = ['haan', 'han', 'yes', 'yup', 'ha', 'mil gayi', 'mil gyi', 'le li', 'shuru', 'started', 'khani'];
+        const negativeKeywords = ['nahi', 'nhi', 'no', 'nope', 'na', 'not', 'nahi mili', 'nhi mili', 'call nahi', 'baat nahi'];
+
+        let isPositive = false;
+        let isNegative = false;
+
+        for (const kw of negativeKeywords) {
+            if (cleanText.includes(kw)) {
+                isNegative = true;
+                break;
+            }
+        }
+
+        if (!isNegative) {
+            for (const kw of positiveKeywords) {
+                if (cleanText.includes(kw)) {
+                    isPositive = true;
+                    break;
+                }
+            }
+        }
+
+        let replyText = '';
+
+        if (isNegative) {
+            replyText = "Chinta na karein, humne aapki request register kar li hai. Humare Senior Health Consultant aapko aane wale 2-3 ghante ke andar call karenge aur dawa lene ka sahi tarika samjhayenge. Thank you! 🙏";
+            
+            // Create a high-priority system alert for the Admin
+            await Notification.create({
+                orderId: order.orderId,
+                employeeId: order.employeeId || 'System',
+                type: 'system_alert',
+                title: '📞 Consultant Call Required',
+                message: `Customer ${order.customerName} (#${order.orderId}) ne dawa shuru nahi ki ya consultant ne guide nahi kiya. Phone: ${phone}.`,
+                emoji: '📞',
+                priority: 'high',
+                data: {
+                    customerName: order.customerName,
+                    telNo: phone,
+                    orderId: order.orderId
+                }
+            });
+            console.log(`🔔 Admin alert created for Order ${order.orderId} (Negative Follow-up reply).`);
+        } else if (isPositive) {
+            replyText = "Bohot badhiya ji! Dawa ko niyamit (regularly) aur sahi tarike se lein. Agar koi bhi samasya ho, toh aap yahan likh sakte hain. Aapki acchi sehat ki kaamna karte hain! 🙏";
+        } else {
+            // General query: Use Google Gemini AI if configured
+            if (process.env.GEMINI_API_KEY) {
+                try {
+                    console.log('🧠 Querying Gemini API for smart chatbot reply...');
+                    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+                    
+                    const prompt = `Customer replied: "${text}"`;
+                    const systemInstruction = `You are the automated WhatsApp Health Consultant for "Herbonnaturals" (an ayurved Ayurvedic medicine brand).
+A customer who recently ordered has sent a reply to our 24h follow-up. Reply in a warm, polite, caring manner in Hinglish (Hindi written in English alphabets) or Hindi script.
+
+Customer Name: ${customerName}
+Order ID: ${order.orderId}
+Medicines Ordered: ${order.items && order.items.length > 0 ? order.items.map(i => i.description).join(', ') : 'Ayurvedic medicines'}
+
+Guidelines:
+1. Address them respectfully (e.g., Namaste ${customerName} ji).
+2. Answer their question about their herbal medicine or general usage instructions in 2-3 short sentences.
+3. Keep it brief and friendly.
+4. If they report pain, side effects, request a call, or have complex complaints, state: "Maine aapki request register kar li hai. Humare Senior Health Consultant aapko jald hi call karenge."
+5. End with "🙏 Herbonnaturals".`;
+
+                    const geminiRes = await axios.post(geminiUrl, {
+                        contents: [{ parts: [{ text: prompt }] }],
+                        systemInstruction: { parts: [{ text: systemInstruction }] }
+                    });
+
+                    const candidateText = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (candidateText) {
+                        replyText = candidateText.trim();
+                        console.log('🤖 Gemini reply generated successfully!');
+                        
+                        // If Gemini mentioned calling them or if the customer asked to talk, alert admin
+                        if (cleanText.includes('call') || cleanText.includes('phone') || cleanText.includes('baat') || replyText.includes('call karenge')) {
+                            await Notification.create({
+                                orderId: order.orderId,
+                                employeeId: order.employeeId || 'System',
+                                type: 'system_alert',
+                                title: '📞 Consultant Call Requested',
+                                message: `Customer ${order.customerName} (#${order.orderId}) wants to discuss medicine/health. Message: "${text}"`,
+                                emoji: '📞',
+                                priority: 'high',
+                                data: {
+                                    customerName: order.customerName,
+                                    telNo: phone,
+                                    orderId: order.orderId
+                                }
+                            });
+                        }
+                    }
+                } catch (geminiErr) {
+                    console.error('❌ Gemini API failed, using fallback:', geminiErr.message);
+                    replyText = "Dhanyawad aapke reply ke liye. Humne aapka message support team ko forward kar diya hai. Wo aapko jald hi reply karenge. 🙏";
+                }
+            } else {
+                replyText = "Dhanyawad aapke reply ke liye. Humne aapka message support team ko forward kar diya hai. Wo aapko jald hi reply karenge. 🙏";
+            }
+        }
+
+        // Send the reply back to the customer
+        console.log(`🤖 Sending automated chatbot reply to ${phone}...`);
+        await sendMetaMessageInternal({
+            to: phone,
+            type: 'text',
+            text: replyText,
+            customerName: order.customerName,
+            orderId: order.orderId
+        });
+
+    } catch (e) {
+        console.error('❌ Chatbot reply handler failed:', e.message);
+    }
+}
+
 module.exports = router;
 module.exports.TEMPLATES = TEMPLATES;
+module.exports.sendMetaMessageInternal = sendMetaMessageInternal;

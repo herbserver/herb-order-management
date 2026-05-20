@@ -40,12 +40,12 @@ async function getOrCreateConfig() {
         config = new AppConfig({
             configId: 'main',
             adminPassword: hashed,
-            products: normalizeConfiguredProducts(DEFAULT_PRODUCT_NAMES, { strictCatalog: true })
+            products: normalizeConfiguredProducts(DEFAULT_PRODUCT_NAMES, { strictCatalog: false })
         });
         await config.save();
         console.log('✅ AppConfig initialized in DB with default admin password & products');
     }
-    const repairedProducts = normalizeConfiguredProducts(config.products || [], { strictCatalog: true });
+    const repairedProducts = normalizeConfiguredProducts(config.products || [], { strictCatalog: false });
     if (!productListsMatch(config.products || [], repairedProducts)) {
         config.products = repairedProducts;
         await config.save();
@@ -171,10 +171,6 @@ router.post('/products', async (req, res) => {
         );
         const normalizedKey = simplifyProductKey(normalizedName);
 
-        if (!isCatalogProductName(normalizedName)) {
-            return res.status(400).json({ success: false, message: 'Only approved product names are allowed.' });
-        }
-
         // Check duplicate
         const exists = config.products.some((product) => simplifyProductKey(product.name) === normalizedKey);
         if (exists) {
@@ -213,10 +209,6 @@ router.put('/products/:id', async (req, res) => {
                 [...(config.products || []).map((item) => item.name), ...DEFAULT_PRODUCT_NAMES]
             );
             const normalizedKey = simplifyProductKey(normalizedName);
-
-            if (!isCatalogProductName(normalizedName)) {
-                return res.status(400).json({ success: false, message: 'Only approved product names are allowed.' });
-            }
 
             const duplicate = config.products.some((item) => {
                 return item._id.toString() !== req.params.id && simplifyProductKey(item.name) === normalizedKey;

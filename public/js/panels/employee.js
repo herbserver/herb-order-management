@@ -427,24 +427,75 @@ function addItem() {
 }
 
 function updateTotal(el) {
-    // Automatic calculation disabled as per user request
+    const row = el.closest('.item-row');
+    if (row) {
+        const select = row.querySelector('select');
+        const qtyInput = row.querySelector('input[type="number"]:not(.item-row-total)');
+        const totalInput = row.querySelector('.item-row-total');
+        
+        if (select && qtyInput && totalInput) {
+            const selectedOption = select.options[select.selectedIndex];
+            const price = selectedOption ? Number(selectedOption.dataset.price || 0) : 0;
+            const qty = Number(qtyInput.value || 0);
+            totalInput.value = price * qty;
+        }
+    }
     calculateTotal();
 }
 
 function calculateTotal() {
-    let sum = 0;
-    document.querySelectorAll('.item-row .item-row-total').forEach(i => sum += Number(i.value || 0));
+    let subtotal = 0;
+    document.querySelectorAll('.item-row .item-row-total').forEach(i => subtotal += Number(i.value || 0));
+    
+    const subtotalDisplay = document.getElementById('subtotalDisplay');
+    if (subtotalDisplay) {
+        subtotalDisplay.innerText = subtotal;
+    }
+
+    const discountInput = document.getElementById('discountInput');
+    const discount = discountInput ? Number(discountInput.value || 0) : 0;
+    
+    const grossTotal = Math.max(0, subtotal - discount);
     const totalInput = document.getElementById('totalAmountInput');
     if (totalInput) {
-        totalInput.value = sum;
+        totalInput.value = grossTotal;
     }
+
+    calculateCOD();
+}
+
+function calculateDiscountFromTotal() {
+    let subtotal = 0;
+    document.querySelectorAll('.item-row .item-row-total').forEach(i => subtotal += Number(i.value || 0));
+    
+    const subtotalDisplay = document.getElementById('subtotalDisplay');
+    if (subtotalDisplay) {
+        subtotalDisplay.innerText = subtotal;
+    }
+
+    const totalInput = document.getElementById('totalAmountInput');
+    const enteredGrossTotal = totalInput ? Number(totalInput.value || 0) : 0;
+
+    const calculatedDiscount = Math.max(0, subtotal - enteredGrossTotal);
+    const discountInput = document.getElementById('discountInput');
+    if (discountInput) {
+        discountInput.value = calculatedDiscount;
+    }
+
     calculateCOD();
 }
 
 function calculateCOD() {
-    const total = Number(document.getElementById('totalAmountInput').value) || 0;
-    const advance = Number(document.querySelector('input[name="advance"]').value) || 0;
-    document.querySelector('input[name="codAmount"]').value = total - advance;
+    const totalInput = document.getElementById('totalAmountInput');
+    const total = totalInput ? Number(totalInput.value || 0) : 0;
+    
+    const advanceInput = document.querySelector('input[name="advance"]');
+    const advance = advanceInput ? Number(advanceInput.value || 0) : 0;
+    
+    const codInput = document.querySelector('input[name="codAmount"]');
+    if (codInput) {
+        codInput.value = Math.max(0, total - advance);
+    }
 }
 
 async function saveOrder() {
@@ -956,7 +1007,7 @@ async function loadMyOrders(page = null) {
 
         // Add pagination controls
         if (itemsPerPage > 0 && totalPages > 1) {
-            renderPaginationControls(list, currentPage, totalPages, 'loadMyOrders');
+            renderPaginationControls(list, currentPage, totalPages, 'loadMyOrders', totalItems);
         }
     } catch (e) {
         console.error('Error loading my orders:', e);
@@ -1000,7 +1051,7 @@ async function loadCancelledOrders() {
 }
 
 // Pagination Helper with Items Per Page Selector (Clean Style)
-function renderPaginationControls(container, currentPage, totalPages, fetchFuncName) {
+function renderPaginationControls(container, currentPage, totalPages, fetchFuncName, totalItems = null) {
     if (!container) return;
 
     // Get current items per page from config
@@ -1008,6 +1059,10 @@ function renderPaginationControls(container, currentPage, totalPages, fetchFuncN
 
     const div = document.createElement('div');
     div.className = 'col-span-full mt-8';
+
+    const startIdx = totalItems === 0 ? 0 : ((currentPage - 1) * currentLimit) + 1;
+    const endIdx = totalItems !== null ? Math.min(currentPage * currentLimit, totalItems) : Math.min(currentPage * currentLimit, currentLimit > 0 ? currentLimit * totalPages : 999);
+    const totalDisplay = totalItems !== null ? totalItems : (currentLimit > 0 ? currentLimit * totalPages : 'many');
 
     div.innerHTML = `
         <!-- Dropdown for items per page -->
@@ -1017,10 +1072,10 @@ function renderPaginationControls(container, currentPage, totalPages, fetchFuncN
                 <select 
                     onchange="handleEmpItemsChange('${fetchFuncName}')"
                     class="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 outline-none bg-white cursor-pointer">
-                    <option value="10" ${currentLimit === 10 ? 'selected' : ''}>10</option>
-                    <option value="25" ${currentLimit === 25 ? 'selected' : ''}>25</option>
-                    <option value="50" ${currentLimit === 50 ? 'selected' : ''}>50</option>
-                    <option value="100" ${currentLimit === 100 ? 'selected' : ''}>100</option>
+                    <option value="12" ${currentLimit === 12 ? 'selected' : ''}>12</option>
+                    <option value="24" ${currentLimit === 24 ? 'selected' : ''}>24</option>
+                    <option value="36" ${currentLimit === 36 ? 'selected' : ''}>36</option>
+                    <option value="48" ${currentLimit === 48 ? 'selected' : ''}>48</option>
                     <option value="0" ${currentLimit === 0 ? 'selected' : ''}>All</option>
                 </select>
             </div>
@@ -1047,7 +1102,7 @@ function renderPaginationControls(container, currentPage, totalPages, fetchFuncN
         
         <!-- Info text -->
         <div class="text-center text-sm text-gray-500 mt-3">
-            Showing ${((currentPage - 1) * currentLimit) + 1}-${Math.min(currentPage * currentLimit, currentLimit > 0 ? currentLimit * totalPages : 999)} orders
+            Showing ${startIdx}-${endIdx} of ${totalDisplay} orders
         </div>
     `;
 
@@ -1126,7 +1181,7 @@ async function loadMyOfdOrders(page = 1) {
         
         const totalItems = data.pagination ? data.pagination.total : data.orders.length;
         const totalPages = Math.ceil(totalItems / EMP_ITEMS_PER_PAGE) || 1;
-        renderPaginationControls(list, page, totalPages, 'loadMyOfdOrders');
+        renderPaginationControls(list, page, totalPages, 'loadMyOfdOrders', totalItems);
     } catch (e) {
         console.error('Error loading OFD orders:', e);
     }
@@ -1189,7 +1244,7 @@ async function loadMyHistory(page = 1) {
         // Render Pagination
         const totalPages = Math.ceil(total / limit) || 1;
         if (totalPages > 1) {
-            renderPaginationControls(list, historyPage, totalPages, 'loadMyHistory');
+            renderPaginationControls(list, historyPage, totalPages, 'loadMyHistory', total);
         }
 
         // Add Reorder listeners if needed
@@ -1493,6 +1548,8 @@ window.switchEmpTab = switchEmpTab;
 window.addItem = addItem;
 window.updateTotal = updateTotal;
 window.calculateTotal = calculateTotal;
+window.calculateDiscountFromTotal = calculateDiscountFromTotal;
+window.calculateCOD = calculateCOD;
 window.filterMyOrders = filterMyOrders;
 window.filterMyHistory = filterMyHistory;
 window.filterMyCancelledOrders = filterMyCancelledOrders;
@@ -1529,7 +1586,7 @@ async function loadMyUndeliveredOrders(page = 1) {
         
         const totalItems = data.pagination ? data.pagination.total : data.orders.length;
         const totalPages = Math.ceil(totalItems / EMP_ITEMS_PER_PAGE) || 1;
-        renderPaginationControls(list, page, totalPages, 'loadMyUndeliveredOrders');
+        renderPaginationControls(list, page, totalPages, 'loadMyUndeliveredOrders', totalItems);
     } catch (e) {
         console.error('Error loading Undelivered orders:', e);
     }
