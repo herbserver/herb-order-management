@@ -1913,6 +1913,7 @@ async function saveOrder() {
         total: total,
         advance: parseFloat(form.advance.value) || 0,
         codAmount: parseFloat(form.codAmount.value) || 0,
+        cod: parseFloat(form.codAmount.value) || 0,
         remark: document.getElementById('employeeRemark')?.value?.trim() || ''
     };
 
@@ -2211,6 +2212,18 @@ async function editOrder(orderId) {
 
         // Populate Fields
         form.customerName.value = order.customerName || '';
+        if (form.fatherOrHusbandName) {
+            form.fatherOrHusbandName.value = order.fatherOrHusbandName || '';
+        }
+        if (form.gender) {
+            form.gender.value = order.gender || '';
+        }
+        if (form.age) {
+            form.age.value = order.age || '';
+        }
+        if (form.problem) {
+            form.problem.value = order.problem || '';
+        }
         form.telNo.value = order.telNo || '';
         form.altNo.value = order.altNo || '';
         form.hNo.value = order.hNo || '';
@@ -2225,15 +2238,26 @@ async function editOrder(orderId) {
         form.address.value = order.address || '';
         form.treatment.value = order.treatment || '';
 
-        form.date.value = order.date || '';
-        form.time.value = order.time || '';
+        if (form.date) {
+            let dVal = order.date || '';
+            if (dVal && dVal.includes('T')) {
+                dVal = dVal.split('T')[0];
+            }
+            form.date.value = dVal;
+        }
+        if (form.time) {
+            form.time.value = order.time || '';
+        }
         form.advance.value = order.advance || 0;
         const employeeRemarkInput = document.getElementById('employeeRemark');
         if (employeeRemarkInput) {
             employeeRemarkInput.value = order.remark || '';
         }
+        const discountInput = document.getElementById('discountInput');
+        if (discountInput) {
+            discountInput.value = order.discount || 0;
+        }
         document.getElementById('totalAmountInput').value = order.total || 0;
-        calculateTotal(); // Trigger combo check
 
         // Radio Button - handle both old "REORDER" and new "Reorder" format
         if (order.orderType === 'REORDER' || order.orderType === 'Reorder') {
@@ -2242,44 +2266,57 @@ async function editOrder(orderId) {
             document.querySelector('input[name="orderType"][value="NEW"]').checked = true;
         }
 
-        // Populate Items manually as they no longer have per-row Amount
+        // Populate Items using the new refactored structure from employee.js
         const container = document.getElementById('itemsContainer');
         container.innerHTML = '';
+        const buildOptions = window.buildEmployeeProductOptions || ((selected = '') => {
+            // fallback if window.buildEmployeeProductOptions is not available
+            let options = PRODUCT_LIST.map(p => {
+                const isSelected = p.name === selected ? ' selected' : '';
+                return `<option value="${p.name}" data-price="${p.price || 0}"${isSelected}>${p.name}</option>`;
+            }).join('');
+            if (selected && !PRODUCT_LIST.some(p => p.name === selected)) {
+                options += `<option value="${selected}" selected>${selected}</option>`;
+            }
+            return options;
+        });
+
         (order.items || []).forEach(item => {
             const div = document.createElement('div');
-            div.className = 'grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 mb-2';
+            div.className = 'item-row grid grid-cols-12 gap-2 mb-2 items-center';
 
-            let options = PRODUCT_LIST.map(p =>
-                `<option value="${p.name}" ${p.name === item.description ? 'selected' : ''}>${p.name}</option>`
-            ).join('');
+            const itemDescription = item.description || item.product || item.name || '';
+            const options = buildOptions(itemDescription);
 
-            // Add "Other" if description is not in list
-            if (!PRODUCT_LIST.find(p => p.name === item.description)) {
-                options += `<option value="${item.description}" selected>${item.description}</option>`;
-            } else {
-                options += `<option value="Other">Other</option>`;
-            }
+            const qty = Number(item.quantity || 1);
+            const rate = Number(item.rate || item.price || 0);
+            const total = Number(item.amount || (rate * qty));
 
-            div.innerHTML = ` 
-                    <select class="col-span-12 md:col-span-5 border rounded-lg px-2 py-2 text-sm item-desc bg-white outline-none focus:border-emerald-500 transition-colors"
-                        onchange="autoFillRate(this); calculateTotal()"> 
-                        <option value="">Select Product...</option> 
+            div.innerHTML = `
+                <div class="col-span-6">
+                    <select class="item-desc w-full p-2 border rounded" onchange="updateTotal(this)">
+                        <option value="">Select Product...</option>
                         ${options}
-                    </select> 
-                    
-                    <input type="number" placeholder="Rate" value="${item.rate || 0}" min="0"
-                        class="col-span-6 md:col-span-3 border rounded-lg px-2 py-2 text-sm item-rate outline-none focus:border-emerald-500"
-                        oninput="calculateTotal()">
-                    
-                    <input type="number" placeholder="Qty" value="${item.quantity || 1}" min="1"
-                        class="col-span-6 md:col-span-3 border rounded-lg px-2 py-2 text-sm item-qty outline-none focus:border-emerald-500"
-                        oninput="calculateTotal()"> 
-                    
-                    <button type="button" onclick="this.parentElement.remove(); calculateTotal();" class="col-span-12 md:col-span-1 text-red-500 font-bold hover:bg-red-50 rounded p-1 transition-colors text-center">×</button> `;
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <input type="number" class="item-qty w-full p-2 border rounded text-center" value="${qty}" min="1" oninput="updateTotal(this)">
+                </div>
+                <div class="col-span-3">
+                    <input type="number" class="w-full p-2 border rounded text-right item-row-total" value="${total}" oninput="calculateTotal()">
+                </div>
+                <div class="col-span-1 text-center">
+                    <button type="button" onclick="this.closest('.item-row').remove(); calculateTotal();" class="text-red-500 font-bold text-xl">×</button>
+                </div>
+            `;
             container.appendChild(div);
         });
-        if (order.items.length === 0) {
-            addItem();
+        if (!order.items || order.items.length === 0) {
+            if (window.addItem) {
+                window.addItem();
+            } else {
+                addItem();
+            }
         }
 
         calculateTotal(); // Recalculate totals
@@ -2934,80 +2971,265 @@ async function loadMyCancelledOrders() {
 }
 
 // Load Verification Cancelled Orders
+// Global State for Verification Cancelled
+var allVerificationCancelledOrders = [];
+var verificationCancelledSelectedEmployee = '';
+var verificationCancelledSelectedDate = '';
+var verificationCancelledSelectedRange = 'today';
+
 async function loadVerificationCancelled() {
     try {
         const res = await fetch(`${API_URL}/orders`);
         const data = await res.json();
-        const cancelled = (data.orders || [])
+        allVerificationCancelledOrders = (data.orders || [])
             .filter(o => o.status === 'Cancelled')
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-        const container = document.getElementById('verificationCancelledList');
-        if (!container) return;
+        populateVerificationCancelledEmployeeFilter(allVerificationCancelledOrders);
 
-        if (cancelled.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-full text-center py-12 bg-red-50 rounded-2xl border-2 border-dashed border-red-200">
-                    <p class="text-4xl mb-3">🚫</p>
-                    <p class="text-red-700 font-medium">No cancelled orders found</p>
-                </div>`;
-            return;
-        }
-
-        container.innerHTML = cancelled.map(o => `
-            <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-red-100 flex flex-col h-full bg-white">
-                <!-- Card Header -->
-                <div class="p-5 border-b border-red-50 bg-gradient-to-r from-red-50/50 to-white relative">
-                     <div class="absolute top-0 right-0 w-24 h-24 bg-red-400 rounded-bl-full opacity-5 pointer-events-none"></div>
-                    <div class="flex justify-between items-start relative z-10">
-                        <div>
-                             <div class="flex items-center gap-2 mb-1">
-                                <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-md border border-red-200 uppercase tracking-wide">
-                                    ${o.orderId}
-                                </span>
-                            </div>
-                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${o.customerName}">
-                                ${o.customerName}
-                            </h3>
-                        </div>
-                        <div class="text-right">
-                             <p class="text-xl font-black text-gray-800 tracking-tight">₹${o.total}</p>
-                             <span class="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 mt-1">
-                                ❌ Cancelled
-                             </span>
-                        </div>
-                    </div>
-                </div>
-
-                 <!-- Card Body -->
-                <div class="p-5 space-y-4 flex-grow bg-white/60">
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 flex-shrink-0">
-                            ⚠️
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Cancellation Reason</p>
-                            <p class="text-sm font-semibold text-gray-700 font-mono italic">"${o.cancellationReason || 'Reason not specified'}"</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
-                        <span class="text-xs text-gray-400">📅 ${o.timestamp ? new Date(o.timestamp).toLocaleDateString() : 'N/A'}</span>
-                    </div>
-                </div>
-
-                <!-- Footer Actions -->
-                <div class="p-4 bg-red-50/30 border-t border-red-100 grid grid-cols-1 gap-2">
-                    <button type="button" onclick="viewOrder('${o.orderId}')" 
-                        class="bg-white border border-red-200 text-red-700 hover:bg-red-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1">
-                        👁️ View Details
-                    </button>
-                </div>
-            </div>`).join('');
-
+        filterVerificationCancelled();
     } catch (e) {
         console.error('Load verification cancelled error:', e);
     }
+}
+
+function populateVerificationCancelledEmployeeFilter(allOrders) {
+    const select = document.getElementById('verificationCancelledEmployeeFilter');
+    if (!select) return;
+
+    // Capture currently selected value so we don't lose selection on refresh
+    const currentValue = select.value || verificationCancelledSelectedEmployee || '';
+
+    // Calculate unique employee list from all orders
+    const employees = {};
+    allOrders.forEach(o => {
+        const empId = o.employeeId || o.createdBy || 'Unknown';
+        const empName = o.employee || empId;
+        if (!employees[empId]) {
+            employees[empId] = { id: empId, name: empName, count: 0 };
+        }
+        employees[empId].count++;
+    });
+
+    // Sort employees alphabetically by name
+    const sortedEmployees = Object.values(employees).sort((a, b) => a.name.localeCompare(b.name));
+
+    // Clear existing options except the first one
+    select.innerHTML = '<option value="">👤 All Employees</option>';
+
+    sortedEmployees.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = `👤 ${e.name} (${e.count})`;
+        select.appendChild(opt);
+    });
+
+    // Restore selection if it still exists in the new options list
+    if (currentValue && employees[currentValue]) {
+        select.value = currentValue;
+        verificationCancelledSelectedEmployee = currentValue;
+    } else {
+        select.value = '';
+        verificationCancelledSelectedEmployee = '';
+    }
+}
+
+function updateVerificationCancelledMiniStats(orders) {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = yesterdayDate.toISOString().split('T')[0];
+    const weekDate = new Date();
+    weekDate.setDate(weekDate.getDate() - 7);
+    
+    let countToday = 0;
+    let countYesterday = 0;
+    let countWeek = 0;
+
+    orders.forEach(o => {
+        const dateStr = o.timestamp ? o.timestamp.split('T')[0] : null;
+        if (!dateStr) return;
+        
+        if (dateStr === today) countToday++;
+        if (dateStr === yesterday) countYesterday++;
+        if (new Date(dateStr) >= weekDate) countWeek++;
+    });
+
+    const elToday = document.getElementById('miniStatCancelledToday');
+    const elYesterday = document.getElementById('miniStatCancelledYesterday');
+    const elWeek = document.getElementById('miniStatCancelledWeek');
+    
+    if(elToday) elToday.textContent = countToday;
+    if(elYesterday) elYesterday.textContent = countYesterday;
+    if(elWeek) elWeek.textContent = countWeek;
+}
+
+function applyVerificationCancelledQuickFilter(range) {
+    verificationCancelledSelectedRange = range;
+    
+    document.querySelectorAll('[data-cancelled-range]').forEach(el => {
+        if (el.dataset.cancelledRange === range) {
+            el.classList.add('ring-2', 'ring-red-400', 'ring-offset-2');
+            el.classList.remove('opacity-70');
+        } else {
+            el.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2');
+            el.classList.add('opacity-70');
+        }
+    });
+
+    // Reset exact date if quick filter is clicked
+    const dateInput = document.getElementById('verificationCancelledDate');
+    if(dateInput) dateInput.value = '';
+    verificationCancelledSelectedDate = '';
+
+    filterVerificationCancelled();
+}
+
+function applyVerificationCancelledEmployeeFilter() {
+    verificationCancelledSelectedEmployee = document.getElementById('verificationCancelledEmployeeFilter')?.value || '';
+    filterVerificationCancelled();
+}
+
+function applyVerificationCancelledDateFilter() {
+    verificationCancelledSelectedDate = document.getElementById('verificationCancelledDate')?.value || '';
+    
+    if (verificationCancelledSelectedDate) {
+        verificationCancelledSelectedRange = '';
+        document.querySelectorAll('[data-cancelled-range]').forEach(el => {
+            el.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2');
+            el.classList.add('opacity-70');
+        });
+    } else {
+        applyVerificationCancelledQuickFilter('today');
+        return;
+    }
+
+    filterVerificationCancelled();
+}
+
+function clearVerificationCancelledFilters() {
+    const searchInput = document.getElementById('verificationCancelledSearch');
+    const empInput = document.getElementById('verificationCancelledEmployeeFilter');
+    const dateInput = document.getElementById('verificationCancelledDate');
+    
+    if(searchInput) searchInput.value = '';
+    if(empInput) empInput.value = '';
+    if(dateInput) dateInput.value = '';
+    
+    verificationCancelledSelectedEmployee = '';
+    verificationCancelledSelectedDate = '';
+    applyVerificationCancelledQuickFilter('today');
+}
+
+function filterVerificationCancelled() {
+    const searchVal = document.getElementById('verificationCancelledSearch')?.value.toLowerCase() || '';
+    
+    // 1. Employee Filter
+    let filtered = allVerificationCancelledOrders;
+    if (verificationCancelledSelectedEmployee) {
+        filtered = filtered.filter(o => (o.employeeId || o.createdBy) === verificationCancelledSelectedEmployee);
+    }
+
+    // 2. Search Filter
+    if (searchVal) {
+        filtered = filtered.filter(o => 
+            (o.orderId && o.orderId.toLowerCase().includes(searchVal)) ||
+            (o.customerName && o.customerName.toLowerCase().includes(searchVal)) ||
+            (o.telNo && String(o.telNo).includes(searchVal))
+        );
+    }
+
+    // Update Mini Stats BEFORE Date filtering so stats always show the true total for the filtered employee/search
+    updateVerificationCancelledMiniStats(filtered);
+
+    // 3. Date / Range Filter
+    if (verificationCancelledSelectedDate) {
+        filtered = filtered.filter(o => o.timestamp && o.timestamp.startsWith(verificationCancelledSelectedDate));
+    } else if (verificationCancelledSelectedRange) {
+        const today = new Date().toISOString().split('T')[0];
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterday = yesterdayDate.toISOString().split('T')[0];
+        const weekDate = new Date();
+        weekDate.setDate(weekDate.getDate() - 7);
+
+        filtered = filtered.filter(o => {
+            const dateStr = o.timestamp ? o.timestamp.split('T')[0] : null;
+            if (!dateStr) return false;
+            
+            if (verificationCancelledSelectedRange === 'today') return dateStr === today;
+            if (verificationCancelledSelectedRange === 'yesterday') return dateStr === yesterday;
+            if (verificationCancelledSelectedRange === 'week') return new Date(dateStr) >= weekDate;
+            return true;
+        });
+    }
+
+    renderVerificationCancelled(filtered);
+}
+
+function renderVerificationCancelled(orders) {
+    const container = document.getElementById('verificationCancelledList');
+    if (!container) return;
+
+    if (orders.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-12 bg-red-50 rounded-2xl border-2 border-dashed border-red-200">
+                <p class="text-4xl mb-3">🚫</p>
+                <p class="text-red-700 font-medium">No cancelled orders found</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = orders.map(o => `
+        <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-red-100 flex flex-col h-full bg-white">
+            <!-- Card Header -->
+            <div class="p-5 border-b border-red-50 bg-gradient-to-r from-red-50/50 to-white relative">
+                 <div class="absolute top-0 right-0 w-24 h-24 bg-red-400 rounded-bl-full opacity-5 pointer-events-none"></div>
+                <div class="flex justify-between items-start relative z-10">
+                    <div>
+                         <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-md border border-red-200 uppercase tracking-wide">
+                                ${o.orderId}
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${o.customerName}">
+                            ${o.customerName}
+                        </h3>
+                    </div>
+                    <div class="text-right">
+                         <p class="text-xl font-black text-gray-800 tracking-tight">₹${o.total}</p>
+                         <span class="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 mt-1">
+                            ❌ Cancelled
+                         </span>
+                    </div>
+                </div>
+            </div>
+
+             <!-- Card Body -->
+            <div class="p-5 space-y-4 flex-grow bg-white/60">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 flex-shrink-0">
+                        ⚠️
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Cancellation Reason</p>
+                        <p class="text-sm font-semibold text-gray-700 font-mono italic">"${o.cancellationReason || 'Reason not specified'}"</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
+                    <span class="text-xs text-gray-400">📅 ${o.timestamp ? new Date(o.timestamp).toLocaleDateString() : 'N/A'}</span>
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="p-4 bg-red-50/30 border-t border-red-100 grid grid-cols-1 gap-2">
+                <button type="button" onclick="viewOrder('${o.orderId}')" 
+                    class="bg-white border border-red-200 text-red-700 hover:bg-red-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1">
+                    👁️ View Details
+                </button>
+            </div>
+        </div>`).join('');
 }
 
 async function loadEmpProgress() {
@@ -4305,7 +4527,7 @@ function renderOrderCard(order, borderColor = 'gray') {
                         <div class="text-right">
                              <p class="text-xl font-black text-gray-800 tracking-tight">₹${order.total}</p>
                              <p class="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-1">
-                                COD: ₹${order.codAmount || 0}
+                                COD: ₹${order.codAmount !== undefined ? order.codAmount : (order.cod !== undefined ? order.cod : Math.max(0, (order.total || 0) - (order.advance || 0)))}
                             </p>
                         </div>
                     </div>
@@ -4393,6 +4615,10 @@ var verificationPendingPage = 1;
 var verificationPendingQuickFilter = '';
 var verificationPendingLastFilterKey = '';
 var dispatchReadyQuickFilter = '';
+var verificationPendingSelectedEmployee = '';
+var verificationUnverifiedQuickFilter = '';
+var verificationUnverifiedSelectedEmployee = '';
+var verificationUnverifiedLastFilterKey = '';
 
 function getDeptItemsPerPage() {
     if (typeof paginationConfig !== 'undefined' && typeof paginationConfig.getItemsPerPage === 'function') {
@@ -4427,6 +4653,42 @@ function getVerificationPendingDateRange() {
     }
 
     if (verificationPendingQuickFilter === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return {
+            startDate: formatFilterDate(weekAgo),
+            endDate: formatFilterDate(yesterday),
+            key: 'quick:week'
+        };
+    }
+
+    return { startDate: '', endDate: '', key: 'all' };
+}
+
+function getVerificationUnverifiedDateRange() {
+    const exactDate = document.getElementById('verificationUnverifiedDate')?.value || '';
+    if (exactDate) {
+        return { startDate: exactDate, endDate: exactDate, key: `date:${exactDate}` };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (verificationUnverifiedQuickFilter === 'today') {
+        const todayStr = formatFilterDate(today);
+        return { startDate: todayStr, endDate: todayStr, key: 'quick:today' };
+    }
+
+    if (verificationUnverifiedQuickFilter === 'yesterday') {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = formatFilterDate(yesterday);
+        return { startDate: yesterdayStr, endDate: yesterdayStr, key: 'quick:yesterday' };
+    }
+
+    if (verificationUnverifiedQuickFilter === 'week') {
         const weekAgo = new Date(today);
         weekAgo.setDate(weekAgo.getDate() - 7);
         const yesterday = new Date(today);
@@ -4500,6 +4762,15 @@ function updateVerificationPendingQuickFilterUI() {
     });
 }
 
+function updateVerificationUnverifiedQuickFilterUI() {
+    document.querySelectorAll('[data-unverified-range]').forEach((el) => {
+        const isActive = el.getAttribute('data-unverified-range') === verificationUnverifiedQuickFilter;
+        el.classList.toggle('ring-2', isActive);
+        el.classList.toggle('ring-offset-2', isActive);
+        el.classList.toggle('ring-amber-500', isActive);
+    });
+}
+
 function updateDispatchReadyQuickFilterUI() {
     document.querySelectorAll('[data-dispatch-ready-range]').forEach((el) => {
         const isActive = el.getAttribute('data-dispatch-ready-range') === dispatchReadyQuickFilter;
@@ -4545,6 +4816,45 @@ function updateVerificationPendingStats(orders) {
     if (yesterdayEl) yesterdayEl.textContent = countYesterday;
 
     const weekEl = document.getElementById('miniStatVerifyWeek');
+    if (weekEl) weekEl.textContent = countWeek;
+}
+
+function updateVerificationUnverifiedStats(orders) {
+    const holdOrders = orders || [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const countToday = holdOrders.filter((order) => {
+        const orderDate = new Date(order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate.getTime() === today.getTime();
+    }).length;
+
+    const countYesterday = holdOrders.filter((order) => {
+        const orderDate = new Date(order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate.getTime() === yesterday.getTime();
+    }).length;
+
+    const countWeek = holdOrders.filter((order) => {
+        const orderDate = new Date(order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate >= sevenDaysAgo && orderDate < today;
+    }).length;
+
+    const todayEl = document.getElementById('miniStatUnverifiedToday');
+    if (todayEl) todayEl.textContent = countToday;
+
+    const yesterdayEl = document.getElementById('miniStatUnverifiedYesterday');
+    if (yesterdayEl) yesterdayEl.textContent = countYesterday;
+
+    const weekEl = document.getElementById('miniStatUnverifiedWeek');
     if (weekEl) weekEl.textContent = countWeek;
 }
 
@@ -4601,9 +4911,38 @@ function applyVerificationPendingDateFilter() {
 
 function clearVerificationPendingFilters() {
     verificationPendingQuickFilter = '';
+    verificationPendingSelectedEmployee = '';
+    const searchInput = document.getElementById('verificationPendingSearch');
+    if (searchInput) searchInput.value = '';
+    const empSelect = document.getElementById('verificationPendingEmployeeFilter');
+    if (empSelect) empSelect.value = '';
     const dateInput = document.getElementById('verificationPendingDate');
     if (dateInput) dateInput.value = '';
     loadDeptOrders(1);
+}
+
+function applyVerificationUnverifiedQuickFilter(range) {
+    verificationUnverifiedQuickFilter = range || '';
+    const dateInput = document.getElementById('verificationUnverifiedDate');
+    if (dateInput) dateInput.value = '';
+    loadVerificationUnverified();
+}
+
+function applyVerificationUnverifiedDateFilter() {
+    verificationUnverifiedQuickFilter = '';
+    loadVerificationUnverified();
+}
+
+function clearVerificationUnverifiedFilters() {
+    verificationUnverifiedQuickFilter = '';
+    verificationUnverifiedSelectedEmployee = '';
+    const searchInput = document.getElementById('verificationUnverifiedSearch');
+    if (searchInput) searchInput.value = '';
+    const empSelect = document.getElementById('verificationUnverifiedEmployeeFilter');
+    if (empSelect) empSelect.value = '';
+    const dateInput = document.getElementById('verificationUnverifiedDate');
+    if (dateInput) dateInput.value = '';
+    loadVerificationUnverified();
 }
 
 function applyDispatchReadyQuickFilter(range) {
@@ -4664,6 +5003,104 @@ function restoreDeptScrollState(scrollState) {
     requestAnimationFrame(() => {
         requestAnimationFrame(applyScroll);
     });
+}
+
+function populateVerificationPendingEmployeeFilter(allOrders) {
+    const select = document.getElementById('verificationPendingEmployeeFilter');
+    if (!select) return;
+
+    // Capture currently selected value so we don't lose selection on refresh
+    const currentValue = select.value || verificationPendingSelectedEmployee || '';
+
+    // Calculate unique employee list from all orders
+    const employees = {};
+    allOrders.forEach(o => {
+        const empId = o.employeeId || o.createdBy || 'Unknown';
+        const empName = o.employee || empId;
+        if (!employees[empId]) {
+            employees[empId] = { id: empId, name: empName, count: 0 };
+        }
+        employees[empId].count++;
+    });
+
+    // Sort employees alphabetically by name
+    const sortedEmployees = Object.values(employees).sort((a, b) => a.name.localeCompare(b.name));
+
+    // Clear existing options except the first one
+    select.innerHTML = '<option value="">👤 All Employees</option>';
+
+    sortedEmployees.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = `👤 ${e.name} (${e.count})`;
+        select.appendChild(opt);
+    });
+
+    // Restore selection if it still exists in the new options list
+    if (currentValue && employees[currentValue]) {
+        select.value = currentValue;
+        verificationPendingSelectedEmployee = currentValue;
+    } else {
+        verificationPendingSelectedEmployee = '';
+        select.value = '';
+    }
+}
+
+function applyVerificationPendingEmployeeFilter() {
+    const select = document.getElementById('verificationPendingEmployeeFilter');
+    if (select) {
+        verificationPendingSelectedEmployee = select.value;
+    }
+    loadDeptOrders(null, { preserveScroll: true });
+}
+
+function populateVerificationUnverifiedEmployeeFilter(allOrders) {
+    const select = document.getElementById('verificationUnverifiedEmployeeFilter');
+    if (!select) return;
+
+    // Capture currently selected value so we don't lose selection on refresh
+    const currentValue = select.value || verificationUnverifiedSelectedEmployee || '';
+
+    // Calculate unique employee list from all orders
+    const employees = {};
+    allOrders.forEach(o => {
+        const empId = o.employeeId || o.createdBy || 'Unknown';
+        const empName = o.employee || empId;
+        if (!employees[empId]) {
+            employees[empId] = { id: empId, name: empName, count: 0 };
+        }
+        employees[empId].count++;
+    });
+
+    // Sort employees alphabetically by name
+    const sortedEmployees = Object.values(employees).sort((a, b) => a.name.localeCompare(b.name));
+
+    // Clear existing options except the first one
+    select.innerHTML = '<option value="">👤 All Employees</option>';
+
+    sortedEmployees.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = `👤 ${e.name} (${e.count})`;
+        select.appendChild(opt);
+    });
+
+    // Restore selection if it still exists in the new options list
+    if (currentValue && employees[currentValue]) {
+        select.value = currentValue;
+        verificationUnverifiedSelectedEmployee = currentValue;
+    } else {
+        verificationUnverifiedSelectedEmployee = '';
+        select.value = '';
+    }
+}
+
+function applyVerificationUnverifiedEmployeeFilter() {
+    const select = document.getElementById('verificationUnverifiedEmployeeFilter');
+    if (select) {
+        verificationUnverifiedSelectedEmployee = select.value;
+    }
+    loadVerificationUnverified();
 }
 
 async function loadDeptOrders(page, options = {}) {
@@ -4740,31 +5177,43 @@ async function loadDeptOrders(page, options = {}) {
 
         if (isVerification) {
             updateVerificationPendingStats((statsData && statsData.orders) || []);
+            // Populate the employee filter list from all returned pending orders before filtering
+            populateVerificationPendingEmployeeFilter(orders);
         } else if (isDispatch) {
             updateDispatchReadyStats((statsData && statsData.orders) || []);
         }
 
         if (!container) return;
 
-        if (orders.length === 0) {
+        let displayOrders = orders;
+        if (isVerification && verificationPendingSelectedEmployee) {
+            displayOrders = orders.filter(o => (o.employeeId || o.createdBy) === verificationPendingSelectedEmployee);
+        }
+
+        if (displayOrders.length === 0) {
             const rangeLabel = isVerification
                 ? 'pending orders'
                 : isDispatch
                     ? 'ready orders'
                     : 'orders';
-            const emptyLabel = startDate && endDate && startDate !== endDate
+            let emptyLabel = startDate && endDate && startDate !== endDate
                 ? `No ${rangeLabel} found from ${startDate} to ${endDate}`
                 : startDate
                     ? `No ${rangeLabel} found for ${startDate}`
                     : searchValue
                         ? `No ${rangeLabel} found for "${searchValue}"`
                         : `No ${rangeLabel} found`;
+
+            if (isVerification && verificationPendingSelectedEmployee) {
+                emptyLabel = `No pending orders found for the selected employee`;
+            }
+
             container.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400">${emptyLabel}</div>`;
             restoreDeptScrollState(scrollState);
             return;
         }
 
-        container.innerHTML = orders.map(o => generateOrderCardHTML(o)).join('');
+        container.innerHTML = displayOrders.map(o => generateOrderCardHTML(o)).join('');
         if (!isVerification && !isDispatch) {
             renderPaginationControls(container, currentPage, totalPages, 'loadDeptOrders');
         }
@@ -4788,141 +5237,279 @@ function toTitleCase(str) {
 }
 
 // Generate order card HTML
-function generateOrderCardHTML(order) {
-    const isVerification = currentDeptType === 'verification';
+function generateOrderCardHTML(order, forceVerification = null) {
+    const isVerification = forceVerification !== null ? forceVerification : (currentDeptType === 'verification');
     const statusColor = isVerification ? 'blue' : 'emerald';
 
     // Icon SVGs
     const phoneIcon = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h2.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>`;
     const locationIcon = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
 
-    return `
-    <div class="relative overflow-hidden hover:scale-[1.02] transition-all duration-300 bg-gradient-to-br from-white to-gray-50/50 rounded-2xl border border-gray-200/60 flex flex-col h-full shadow-lg hover:shadow-2xl" style="backdrop-filter: blur(10px);">
-        <!-- Premium Header with Gradient -->
-        <div class="px-4 py-3 border-b border-${statusColor}-100 bg-gradient-to-r from-${statusColor}-50 via-${statusColor}-100/50 to-${statusColor}-50 flex justify-between items-center relative overflow-hidden">
-            <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: radial-gradient(circle, rgba(255,255,255,0.3), transparent); border-radius: 50%;"></div>
-            <div class="flex items-center gap-2 z-10">
-                <span class="bg-gradient-to-r from-${statusColor}-500 to-${statusColor}-600 text-white px-3 py-1 rounded-lg font-black text-xs shadow-lg shadow-${statusColor}-200/50 tracking-wide">${order.orderId}</span>
-                <button onclick="sendWhatsAppDirect('${isVerification ? 'booked' : 'dispatched'}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                    class="w-7 h-7 bg-gradient-to-br from-green-400 to-green-600 text-white rounded-full flex items-center justify-center hover:scale-110 shadow-lg shadow-green-200/50 transition-all" title="Send WhatsApp">
-                    ${WHATSAPP_ICON}
-                </button>
-                ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ? `<span class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-2 py-1 rounded-lg text-xs font-bold shadow-md">REORDER</span>` : ''}
-            </div>
-            <div class="text-gray-900 font-black text-sm z-10">₹${order.total} <span class="text-emerald-600 ml-1 font-extrabold">COD: ₹${order.codAmount || 0}</span></div>
-        </div>
-
-        <!-- Body Section with Modern Layout -->
-        <div class="p-4 space-y-3 flex-grow">
-            <!-- Name & Timestamp -->
-            <div class="flex justify-between items-start gap-3">
-                <h3 class="font-black text-gray-900 text-lg leading-tight truncate flex-grow bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text" title="${order.customerName}">${order.customerName}</h3>
-                <div class="flex items-center gap-1 text-[10px] text-gray-500 font-bold shrink-0 bg-gradient-to-r from-gray-100 to-gray-50 px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
-                   📅 ${(() => {
+    if (isVerification) {
+        // Initials avatar
+        const initials = String(order.customerName || 'C').trim().split(/\s+/).map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        // Time calculations
+        const timeElapsedStr = (() => {
             if (!order.timestamp) return 'N/A';
             const dateObj = new Date(order.timestamp);
             const days = Math.floor((Date.now() - dateObj) / 86400000);
             const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-            const dayLabel = days === 0 ? 'Today' : days === 1 ? 'Yest.' : days + 'd ago';
-            return `${dayLabel} ${timeStr}`;
-        })()}
+            return days === 0 ? `Today ${timeStr}` : days === 1 ? `Yest. ${timeStr}` : `${days}d ago ${timeStr}`;
+        })();
+
+        const codVal = order.codAmount !== undefined ? order.codAmount : (order.cod !== undefined ? order.cod : Math.max(0, (order.total || 0) - (order.advance || 0)));
+
+        return `
+        <div class="relative overflow-hidden hover:scale-[1.01] hover:shadow-xl transition-all duration-500 bg-white border border-slate-100 rounded-3xl flex flex-col h-full group" style="box-shadow: 0 8px 24px -8px rgba(148, 163, 184, 0.12), 0 1px 2px rgba(148, 163, 184, 0.04);">
+            <!-- Premium Left Active Tag & Gradient Glow -->
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-500 via-indigo-500 to-purple-600 rounded-l-full"></div>
+            
+            <!-- Merged Header Section -->
+            <div class="px-4 pt-3.5 pb-2.5 flex items-start gap-3 pl-5 border-b border-slate-100 bg-slate-50/40">
+                <!-- Avatar circle -->
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-xs flex items-center justify-center shadow-md shadow-indigo-100 shrink-0 relative group-hover:rotate-3 transition-transform duration-300">
+                    ${initials}
+                    <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 border border-white rounded-full animate-pulse shadow-sm"></span>
                 </div>
-            </div>
-            
-            <!-- Employee Badge -->
-            ${order.employeeId || order.createdBy || order.employee ? `
-            <div class="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-indigo-50 px-3 py-1.5 rounded-lg border border-purple-200/50 shadow-sm">
-                <span class="text-purple-600 text-xs">👤</span>
-                <span class="text-xs font-bold text-purple-700">
-                    ${order.employee ? `${order.employee}${order.employeeId ? ` (${order.employeeId})` : ''}` : (order.employeeId || order.createdBy)}
-                </span>
-            </div>
-            ` : ''}
-            
-            <!-- Contact Card -->
-            <div class="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-cyan-50 px-3 py-2 rounded-xl border border-blue-200/50 shadow-sm">
-                <span class="text-blue-500">${phoneIcon}</span>
-                <span class="text-sm font-black font-mono tracking-wide text-blue-900">${order.telNo}</span>
-                ${order.altNo ? `<span class="text-[10px] text-gray-500 font-bold ml-auto bg-white px-2 py-0.5 rounded-full">ALT: ${order.altNo}</span>` : ''}
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5">
+                        <h3 class="font-black text-slate-800 text-sm leading-tight truncate capitalize" title="${order.customerName}">${order.customerName}</h3>
+                        ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ? `<span class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-1.5 py-0.2 rounded text-[7px] font-black tracking-widest shadow-sm uppercase shrink-0">REORDER</span>` : ''}
+                    </div>
+                    ${order.fatherOrHusbandName ? `<p class="text-[9px] font-bold text-slate-400 truncate uppercase mt-0.5">S/O, W/O: ${order.fatherOrHusbandName}</p>` : `<p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Customer</p>`}
+                </div>
+                <div class="flex flex-col items-end shrink-0">
+                    <span class="text-sm font-black text-slate-800">₹${order.total}</span>
+                    <span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[8px] font-black border border-emerald-100 mt-0.5">COD: ₹${codVal}</span>
+                </div>
             </div>
 
-            <!-- Address Card -->
-            <div class="space-y-2 bg-gradient-to-br from-amber-50/50 to-orange-50/30 p-3 rounded-xl border border-amber-200/40">
-                <div class="flex items-center gap-1.5 text-amber-600 font-black text-[10px] uppercase tracking-wider">
-                    ${locationIcon} <span class="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">Address Details</span>
+            <!-- Compact Metadata Row -->
+            <div class="px-4 py-2 flex flex-wrap items-center justify-between gap-1.5 pl-5 border-b border-slate-55">
+                <div class="flex items-center gap-1.5">
+                    <span class="bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded-lg font-black text-[9px] tracking-wider shadow-sm font-mono uppercase">${order.orderId}</span>
+                    <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                        class="w-6.5 h-6.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg flex items-center justify-center hover:bg-emerald-600 hover:text-white hover:scale-105 active:scale-95 shadow-sm transition-all duration-300" title="Send WhatsApp">
+                        ${WHATSAPP_ICON}
+                    </button>
                 </div>
-                <p class="text-xs text-gray-800 font-semibold leading-relaxed line-clamp-3 capitalize">
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="text-[9px] text-slate-500 font-bold bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-lg">📅 ${timeElapsedStr}</span>
+                    ${order.employee ? `
+                    <span class="text-[9px] text-purple-600 font-bold bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-lg">👤 ${order.employee}</span>
+                    ` : ''}
+                </div>
+            </div>
+
+            <!-- Contact and Address Box -->
+            <div class="px-4 py-2.5 pl-5 space-y-2 flex-grow">
+                <div class="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 group-hover:bg-slate-50/80 transition-colors space-y-2">
+                    <!-- Phone row -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-blue-500 bg-white w-5 h-5 rounded-md flex items-center justify-center shadow-sm border border-blue-100">${phoneIcon}</span>
+                        <span class="text-xs font-black font-mono tracking-wider text-blue-950">${order.telNo}</span>
+                        ${order.altNo ? `<span class="text-[8px] text-slate-500 font-extrabold ml-auto bg-white px-1.5 py-0.5 rounded-md border border-slate-100">ALT: ${order.altNo}</span>` : ''}
+                    </div>
+                    
+                    <!-- Divider -->
+                    <div class="h-px bg-slate-200/50"></div>
+
+                    <!-- Address Details -->
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-1 text-indigo-500 font-black text-[8px] uppercase tracking-wider leading-none">
+                            ${locationIcon} <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Delivery Address</span>
+                        </div>
+                        <p class="text-[11px] text-slate-700 font-bold leading-normal line-clamp-2 capitalize">
+                            ${toTitleCase(order.address) || 'No Address Provided'}
+                        </p>
+                        <div class="flex gap-1.5 items-center pt-1 border-t border-slate-200/30">
+                            <span class="bg-indigo-50 border border-indigo-100 text-indigo-700 px-1.5 py-0.2 rounded text-[8px] font-black font-mono">PIN: ${order.pin || 'N/A'}</span>
+                            <span class="bg-slate-100 border border-slate-200 text-slate-700 px-1.5 py-0.2 rounded text-[8px] font-black capitalize">${order.state || 'N/A'}</span>
+                            <button onclick="copyAddress('${order.address ? order.address.replace(/'/g, "\\'") : ""}')" 
+                                class="text-[8px] text-blue-600 hover:text-blue-700 font-black ml-auto flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200 hover:border-slate-350 transition-all shadow-sm">📋 COPY</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Combined Remark & Notes Section -->
+            <div class="px-4 py-2 bg-amber-50/40 border-t border-slate-100/60 flex flex-col gap-1 pl-5">
+                ${order.remark ? `
+                <div class="flex items-center gap-1.5 mb-0.5">
+                    <span class="text-[8px] text-rose-600 font-black bg-rose-50 border border-rose-100 px-1.5 py-0.2 rounded uppercase shrink-0">💬 Emp Note</span>
+                    <span class="text-[10px] text-rose-700 italic truncate font-bold flex-1" title="${order.remark.replace(/"/g, '&quot;')}">"${order.remark}"</span>
+                </div>
+                ` : ''}
+                <div class="flex items-center gap-2 w-full">
+                    <input type="text" id="remark-${order.orderId}" placeholder="Add verification remark..."
+                        class="flex-grow text-[11px] border border-slate-200 rounded-xl px-2.5 py-1.5 focus:border-amber-400 focus:bg-white outline-none bg-slate-50 font-bold text-slate-600 shadow-inner transition-all"
+                        value="${order.verificationRemark?.text || ''}">
+                    <button type="button" onclick="saveOrderRemark('${order.orderId}')"
+                        class="bg-amber-500 text-white w-7 h-7 rounded-lg hover:bg-amber-600 transition-all shadow-md shadow-amber-200 active:scale-90 flex items-center justify-center shrink-0" title="Save Remark">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Actions Footer -->
+            <div class="px-4 py-3 bg-slate-50/50 border-t border-slate-100/80 space-y-2 pl-5 rounded-b-3xl mt-auto">
+                <!-- Verify Address & Hold Address side-by-side to save height -->
+                <div class="grid grid-cols-4 gap-2">
+                    <button type="button" onclick="verifyAddress('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                        class="col-span-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-2.5 rounded-xl text-xs font-black shadow-md shadow-emerald-100 hover:shadow-lg active:scale-95 transition-all uppercase tracking-wider">✅ APPROVE ADDRESS</button>
+                    <button type="button" onclick="markAsUnverified('${order.orderId}')" 
+                        class="col-span-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-xl text-[10px] font-black shadow-md shadow-amber-100 hover:shadow-lg active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center" title="Hold Order">⏸️ HOLD</button>
+                </div>
+                
+                <!-- Quick Actions Grid -->
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
+                        class="bg-white border border-slate-200 text-slate-700 py-2 rounded-xl text-[11px] font-black shadow-sm hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
+                    <button type="button" onclick="cancelOrder('${order.orderId}')" 
+                        class="bg-white border border-rose-200 text-rose-600 py-2 rounded-xl text-[11px] font-black shadow-sm hover:bg-rose-50 hover:scale-105 active:scale-95 transition-all">❌ CANCEL</button>
+                    <button type="button" onclick="viewOrder('${order.orderId}')" 
+                        class="bg-white border border-slate-200 text-blue-600 py-2 rounded-xl text-[11px] font-black shadow-sm hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
+                </div>
+
+                <!-- Courier Suggestion inline layout to save height -->
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider shrink-0">🚛 Suggest Courier:</span>
+                    <select id="courierSelect_${order.orderId}" 
+                        class="flex-grow border border-slate-200 rounded-xl px-2 py-1.5 text-[11px] bg-white font-bold text-slate-700 outline-none focus:border-indigo-400 shadow-sm transition-all">
+                        <option value="">Select...</option>
+                        <option value="Delhivery" ${order.suggestedCourier === 'Delhivery' ? 'selected' : ''}>Delhivery</option>
+                        <option value="BlueDart" ${order.suggestedCourier === 'BlueDart' ? 'selected' : ''}>BlueDart</option>
+                        <option value="DTDC" ${order.suggestedCourier === 'DTDC' ? 'selected' : ''}>DTDC</option>
+                        <option value="Ecom Express" ${order.suggestedCourier === 'Ecom Express' ? 'selected' : ''}>Ecom Express</option>
+                        <option value="Shiprocket" ${order.suggestedCourier === 'Shiprocket' ? 'selected' : ''}>Shiprocket</option>
+                        <option value="India Post" ${order.suggestedCourier === 'India Post' ? 'selected' : ''}>India Post</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        `;
+    }
+
+    // Set up variables for premium fall-through dispatch card
+    const initials = String(order.customerName || 'C').trim().split(/\s+/).map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    
+    const timeElapsedStr = (() => {
+        if (!order.timestamp) return 'N/A';
+        const dateObj = new Date(order.timestamp);
+        const days = Math.floor((Date.now() - dateObj) / 86400000);
+        const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        return days === 0 ? `Today ${timeStr}` : days === 1 ? `Yest. ${timeStr}` : `${days}d ago ${timeStr}`;
+    })();
+
+    const codVal = order.codAmount !== undefined ? order.codAmount : (order.cod !== undefined ? order.cod : Math.max(0, (order.total || 0) - (order.advance || 0)));
+
+    const statusMap = {
+        'Pending': { color: 'amber', bg: 'from-amber-500 to-yellow-500', badge: 'bg-amber-50 text-amber-700 border-amber-100', dot: 'bg-amber-500', glow: 'shadow-amber-100' },
+        'Address Verified': { color: 'emerald', bg: 'from-emerald-500 to-teal-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-100', dot: 'bg-emerald-500', glow: 'shadow-emerald-100' },
+        'Dispatched': { color: 'indigo', bg: 'from-indigo-500 to-blue-500', badge: 'bg-indigo-50 text-indigo-700 border-indigo-100', dot: 'bg-indigo-500', glow: 'shadow-indigo-100' },
+        'Delivered': { color: 'green', bg: 'from-green-500 to-emerald-500', badge: 'bg-green-50 text-green-700 border-green-100', dot: 'bg-green-500', glow: 'shadow-green-100' },
+        'On Hold': { color: 'orange', bg: 'from-orange-500 to-amber-500', badge: 'bg-orange-50 text-orange-700 border-orange-100', dot: 'bg-orange-500', glow: 'shadow-orange-100' },
+        'Cancelled': { color: 'rose', bg: 'from-rose-500 to-red-500', badge: 'bg-rose-50 text-rose-700 border-rose-100', dot: 'bg-rose-500', glow: 'shadow-rose-100' },
+        'Returned': { color: 'slate', bg: 'from-slate-500 to-gray-500', badge: 'bg-slate-50 text-slate-700 border-slate-100', dot: 'bg-slate-500', glow: 'shadow-slate-100' },
+        'RTO': { color: 'rose', bg: 'from-rose-500 to-red-500', badge: 'bg-rose-50 text-rose-700 border-rose-100', dot: 'bg-rose-500', glow: 'shadow-rose-100' }
+    };
+    const config = statusMap[order.status] || { color: 'slate', bg: 'from-slate-500 to-gray-500', badge: 'bg-slate-50 text-slate-700 border-slate-100', dot: 'bg-slate-500', glow: 'shadow-slate-100' };
+
+    return `
+    <div class="relative overflow-hidden hover:scale-[1.01] hover:shadow-2xl transition-all duration-500 bg-white border border-slate-100 rounded-3xl flex flex-col h-full group" style="box-shadow: 0 10px 30px -10px rgba(148, 163, 184, 0.12), 0 1px 3px rgba(148, 163, 184, 0.04);">
+        <!-- Premium Left Active Tag & Gradient Glow -->
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${config.bg} rounded-l-full"></div>
+        
+        <!-- Card Header -->
+        <div class="px-5 pt-5 pb-4 flex justify-between items-center z-10 pl-6">
+            <div class="flex items-center gap-2">
+                <span class="bg-slate-50 border border-slate-100 text-slate-700 px-3 py-1 rounded-xl font-black text-[10px] tracking-widest shadow-sm font-mono uppercase">#${order.orderId}</span>
+                <button onclick="sendWhatsAppDirect('dispatched', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                    class="w-8 h-8 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl flex items-center justify-center hover:bg-emerald-600 hover:text-white hover:scale-110 active:scale-95 shadow-sm transition-all duration-300" title="Send WhatsApp">
+                    ${WHATSAPP_ICON}
+                </button>
+                ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ? `<span class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 py-0.5 rounded-lg text-[9px] font-black tracking-widest shadow-sm uppercase">REORDER</span>` : ''}
+            </div>
+            <div class="flex flex-col items-end">
+                <span class="text-[9px] text-slate-400 font-bold tracking-wide leading-none uppercase">Amount</span>
+                <span class="text-base font-black text-slate-800 mt-1">₹${order.total}</span>
+            </div>
+        </div>
+
+        <!-- Profile & Status Banner -->
+        <div class="px-5 pb-4 flex items-center gap-3.5 pl-6">
+            <!-- Avatar circle -->
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${config.bg} text-white font-black text-sm flex items-center justify-center shadow-md ${config.glow} shrink-0 relative group-hover:rotate-3 transition-transform duration-300">
+                ${initials}
+                <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 ${config.dot} border border-white rounded-full animate-pulse shadow-sm"></span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <h3 class="font-black text-slate-800 text-base leading-tight truncate capitalize" title="${order.customerName}">${order.customerName}</h3>
+                ${order.fatherOrHusbandName ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5 truncate uppercase tracking-tight">S/O, W/O: ${order.fatherOrHusbandName}</p>` : `<p class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">Customer</p>`}
+            </div>
+            <div class="flex flex-col items-end shrink-0">
+                <span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg text-[10px] font-extrabold border border-emerald-100">COD: ₹${codVal}</span>
+            </div>
+        </div>
+
+        <!-- Details list -->
+        <div class="px-5 pb-4 space-y-3 pl-6 flex-grow">
+            <!-- Relative time & Booking Employee Row -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-xl shadow-inner w-fit">
+                    📅 <span class="text-slate-600 font-extrabold uppercase">${timeElapsedStr}</span>
+                </div>
+                ${order.employeeId || order.createdBy || order.employee ? `
+                <div class="flex items-center gap-1.5 text-[10px] text-purple-600 font-bold bg-purple-50 border border-purple-100 px-2.5 py-1.5 rounded-xl shadow-inner w-fit">
+                    👤 <span class="text-purple-700 font-extrabold uppercase">Booked By: ${order.employee || order.employeeId || order.createdBy}</span>
+                </div>
+                ` : ''}
+                <div class="flex items-center gap-1.5 text-[10px] ${config.badge} px-2.5 py-1.5 rounded-xl shadow-inner w-fit">
+                    🏷️ <span class="font-extrabold uppercase">${order.status}</span>
+                </div>
+            </div>
+
+            <!-- Phone Strip -->
+            <div class="flex items-center gap-2.5 bg-gradient-to-r from-blue-50/50 to-cyan-50/20 px-3.5 py-2.5 rounded-2xl border border-blue-100/50 shadow-inner group/phone hover:border-blue-200 transition-colors">
+                <span class="text-blue-500 bg-white w-7 h-7 rounded-lg flex items-center justify-center shadow-sm border border-blue-100">${phoneIcon}</span>
+                <span class="text-sm font-black font-mono tracking-wider text-blue-950">${order.telNo}</span>
+                ${order.altNo ? `<span class="text-[9px] text-slate-500 font-extrabold ml-auto bg-white px-2 py-1 rounded-lg border border-slate-100">ALT: ${order.altNo}</span>` : ''}
+            </div>
+
+            <!-- Minimal Shipping Box -->
+            <div class="space-y-2 bg-slate-50/50 p-3.5 rounded-2xl border border-slate-100 group-hover:bg-slate-50/80 transition-colors">
+                <div class="flex items-center gap-1.5 text-indigo-500 font-black text-[9px] uppercase tracking-widest leading-none">
+                    ${locationIcon} <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Delivery Address</span>
+                </div>
+                <p class="text-xs text-slate-700 font-bold leading-relaxed line-clamp-3 capitalize">
                     ${toTitleCase(order.address) || 'No Address Provided'}
                 </p>
-                <div class="flex gap-2 items-center pt-1">
-                    <span class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-2 py-1 rounded-lg text-[10px] font-black shadow-sm">PIN: ${order.pin || 'N/A'}</span>
-                    <span class="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-2 py-1 rounded-lg text-[10px] font-black shadow-sm capitalize">${order.state || 'N/A'}</span>
+                <div class="flex gap-1.5 items-center pt-1.5 border-t border-slate-200/50">
+                    <span class="bg-indigo-50 border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-lg text-[9px] font-black font-mono">PIN: ${order.pin || 'N/A'}</span>
+                    <span class="bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded-lg text-[9px] font-black capitalize">${order.state || 'N/A'}</span>
                     <button onclick="copyAddress('${order.address ? order.address.replace(/'/g, "\\'") : ""}')" 
-                        class="text-[10px] text-blue-600 hover:text-blue-700 font-black ml-auto flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-blue-200 hover:border-blue-300 transition-all shadow-sm">📋 COPY</button>
+                        class="text-[9px] text-blue-600 hover:text-blue-700 font-black ml-auto flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-slate-200 hover:border-slate-300 transition-all shadow-sm">📋 COPY</button>
                 </div>
             </div>
 
             <!-- Employee Remark -->
             ${order.remark ? `
-            <div class="bg-rose-50 border-2 border-rose-200 p-3 rounded-xl shadow-inner animate-pulse">
-                <p class="text-[10px] text-rose-600 font-bold uppercase mb-1">💬 Employee Remark</p>
-                <p class="text-xs text-rose-800 font-black italic">"${order.remark}"</p>
+            <div class="bg-amber-50/60 border border-amber-100 p-3.5 rounded-2xl shadow-sm">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs">💬</span>
+                    <span class="text-[9px] text-amber-500 font-black uppercase tracking-widest leading-none">Employee Remark</span>
+                </div>
+                <p class="text-xs text-amber-900 font-black italic mt-1.5 leading-relaxed">"${order.remark}"</p>
             </div>
             ` : ''}
         </div>
 
-        <!-- Remarks Section -->
-        ${isVerification ? `
-        <div class="px-4 py-2.5 bg-amber-50/50 border-t border-amber-100 flex items-center gap-2">
-            <input type="text" id="remark-${order.orderId}" placeholder="Add remark..."
-                class="flex-grow text-xs border border-amber-200 rounded-lg px-3 py-2 focus:border-amber-400 outline-none bg-white font-bold text-gray-600 shadow-inner"
-                value="${order.verificationRemark?.text || ''}">
-            <button type="button" onclick="saveOrderRemark('${order.orderId}')"
-                class="bg-amber-500 text-white p-2 rounded-lg hover:bg-amber-600 transition-all shadow-sm active:scale-90 flex items-center justify-center shrink-0">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-            </button>
-        </div>
-        ` : ''}
-
         <!-- Actions Footer with Modern Design -->
-        <div class="px-4 py-3.5 bg-gray-50/70 border-t border-gray-100 space-y-2.5">
-            ${isVerification ? `
-                <!-- Primary Action -->
-                <button type="button" onclick="verifyAddress('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                    class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3.5 rounded-xl text-xs font-black shadow-xl shadow-blue-300/40 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">✅ VERIFY ADDRESS</button>
-                
-                <!-- Quick Actions Row -->
-                <div class="grid grid-cols-3 gap-2">
-                    <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
-                        class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
-                    <button type="button" onclick="cancelOrder('${order.orderId}')" 
-                        class="bg-gradient-to-r from-red-500 to-rose-600 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-red-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">❌ CANCEL</button>
-                    <button type="button" onclick="viewOrder('${order.orderId}')" 
-                        class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
-                </div>
-
-                <!-- Hold Button -->
-                <button type="button" onclick="markAsUnverified('${order.orderId}')" 
-                    class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-xl text-xs font-black shadow-lg shadow-amber-300/40 hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">⏸️ HOLD ORDER</button>
-
-                <!-- Courier Suggestion -->
-                <div class="pt-2 border-t border-gray-100">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">💡 Suggest Courier for Dispatch</label>
-                    <select id="courierSelect_${order.orderId}" 
-                        class="w-full border border-purple-200 rounded-lg px-3 py-2 text-xs bg-white font-bold text-gray-700 outline-none focus:border-purple-500 shadow-sm">
-                        <option value="">Optional - Select if known...</option>
-                        <option value="Delhivery">📦 Delhivery</option>
-                        <option value="BlueDart">📦 BlueDart</option>
-                        <option value="DTDC">📦 DTDC</option>
-                        <option value="Ecom Express">📦 Ecom Express</option>
-                        <option value="Shiprocket">🚀 Shiprocket</option>
-                        <option value="India Post">📮 India Post</option>
-                    </select>
-                </div>
-            ` : (order.status === 'Dispatched' ? `
+        <div class="px-5 py-4 bg-slate-50/50 border-t border-slate-100/80 space-y-3 pl-6 rounded-b-3xl mt-auto">
+            ${order.status === 'Dispatched' ? `
                 <!-- Courier Suggestion Badge for Dispatched Orders -->
                 ${order.suggestedCourier || order.courierSuggestion?.suggestedCourier ? `
-                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-3 rounded-xl mx-4 mt-2 shadow-sm">
+                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-3 rounded-xl shadow-sm">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl">💡</span>
                         <div class="flex-grow">
@@ -4936,7 +5523,7 @@ function generateOrderCardHTML(order) {
                 ` : ''}
                 
                 <!-- Already Dispatched Actions with Modern Design -->
-                <div class="space-y-2.5 pt-1 px-4 pb-4">
+                <div class="space-y-2.5">
                     <button type="button" onclick="approveDelivery('${order.orderId}')" 
                         class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3.5 rounded-xl text-xs font-black shadow-xl shadow-blue-300/40 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">✅ MARK DELIVERED</button>
                     <div class="grid grid-cols-3 gap-2">
@@ -4948,13 +5535,13 @@ function generateOrderCardHTML(order) {
                             class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
                     </div>
                     ${(order.tracking?.trackingId || order.shiprocket?.awb) ? `
-                    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 p-3.5 rounded-xl space-y-2 shadow-sm">
+                    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 p-3.5 rounded-xl space-y-2 shadow-sm">
                         <div class="flex justify-between items-center">
-                            <span class="text-[10px] font-black text-indigo-700 uppercase bg-white px-2 py-1 rounded-lg shadow-sm">${order.tracking?.courier || 'Shiprocket'}</span>
-                            <span class="text-[11px] font-mono font-bold text-gray-700 bg-white px-2 py-1 rounded-lg">${order.tracking?.trackingId || order.shiprocket?.awb}</span>
+                            <span class="text-[10px] font-black text-indigo-700 uppercase bg-white px-2 py-1 rounded-lg shadow-sm border border-indigo-100">${order.tracking?.courier || 'Shiprocket'}</span>
+                            <span class="text-[11px] font-mono font-bold text-gray-700 bg-white px-2 py-1 rounded-lg border border-gray-100">${order.tracking?.trackingId || order.shiprocket?.awb}</span>
                         </div>
                         ${order.tracking?.currentStatus ? `
-                        <div class="pt-2 border-t border-indigo-200">
+                        <div class="pt-2 border-t border-indigo-100">
                             <div class="text-[10px] font-bold text-gray-500 uppercase mb-1">Status</div>
                             <div class="text-xs font-black text-indigo-800">${order.tracking.currentStatus}</div>
                             ${order.tracking.lastUpdate ? `<div class="text-[10px] text-gray-600 mt-1">${order.tracking.lastUpdate}</div>` : ''}
@@ -4966,7 +5553,7 @@ function generateOrderCardHTML(order) {
             ` : `
                 <!-- Suggested Courier Badge -->
                 ${order.suggestedCourier ? `
-                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-3 rounded-xl mb-3 shadow-sm">
+                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-3 rounded-xl shadow-sm">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl">💡</span>
                         <div class="flex-grow">
@@ -4979,7 +5566,7 @@ function generateOrderCardHTML(order) {
                 ` : ''}
                 
                 <!-- Dispatch Actions with Modern Design -->
-                <div class="space-y-2.5 pt-1 px-4 pb-4">
+                <div class="space-y-2.5">
                     <!-- Primary Action -->
                     <button type="button" onclick="dispatchWithShiprocket('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                         class="w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white py-3.5 rounded-xl text-xs font-black shadow-xl shadow-orange-300/50 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all">🚀 SHIPROCKET DISPATCH</button>
@@ -4998,7 +5585,7 @@ function generateOrderCardHTML(order) {
                     <button type="button" onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                         class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2.5 rounded-xl text-xs font-black shadow-lg shadow-purple-300/40 hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all">📦 MANUAL DISPATCH</button>
                 </div>
-            `)}
+            `}
         </div>
     </div>`;
 }
@@ -5149,6 +5736,9 @@ async function verifyAddress(orderId, order = null) {
             setTimeout(() => {
                 loadDeptOrders(null, { preserveScroll: true });
                 loadVerificationHistory();
+                if (typeof loadVerificationUnverified === 'function') {
+                    loadVerificationUnverified();
+                }
             }, 1000);
         }
     }
@@ -5189,7 +5779,12 @@ async function cancelOrder(orderId) {
                 '❌',
                 '#ef4444'
             );
-            setTimeout(() => loadDeptOrders(null, { preserveScroll: true }), 1000);
+            setTimeout(() => {
+                loadDeptOrders(null, { preserveScroll: true });
+                if (typeof loadVerificationUnverified === 'function') {
+                    loadVerificationUnverified();
+                }
+            }, 1000);
         } else {
             alert('Failed to cancel order: ' + data.message);
         }
@@ -5876,7 +6471,7 @@ function _oldEditDispatchOrder(orderId, order) {
                                 </div>
                                 <div>
                                     <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">COD</label>
-                                    <input type="number" id="edit_codAmount" value="${order.codAmount || 0}" 
+                                    <input type="number" id="edit_codAmount" value="${order.codAmount !== undefined ? order.codAmount : (order.cod !== undefined ? order.cod : Math.max(0, (order.total || 0) - (order.advance || 0)))}" 
                                         style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
                                 </div>
                             </div>
@@ -5930,7 +6525,8 @@ function _oldEditDispatchOrder(orderId, order) {
             pin: document.getElementById('edit_pin').value.trim(),
             total: parseFloat(document.getElementById('edit_total').value) || 0,
             advance: parseFloat(document.getElementById('edit_advance').value) || 0,
-            codAmount: parseFloat(document.getElementById('edit_codAmount').value) || 0
+            codAmount: parseFloat(document.getElementById('edit_codAmount').value) || 0,
+            cod: parseFloat(document.getElementById('edit_codAmount').value) || 0
         };
 
         // Add tracking info if order is dispatched
@@ -6058,7 +6654,7 @@ async function openEditOrderModal(orderId) {
             const amount = item.amount || (rate * qty) || 0;
             itemsHtml += `
                 <div class="grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 edit-item-row">
-                    <input type="text" value="${item.description || item.name || ''}" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500">
+                    <input type="text" value="${item.description || item.product || item.name || ''}" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500">
                     <input type="number" value="${qty}" min="1" placeholder="Qty" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-qty outline-none focus:border-emerald-500 text-center font-bold" oninput="updateEditItemAmount(this)">
                     <input type="number" value="${rate}" placeholder="Rate" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-rate outline-none focus:border-emerald-500" oninput="updateEditItemAmount(this)">
                     <input type="number" value="${amount}" placeholder="Amt" class="col-span-4 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-amount outline-none focus:border-emerald-500 bg-gray-50 font-bold" oninput="updateEditTotal()">
@@ -6123,9 +6719,21 @@ async function openEditOrderModal(orderId) {
                                 <span class="col-span-2 md:col-span-1"></span>
                             </div>
                             <div id="editItemsContainer" class="space-y-2">${itemsHtml}</div>
-                            <div class="mt-3 pt-3 border-t border-emerald-300 flex justify-between font-bold text-lg">
-                                <span>Total:</span>
-                                <span id="editTotalAmount" class="text-red-600">₹${order.total || 0}</span>
+                            
+                            <!-- Subtotal, Discount & Total (Gross) Calculations -->
+                            <div class="mt-3 pt-3 border-t border-emerald-300 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                                <div class="flex items-center justify-between md:justify-start gap-2">
+                                    <span class="text-sm font-bold text-slate-500">Subtotal:</span>
+                                    <span id="editSubtotalAmount" class="font-bold text-slate-800 text-lg">₹0.00</span>
+                                </div>
+                                <div class="flex items-center justify-between md:justify-start gap-2">
+                                    <span class="text-sm font-bold text-slate-500">Discount:</span>
+                                    <input type="number" id="editDiscount" value="${order.discount || 0}" oninput="updateEditTotal()" class="w-28 border-2 rounded-lg px-2 py-1 text-center font-bold text-slate-800 outline-none focus:border-emerald-500">
+                                </div>
+                                <div class="flex items-center justify-between md:justify-end gap-2 text-lg font-black">
+                                    <span class="text-slate-800">Total:</span>
+                                    <span id="editTotalAmount" class="text-red-600">₹${order.total || 0}</span>
+                                </div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
@@ -6142,6 +6750,7 @@ async function openEditOrderModal(orderId) {
         `;
 
         document.body.appendChild(modal);
+        updateEditTotal();
         console.log('Dynamic edit modal created and appended to body');
 
     } catch (e) {
@@ -6175,19 +6784,39 @@ function updateEditItemAmount(input) {
 }
 
 function updateEditTotal() {
-    let total = 0;
+    let subtotal = 0;
 
     document.querySelectorAll('.edit-item-amount').forEach(input => {
-        total += parseFloat(input.value) || 0;
+        subtotal += parseFloat(input.value) || 0;
     });
-    document.getElementById('editTotalAmount').textContent = '₹' + total.toFixed(2);
+
+    const subtotalEl = document.getElementById('editSubtotalAmount');
+    if (subtotalEl) {
+        subtotalEl.textContent = '₹' + subtotal.toFixed(2);
+    }
+
+    const discountEl = document.getElementById('editDiscount');
+    const discount = discountEl ? (parseFloat(discountEl.value) || 0) : 0;
+
+    const grossTotal = Math.max(0, subtotal - discount);
+
+    const totalEl = document.getElementById('editTotalAmount');
+    if (totalEl) {
+        totalEl.textContent = '₹' + grossTotal.toFixed(2);
+    }
     updateEditCOD();
 }
 
 function updateEditCOD() {
-    const total = parseFloat(document.getElementById('editTotalAmount').textContent.replace('₹', '')) || 0;
-    const advance = parseFloat(document.getElementById('editAdvance').value) || 0;
-    document.getElementById('editCodAmount').value = Math.max(0, total - advance).toFixed(2);
+    const totalEl = document.getElementById('editTotalAmount');
+    const advanceEl = document.getElementById('editAdvance');
+    const codEl = document.getElementById('editCodAmount');
+
+    if (!totalEl || !advanceEl || !codEl) return;
+
+    const total = parseFloat(totalEl.textContent.replace('₹', '')) || 0;
+    const advance = parseFloat(advanceEl.value) || 0;
+    codEl.value = Math.max(0, total - advance).toFixed(2);
 }
 
 async function saveEditOrder() {
@@ -6249,7 +6878,9 @@ async function saveEditOrder() {
         });
     });
 
-    const total = items.reduce((sum, item) => sum + item.amount, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
+    const discount = parseFloat(getVal('editDiscount')) || 0;
+    const total = Math.max(0, subtotal - discount);
 
     // Build address using scoped getVal helper
     const addressParts = [
@@ -6279,6 +6910,7 @@ async function saveEditOrder() {
         landMark: toTitleCase(getVal('editLandMark').trim()),
         address: addressParts.map(p => toTitleCase(p.trim())).join(', '),
         items,
+        discount,
         total,
         advance: parseFloat(getVal('editAdvance')) || 0,
         // Always recalculate COD = Total - Advance (don't rely on stale readonly field)
@@ -7017,7 +7649,6 @@ function applyQuickDateFilter(prefix, range) {
     else if (prefix === 'adminVerified') loadAdminVerified();
     else if (prefix === 'adminDispatched') loadAdminDispatched();
     else if (prefix === 'adminDelivered') loadAdminDelivered();
-    else if (prefix === 'verificationHistory') loadVerificationHistory();
     else if (prefix === 'deliveryPerformance') loadDeliveryPerformance();
 
     // Scroll to the list for better focus
@@ -8921,7 +9552,7 @@ function mapOrderForExport(order, index) {
 
     let productNames = '';
     if (Array.isArray(order.items)) {
-        productNames = order.items.map(i => i && i.description ? i.description : '').join(', ');
+        productNames = order.items.map(i => i ? (i.description || i.product || i.name || '') : '').join(', ');
     } else if (typeof order.items === 'string') {
         productNames = order.items;
     }
@@ -9219,7 +9850,7 @@ async function exportDispatchedOrders() {
             // Handle items safely
             let productNames = '';
             if (Array.isArray(order.items)) {
-                productNames = order.items.map(i => i && i.description ? i.description : '').join(', ');
+                productNames = order.items.map(i => i ? (i.description || i.product || i.name || '') : '').join(', ');
             } else if (typeof order.items === 'string') {
                 productNames = order.items;
             }
@@ -9596,7 +10227,7 @@ function showMap(orderId, address) {
 // ==================== VERIFICATION DEPARTMENT TABS ====================
 function normalizeVerificationTab(tab) {
     const normalizedTab = String(tab || '').toLowerCase();
-    return ['pending', 'unverified', 'history', 'cancelled'].includes(normalizedTab) ? normalizedTab : 'pending';
+    return ['pending', 'unverified', 'cancelled'].includes(normalizedTab) ? normalizedTab : 'pending';
 }
 
 function getVerificationTabFromHash() {
@@ -9606,7 +10237,6 @@ function getVerificationTabFromHash() {
 function getActiveVerificationTab() {
     if (!document.getElementById('verificationPendingTab')?.classList.contains('hidden')) return 'pending';
     if (!document.getElementById('verificationUnverifiedTab')?.classList.contains('hidden')) return 'unverified';
-    if (!document.getElementById('verificationHistoryTab')?.classList.contains('hidden')) return 'history';
     if (document.getElementById('verificationCancelledTab') && !document.getElementById('verificationCancelledTab').classList.contains('hidden')) {
         return 'cancelled';
     }
@@ -9632,7 +10262,6 @@ function switchVerificationTab(tab, syncHash = true) {
 
     document.getElementById('verificationPendingTab').classList.add('hidden');
     document.getElementById('verificationUnverifiedTab').classList.add('hidden');
-    document.getElementById('verificationHistoryTab').classList.add('hidden');
     if (document.getElementById('verificationCancelledTab')) {
         document.getElementById('verificationCancelledTab').classList.add('hidden');
     }
@@ -9645,10 +10274,6 @@ function switchVerificationTab(tab, syncHash = true) {
         document.getElementById('verificationUnverifiedTab').classList.remove('hidden');
         setActiveDeptTab('deptTabUnverified');
         loadVerificationUnverified();
-    } else if (tab === 'history') {
-        document.getElementById('verificationHistoryTab').classList.remove('hidden');
-        setActiveDeptTab('deptTabHistory');
-        loadVerificationHistory();
     } else if (tab === 'cancelled') {
         if (document.getElementById('verificationCancelledTab')) {
             document.getElementById('verificationCancelledTab').classList.remove('hidden');
@@ -9676,97 +10301,233 @@ async function loadVerificationUnverified() {
         const data = await res.json();
         let orders = data.orders || [];
 
-        // Filter for 'On Hold' status
-        orders = orders.filter(o => o.status === 'On Hold');
-        orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        // Filter for 'On Hold' status to get all hold orders
+        const allHoldOrders = orders.filter(o => o.status === 'On Hold');
 
-        // Filters from input
-        const search = document.getElementById('verificationUnverifiedSearch').value.toLowerCase();
+        // Update stats counters from all hold orders
+        updateVerificationUnverifiedStats(allHoldOrders);
+
+        // Populate employee filter from all hold orders
+        populateVerificationUnverifiedEmployeeFilter(allHoldOrders);
+
+        let filteredOrders = allHoldOrders;
+
+        // Apply Booking Employee filter
+        if (verificationUnverifiedSelectedEmployee) {
+            filteredOrders = filteredOrders.filter(o => (o.employeeId || o.createdBy) === verificationUnverifiedSelectedEmployee);
+        }
+
+        // Apply Date range filter
+        const dateRange = getVerificationUnverifiedDateRange();
+        if (dateRange.startDate && dateRange.endDate) {
+            const startD = new Date(dateRange.startDate);
+            startD.setHours(0, 0, 0, 0);
+            const endD = new Date(dateRange.endDate);
+            endD.setHours(23, 59, 59, 999);
+            filteredOrders = filteredOrders.filter(o => {
+                const orderD = new Date(o.timestamp);
+                return orderD >= startD && orderD <= endD;
+            });
+        }
+
+        // Apply Search input filter
+        const search = (document.getElementById('verificationUnverifiedSearch')?.value || '').toLowerCase().trim();
         if (search) {
-            orders = orders.filter(o =>
+            filteredOrders = filteredOrders.filter(o =>
                 (o.orderId && o.orderId.toLowerCase().includes(search)) ||
                 (o.customerName && o.customerName.toLowerCase().includes(search)) ||
                 (o.telNo && o.telNo.includes(search))
             );
         }
 
-        if (orders.length === 0) {
+        // Sort by timestamp descending
+        filteredOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        // Update quick filter pill active rings
+        updateVerificationUnverifiedQuickFilterUI();
+
+        if (filteredOrders.length === 0) {
+            let emptyLabel = 'No orders currently on hold';
+            if (search) {
+                emptyLabel = `No hold orders found for "${search}"`;
+            } else if (verificationUnverifiedSelectedEmployee) {
+                emptyLabel = `No hold orders found for the selected employee`;
+            } else if (dateRange.startDate) {
+                emptyLabel = `No hold orders found in the selected date range`;
+            }
+
             document.getElementById('verificationUnverifiedList').innerHTML = `
-                <div class="col-span-full text-center py-12 bg-yellow-50 rounded-2xl border-2 border-dashed border-yellow-200">
-                    <p class="text-4xl mb-3">✅</p>
-                    <p class="text-yellow-700 font-medium">No orders currently on hold</p>
+                <div class="col-span-full text-center py-12 bg-amber-50/50 rounded-2xl border-2 border-dashed border-amber-200">
+                    <p class="text-4xl mb-3">⏸️</p>
+                    <p class="text-amber-800 font-medium">${emptyLabel}</p>
                 </div>`;
             return;
         }
 
+        const phoneIcon = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h2.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>`;
+        const locationIcon = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
+
         let html = '';
-        orders.forEach(order => {
+        filteredOrders.forEach(order => {
+            const initials = String(order.customerName || 'C').trim().split(/\s+/).map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            const timeElapsedStr = (() => {
+                if (!order.timestamp) return 'N/A';
+                const dateObj = new Date(order.timestamp);
+                const days = Math.floor((Date.now() - dateObj) / 86400000);
+                const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                return days === 0 ? `Today ${timeStr}` : days === 1 ? `Yest. ${timeStr}` : `${days}d ago ${timeStr}`;
+            })();
+            const codVal = order.codAmount !== undefined ? order.codAmount : (order.cod !== undefined ? order.cod : Math.max(0, (order.total || 0) - (order.advance || 0)));
+
             html += `
-            <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-yellow-100 flex flex-col h-full bg-white">
-                <!-- Card Header -->
-                <div class="p-5 border-b border-yellow-50 bg-gradient-to-r from-yellow-50/50 to-white relative">
-                     <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-400 rounded-bl-full opacity-5 pointer-events-none"></div>
-                    <div class="flex justify-between items-start relative z-10">
-                        <div>
-                             <div class="flex items-center gap-2 mb-1">
-                                <span class="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded-md border border-yellow-200 uppercase tracking-wide">
-                                    ${order.orderId}
-                                </span>
-                            </div>
-                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">
-                                ${order.customerName}
-                            </h3>
+            <div class="relative overflow-hidden hover:scale-[1.01] hover:shadow-xl transition-all duration-500 bg-white border border-slate-100 rounded-3xl flex flex-col h-full group" style="box-shadow: 0 8px 24px -8px rgba(148, 163, 184, 0.12), 0 1px 2px rgba(148, 163, 184, 0.04);">
+                <!-- Premium Left Active Tag & Gradient Glow -->
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-500 via-orange-500 to-yellow-650 rounded-l-full"></div>
+                
+                <!-- Merged Header Section -->
+                <div class="px-4 pt-3.5 pb-2.5 flex items-start gap-3 pl-5 border-b border-slate-100 bg-slate-50/40">
+                    <!-- Avatar circle -->
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 text-white font-black text-xs flex items-center justify-center shadow-md shadow-amber-100 shrink-0 relative group-hover:rotate-3 transition-transform duration-300">
+                        ${initials}
+                        <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-amber-500 border border-white rounded-full animate-pulse shadow-sm"></span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5">
+                            <h3 class="font-black text-slate-800 text-sm leading-tight truncate capitalize" title="${order.customerName}">${order.customerName}</h3>
+                            ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ? `<span class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-1.5 py-0.2 rounded text-[7px] font-black tracking-widest shadow-sm uppercase shrink-0">REORDER</span>` : ''}
                         </div>
-                        <div class="text-right">
-                             <p class="text-xl font-black text-gray-800 tracking-tight">₹${order.total}</p>
-                             <span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 mt-1">
-                                ⏸️ On Hold
-                             </span>
+                        ${order.fatherOrHusbandName ? `<p class="text-[9px] font-bold text-slate-400 truncate uppercase mt-0.5">S/O, W/O: ${order.fatherOrHusbandName}</p>` : `<p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Customer</p>`}
+                    </div>
+                    <div class="flex flex-col items-end shrink-0">
+                        <span class="text-sm font-black text-slate-800">₹${order.total}</span>
+                        <span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[8px] font-black border border-emerald-100 mt-0.5">COD: ₹${codVal}</span>
+                    </div>
+                </div>
+
+                <!-- Compact Metadata Row -->
+                <div class="px-4 py-2 flex flex-wrap items-center justify-between gap-1.5 pl-5 border-b border-slate-55">
+                    <div class="flex items-center gap-1.5">
+                        <span class="bg-amber-50 border border-amber-100 text-amber-700 px-2 py-0.5 rounded-lg font-black text-[9px] tracking-wider shadow-sm font-mono uppercase">${order.orderId}</span>
+                        <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                            class="w-6.5 h-6.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg flex items-center justify-center hover:bg-emerald-600 hover:text-white hover:scale-105 active:scale-95 shadow-sm transition-all duration-300" title="Send WhatsApp">
+                            ${WHATSAPP_ICON}
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-[9px] text-slate-500 font-bold bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-lg">📅 ${timeElapsedStr}</span>
+                        ${order.employee ? `
+                        <span class="text-[9px] text-purple-600 font-bold bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-lg">👤 ${order.employee}</span>
+                        ` : ''}
+                        <span class="text-[9px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-lg">⏸️ HOLD</span>
+                    </div>
+                </div>
+
+                <!-- Contact and Address & Hold Details Grid Box -->
+                <div class="px-4 py-2.5 pl-5 space-y-2 flex-grow">
+                    <div class="bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 group-hover:bg-slate-50/80 transition-colors space-y-2.5">
+                        <!-- Phone row -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-blue-500 bg-white w-5 h-5 rounded-md flex items-center justify-center shadow-sm border border-blue-100">${phoneIcon}</span>
+                            <span class="text-xs font-black font-mono tracking-wider text-blue-950">${order.telNo}</span>
+                            ${order.altNo ? `<span class="text-[8px] text-slate-500 font-extrabold ml-auto bg-white px-1.5 py-0.5 rounded-md border border-slate-100">ALT: ${order.altNo}</span>` : ''}
+                        </div>
+                        
+                        <!-- Divider -->
+                        <div class="h-px bg-slate-200/50"></div>
+
+                        <!-- 2-Column Grid for Address and Hold Details on desktop, stacked on mobile -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            <!-- Left Column: Address -->
+                            <div class="space-y-1 bg-white p-2 rounded-xl border border-slate-100/80 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center gap-1 text-indigo-500 font-black text-[8px] uppercase tracking-wider leading-none mb-1">
+                                        ${locationIcon} <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Delivery Address</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-700 font-bold leading-normal line-clamp-2 capitalize">
+                                        ${toTitleCase(order.address) || 'No Address Provided'}
+                                    </p>
+                                </div>
+                                <div class="flex gap-1 items-center pt-1 border-t border-slate-200/30 mt-2">
+                                    <span class="bg-indigo-50 border border-indigo-100 text-indigo-700 px-1 py-0.2 rounded text-[7px] font-black font-mono">PIN: ${order.pin || 'N/A'}</span>
+                                    <span class="bg-slate-100 border border-slate-200 text-slate-700 px-1 py-0.2 rounded text-[7px] font-black capitalize">${order.state || 'N/A'}</span>
+                                    <button onclick="copyAddress('${order.address ? order.address.replace(/'/g, "\\'") : ""}')" 
+                                        class="text-[7px] text-blue-600 hover:text-blue-700 font-black ml-auto flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200 hover:border-slate-350 transition-all shadow-sm">📋 COPY</button>
+                                </div>
+                            </div>
+
+                            <!-- Right Column: Hold Details -->
+                            <div class="space-y-1 bg-amber-50/40 p-2 rounded-xl border border-amber-100 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-[8px] text-amber-600 font-black uppercase tracking-wider leading-none">⏸️ Hold Details</span>
+                                        ${order.holdDetails?.holdAt ? `
+                                        <span class="text-[7px] text-slate-400 font-bold">On: ${new Date(order.holdDetails.holdAt).toLocaleDateString()}</span>
+                                        ` : ''}
+                                    </div>
+                                    <p class="text-[11px] text-slate-700 font-bold leading-normal line-clamp-2">
+                                        <span class="text-[8px] text-slate-400 uppercase font-black tracking-wide">Reason:</span> ${order.holdDetails?.holdReason || 'Call not answered / Hold'}
+                                    </p>
+                                </div>
+                                <div class="flex justify-between items-center pt-1 border-t border-amber-200/30 text-[7px] mt-2">
+                                    <span class="text-slate-500 font-bold">📅 Dispatch: <span class="text-amber-700 font-black">${order.holdDetails?.expectedDispatchDate ? new Date(order.holdDetails.expectedDispatchDate).toLocaleDateString('en-IN') : 'N/A'}</span></span>
+                                    ${order.holdDetails?.holdBy ? `
+                                    <span class="text-[7px] text-slate-500 font-extrabold bg-white border border-slate-100 px-1 py-0.5 rounded uppercase">By: ${order.holdDetails.holdBy}</span>
+                                    ` : ''}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                 <!-- Card Body -->
-                <div class="p-5 space-y-4 flex-grow bg-white/60">
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center text-yellow-600 flex-shrink-0">
-                            📞
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Contact</p>
-                            <p class="text-sm font-semibold text-gray-700 font-mono">${order.telNo}</p>
-                        </div>
+                <!-- Combined Remark & Notes Section -->
+                <div class="px-4 py-2 bg-amber-50/40 border-t border-slate-100/60 flex flex-col gap-1 pl-5">
+                    ${order.remark ? `
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        <span class="text-[8px] text-rose-600 font-black bg-rose-50 border border-rose-100 px-1.5 py-0.2 rounded uppercase shrink-0">💬 Emp Note</span>
+                        <span class="text-[10px] text-rose-700 italic truncate font-bold flex-1" title="${order.remark.replace(/"/g, '&quot;')}">"${order.remark}"</span>
                     </div>
-                    
-                    <div class="flex items-start gap-3">
-                         <div class="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center text-yellow-600 flex-shrink-0">
-                             ⚠️
-                         </div>
-                         <div>
-                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Reason / Status</p>
-                             <p class="text-sm text-gray-600 italic">Marked as Unverified/Hold</p>
-                         </div>
-                    </div>
-
-                    <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
-                        <span class="text-xs text-gray-400">📅 ${order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A'}</span>
+                    ` : ''}
+                    <div class="flex items-center gap-2 w-full">
+                        <input type="text" id="remark-${order.orderId}" placeholder="Add verification remark..."
+                            class="flex-grow text-[11px] border border-slate-200 rounded-xl px-2.5 py-1.5 focus:border-amber-400 focus:bg-white outline-none bg-slate-50 font-bold text-slate-600 shadow-inner transition-all"
+                            value="${order.verificationRemark?.text || ''}">
+                        <button type="button" onclick="saveOrderRemark('${order.orderId}')"
+                            class="bg-amber-500 text-white w-7 h-7 rounded-lg hover:bg-amber-600 transition-all shadow-md shadow-amber-200 active:scale-90 flex items-center justify-center shrink-0" title="Save Remark">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        </button>
                     </div>
                 </div>
 
                 <!-- Footer Actions -->
-                <div class="p-4 bg-yellow-50/30 border-t border-yellow-100 grid grid-cols-3 gap-2">
-                    <button type="button" onclick="viewOrder('${order.orderId}')" 
-                        class="bg-white border border-yellow-200 text-yellow-700 hover:bg-yellow-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1">
-                        👁️ View
-                    </button>
-                    <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
-                        class="bg-white border border-orange-200 text-orange-700 hover:bg-orange-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1">
-                        ✏️ Edit
-                    </button>
-                    <button type="button" onclick="verifyAddress('${order.orderId}')" 
-                        class="bg-emerald-500 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1">
-                        ✅ Verify
-                    </button>
+                <div class="px-4 py-3 bg-slate-50/50 border-t border-slate-100/80 space-y-2 pl-5 rounded-b-3xl mt-auto">
+                    <!-- Verify / Approve button -->
+                    <button type="button" onclick="verifyAddress('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                        class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-2.5 rounded-xl text-xs font-black shadow-md shadow-emerald-100 hover:shadow-lg active:scale-95 transition-all uppercase tracking-wider">✅ APPROVE ADDRESS (UNHOLD)</button>
+                    
+                    <!-- Quick Actions Grid -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="openEditOrderModal('${order.orderId}')" 
+                            class="bg-white border border-slate-200 text-slate-700 py-2 rounded-xl text-[11px] font-black shadow-sm hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all">✏️ EDIT</button>
+                        <button type="button" onclick="cancelOrder('${order.orderId}')" 
+                            class="bg-white border border-rose-200 text-rose-600 py-2 rounded-xl text-[11px] font-black shadow-sm hover:bg-rose-50 hover:scale-105 active:scale-95 transition-all">❌ CANCEL</button>
+                        <button type="button" onclick="viewOrder('${order.orderId}')" 
+                            class="bg-white border border-slate-200 text-blue-600 py-2 rounded-xl text-[11px] font-black shadow-sm hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
+                    </div>
+
+                    <!-- Courier Suggestion inline layout -->
+                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider shrink-0">🚛 Suggest Courier:</span>
+                        <select id="courierSelect_${order.orderId}" 
+                            class="flex-grow border border-slate-200 rounded-xl px-2 py-1.5 text-[11px] bg-white font-bold text-slate-700 outline-none focus:border-indigo-400 shadow-sm transition-all">
+                            <option value="">Select...</option>
+                            <option value="Delhivery" ${order.suggestedCourier === 'Delhivery' ? 'selected' : ''}>Delhivery</option>
+                            <option value="BlueDart" ${order.suggestedCourier === 'BlueDart' ? 'selected' : ''}>BlueDart</option>
+                            <option value="DTDC" ${order.suggestedCourier === 'DTDC' ? 'selected' : ''}>DTDC</option>
+                            <option value="Ecom Express" ${order.suggestedCourier === 'Ecom Express' ? 'selected' : ''}>Ecom Express</option>
+                            <option value="Shiprocket" ${order.suggestedCourier === 'Shiprocket' ? 'selected' : ''}>Shiprocket</option>
+                            <option value="India Post" ${order.suggestedCourier === 'India Post' ? 'selected' : ''}>India Post</option>
+                        </select>
+                    </div>
                 </div>
             </div>`;
         });
@@ -9873,278 +10634,16 @@ async function submitHoldOrder(orderId) {
 }
 
 async function filterVerificationUnverified() {
-    const input = document.getElementById('verificationUnverifiedSearch');
-    const filter = input.value.trim().toLowerCase();
-    const list = document.getElementById('verificationUnverifiedList');
-
-    if (!filter) {
-        loadVerificationUnverified();
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API_URL}/orders`);
-        const data = await res.json();
-        let orders = data.orders || [];
-
-        // Filter for 'On Hold' AND search term
-        orders = orders.filter(o =>
-            o.status === 'On Hold' && (
-                (o.telNo && o.telNo.includes(filter)) ||
-                (o.customerName && o.customerName.toLowerCase().includes(filter)) ||
-                (o.orderId && o.orderId.toLowerCase().includes(filter))
-            )
-        );
-
-        if (orders.length === 0) {
-            list.innerHTML = `
-                        <div class="col-span-full text-center py-12 bg-yellow-50 rounded-2xl border-2 border-dashed border-yellow-200">
-                            <p class="text-4xl mb-3">🔍</p>
-                            <p class="text-yellow-700 font-medium">No matching unverified orders found</p>
-                        </div>`;
-            return;
-        }
-
-        let html = '';
-        orders.forEach(order => {
-            html += `
-            <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-yellow-100 flex flex-col h-full bg-white">
-                <!-- Card Header -->
-                <div class="p-5 border-b border-yellow-50 bg-gradient-to-r from-yellow-50/50 to-white relative">
-                     <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-400 rounded-bl-full opacity-5 pointer-events-none"></div>
-                    <div class="flex justify-between items-start relative z-10">
-                        <div>
-                             <div class="flex items-center gap-2 mb-1">
-                                <span class="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded-md border border-yellow-200 uppercase tracking-wide">
-                                    ${order.orderId}
-                                </span>
-                            </div>
-                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">
-                                ${order.customerName}
-                            </h3>
-                        </div>
-                        <div class="text-right">
-                             <p class="text-xl font-black text-gray-800 tracking-tight">₹${order.total}</p>
-                             <span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 mt-1">
-                                ⏸️ On Hold
-                             </span>
-                        </div>
-                    </div>
-                </div>
-
-                 <!-- Card Body -->
-                <div class="p-5 space-y-4 flex-grow bg-white/60">
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center text-yellow-600 flex-shrink-0">
-                            📞
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Contact</p>
-                            <p class="text-sm font-semibold text-gray-700 font-mono">${order.telNo}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start gap-3">
-                         <div class="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center text-yellow-600 flex-shrink-0">
-                             ⚠️
-                         </div>
-                         <div>
-                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Reason / Status</p>
-                             <p class="text-sm text-gray-600 italic">Marked as Unverified/Hold</p>
-                         </div>
-                    </div>
-
-                    <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
-                        <span class="text-xs text-gray-400">📅 ${order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A'}</span>
-                    </div>
-                </div>
-
-                <!-- Footer Actions -->
-                <div class="p-4 bg-yellow-50/30 border-t border-yellow-100 grid grid-cols-2 gap-2">
-                    <button type="button" onclick="viewOrder('${order.orderId}')" 
-                        class="bg-white border border-yellow-200 text-yellow-700 hover:bg-yellow-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1">
-                        👁️ View
-                    </button>
-                    <button type="button" onclick="verifyAddress('${order.orderId}')" 
-                        class="bg-emerald-500 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1">
-                        ✅ Verify Now
-                    </button>
-                </div>
-            </div>`;
-        });
-        list.innerHTML = html;
-    } catch (e) {
-        console.error(e);
-    }
+    loadVerificationUnverified();
 }
+
 
 async function loadVerificationHistory() {
-    try {
-        const res = await fetch(`${API_URL}/orders`);
-        const data = await res.json();
-        let orders = data.orders || [];
-
-        // Filter for Verified orders (including those that moved to Dispatch/Delivered)
-        orders = orders.filter(o => ['Address Verified', 'Dispatched', 'Delivered'].includes(o.status));
-
-        // CALCULATE STATS
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const lastWeek = new Date(today);
-        lastWeek.setDate(lastWeek.getDate() - 7);
-
-        const countToday = orders.filter(o => {
-            const dateStr = o.verifiedAt ? o.verifiedAt.split('T')[0] : (o.timestamp ? o.timestamp.split('T')[0] : null);
-            return dateStr === today.toISOString().split('T')[0];
-        }).length;
-
-        const countYesterday = orders.filter(o => {
-            const dateStr = o.verifiedAt ? o.verifiedAt.split('T')[0] : (o.timestamp ? o.timestamp.split('T')[0] : null);
-            return dateStr === yesterday.toISOString().split('T')[0];
-        }).length;
-
-        const countWeek = orders.filter(o => {
-            const date = o.verifiedAt ? new Date(o.verifiedAt) : new Date(o.timestamp);
-            return date >= lastWeek;
-        }).length;
-
-        document.getElementById('statsVerifyToday').textContent = countToday;
-        document.getElementById('statsVerifyYesterday').textContent = countYesterday;
-        document.getElementById('statsVerifyWeek').textContent = countWeek;
-
-        // APPLY FILTERS
-        const search = document.getElementById('verificationHistorySearch').value.toLowerCase();
-        const start = document.getElementById('verificationHistoryStartDate').value;
-        const end = document.getElementById('verificationHistoryEndDate').value;
-
-        if (search) {
-            orders = orders.filter(o =>
-                (o.orderId && o.orderId.toLowerCase().includes(search)) ||
-                (o.customerName && o.customerName.toLowerCase().includes(search)) ||
-                (o.telNo && o.telNo.includes(search))
-            );
-        }
-
-        if (start) {
-            orders = orders.filter(o => {
-                const dateStr = o.verifiedAt ? o.verifiedAt.split('T')[0] : o.timestamp.split('T')[0];
-                return dateStr >= start;
-            });
-        }
-        if (end) {
-            orders = orders.filter(o => {
-                const dateStr = o.verifiedAt ? o.verifiedAt.split('T')[0] : o.timestamp.split('T')[0];
-                return dateStr <= end;
-            });
-        }
-
-        // Sort by verified date (newest first)
-        orders.sort((a, b) => {
-            const dateA = new Date(a.verifiedAt || a.timestamp);
-            const dateB = new Date(b.verifiedAt || b.timestamp);
-            return dateB - dateA;
-        });
-
-        if (orders.length === 0) {
-            document.getElementById('verificationHistoryList').innerHTML = `
-                <div class="col-span-full text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                    <p class="text-4xl mb-3">📂</p>
-                    <p class="text-gray-500 font-medium">No history found matching filters</p>
-                </div>`;
-            return;
-        }
-
-        let html = '';
-        let lastDate = '';
-
-        orders.forEach(order => {
-            const dateStr = order.verifiedAt ? order.verifiedAt.split('T')[0] : (order.timestamp ? order.timestamp.split('T')[0] : 'N/A');
-
-            if (dateStr !== lastDate) {
-                const displayDate = new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-                const isTodayStr = new Date().toISOString().split('T')[0] === dateStr;
-
-                html += `
-                <div class="col-span-full mt-6 mb-2">
-                    <div class="flex items-center gap-4">
-                        <span class="bg-${isTodayStr ? 'emerald' : 'gray'}-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm">
-                            ${isTodayStr ? 'Today' : displayDate}
-                        </span>
-                        <div class="h-[2px] flex-grow bg-gradient-to-r from-${isTodayStr ? 'emerald' : 'gray'}-200 to-transparent rounded-full"></div>
-                    </div>
-                </div>`;
-                lastDate = dateStr;
-            }
-
-            html += `
-            <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-purple-100 flex flex-col h-full bg-slate-50">
-                <!-- Card Header -->
-                <div class="p-4 border-b border-purple-50 bg-gradient-to-r from-purple-50/50 to-white relative">
-                    <div class="flex justify-between items-start relative z-10">
-                        <div>
-                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-2">
-                                Order #${order.orderId}
-                                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                                    class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
-                                    ${WHATSAPP_ICON}
-                                </button>
-                             </p>
-                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[200px]" title="${order.customerName}">
-                                ${order.customerName}
-                            </h3>
-                            <p class="text-xs text-gray-500 font-mono mt-0.5">${order.telNo}</p>
-                        </div>
-                        <div class="text-right">
-                             <p class="text-lg font-bold text-gray-800">₹${order.total}</p>
-                             <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-1">
-                                ✅ Verified
-                             </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Courier Suggestion Badge (if exists) -->
-                ${order.suggestedCourier || order.courierSuggestion?.suggestedCourier ? `
-                <div class="mx-4 mt-3 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-3 rounded-xl shadow-sm">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xl">🚚</span>
-                        <div class="flex-grow">
-                            <div class="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Courier Suggested</div>
-                            <div class="text-sm font-black text-purple-800">${order.suggestedCourier || order.courierSuggestion?.suggestedCourier}</div>
-                        </div>
-                        <span class="bg-purple-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">SENT</span>
-                    </div>
-                    ${order.courierSuggestion?.suggestedBy ? `<div class="text-[10px] text-purple-500 mt-1 ml-7">By: ${order.courierSuggestion.suggestedBy}</div>` : ''}
-                </div>
-                ` : ''}
-
-                <!-- Footer Actions -->
-                <div class="p-4 flex gap-2 items-center justify-between border-t border-purple-100 mt-auto">
-                    <div class="text-xs text-gray-500">
-                        <span class="block text-gray-400 text-[10px] uppercase font-bold">Verified On</span>
-                        ${order.verifiedAt ? new Date(order.verifiedAt).toLocaleDateString() + ' ' + new Date(order.verifiedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (order.timestamp ? new Date(order.timestamp).toLocaleDateString() : 'N/A')}
-                    </div>
-                    <button type="button" onclick="viewOrder('${order.orderId}')" 
-                        class="bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">
-                        👁️ View Details
-                    </button>
-                </div>
-            </div>`;
-        });
-        document.getElementById('verificationHistoryList').innerHTML = html;
-
-    } catch (e) {
-        console.error(e);
-    }
+    // History tab has been removed
 }
 
-
 function resetVerificationHistoryFilters() {
-    document.getElementById('verificationHistorySearch').value = '';
-    document.getElementById('verificationHistoryStartDate').value = '';
-    document.getElementById('verificationHistoryEndDate').value = '';
-    loadVerificationHistory();
+    // History tab has been removed
 }
 
 async function filterVerificationOrders(mobile) {
@@ -10154,7 +10653,6 @@ async function filterVerificationOrders(mobile) {
 
     if (!searchValue) {
         if (activeTabContent.id === 'verificationPendingTab') loadDeptOrders();
-        else if (activeTabContent.id === 'verificationHistoryTab') loadVerificationHistory();
         return;
     }
 
@@ -10178,13 +10676,11 @@ async function filterVerificationOrders(mobile) {
             const { params } = buildVerificationPendingParams(0);
             const res = await fetch(`${API_URL}/orders?${params.toString()}`);
             const data = await res.json();
-            orders = (data.orders || []).filter(matchesVerificationSearch);
-        } else if (activeTabContent.id === 'verificationHistoryTab') {
-            listId = 'verificationHistoryList';
-            isHistory = true;
-            const res = await fetch(`${API_URL}/orders`);
-            const data = await res.json();
-            orders = (data.orders || []).filter(matchesVerificationSearch);
+            let rawOrders = data.orders || [];
+            orders = rawOrders.filter(matchesVerificationSearch);
+            if (verificationPendingSelectedEmployee) {
+                orders = orders.filter(o => (o.employeeId || o.createdBy) === verificationPendingSelectedEmployee);
+            }
         }
 
         if (!listId) return;
@@ -10200,77 +10696,47 @@ async function filterVerificationOrders(mobile) {
 
         let html = '';
         orders.forEach(order => {
-            if (isHistory) {
-                // History Style Card (Purple)
-                html += `
-                        <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-purple-100 flex flex-col h-full bg-slate-50">
-                            <div class="p-4 border-b border-purple-50 bg-gradient-to-r from-purple-50/50 to-white relative">
-                                <div class="flex justify-between items-start relative z-10">
-                                    <div>
-                                         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-2">
-                                            Order #${order.orderId}
-                                            <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                                                class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
-                                                ${WHATSAPP_ICON}
-                                            </button>
-                                         </p>
-                                        <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[200px]" title="${order.customerName}">${order.customerName}</h3>
-                                        <p class="text-xs text-gray-500 font-mono mt-0.5">${order.telNo}</p>
+            html += `
+                    <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-gray-100 flex flex-col h-full">
+                        <div class="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white relative">
+                            <div class="absolute top-0 right-0 w-24 h-24 bg-blue-400 rounded-bl-full opacity-5 pointer-events-none"></div>
+                            <div class="flex justify-between items-start relative z-10">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-md border border-blue-200 uppercase tracking-wide">${order.orderId}</span>
+                                        <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                                            class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
+                                            ${WHATSAPP_ICON}
+                                        </button>
                                     </div>
-                                    <div class="text-right">
-                                         <p class="text-lg font-bold text-gray-800">₹${order.total}</p>
-                                         <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-1">✅ ${order.status}</span>
-                                    </div>
+                                    <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">${order.customerName}</h3>
+                                </div>
+                                <div class="text-right">
+                                        <p class="text-xl font-black text-gray-800 tracking-tight">₹${order.total}</p>
                                 </div>
                             </div>
-                             <div class="p-4 flex gap-2 items-center justify-between border-t border-purple-100">
-                                <button type="button" onclick="viewOrder('${order.orderId}')" class="bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-colors">👁️ View Details</button>
-                            </div>
-                        </div>`;
-            } else {
-                // Pending Style Card (Blue)
-                html += `
-                        <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-gray-100 flex flex-col h-full">
-                            <div class="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white relative">
-                                <div class="absolute top-0 right-0 w-24 h-24 bg-blue-400 rounded-bl-full opacity-5 pointer-events-none"></div>
-                                <div class="flex justify-between items-start relative z-10">
-                                    <div>
-                                        <div class="flex items-center gap-2 mb-1">
-                                            <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-md border border-blue-200 uppercase tracking-wide">${order.orderId}</span>
-                                            <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-                                                class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
-                                                ${WHATSAPP_ICON}
-                                            </button>
-                                        </div>
-                                        <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[180px]" title="${order.customerName}">${order.customerName}</h3>
-                                    </div>
-                                    <div class="text-right">
-                                         <p class="text-xl font-black text-gray-800 tracking-tight">₹${order.total}</p>
-                                    </div>
+                        </div>
+                        <div class="p-5 space-y-4 flex-grow bg-white/60">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0">📞</div>
+                                <div>
+                                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Contact</p>
+                                    <p class="text-sm font-semibold text-gray-700 font-mono">${order.telNo}</p>
                                 </div>
                             </div>
-                            <div class="p-5 space-y-4 flex-grow bg-white/60">
-                                <div class="flex items-start gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0">📞</div>
-                                    <div>
-                                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Contact</p>
-                                        <p class="text-sm font-semibold text-gray-700 font-mono">${order.telNo}</p>
-                                    </div>
-                                </div>
+                        </div>
+                        <div class="p-4 bg-gray-50 border-t border-gray-100 grid gap-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" onclick="showMap('${order.orderId}', '${(order.address || '').replace(/'/g, "\\'") + ' ' + (order.pin || '')}')" class="bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1">📍 Locate</button>
+                                <button type="button" onclick="viewOrder('${order.orderId}')" class="bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1">👁️ Details</button>
                             </div>
-                            <div class="p-4 bg-gray-50 border-t border-gray-100 grid gap-2">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button type="button" onclick="showMap('${order.orderId}', '${(order.address || '').replace(/'/g, "\\'") + ' ' + (order.pin || '')}')" class="bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1">📍 Locate</button>
-                                    <button type="button" onclick="viewOrder('${order.orderId}')" class="bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1">👁️ Details</button>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2 mt-1">
-                                   <button type="button" onclick="verifyAddress('${order.orderId}')" class="bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-emerald-600 transition-all flex items-center justify-center gap-1">✅ VERIFY</button>
-                                   <button type="button" onclick="markAsUnverified('${order.orderId}')" class="bg-amber-100 text-amber-700 border border-amber-200 py-2.5 rounded-xl text-xs font-bold hover:bg-amber-200 transition-colors flex items-center justify-center gap-1">⏸️ HOLD</button>
-                               </div>
+                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                <button type="button" onclick="verifyAddress('${order.orderId}')" class="bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-emerald-600 transition-all flex items-center justify-center gap-1">✅ VERIFY</button>
+                                <button type="button" onclick="markAsUnverified('${order.orderId}')" class="bg-amber-100 text-amber-700 border border-amber-200 py-2.5 rounded-xl text-xs font-bold hover:bg-amber-200 transition-colors flex items-center justify-center gap-1">⏸️ HOLD</button>
                             </div>
-                            <div id="map-${order.orderId}" class="hidden h-64 w-full bg-gray-100 border-t border-gray-200 relative animate-fadeIn"></div>
-                        </div>`;
-            }
+                        </div>
+                        <div id="map-${order.orderId}" class="hidden h-64 w-full bg-gray-100 border-t border-gray-200 relative animate-fadeIn"></div>
+                    </div>`;
         });
         document.getElementById(listId).innerHTML = html;
 
@@ -10318,9 +10784,6 @@ document.addEventListener('keydown', function (event) {
         // Verification Dept
         else if (focusedId === 'verificationMobileSearch') {
             filterVerificationOrders(document.getElementById('verificationMobileSearch').value);
-        }
-        else if (focusedId === 'verificationHistorySearch') {
-            loadVerificationHistory();
         }
 
         // Dispatch Dept
@@ -11242,7 +11705,7 @@ function filterDeptOrdersHeader(query) {
     }
 
     if (currentDeptType === 'verification') {
-        const inputs = ['verificationPendingSearch', 'verificationUnverifiedSearch', 'verificationHistorySearch'];
+        const inputs = ['verificationPendingSearch', 'verificationUnverifiedSearch'];
         inputs.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = q;
@@ -11252,7 +11715,6 @@ function filterDeptOrdersHeader(query) {
         if (activeTab) {
             if (activeTab.id === 'deptTabPending') loadDeptOrders();
             else if (activeTab.id === 'deptTabUnverified') filterVerificationUnverified();
-            else if (activeTab.id === 'deptTabHistory') loadVerificationHistory();
             else if (activeTab.id === 'deptTabCancelled') loadVerificationCancelled();
         }
     } else if (currentDeptType === 'dispatch') {

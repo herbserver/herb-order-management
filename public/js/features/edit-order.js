@@ -47,7 +47,7 @@ async function openEditOrderModal(orderId) {
             const amount = item.amount || (rate * qty) || 0;
             itemsHtml += `
                 <div class="grid grid-cols-12 gap-2 items-center bg-white/50 p-2 rounded-lg border border-emerald-100 edit-item-row">
-                    <input type="text" value="${item.description || item.name || ''}" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500">
+                    <input type="text" value="${item.description || item.product || item.name || ''}" placeholder="Product" class="col-span-12 md:col-span-5 border rounded-lg px-3 py-2 text-sm edit-item-desc outline-none focus:border-emerald-500">
                     <input type="number" value="${qty}" min="1" placeholder="Qty" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-qty outline-none focus:border-emerald-500 text-center font-bold" oninput="updateEditItemAmount(this)">
                     <input type="number" value="${rate}" placeholder="Rate" class="col-span-3 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-rate outline-none focus:border-emerald-500" oninput="updateEditItemAmount(this)">
                     <input type="number" value="${amount}" placeholder="Amt" class="col-span-4 md:col-span-2 border rounded-lg px-2 py-2 text-sm edit-item-amount outline-none focus:border-emerald-500 bg-gray-50 font-bold" oninput="updateEditTotal()">
@@ -108,14 +108,26 @@ async function openEditOrderModal(orderId) {
                                 <span class="col-span-2 md:col-span-1"></span>
                             </div>
                             <div id="editItemsContainer" class="space-y-2">${itemsHtml}</div>
-                            <div class="mt-3 pt-3 border-t border-emerald-300 flex justify-between font-bold text-lg">
-                                <span>Total:</span>
-                                <span id="editTotalAmount" class="text-red-600">₹${order.total || 0}</span>
+                            
+                            <!-- Subtotal, Discount & Total (Gross) Calculations -->
+                            <div class="mt-3 pt-3 border-t border-emerald-300 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                                <div class="flex items-center justify-between md:justify-start gap-2">
+                                    <span class="text-sm font-bold text-slate-500">Subtotal:</span>
+                                    <span id="editSubtotalAmount" class="font-bold text-slate-800 text-lg">₹0.00</span>
+                                </div>
+                                <div class="flex items-center justify-between md:justify-start gap-2">
+                                    <span class="text-sm font-bold text-slate-500">Discount:</span>
+                                    <input type="number" id="editDiscount" value="${order.discount || 0}" oninput="updateEditTotal()" class="w-28 border-2 rounded-lg px-2 py-1 text-center font-bold text-slate-800 outline-none focus:border-emerald-500">
+                                </div>
+                                <div class="flex items-center justify-between md:justify-end gap-2 text-lg font-black">
+                                    <span class="text-slate-800">Total:</span>
+                                    <span id="editTotalAmount" class="text-red-600">₹${order.total || 0}</span>
+                                </div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="block text-sm font-medium mb-1">Advance</label><input type="number" id="editAdvance" value="${order.advance || 0}" oninput="updateEditCOD()" class="w-full border-2 rounded-xl px-4 py-2"></div>
-                            <div><label class="block text-sm font-medium mb-1">COD Amount</label><input type="number" id="editCodAmount" value="${order.codAmount || 0}" readonly class="w-full border-2 rounded-xl px-4 py-2 bg-red-50 text-red-700 font-bold"></div>
+                            <div><label class="block text-sm font-medium mb-1">COD Amount</label><input type="number" id="editCodAmount" value="${order.codAmount !== undefined ? order.codAmount : (order.cod !== undefined ? order.cod : Math.max(0, (order.total || 0) - (order.advance || 0)))}" readonly class="w-full border-2 rounded-xl px-4 py-2 bg-red-50 text-red-700 font-bold"></div>
                         </div>
                         <div class="flex gap-3">
                             <button type="button" onclick="document.getElementById('dynamicEditModal').remove();" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-medium">Cancel</button>
@@ -127,6 +139,7 @@ async function openEditOrderModal(orderId) {
         `;
 
         document.body.appendChild(modal);
+        updateEditTotal();
         console.log('Dynamic edit modal created and appended to body');
 
     } catch (e) {
@@ -175,15 +188,25 @@ function updateEditItemAmount(input) {
  * Update total amount from all items
  */
 function updateEditTotal() {
-    let total = 0;
+    let subtotal = 0;
 
     document.querySelectorAll('.edit-item-amount').forEach(input => {
-        total += parseFloat(input.value) || 0;
+        subtotal += parseFloat(input.value) || 0;
     });
+
+    const subtotalEl = document.getElementById('editSubtotalAmount');
+    if (subtotalEl) {
+        subtotalEl.textContent = '₹' + subtotal.toFixed(2);
+    }
+
+    const discountEl = document.getElementById('editDiscount');
+    const discount = discountEl ? (parseFloat(discountEl.value) || 0) : 0;
+
+    const grossTotal = Math.max(0, subtotal - discount);
 
     const totalEl = document.getElementById('editTotalAmount');
     if (totalEl) {
-        totalEl.textContent = '₹' + total.toFixed(2);
+        totalEl.textContent = '₹' + grossTotal.toFixed(2);
     }
     updateEditCOD();
 }
@@ -252,7 +275,9 @@ async function saveEditOrder() {
         });
     });
 
-    const total = items.reduce((sum, item) => sum + item.amount, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
+    const discount = parseFloat(document.getElementById('editDiscount')?.value) || 0;
+    const total = Math.max(0, subtotal - discount);
 
     // Build address
     const addressParts = [
@@ -282,9 +307,11 @@ async function saveEditOrder() {
         landMark: toTitleCase(document.getElementById('editLandMark').value.trim()),
         address: addressParts.map(p => toTitleCase(p.trim())).join(', '),
         items,
+        discount,
         total,
         advance: parseFloat(document.getElementById('editAdvance').value) || 0,
         codAmount: parseFloat(document.getElementById('editCodAmount').value) || 0,
+        cod: parseFloat(document.getElementById('editCodAmount').value) || 0,
         editedBy: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : 'Department',
         editedAt: new Date().toISOString()
     };

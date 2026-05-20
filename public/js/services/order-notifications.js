@@ -291,6 +291,11 @@ function showOrderUpdateNotification(alertPayload) {
 
     playOrderNotificationSound(alertPayload.priority);
     showBrowserOrderNotification(alertPayload);
+    
+    // Push into custom notification center & glowing badge
+    if (typeof addNotificationToCenter === 'function') {
+        addNotificationToCenter(alertPayload);
+    }
 }
 
 function handleRealtimeOrderEvent(order, source) {
@@ -433,6 +438,11 @@ async function initializeOrderNotifications() {
     window.orderNotificationState.initialized = true;
 
     window.orderNotificationState.interval = setInterval(checkOrderUpdates, ORDER_NOTIFICATION_POLL_MS);
+    
+    // Initial Render of stored notifications in Notification Center
+    if (typeof renderNotificationCenter === 'function') {
+        renderNotificationCenter();
+    }
     console.log('Order notifications initialized (polling every 12 seconds + realtime socket).');
 }
 
@@ -594,7 +604,256 @@ if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
 }
 
+// ==================== CUSTOM NOTIFICATION CENTER ENGINE ====================
+
+function addNotificationToCenter(alertPayload) {
+    const employeeId = getCurrentEmployeeIdSafe();
+    if (!employeeId) return;
+
+    const storageKey = `herb_emp_notifications_${employeeId}`;
+    let list = [];
+    try {
+        list = JSON.parse(localStorage.getItem(storageKey)) || [];
+    } catch (e) {
+        list = [];
+    }
+
+    const newNotif = {
+        id: alertPayload.id || `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        orderId: alertPayload.orderId,
+        customerName: alertPayload.customerName || '',
+        message: alertPayload.message || '',
+        currentStatus: alertPayload.currentStatus || 'Updated',
+        timestamp: Date.now(),
+        read: false
+    };
+
+    // Prepend to list & limit to latest 20 alerts
+    list.unshift(newNotif);
+    if (list.length > 20) {
+        list = list.slice(0, 20);
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(list));
+    renderNotificationCenter();
+}
+
+function renderNotificationCenter() {
+    const employeeId = getCurrentEmployeeIdSafe();
+    if (!employeeId) return;
+
+    const storageKey = `herb_emp_notifications_${employeeId}`;
+    let list = [];
+    try {
+        list = JSON.parse(localStorage.getItem(storageKey)) || [];
+    } catch (e) {
+        list = [];
+    }
+
+    const unreadCount = list.filter(n => !n.read).length;
+
+    // Update unread badges
+    const badgeDesktop = document.getElementById('notificationBadge');
+    const badgeMobile = document.getElementById('notificationBadgeMobile');
+
+    if (badgeDesktop) {
+        if (unreadCount > 0) {
+            badgeDesktop.textContent = unreadCount;
+            badgeDesktop.classList.remove('hidden');
+        } else {
+            badgeDesktop.classList.add('hidden');
+        }
+    }
+
+    if (badgeMobile) {
+        if (unreadCount > 0) {
+            badgeMobile.textContent = unreadCount;
+            badgeMobile.classList.remove('hidden');
+        } else {
+            badgeMobile.classList.add('hidden');
+        }
+    }
+
+    // Render list feeds
+    const listDesktop = document.getElementById('notificationList');
+    const listMobile = document.getElementById('notificationListMobile');
+
+    const renderListHTML = (items, isMobile) => {
+        if (items.length === 0) {
+            return `
+                <div class="text-center py-8 text-slate-400 font-bold text-xs" id="${isMobile ? 'emptyNotificationMsgMobile' : 'emptyNotificationMsg'}">
+                    <span class="text-2xl block mb-2">🎉</span>
+                    All caught up! No new alerts.
+                </div>
+            `;
+        }
+
+        return items.map(n => {
+            const isUnread = !n.read;
+            const timeStr = formatElapsedTime(n.timestamp);
+            
+            // Icon & colors by status type
+            let icon = '📢';
+            let colorCls = 'bg-blue-50 text-blue-600 border-blue-100';
+            const status = String(n.currentStatus || '').toLowerCase();
+            
+            if (status.includes('deliver')) {
+                icon = '✅';
+                colorCls = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+            } else if (status.includes('cancel')) {
+                icon = '❌';
+                colorCls = 'bg-rose-50 text-rose-600 border-rose-100';
+            } else if (status.includes('rto')) {
+                icon = '↩️';
+                colorCls = 'bg-indigo-50 text-indigo-600 border-indigo-100';
+            } else if (status.includes('hold')) {
+                icon = '⏳';
+                colorCls = 'bg-amber-50 text-amber-600 border-amber-100';
+            } else if (status.includes('dispatch')) {
+                icon = '🚚';
+                colorCls = 'bg-purple-50 text-purple-600 border-purple-100';
+            } else if (status.includes('verify')) {
+                icon = '🛡️';
+                colorCls = 'bg-sky-50 text-sky-600 border-sky-100';
+            }
+
+            return `
+                <div onclick="markNotificationAsRead(event, '${n.id}')" 
+                    class="p-3 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col gap-2 relative group overflow-hidden ${isUnread ? 'bg-slate-50/80 border-slate-200 hover:bg-slate-100/90' : 'bg-white border-slate-100 hover:bg-slate-50'}">
+                    
+                    ${isUnread ? `<span class="absolute top-3 right-3 w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>` : ''}
+                    
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm border flex-shrink-0 ${colorCls}">${icon}</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-xs font-black text-slate-800 truncate">${n.orderId}${n.customerName ? ` - ${n.customerName}` : ''}</p>
+                                <span class="text-[9px] text-slate-400 font-bold flex-shrink-0">${timeStr}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">${n.message}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-1.5 justify-end mt-1">
+                        <button onclick="event.stopPropagation(); viewOrder('${n.orderId}'); markNotificationAsRead(event, '${n.id}');" 
+                            class="text-[9px] font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg transition-colors shadow-sm">View Details</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    if (listDesktop) {
+        listDesktop.innerHTML = renderListHTML(list, false);
+    }
+    if (listMobile) {
+        listMobile.innerHTML = renderListHTML(list, true);
+    }
+}
+
+function formatElapsedTime(timestamp) {
+    const diffMs = Date.now() - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1m ago';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours === 1) return '1h ago';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return new Date(timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+}
+
+function markNotificationAsRead(event, id) {
+    if (event) event.stopPropagation();
+    const employeeId = getCurrentEmployeeIdSafe();
+    if (!employeeId) return;
+
+    const storageKey = `herb_emp_notifications_${employeeId}`;
+    let list = [];
+    try {
+        list = JSON.parse(localStorage.getItem(storageKey)) || [];
+    } catch (e) {
+        list = [];
+    }
+
+    list = list.map(n => {
+        if (n.id === id) {
+            n.read = true;
+        }
+        return n;
+    });
+
+    localStorage.setItem(storageKey, JSON.stringify(list));
+    renderNotificationCenter();
+}
+
+function clearAllNotifications(event) {
+    if (event) event.stopPropagation();
+    const employeeId = getCurrentEmployeeIdSafe();
+    if (!employeeId) return;
+
+    const storageKey = `herb_emp_notifications_${employeeId}`;
+    localStorage.setItem(storageKey, JSON.stringify([]));
+    renderNotificationCenter();
+}
+
+function toggleNotificationDropdown(event, isMobile) {
+    if (event) event.stopPropagation();
+
+    const dropdownDesktop = document.getElementById('notificationDropdown');
+    const dropdownMobile = document.getElementById('notificationDropdownMobile');
+
+    if (isMobile) {
+        if (dropdownDesktop) dropdownDesktop.classList.add('hidden');
+        if (dropdownMobile) {
+            const isHidden = dropdownMobile.classList.contains('hidden');
+            if (isHidden) {
+                dropdownMobile.classList.remove('hidden');
+            } else {
+                dropdownMobile.classList.add('hidden');
+            }
+        }
+    } else {
+        if (dropdownMobile) dropdownMobile.classList.add('hidden');
+        if (dropdownDesktop) {
+            const isHidden = dropdownDesktop.classList.contains('hidden');
+            if (isHidden) {
+                dropdownDesktop.classList.remove('hidden');
+            } else {
+                dropdownDesktop.classList.add('hidden');
+            }
+        }
+    }
+}
+
+// Click outside helper to auto-close dropdown menus
+document.addEventListener('click', function(event) {
+    const dropdownDesktop = document.getElementById('notificationDropdown');
+    const dropdownMobile = document.getElementById('notificationDropdownMobile');
+    const bellBtnDesktop = document.getElementById('notificationBellBtn');
+    const bellBtnMobile = document.getElementById('notificationBellBtnMobile');
+
+    if (dropdownDesktop && !dropdownDesktop.classList.contains('hidden')) {
+        if (!dropdownDesktop.contains(event.target) && (!bellBtnDesktop || !bellBtnDesktop.contains(event.target))) {
+            dropdownDesktop.classList.add('hidden');
+        }
+    }
+    
+    if (dropdownMobile && !dropdownMobile.classList.contains('hidden')) {
+        if (!dropdownMobile.contains(event.target) && (!bellBtnMobile || !bellBtnMobile.contains(event.target))) {
+            dropdownMobile.classList.add('hidden');
+        }
+    }
+});
+
+// Bind to window for global namespace access inside HTML templates
 window.initializeOrderNotifications = initializeOrderNotifications;
 window.dismissOrderAlert = dismissOrderAlert;
+window.addNotificationToCenter = addNotificationToCenter;
+window.renderNotificationCenter = renderNotificationCenter;
+window.markNotificationAsRead = markNotificationAsRead;
+window.clearAllNotifications = clearAllNotifications;
+window.toggleNotificationDropdown = toggleNotificationDropdown;
 
-console.log('Employee order notification module loaded.');
+console.log('Employee order notification module loaded with custom Notification Center.');

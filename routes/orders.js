@@ -44,9 +44,9 @@ function normalizeOrderItems(rawItems) {
 
         return {
             ...item,
-            ...(item.product !== undefined ? { product: normalizedName } : {}),
-            ...(item.description !== undefined ? { description: normalizedName } : {}),
-            ...(item.name !== undefined ? { name: normalizedName } : {})
+            product: normalizedName,
+            description: normalizedName,
+            name: normalizedName
         };
     });
 }

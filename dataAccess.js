@@ -1,4 +1,4 @@
-﻿// MongoDB Data Access Layer
+// MongoDB Data Access Layer
 // This module provides functions to interact with MongoDB collections only.
 
 const path = require('path');
@@ -160,13 +160,11 @@ async function getAllOrders(page = 1, limit = 0, startDate = null, endDate = nul
     if (startDate || endDate) {
         dateQuery.timestamp = {};
         if (startDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
+            const start = new Date(`${startDate}T00:00:00+05:30`);
             dateQuery.timestamp.$gte = start.toISOString();
         }
         if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
+            const end = new Date(`${endDate}T23:59:59.999+05:30`);
             dateQuery.timestamp.$lte = end.toISOString();
         }
     }
@@ -191,8 +189,8 @@ async function getAllOrders(page = 1, limit = 0, startDate = null, endDate = nul
 
     // Date Filtering for JSON
     if (startDate || endDate) {
-        const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
-        const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+        const start = startDate ? new Date(`${startDate}T00:00:00+05:30`).getTime() : null;
+        const end = endDate ? new Date(`${endDate}T23:59:59.999+05:30`).getTime() : null;
 
         orders = orders.filter(o => {
             const oDate = new Date(o.timestamp).getTime();
@@ -833,13 +831,11 @@ async function getEmployeeOrders(empId, status = null, page = 1, limit = 0, star
     if (startDate || endDate) {
         dateQuery.timestamp = {};
         if (startDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
+            const start = new Date(`${startDate}T00:00:00+05:30`);
             dateQuery.timestamp.$gte = start.toISOString();
         }
         if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
+            const end = new Date(`${endDate}T23:59:59.999+05:30`);
             dateQuery.timestamp.$lte = end.toISOString();
         }
     }
@@ -869,8 +865,8 @@ async function getEmployeeOrders(empId, status = null, page = 1, limit = 0, star
 
     // Date Filtering for JSON
     if (startDate || endDate) {
-        const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
-        const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+        const start = startDate ? new Date(`${startDate}T00:00:00+05:30`).getTime() : null;
+        const end = endDate ? new Date(`${endDate}T23:59:59.999+05:30`).getTime() : null;
 
         filtered = filtered.filter(o => {
             const oDate = new Date(o.timestamp).getTime();

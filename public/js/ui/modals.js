@@ -67,6 +67,26 @@ async function viewOrder(orderId) {
             : '';
         const employeeRemarkBy = order.employee || order.employeeName || 'Employee';
 
+        const grossTotalVal = Number(order.total || 0);
+        const advanceVal = Number(order.advance || 0);
+        const codVal = order.codAmount !== undefined ? Number(order.codAmount) : (order.cod !== undefined ? Number(order.cod) : Math.max(0, grossTotalVal - advanceVal));
+
+        let subtotalVal = order.subtotal;
+        if (subtotalVal === undefined || subtotalVal === null) {
+            if (order.items && order.items.length > 0) {
+                subtotalVal = order.items.reduce((sum, item) => {
+                    const rate = Number(item.rate || item.price || 0);
+                    const qty = Number(item.quantity || item.qty || 1);
+                    return sum + (rate * qty);
+                }, 0);
+            }
+        }
+        if (subtotalVal === undefined || subtotalVal === null || subtotalVal < grossTotalVal) {
+            subtotalVal = grossTotalVal + Number(order.discount || 0);
+        }
+        subtotalVal = Number(subtotalVal || 0);
+        const discountVal = order.discount !== undefined ? Number(order.discount) : Math.max(0, subtotalVal - grossTotalVal);
+
         // Standardize on orderDetailModal (Premium)
         let modalElement = document.getElementById('orderDetailModal');
         let modalContent = document.getElementById('orderDetailContent');
@@ -113,7 +133,7 @@ async function viewOrder(orderId) {
                                 </p>
                             </div>
                             <div class="text-right">
-                                <p class="text-5xl font-black drop-shadow-2xl tracking-tighter">₹${order.total || 0}</p>
+                                <p class="text-5xl font-black drop-shadow-2xl tracking-tighter">₹${grossTotalVal}</p>
                                 <p class="text-xs font-black text-white/60 uppercase tracking-widest mt-1">Total Order Value</p>
                             </div>
                         </div>
@@ -286,7 +306,7 @@ async function viewOrder(orderId) {
                     const subtotal = item.amount || (rate * qty);
                     return `
                                                 <tr class="hover:bg-blue-50/30 transition-all">
-                                                    <td class="px-8 py-5 font-black text-gray-800">${item.description || 'Unnamed Product'}</td>
+                                                    <td class="px-8 py-5 font-black text-gray-800">${item.description || item.product || item.name || 'Unnamed Product'}</td>
                                                     <td class="px-8 py-5 text-right font-bold text-gray-500">₹${rate}</td>
                                                     <td class="px-8 py-5 text-center">
                                                         <span class="bg-gray-100 px-3 py-1 rounded-lg text-sm font-black text-gray-700">x${qty}</span>
@@ -302,24 +322,32 @@ async function viewOrder(orderId) {
                             </div>
                             
                             <!-- Detailed Totals Summary -->
-                            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 mx-4 mb-4 mt-2 p-8 rounded-[30px] shadow-lg border border-emerald-100 relative overflow-hidden">
-                                <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-100/50 rounded-full -mr-32 -mt-32 pointer-events-none"></div>
-                                <div class="flex flex-col gap-4 ml-auto w-full md:w-1/2 relative z-10">
+                            <div class="bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 mx-4 mb-4 mt-2 p-8 rounded-[30px] shadow-lg border border-emerald-100 relative overflow-hidden">
+                                <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-100/30 rounded-full -mr-32 -mt-32 pointer-events-none"></div>
+                                <div class="flex flex-col gap-3.5 ml-auto w-full md:w-1/2 relative z-10">
                                     <div class="flex justify-between text-gray-500 text-xs font-black uppercase tracking-widest">
-                                        <span>Order Total (MRP)</span>
-                                        <span class="text-gray-800 font-bold">₹${order.total || 0}</span>
+                                        <span>Subtotal (MRP Total)</span>
+                                        <span class="text-gray-800 font-bold">₹${subtotalVal}</span>
                                     </div>
                                     <div class="flex justify-between text-gray-500 text-xs font-black uppercase tracking-widest">
-                                        <span>Advance Payment</span>
-                                        <span class="text-emerald-600 font-bold">- ₹${order.advance || 0}</span>
+                                        <span>Discount Offered</span>
+                                        <span class="text-rose-600 font-bold">- ₹${discountVal}</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-600 text-xs font-black uppercase tracking-widest border-t border-dashed border-gray-300 pt-2.5">
+                                        <span>Gross Total</span>
+                                        <span class="text-gray-900 font-black">₹${grossTotalVal}</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-500 text-xs font-black uppercase tracking-widest pb-1">
+                                        <span>Advance Paid</span>
+                                        <span class="text-emerald-600 font-bold">- ₹${advanceVal}</span>
                                     </div>
                                     <div class="h-px bg-gray-300 my-1"></div>
                                     <div class="flex justify-between items-end">
                                         <div class="flex flex-col">
-                                            <span class="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mb-1">Total Balance Due</span>
+                                            <span class="text-[10px] font-black text-rose-500 uppercase tracking-[0.3em] mb-1">Total Balance Due</span>
                                             <span class="text-3xl font-black text-gray-800 tracking-tighter">COD Payable</span>
                                         </div>
-                                        <span class="text-4xl font-black text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">₹${order.codAmount || 0}</span>
+                                        <span class="text-4xl font-black text-rose-600 drop-shadow-[0_0_15px_rgba(225,29,72,0.35)]">₹${codVal}</span>
                                     </div>
                                 </div>
                             </div>

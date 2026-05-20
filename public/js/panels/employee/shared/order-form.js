@@ -207,6 +207,8 @@
     function buildOrderPayload(form) {
         const items = collectItems();
         const total = Number(document.getElementById('totalAmountInput')?.value || 0);
+        const subtotal = Number(document.getElementById('subtotalDisplay')?.innerText || 0);
+        const discount = Number(document.getElementById('discountInput')?.value || 0);
         const codAmount = Number(form.codAmount.value || 0);
         const telNo = String(form.telNo.value || '').trim();
 
@@ -234,6 +236,8 @@
             altNo: String(form.altNo.value || '').trim(),
             items,
             total,
+            subtotal,
+            discount,
             advance: Number(form.advance.value || 0),
             cod: codAmount,
             codAmount,

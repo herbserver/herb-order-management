@@ -121,10 +121,15 @@ _Team Herb On Naturals_`
 var currentUser = currentUser || null;
 
 function saveSession(user, type, deptType) {
+    // Fall back to global variables if called without arguments (compatibility with session.js style)
+    const resolvedUser = (user !== undefined) ? user : currentUser;
+    const resolvedType = (type !== undefined) ? type : currentUserType;
+    const resolvedDeptType = (deptType !== undefined) ? deptType : (currentDeptType || 'verification');
+
     const session = {
-        user: user,
-        type: type,
-        deptType: deptType || 'verification'
+        user: resolvedUser,
+        type: resolvedType,
+        deptType: resolvedDeptType
     };
     localStorage.setItem('herb_session', JSON.stringify(session));
 }
@@ -531,7 +536,7 @@ async function viewOrder(orderId) {
                     const subtotal = item.amount || (rate * qty);
                     return `
                                                 <tr class="hover:bg-blue-50/30 transition-all">
-                                                    <td class="px-8 py-5 font-black text-gray-800">${item.description || 'Unnamed Product'}</td>
+                                                    <td class="px-8 py-5 font-black text-gray-800">${item.description || item.product || item.name || 'Unnamed Product'}</td>
                                                     <td class="px-8 py-5 text-right font-bold text-gray-500">₹${rate}</td>
                                                     <td class="px-8 py-5 text-center">
                                                         <span class="bg-gray-100 px-3 py-1 rounded-lg text-sm font-black text-gray-700">x${qty}</span>
@@ -564,7 +569,7 @@ async function viewOrder(orderId) {
                                             <span class="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mb-1">Total Balance Due</span>
                                             <span class="text-3xl font-black text-gray-800 tracking-tighter">COD Payable</span>
                                         </div>
-                                        <span class="text-4xl font-black text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">₹${order.codAmount || 0}</span>
+                                         <span class="text-4xl font-black text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">₹${order.codAmount !== undefined ? order.codAmount : (order.cod !== undefined ? order.cod : Math.max(0, (order.total || 0) - (order.advance || 0)))}</span>
                                     </div>
                                 </div>
                             </div>

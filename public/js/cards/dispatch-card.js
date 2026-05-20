@@ -47,7 +47,7 @@ function renderDispatchCardModern(o) {
         
         <div class="bg-gradient-to-br from-yellow-50 to-amber-50 p-4 rounded-xl border-2 border-yellow-300 mb-4 flex items-center justify-between shadow-sm">
             <span class="text-base font-bold text-yellow-800">💰 COD Amount</span>
-            <span class="text-2xl font-black bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">₹${o.codAmount || o.total || 0}</span>
+            <span class="text-2xl font-black bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">₹${o.codAmount !== undefined ? o.codAmount : (o.cod !== undefined ? o.cod : Math.max(0, (o.total || 0) - (o.advance || 0)))}</span>
         </div>
         
         ${suggestedCourier ? `

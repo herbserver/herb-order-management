@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const dataAccess = require('../dataAccess');
 const { Employee, Order } = require('../models');
@@ -9,13 +9,11 @@ function buildTimestampMatch(startDate, endDate) {
     if (startDate || endDate) {
         match.timestamp = {};
         if (startDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
+            const start = new Date(`${startDate}T00:00:00+05:30`);
             match.timestamp.$gte = start.toISOString();
         }
         if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
+            const end = new Date(`${endDate}T23:59:59.999+05:30`);
             match.timestamp.$lte = end.toISOString();
         }
     }
@@ -54,8 +52,14 @@ function getEffectiveOrderDate(order) {
         return explicitDate;
     }
 
-    const timestamp = String(order?.timestamp || '').trim();
-    return timestamp ? timestamp.slice(0, 10) : '';
+    const timestamp = order?.timestamp;
+    if (timestamp) {
+        const date = new Date(timestamp);
+        const offset = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
+        const istDate = new Date(date.getTime() + offset);
+        return istDate.toISOString().slice(0, 10);
+    }
+    return '';
 }
 
 function filterOrdersByDateField(orders, startDate, endDate) {

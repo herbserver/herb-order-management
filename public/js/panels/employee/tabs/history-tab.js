@@ -16,7 +16,15 @@
 
         try {
             const data = await ordersApi.fetchEmployeeOrders();
-            const selectedDate = document.getElementById('empHistoryDate')?.value || '';
+            const dateInput = document.getElementById('empHistoryDate');
+            if (dateInput && !dateInput.value) {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                dateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+            const selectedDate = dateInput?.value || '';
 
             let orders = (data.orders || []).filter((order) => FINAL_STATUSES.includes(order.status));
             if (selectedDate) {

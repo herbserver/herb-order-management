@@ -147,13 +147,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== TAB SWITCHING ====================
 function switchEmpTab(tab) {
     // Hide all contents
-    ['empOrderTab', 'empTrackingTab', 'empHistoryTab', 'empProgressTab', 'empOfdTab', 'empUndeliveredTab', 'empCancelledTab', 'empProfileTab'].forEach(id => {
+    ['empOrderTab', 'empTrackingTab', 'empOfdTab', 'empUndeliveredTab', 'empCancelledTab', 'empProfileTab'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
 
     // Reset buttons
-    ['empTabOrder', 'empTabTracking', 'empTabHistory', 'empTabProgress', 'empTabOfd', 'empTabUndelivered', 'empTabCancelled', 'empTabProfile'].forEach(id => {
+    ['empTabOrder', 'empTabTracking', 'empTabOfd', 'empTabUndelivered', 'empTabCancelled', 'empTabProfile'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             // Remove old styling classes
@@ -179,8 +179,6 @@ function switchEmpTab(tab) {
         }
         loadMyOrders(); 
     }
-    else if (tab === 'history') { contentId = 'empHistoryTab'; buttonId = 'empTabHistory'; loadMyHistory(); }
-    else if (tab === 'progress') { contentId = 'empProgressTab'; buttonId = 'empTabProgress'; loadEmpProgress(); }
     else if (tab === 'ofd') { contentId = 'empOfdTab'; buttonId = 'empTabOfd'; if (typeof loadMyOfdOrders === 'function') loadMyOfdOrders(); }
     else if (tab === 'undelivered') { contentId = 'empUndeliveredTab'; buttonId = 'empTabUndelivered'; if (typeof loadMyUndeliveredOrders === 'function') loadMyUndeliveredOrders(); }
     else if (tab === 'cancelled') { contentId = 'empCancelledTab'; buttonId = 'empTabCancelled'; loadCancelledOrders(); }
@@ -226,12 +224,8 @@ function handleEmployeeCommand(cmd) {
         'orders': 'tracking',
         'myorders': 'tracking',
         'myorder': 'tracking',
-        'history': 'history',
-        'past': 'history',
-        'progress': 'progress',
-        'stats': 'progress',
-        'report': 'progress',
-        'analytics': 'progress',
+        'history': 'tracking',
+        'past': 'tracking',
         'ofd': 'ofd',
         'delivery': 'ofd',
         'outfordelivery': 'ofd',
@@ -259,12 +253,18 @@ function handleEmployeeCommand(cmd) {
 window.handleEmployeeCommand = handleEmployeeCommand;
 
 async function loadMyProfile() {
-    const profileEmpId = document.getElementById('profileEmpId');
-    const profileEmpName = document.getElementById('profileEmpName');
     const employeeId = getCurrentEmployeeId();
+    const employeeName = getCurrentEmployeeName() || '-';
+
+    const profileEmpIdDisplay = document.getElementById('profileEmpIdDisplay');
+    const profileEmpNameDisplay = document.getElementById('profileEmpNameDisplay');
+    const profileAvatar = document.getElementById('profileAvatar');
     
-    if (profileEmpId) profileEmpId.textContent = employeeId || '-';
-    if (profileEmpName) profileEmpName.textContent = getCurrentEmployeeName() || '-';
+    if (profileEmpIdDisplay) profileEmpIdDisplay.textContent = employeeId || '-';
+    if (profileEmpNameDisplay) profileEmpNameDisplay.textContent = employeeName;
+    if (profileAvatar && employeeName) {
+        profileAvatar.textContent = employeeName.trim().charAt(0).toUpperCase();
+    }
 
     if (!employeeId) return;
 
@@ -273,9 +273,9 @@ async function loadMyProfile() {
 
     if (statsList) {
         statsList.innerHTML = `
-            <div class="col-span-full text-center py-6">
-                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto"></div>
-                <p class="mt-2 text-xs text-gray-500">Loading performance data...</p>
+            <div class="col-span-full text-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto"></div>
+                <p class="mt-2 text-xs text-slate-400 font-bold">Loading performance metrics...</p>
             </div>
         `;
     }
@@ -298,32 +298,35 @@ async function loadMyProfile() {
             };
 
             const cards = [
-                { label: 'Total', count: stats.total, amount: revenue.total, color: 'gray', icon: '📊' },
+                { label: 'Total booked', count: stats.total, amount: revenue.total, color: 'gray', icon: '📊' },
                 { label: 'On Hold', count: stats.hold, amount: revenue.hold, color: 'yellow', icon: '⏳' },
                 { label: 'Cancelled', count: stats.cancelled, amount: revenue.cancelled, color: 'red', icon: '❌' },
                 { label: 'Delivered', count: stats.delivered, amount: revenue.delivered, color: 'green', icon: '✅' },
                 { label: 'Dispatched', count: stats.dispatched, amount: revenue.dispatched, color: 'purple', icon: '🚚' },
-                { label: 'RTO', count: stats.rto, amount: revenue.rto, color: 'indigo', icon: '↩️' }
+                { label: 'RTO Returned', count: stats.rto, amount: revenue.rto, color: 'indigo', icon: '↩️' }
             ];
 
             const colorMap = {
-                gray: { bg: 'bg-gray-50', border: 'border-gray-100', text600: 'text-gray-600', text400: 'text-gray-400', text700: 'text-gray-700' },
-                yellow: { bg: 'bg-yellow-50', border: 'border-yellow-100', text600: 'text-yellow-600', text400: 'text-yellow-400', text700: 'text-yellow-700' },
-                red: { bg: 'bg-red-50', border: 'border-red-100', text600: 'text-red-600', text400: 'text-red-400', text700: 'text-red-700' },
-                green: { bg: 'bg-emerald-50', border: 'border-emerald-100', text600: 'text-emerald-600', text400: 'text-emerald-400', text700: 'text-emerald-700' },
-                purple: { bg: 'bg-purple-50', border: 'border-purple-100', text600: 'text-purple-600', text400: 'text-purple-400', text700: 'text-purple-700' },
-                indigo: { bg: 'bg-indigo-50', border: 'border-indigo-100', text600: 'text-indigo-600', text400: 'text-indigo-400', text700: 'text-indigo-700' }
+                gray: { bg: 'bg-slate-50', border: 'border-slate-100', accent: 'border-l-4 border-l-slate-400', text600: 'text-slate-800', text400: 'text-slate-400', text700: 'text-slate-700' },
+                yellow: { bg: 'bg-amber-50/50', border: 'border-amber-100', accent: 'border-l-4 border-l-amber-500', text600: 'text-amber-700', text400: 'text-amber-500', text700: 'text-amber-800' },
+                red: { bg: 'bg-red-50/50', border: 'border-red-100', accent: 'border-l-4 border-l-red-500', text600: 'text-red-700', text400: 'text-red-500', text700: 'text-red-800' },
+                green: { bg: 'bg-emerald-50/50', border: 'border-emerald-100', accent: 'border-l-4 border-l-emerald-500', text600: 'text-emerald-700', text400: 'text-emerald-500', text700: 'text-emerald-800' },
+                purple: { bg: 'bg-purple-50/50', border: 'border-purple-100', accent: 'border-l-4 border-l-purple-500', text600: 'text-purple-700', text400: 'text-purple-500', text700: 'text-purple-800' },
+                indigo: { bg: 'bg-indigo-50/50', border: 'border-indigo-100', accent: 'border-l-4 border-l-indigo-500', text600: 'text-indigo-700', text400: 'text-indigo-500', text700: 'text-indigo-800' }
             };
 
             if (statsList) {
                 statsList.innerHTML = cards.map(c => {
                     const cls = colorMap[c.color] || colorMap.gray;
                     return `
-                        <div class="${cls.bg} border ${cls.border} rounded-xl p-3 text-center transition-all">
-                            <p class="text-xl font-black ${cls.text600} mb-0.5">${c.count || 0}</p>
-                            <p class="text-[9px] ${cls.text400} uppercase font-bold tracking-wider mb-1">${c.label}</p>
-                            <div class="bg-white/60 rounded py-0.5 px-1.5 border ${cls.border} inline-block">
-                                <p class="text-[10px] font-bold ${cls.text700}">₹${(c.amount || 0).toLocaleString()}</p>
+                        <div class="${cls.bg} border ${cls.border} ${cls.accent} rounded-2xl p-4 transition-all hover:scale-[1.02] hover:shadow-md hover:shadow-slate-100/50 flex flex-col justify-between h-full relative overflow-hidden">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-2xl">${c.icon}</span>
+                                <span class="bg-white px-2 py-0.5 rounded-lg border border-slate-100 text-[10px] font-mono font-bold ${cls.text700}">₹${(c.amount || 0).toLocaleString()}</span>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-black ${cls.text600} leading-tight">${c.count || 0}</p>
+                                <p class="text-[10px] font-bold ${cls.text400} uppercase tracking-wider mt-0.5">${c.label}</p>
                             </div>
                         </div>
                     `;
@@ -334,33 +337,35 @@ async function loadMyProfile() {
                 if (orders.length === 0) {
                     ordersList.innerHTML = `
                         <tr>
-                            <td colspan="5" class="px-4 py-6 text-center text-gray-400">
+                            <td colspan="5" class="px-4 py-8 text-center text-slate-400 font-bold">
                                 No orders booked yet.
                             </td>
                         </tr>
                     `;
                 } else {
                     ordersList.innerHTML = orders.slice(0, 30).map(o => {
-                        let statusClass = 'bg-gray-100 text-gray-600';
-                        if (o.status === 'Pending') statusClass = 'bg-red-100 text-red-700';
-                        if (o.status === 'Address Verified') statusClass = 'bg-blue-100 text-blue-700';
-                        if (o.status === 'Dispatched') statusClass = 'bg-purple-100 text-purple-700';
-                        if (o.status === 'Delivered') statusClass = 'bg-green-100 text-green-700';
-                        if (o.status === 'Cancelled') statusClass = 'bg-red-100 text-red-700';
-                        if (o.status === 'On Hold') statusClass = 'bg-yellow-100 text-yellow-700';
-                        if (o.status === 'RTO') statusClass = 'bg-indigo-100 text-indigo-700';
+                        let statusClass = 'bg-slate-100 text-slate-600';
+                        if (o.status === 'Pending') statusClass = 'bg-rose-50 text-rose-700 border border-rose-100';
+                        if (o.status === 'Address Verified') statusClass = 'bg-blue-50 text-blue-700 border border-blue-100';
+                        if (o.status === 'Dispatched') statusClass = 'bg-purple-50 text-purple-700 border border-purple-100';
+                        if (o.status === 'Delivered') statusClass = 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+                        if (o.status === 'Cancelled') statusClass = 'bg-red-50 text-red-700 border border-red-100';
+                        if (o.status === 'On Hold') statusClass = 'bg-amber-50 text-amber-700 border border-amber-100';
+                        if (o.status === 'RTO') statusClass = 'bg-indigo-50 text-indigo-700 border border-indigo-100';
 
-                        const orderDate = o.timestamp ? new Date(o.timestamp).toLocaleDateString() : '';
+                        const orderDate = o.timestamp ? new Date(o.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '';
 
                         return `
-                            <tr class="hover:bg-gray-50 border-b border-gray-100">
-                                <td class="px-4 py-2 font-mono font-bold text-blue-600 text-xs">${o.orderId || '-'}</td>
-                                <td class="px-4 py-2 font-medium text-gray-800 text-xs truncate max-w-[120px]" title="${o.customerName}">${o.customerName || 'Unknown'}</td>
-                                <td class="px-4 py-2 text-right font-bold text-gray-700 text-xs">₹${o.total || 0}</td>
-                                <td class="px-4 py-2 text-center">
-                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${statusClass}">${o.status}</span>
+                            <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50">
+                                <td class="px-4 py-3 font-mono font-bold text-blue-600 text-xs">
+                                    <span class="hover:underline cursor-pointer" onclick="viewOrder('${o.orderId}')">${o.orderId || '-'}</span>
                                 </td>
-                                <td class="px-4 py-2 text-right text-gray-400 text-xs font-mono">${orderDate}</td>
+                                <td class="px-4 py-3 font-medium text-slate-800 text-xs truncate max-w-[120px]" title="${o.customerName}">${o.customerName || 'Unknown'}</td>
+                                <td class="px-4 py-3 text-right font-black text-slate-700 text-xs">₹${o.total || 0}</td>
+                                <td class="px-4 py-3 text-center">
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${statusClass}">${o.status}</span>
+                                </td>
+                                <td class="px-4 py-3 text-right text-slate-400 text-xs font-mono font-bold">${orderDate}</td>
                             </tr>
                         `;
                     }).join('');
@@ -376,6 +381,34 @@ async function loadMyProfile() {
         if (ordersList) ordersList.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Error loading order history</td></tr>';
     }
 }
+
+function copyProfileId() {
+    const employeeId = getCurrentEmployeeId();
+    if (!employeeId) return;
+    
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(employeeId)
+            .then(() => {
+                if (typeof showToast === 'function') showToast('Employee Code copied to clipboard!', 'success');
+            })
+            .catch(err => console.error('Copy failed', err));
+    } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = employeeId;
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            if (typeof showToast === 'function') showToast('Employee Code copied to clipboard!', 'success');
+        } catch (err) {
+            prompt("Copy manually:", employeeId);
+        }
+        document.body.removeChild(textArea);
+    }
+}
+window.copyProfileId = copyProfileId;
 
 // ==================== ORDER FORM LOGIC ====================
 function initOrderForm() {
@@ -515,12 +548,20 @@ async function saveOrder() {
     const items = [];
     document.querySelectorAll('.item-row').forEach(row => {
         const select = row.querySelector('select');
-        const qty = row.querySelector('input[type="number"]');
-        if (select.value) {
+        const qtyInput = row.querySelector('input[type="number"]:not(.item-row-total)');
+        const totalInput = row.querySelector('.item-row-total');
+        if (select && select.value) {
+            const price = Number(select.options[select.selectedIndex].dataset.price || 0);
+            const qty = Number(qtyInput ? qtyInput.value : 1);
+            const amount = Number(totalInput ? totalInput.value : (price * qty));
             items.push({
                 product: select.value,
-                quantity: Number(qty.value),
-                price: Number(select.options[select.selectedIndex].dataset.price)
+                description: select.value,
+                name: select.value,
+                quantity: qty,
+                price: price,
+                rate: price,
+                amount: amount
             });
         }
     });
@@ -568,6 +609,7 @@ async function saveOrder() {
         age: Number(form.age.value),
         problem: form.problem.value,
         telNo: form.telNo.value,
+        altNo: form.altNo ? form.altNo.value : '',
         address: form.address.value, // Full address string
         // Individual fields for better data
         hNo: form.hNo.value,
@@ -579,11 +621,17 @@ async function saveOrder() {
         state: form.state.value,
         pin: form.pin.value,
         landMark: form.landMark.value,
+        treatment: form.treatment ? form.treatment.value : '',
+        date: form.date ? form.date.value : '',
+        time: form.time ? form.time.value : '',
 
         items: items,
         total: Number(document.getElementById('totalAmountInput').value),
+        subtotal: Number(document.getElementById('subtotalDisplay')?.innerText || 0),
+        discount: Number(document.getElementById('discountInput')?.value || 0),
         advance: Number(form.advance.value),
         cod: Number(form.codAmount.value),
+        codAmount: Number(form.codAmount.value),
         remark: document.getElementById('employeeRemark').value,
         // Capture Manual Order Type
         orderType: document.querySelector('input[name="orderType"]:checked')?.value === 'NEW' ? 'Fresh' : 'Reorder'
@@ -595,37 +643,96 @@ async function saveOrder() {
         btn.innerText = 'Checking...';
         btn.disabled = true;
 
-        // ========== DUPLICATE CHECK ==========
-        console.log('🔍 Checking duplicate for:', orderData.telNo);
-        const dupRes = await fetch(`${API_URL}/orders/check-duplicate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ telNo: orderData.telNo, customerName: orderData.customerName })
-        });
-        const dupData = await dupRes.json();
-        console.log('🔍 Duplicate check response:', dupData);
+        const isEditing = typeof currentEditingOrderId !== 'undefined' && currentEditingOrderId;
 
-        if (dupData.success && dupData.isDuplicate) {
-            console.log('⚠️ DUPLICATE FOUND:', dupData.existingOrder);
-            btn.innerText = originalText;
-            btn.disabled = false;
+        if (!isEditing) {
+            // ========== DUPLICATE CHECK ==========
+            console.log('🔍 Checking duplicate for:', orderData.telNo);
+            const dupRes = await fetch(`${API_URL}/orders/check-duplicate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telNo: orderData.telNo, customerName: orderData.customerName })
+            });
+            const dupData = await dupRes.json();
+            console.log('🔍 Duplicate check response:', dupData);
 
-            // Show duplicate warning popup
-            showDuplicateWarning(dupData.existingOrder, orderData);
-            return;
+            if (dupData.success && dupData.isDuplicate) {
+                console.log('⚠️ DUPLICATE FOUND:', dupData.existingOrder);
+                btn.innerText = originalText;
+                btn.disabled = false;
+
+                // Show duplicate warning popup
+                showDuplicateWarning(dupData.existingOrder, orderData);
+                return;
+            }
+            // =====================================
         }
-        // =====================================
 
-        btn.innerText = 'Saving...';
+        btn.innerText = isEditing ? 'Updating...' : 'Saving...';
 
-        // Proceed to create order
-        await createOrderRequest(orderData, btn, originalText, form);
+        if (isEditing) {
+            await updateOrderRequest(currentEditingOrderId, orderData, btn, originalText, form);
+        } else {
+            await createOrderRequest(orderData, btn, originalText, form);
+        }
 
     } catch (e) {
         console.error(e);
         showWarningPopup('Connection Error', 'Server se connection nahi ho paya. Please retry karein.');
         const btn = document.querySelector('button[onclick="saveOrder()"]');
-        if (btn) { btn.innerText = '💾 SAVE ORDER'; btn.disabled = false; }
+        if (btn) { btn.innerHTML = '💾 SAVE ORDER'; btn.disabled = false; }
+    }
+}
+
+// Helper function to actually update the order (Edit Mode)
+async function updateOrderRequest(orderId, orderData, btn, originalText, form) {
+    try {
+        const res = await fetch(`${API_URL}/orders/${orderId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showSuccessPopup(
+                'Order Updated!',
+                'Order details successfully update ho gaye.',
+                '✅',
+                '#10b981'
+            );
+            form.reset();
+            currentEditingOrderId = null; // Reset edit mode
+
+            // Reset Button
+            const saveBtn = document.querySelector('button[onclick="saveOrder()"]');
+            if (saveBtn) {
+                saveBtn.innerHTML = '💾 SAVE ORDER';
+                saveBtn.classList.remove('bg-amber-600', 'hover:bg-amber-700', 'text-white');
+                saveBtn.classList.add('btn-primary');
+            }
+
+            initOrderForm(); // Reset date/time/items
+            updateAddress(); // Clear preview
+            switchEmpTab('tracking');
+            loadMyOrders(); // Refresh list
+        } else {
+            showWarningPopup('Error!', data.message || 'Order update nahi ho paya.');
+        }
+
+        const saveBtn = document.querySelector('button[onclick="saveOrder()"]');
+        if (saveBtn) {
+            saveBtn.innerHTML = '💾 SAVE ORDER';
+            saveBtn.disabled = false;
+        }
+    } catch (e) {
+        console.error(e);
+        showWarningPopup('Connection Error', 'Server se connection nahi ho paya.');
+        const saveBtn = document.querySelector('button[onclick="saveOrder()"]');
+        if (saveBtn) {
+            saveBtn.innerHTML = '💾 SAVE ORDER';
+            saveBtn.disabled = false;
+        }
     }
 }
 
@@ -812,7 +919,7 @@ function selectDistrict(d, s) {
 
 let poTimeout;
 async function handlePostOfficeInput(query) {
-    const box = document.getElementById('postOfficeSuggestions');
+    const box = document.getElementById('poSuggestions');
     clearTimeout(poTimeout);
     if (query.length < 2) { box.classList.add('hidden'); return; }
 
@@ -837,7 +944,7 @@ async function handlePostOfficeInput(query) {
 function selectPO(office, pin, taluk, district, state) {
     const f = document.getElementById('orderForm');
     f.po.value = office; f.pin.value = pin; f.tahTaluka.value = taluk; f.distt.value = district; f.state.value = state;
-    document.getElementById('postOfficeSuggestions').classList.add('hidden');
+    document.getElementById('poSuggestions').classList.add('hidden');
     updateAddress();
 }
 
@@ -887,6 +994,13 @@ function getEmployeeItemsPerPage() {
 function getMyOrdersDateValue() {
     const input = document.getElementById('myOrdersDate');
     if (!input) return '';
+    if (!input.value) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        input.value = `${yyyy}-${mm}-${dd}`;
+    }
     return input.value || '';
 }
 
@@ -962,13 +1076,14 @@ async function loadMyOrders(page = null) {
 
                 const params = new URLSearchParams({
             page: String(currentPage),
-            limit: String(itemsPerPage),
-            status: activeStatuses
+            limit: String(itemsPerPage)
         });
         if (selectedDate) {
             params.set('startDate', selectedDate);
             params.set('endDate', selectedDate);
             params.set('dateField', 'date');
+        } else {
+            params.set('status', activeStatuses);
         }
         const res = await fetch(`${API_URL}/employees/${employeeId}?${params.toString()}`);
         const data = await res.json();
@@ -983,6 +1098,18 @@ async function loadMyOrders(page = null) {
         }
 
         const orders = data.orders || [];
+        // Sort orders date-wise (newest first)
+        orders.sort((a, b) => {
+            const getOrderMillis = (o) => {
+                if (o.date) {
+                    const dateStr = o.time ? `${o.date}T${o.time}` : o.date;
+                    const parsed = Date.parse(dateStr);
+                    if (!isNaN(parsed)) return parsed;
+                }
+                return o.timestamp ? Date.parse(o.timestamp) : 0;
+            };
+            return getOrderMillis(b) - getOrderMillis(a);
+        });
         const totalItems = data.pagination ? data.pagination.total : orders.length;
         const totalPages = itemsPerPage > 0 ? (Math.ceil(totalItems / itemsPerPage) || 1) : 1;
 
@@ -1159,29 +1286,40 @@ function handleEmpItemsChange(fetchFuncName) {
     }
 }
 
-async function loadMyOfdOrders(page = 1) {
+async function loadMyOfdOrders() {
     if (!currentUser) return;
     try {
         const employeeId = getCurrentEmployeeId();
         if (!employeeId) return;
 
         const statuses = 'Out For Delivery';
-        const res = await fetch(`${API_URL}/orders/employee/${employeeId}?status=${encodeURIComponent(statuses)}&page=${page}&limit=${EMP_ITEMS_PER_PAGE}`);
+        const res = await fetch(`${API_URL}/orders/employee/${employeeId}?status=${encodeURIComponent(statuses)}&limit=0`);
         const data = await res.json();
 
         const list = document.getElementById('empOfdList');
         if (!list) return;
 
-        if (!data.success || !data.orders || data.orders.length === 0) {
+        const orders = data.orders || [];
+
+        if (!data.success || orders.length === 0) {
             list.innerHTML = '<div class="col-span-full text-center py-12 bg-indigo-50 rounded-2xl border-dashed border-2 border-indigo-100"><p class="text-4xl mb-3">🚚</p><p class="text-gray-500">No orders out for delivery</p></div>';
             return;
         }
 
-        list.innerHTML = data.orders.map(o => renderEmpOrderCard(o)).join('');
-        
-        const totalItems = data.pagination ? data.pagination.total : data.orders.length;
-        const totalPages = Math.ceil(totalItems / EMP_ITEMS_PER_PAGE) || 1;
-        renderPaginationControls(list, page, totalPages, 'loadMyOfdOrders', totalItems);
+        // Sort orders date-wise (newest first)
+        orders.sort((a, b) => {
+            const getOrderMillis = (o) => {
+                if (o.date) {
+                    const dateStr = o.time ? `${o.date}T${o.time}` : o.date;
+                    const parsed = Date.parse(dateStr);
+                    if (!isNaN(parsed)) return parsed;
+                }
+                return o.timestamp ? Date.parse(o.timestamp) : 0;
+            };
+            return getOrderMillis(b) - getOrderMillis(a);
+        });
+
+        list.innerHTML = orders.map(o => renderEmpOrderCard(o)).join('');
     } catch (e) {
         console.error('Error loading OFD orders:', e);
     }
@@ -1191,142 +1329,19 @@ window.loadMyOfdOrders = loadMyOfdOrders;
 window.handleEmpItemsChange = handleEmpItemsChange;
 window.generatePageNumbers = generatePageNumbers;
 
-let historyPage = 1;
-let historyLastDate = '';
-async function loadMyHistory(page = 1) {
-    if (!currentUser) return;
-    try {
-        const employeeId = getCurrentEmployeeId();
-        if (!employeeId) return;
-
-        const selectedDate = document.getElementById('empHistoryDate')?.value || '';
-        if (selectedDate !== historyLastDate && page === 1) {
-            historyPage = 1;
-        } else {
-            historyPage = page;
-        }
-        historyLastDate = selectedDate;
-
-        // Optimized: Fetch history with pagination
-        const statuses = 'Delivered,Returned,Cancelled';
-        const limit = 10;
-        const params = new URLSearchParams({
-            status: statuses,
-            page: String(historyPage),
-            limit: String(limit)
-        });
-        if (selectedDate) {
-            params.set('startDate', selectedDate);
-            params.set('endDate', selectedDate);
-            params.set('dateField', 'date');
-        }
-
-        const res = await fetch(`${API_URL}/employees/${employeeId}?${params.toString()}`);
-        const data = await res.json();
-
-        let orders = data.orders || [];
-        let total = 0;
-
-        if (data.pagination) {
-            total = data.pagination.total;
-        } else {
-            total = orders.length; // Fallback
-        }
-
-        const list = document.getElementById('myHistoryList');
-        if (orders.length === 0) {
-            list.innerHTML = `<div class="text-center text-gray-400 col-span-full">${selectedDate ? `No history found for ${selectedDate}` : 'No history yet'}</div>`;
-            return;
-        }
-
-        list.innerHTML = orders.map(o => renderEmpOrderCard(o, true)).join('');
-
-        // Render Pagination
-        const totalPages = Math.ceil(total / limit) || 1;
-        if (totalPages > 1) {
-            renderPaginationControls(list, historyPage, totalPages, 'loadMyHistory', total);
-        }
-
-        // Add Reorder listeners if needed
-    } catch (e) { console.error('History load error:', e); }
-}
-
-async function loadEmpProgress() {
-    if (!currentUser) return;
-    const employeeId = getCurrentEmployeeId();
-    if (!employeeId) return;
-
-    const startDate = document.getElementById('empProgressStartDate')?.value || '';
-    const endDate = document.getElementById('empProgressEndDate')?.value || '';
-
-    const list = document.getElementById('empProgressStats');
-    if (!list) return;
-
-    list.innerHTML = '<div class="col-span-full text-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto"></div><p class="mt-2 text-gray-500">Loading stats...</p></div>';
-
-    try {
-        // Fetch stats from employee detail API
-        // Passing limit=0 to get ALL orders for correct stats calculation
-        let url = `${API_URL}/employees/${employeeId}?limit=0`;
-        if (startDate) url += `&startDate=${startDate}`;
-        if (endDate) url += `&endDate=${endDate}`;
-
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.success && data.stats) {
-            renderProgressCards(data.stats);
-            // Hide chart/table for now as requested only cards
-            document.getElementById('empProgressChart').innerHTML = '';
-            document.getElementById('empProgressTable').innerHTML = '';
-        } else {
-            list.innerHTML = '<div class="col-span-full text-center text-red-500">Failed to load statistics</div>';
-        }
-    } catch (e) {
-        console.error('Stats error:', e);
-        list.innerHTML = '<div class="col-span-full text-center text-red-500">Connection error</div>';
-    }
-}
-
-function renderProgressCards(stats) {
-    const list = document.getElementById('empProgressStats');
-    if (!list) return;
-
-    const cards = [
-        { label: 'Total Orders', value: stats.total || 0, color: 'blue', icon: '📝' },
-        { label: 'On Hold', value: stats.hold || 0, color: 'yellow', icon: 'qh' }, // custom icon code or emoj
-        { label: 'Cancelled', value: stats.cancelled || 0, color: 'red', icon: '❌' },
-        { label: 'Dispatched', value: stats.dispatched || 0, color: 'purple', icon: '📦' },
-        { label: 'Delivered', value: stats.delivered || 0, color: 'green', icon: '✅' },
-        { label: 'RTO', value: stats.rto || 0, color: 'rose', icon: '↩️' } // rose/pink for RTO
-    ];
-
-    // Map colors to tailwind classes
-    const colorMap = {
-        blue: 'bg-blue-50 text-blue-600 border-blue-100',
-        yellow: 'bg-yellow-50 text-yellow-600 border-yellow-100',
-        red: 'bg-red-50 text-red-600 border-red-100',
-        purple: 'bg-purple-50 text-purple-600 border-purple-100',
-        green: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-        rose: 'bg-rose-50 text-rose-600 border-rose-100'
-    };
-
-    list.innerHTML = cards.map(c => `
-        <div class="glass-card p-4 border ${colorMap[c.color] || 'bg-gray-50'} flex flex-col items-center justify-center text-center transition-transform hover:-translate-y-1">
-            <div class="text-3xl mb-2">${c.icon === 'qh' ? '⏸️' : c.icon}</div>
-            <div class="text-2xl font-bold mb-1">${c.value}</div>
-            <div class="text-xs font-bold uppercase tracking-wider opacity-80">${c.label}</div>
-        </div>
-    `).join('');
-}
-
 function renderEmpOrderCard(o, isHistory = false) {
-    let statusColor = 'gray';
-    if (o.status === 'Pending') statusColor = 'yellow';
-    else if (o.status === 'Address Verified') statusColor = 'emerald';
-    else if (o.status === 'Dispatched') statusColor = 'indigo';
-    else if (o.status === 'Delivered') statusColor = 'green';
-    else if (o.status === 'On Hold') statusColor = 'orange';
+    // Dynamic status map for premium visual design
+    const statusMap = {
+        'Pending': { color: 'amber', bg: 'from-amber-500 to-yellow-500', badge: 'bg-amber-50 text-amber-700 border-amber-100', dot: 'bg-amber-500', glow: 'shadow-amber-100' },
+        'Address Verified': { color: 'emerald', bg: 'from-emerald-500 to-teal-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-100', dot: 'bg-emerald-500', glow: 'shadow-emerald-100' },
+        'Dispatched': { color: 'indigo', bg: 'from-indigo-500 to-blue-500', badge: 'bg-indigo-50 text-indigo-700 border-indigo-100', dot: 'bg-indigo-500', glow: 'shadow-indigo-100' },
+        'Delivered': { color: 'green', bg: 'from-green-500 to-emerald-500', badge: 'bg-green-50 text-green-700 border-green-100', dot: 'bg-green-500', glow: 'shadow-green-100' },
+        'On Hold': { color: 'orange', bg: 'from-orange-500 to-amber-500', badge: 'bg-orange-50 text-orange-700 border-orange-100', dot: 'bg-orange-500', glow: 'shadow-orange-100' },
+        'Cancelled': { color: 'rose', bg: 'from-rose-500 to-red-500', badge: 'bg-rose-50 text-rose-700 border-rose-100', dot: 'bg-rose-500', glow: 'shadow-rose-100' },
+        'Returned': { color: 'slate', bg: 'from-slate-500 to-gray-500', badge: 'bg-slate-50 text-slate-700 border-slate-100', dot: 'bg-slate-500', glow: 'shadow-slate-100' },
+        'RTO': { color: 'rose', bg: 'from-rose-500 to-red-500', badge: 'bg-rose-50 text-rose-700 border-rose-100', dot: 'bg-rose-500', glow: 'shadow-rose-100' }
+    };
+    const config = statusMap[o.status] || { color: 'slate', bg: 'from-slate-500 to-gray-500', badge: 'bg-slate-50 text-slate-700 border-slate-100', dot: 'bg-slate-500', glow: 'shadow-slate-100' };
 
     const hasRequestedDelivery = o.deliveryRequests && o.deliveryRequests.some(r => r.employeeId === (currentUser?.id || ''));
 
@@ -1336,117 +1351,160 @@ function renderEmpOrderCard(o, isHistory = false) {
     const hasTracking = (o.shiprocket && o.shiprocket.awb) || (o.tracking && o.tracking.trackingId);
     const trackingId = (o.shiprocket && o.shiprocket.awb) || (o.tracking && o.tracking.trackingId) || '';
 
+    // Initials avatar
+    const initials = String(o.customerName || 'C').trim().split(/\s+/).map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+    // Icon SVGs
+    const phoneIcon = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h2.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>`;
+    const locationIcon = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
+
     return `
-    <div class="glass-card p-0 overflow-hidden hover:shadow-xl transition-all duration-300 group border border-${statusColor}-100 flex flex-col h-full bg-white" data-mobile="${o.telNo}">
+    <div class="relative overflow-hidden hover:scale-[1.01] hover:shadow-2xl transition-all duration-500 bg-white border border-slate-100 rounded-3xl flex flex-col h-full group" style="box-shadow: 0 10px 30px -10px rgba(148, 163, 184, 0.12), 0 1px 3px rgba(148, 163, 184, 0.04);" data-mobile="${o.telNo || o.mobile || ''}">
+        <!-- Premium Left Active Tag & Gradient Glow -->
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${config.bg} rounded-l-full"></div>
+        
         <!-- Card Header -->
-        <div class="p-4 border-b border-${statusColor}-50 bg-gradient-to-r from-${statusColor}-50/50 to-white relative">
-             <div class="absolute top-0 right-0 w-24 h-24 bg-${statusColor}-400 rounded-bl-full opacity-5 pointer-events-none"></div>
-            <div class="flex justify-between items-start relative z-10">
-                <div>
-                     <div class="flex items-center gap-2 mb-1">
-                        <span class="bg-${statusColor}-100 text-${statusColor}-700 text-xs font-bold px-2 py-0.5 rounded-md border border-${statusColor}-200 uppercase tracking-wide font-mono">
-                            ORDER #${o.orderId}
-                        </span>
-                        <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
-                            class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 hover:scale-110 shadow-sm transition-all" title="Send WhatsApp">
-                            ${WHATSAPP_ICON}
-                        </button>
-                        ${(o.orderType === 'REORDER' || o.orderType === 'Reorder') ?
-                            '<span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-200">REORDER</span>' : ''}
-                    </div>
-                    <h3 class="font-bold text-gray-800 text-lg leading-tight truncate max-w-[150px]" title="${o.customerName}">
-                        ${o.customerName}
-                    </h3>
-                </div>
-                <div class="text-right">
-                     <p class="text-xl font-black text-gray-800 tracking-tight">₹${o.total}</p>
-                     <div class="flex flex-col items-end">
-                        <span class="text-xs font-bold text-${statusColor}-600 mt-1">${o.status}</span>
-                     </div>
-                </div>
+        <div class="px-5 pt-5 pb-4 flex justify-between items-center z-10 pl-6">
+            <div class="flex items-center gap-2">
+                <span class="bg-slate-50 border border-slate-100 text-slate-700 px-3 py-1 rounded-xl font-black text-[10px] tracking-widest shadow-sm font-mono uppercase">#${o.orderId}</span>
+                <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
+                    class="w-8 h-8 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl flex items-center justify-center hover:bg-emerald-600 hover:text-white hover:scale-110 active:scale-95 shadow-sm transition-all duration-300" title="Send WhatsApp">
+                    ${WHATSAPP_ICON}
+                </button>
+                ${(o.orderType === 'REORDER' || o.orderType === 'Reorder') ? `<span class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 py-0.5 rounded-lg text-[9px] font-black tracking-widest shadow-sm uppercase">REORDER</span>` : ''}
+            </div>
+            <div class="flex flex-col items-end">
+                <span class="text-[9px] text-slate-400 font-bold tracking-wide leading-none uppercase">Amount</span>
+                <span class="text-base font-black text-slate-800 mt-1">₹${o.total}</span>
             </div>
         </div>
 
-        <!-- Card Body -->
-        <div class="p-4 space-y-3 flex-grow bg-white/60">
-            <div class="flex items-start gap-3">
-                <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-600 flex-shrink-0">
-                    📍
+        <!-- Profile & Status Banner -->
+        <div class="px-5 pb-4 flex items-center gap-3.5 pl-6">
+            <!-- Avatar circle -->
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${config.bg} text-white font-black text-sm flex items-center justify-center shadow-md ${config.glow} shrink-0 relative group-hover:rotate-3 transition-transform duration-300">
+                ${initials}
+                <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 ${config.dot} border border-white rounded-full animate-pulse shadow-sm"></span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <h3 class="font-black text-slate-800 text-base leading-tight truncate capitalize" title="${o.customerName}">${o.customerName}</h3>
+                ${o.fatherOrHusbandName ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5 truncate uppercase tracking-tight">S/O, W/O: ${o.fatherOrHusbandName}</p>` : `<p class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">Customer</p>`}
+            </div>
+            <div class="flex flex-col items-end shrink-0">
+                <span class="${config.badge} px-2.5 py-1 rounded-lg text-[9px] font-extrabold border uppercase tracking-wider">${o.status}</span>
+            </div>
+        </div>
+
+        <!-- Details list -->
+        <div class="px-5 pb-4 space-y-3 pl-6 flex-grow">
+            <!-- Relative time Row -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-xl shadow-inner w-fit">
+                    📅 <span class="text-slate-600 font-extrabold uppercase">${displayDate}</span>
                 </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</p>
-                    <p class="text-sm font-medium text-gray-700 leading-snug line-clamp-2" title="${o.address}">
-                        ${o.villColony || ''}, ${o.distt || o.tahTaluka || o.district || ''}
-                    </p>
+                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-xl shadow-inner w-fit">
+                    ⏰ <span class="text-slate-600 font-extrabold uppercase">${displayTime}</span>
                 </div>
             </div>
 
+            <!-- Phone Strip -->
+            <div class="flex items-center gap-2.5 bg-gradient-to-r from-blue-50/50 to-cyan-50/20 px-3.5 py-2.5 rounded-2xl border border-blue-100/50 shadow-inner group/phone hover:border-blue-200 transition-colors">
+                <span class="text-blue-500 bg-white w-7 h-7 rounded-lg flex items-center justify-center shadow-sm border border-blue-100">${phoneIcon}</span>
+                <span class="text-sm font-black font-mono tracking-wider text-blue-950">${o.telNo || o.mobile || ''}</span>
+                ${o.altNo ? `<span class="text-[9px] text-slate-500 font-extrabold ml-auto bg-white px-2 py-1 rounded-lg border border-slate-100">ALT: ${o.altNo}</span>` : ''}
+            </div>
+
+            <!-- Minimal Shipping Box -->
+            <div class="space-y-2 bg-slate-50/50 p-3.5 rounded-2xl border border-slate-100 group-hover:bg-slate-50/80 transition-colors">
+                <div class="flex items-center gap-1.5 text-indigo-500 font-black text-[9px] uppercase tracking-widest leading-none">
+                    ${locationIcon} <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Delivery Address</span>
+                </div>
+                <p class="text-xs text-slate-700 font-bold leading-relaxed line-clamp-2 capitalize">
+                    ${(o.villColony || o.address || '') ? (typeof toTitleCase === 'function' ? toTitleCase(`${o.villColony || ''}, ${o.distt || o.tahTaluka || o.district || ''}`.trim()) : `${o.villColony || ''}, ${o.distt || o.tahTaluka || o.district || ''}`.trim()) : 'No Address Provided'}
+                </p>
+                <div class="flex gap-1.5 items-center pt-1.5 border-t border-slate-200/50">
+                    <span class="bg-indigo-50 border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-lg text-[9px] font-black font-mono">PIN: ${o.pin || 'N/A'}</span>
+                    <span class="bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded-lg text-[9px] font-black capitalize">${o.state || 'N/A'}</span>
+                    <button onclick="copyAddress('${(o.address || o.villColony || '').replace(/'/g, "\\'")}')" 
+                        class="text-[9px] text-blue-600 hover:text-blue-700 font-black ml-auto flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-slate-200 hover:border-slate-300 transition-all shadow-sm">📋 COPY</button>
+                </div>
+            </div>
+
+            <!-- Tracking ID Box -->
             ${trackingId ? `
-            <div class="flex items-start gap-3">
-                 <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
-                     🧾
-                 </div>
-                 <div>
-                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Tracking ID</p>
-                     <div class="flex items-center gap-2">
-                        <p class="text-sm font-mono font-bold text-blue-700 tracking-wide">${trackingId}</p>
-                        <button onclick="copyTracking('${trackingId}')" class="text-xs text-blue-400 hover:text-blue-600">📋</button>
-                     </div>
-                 </div>
+            <div class="flex items-center gap-2.5 bg-indigo-50/50 px-3.5 py-2.5 rounded-2xl border border-indigo-100 shadow-inner">
+                <span class="text-indigo-500 bg-white w-7 h-7 rounded-lg flex items-center justify-center shadow-sm border border-indigo-100">🧾</span>
+                <div class="flex-grow">
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Tracking AWB</p>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-mono font-black text-indigo-950 tracking-wider">${trackingId}</span>
+                        <button onclick="copyTracking('${trackingId}')" class="text-xs text-indigo-500 hover:text-indigo-700 font-bold">📋 COPY</button>
+                    </div>
+                </div>
             </div>
             ` : ''}
 
+            <!-- Notes/Remarks -->
             ${o.remark ? `
-            <div class="bg-yellow-50 border border-yellow-100 p-2 rounded-lg mb-2">
-                <p class="text-[10px] font-bold text-yellow-800 uppercase mb-0.5">📝 Remark</p>
-                <p class="text-xs text-gray-700 italic">"${o.remark}"</p>
+            <div class="bg-amber-50/60 border border-amber-100 p-3.5 rounded-2xl shadow-sm">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs">💬</span>
+                    <span class="text-[9px] text-amber-500 font-black uppercase tracking-widest leading-none">Your Remark</span>
+                </div>
+                <p class="text-xs text-amber-900 font-black italic mt-1.5 leading-relaxed">"${o.remark}"</p>
             </div>
             ` : ''}
 
             ${o.verificationRemark && o.verificationRemark.text ? `
-            <div class="mt-2 bg-amber-50 border border-amber-100 p-2 rounded-lg mb-2">
-                <p class="text-[10px] font-bold text-amber-600 uppercase mb-0.5">⚠️ Verification Remark</p>
-                <p class="text-xs text-gray-700 italic">"${o.verificationRemark.text}"</p>
+            <div class="bg-rose-50/60 border border-rose-100 p-3.5 rounded-2xl shadow-sm">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs">⚠️</span>
+                    <span class="text-[9px] text-rose-500 font-black uppercase tracking-widest leading-none">Verification Remark</span>
+                </div>
+                <p class="text-xs text-rose-900 font-black italic mt-1.5 leading-relaxed">"${o.verificationRemark.text}"</p>
             </div>
             ` : ''}
 
-            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
-                <span class="text-xs text-gray-400">📅 ${displayDate} ⏰ ${displayTime}</span>
-                ${o.status === 'Dispatched' && !hasRequestedDelivery ?
-                    `<button onclick="requestDelivery('${o.orderId}')" class="text-xs bg-pink-50 text-pink-600 px-2 py-1 rounded-lg font-bold hover:bg-pink-100 transition-colors">
-                                ✋ Request Delivery
-                        </button>` : ''
-                }
-                ${hasRequestedDelivery && o.status === 'Dispatched' ?
-                    `<span class="text-[10px] bg-pink-100 text-pink-700 px-2 py-1 rounded-lg font-bold">⏳ Req Pending</span>` : ''
-                }
+            <!-- Delivery Request Section -->
+            ${o.status === 'Dispatched' ? `
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span class="text-xs text-slate-400 font-bold">Delivery Status</span>
+                ${!hasRequestedDelivery ? `
+                    <button onclick="requestDelivery('${o.orderId}')" class="text-xs bg-pink-50 text-pink-600 px-3 py-1.5 rounded-xl font-black border border-pink-100 hover:bg-pink-100 transition-colors shadow-sm">
+                        ✋ Request Delivery
+                    </button>
+                ` : `
+                    <span class="text-[10px] bg-pink-100 text-pink-700 px-2.5 py-1.5 rounded-xl font-bold border border-pink-200">⏳ Req Pending</span>
+                `}
             </div>
+            ` : ''}
         </div>
 
-        ${['Dispatched', 'Delivered'].includes(o.status) && typeof getTrackingStatusBadge === 'function' ? getTrackingStatusBadge(o) : ''}
+        <!-- Tracking Badge if Dispatched/Delivered -->
+        ${['Dispatched', 'Delivered', 'Out For Delivery'].includes(o.status) && typeof getTrackingStatusBadge === 'function' ? getTrackingStatusBadge(o) : ''}
 
-        <!-- Footer Actions -->
-        <div class="p-3 bg-gray-50/50 border-t border-gray-100 grid grid-cols-1 gap-2 mt-auto">
+        <!-- Actions Footer -->
+        <div class="p-4 bg-slate-50/50 border-t border-slate-100/80 space-y-2 mt-auto rounded-b-3xl">
             <button type="button" onclick="viewOrder('${o.orderId}')" 
-                class="w-full bg-white border border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2">
-                <span>👁️</span> View Details
+                class="w-full bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 py-3 rounded-xl text-xs font-black shadow-sm transition-all flex items-center justify-center gap-2">
+                👁️ View Details
             </button>
             ${['Pending', 'On Hold', 'Address Verified', 'Unverified'].includes(o.status) ? `
             <button type="button" onclick="editOrder('${o.orderId}')" 
-                class="w-full bg-amber-50 border border-amber-200 text-amber-600 hover:bg-amber-100 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2">
-                <span>✏️</span> Edit Order
+                class="w-full bg-amber-500 border border-amber-500 text-white hover:bg-amber-600 py-3 rounded-xl text-xs font-black shadow-md shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2">
+                ✏️ Edit Order
             </button>
             ` : ''}
-            ${isHistory ? `
+            ${(['Delivered', 'Returned', 'Cancelled', 'RTO'].includes(o.status) || isHistory) ? `
             <button onclick='reorderFromHistory(${JSON.stringify(o).replace(/'/g, "&#39;")})' 
-                class="w-full bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2">
-                <span>🔄</span> Reorder
+                class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg py-3 rounded-xl text-xs font-black shadow-md shadow-emerald-200 active:scale-95 transition-all flex items-center justify-center gap-2">
+                🔄 Reorder
             </button>
             ` : ''}
             ${trackingId ? `
              <button type="button" onclick="trackShiprocketOrder('${o.orderId}', '${trackingId}')" 
-                class="w-full bg-indigo-500 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2">
-                <span>🛰️</span> Track Package
+                class="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white py-3 rounded-xl text-xs font-black shadow-md shadow-indigo-200 hover:shadow-lg active:scale-95 transition-colors flex items-center justify-center gap-2">
+                🛰️ Track Package
             </button>
             ` : ''}
         </div>
@@ -1477,27 +1535,7 @@ function filterMyOrders(q) {
     });
 }
 
-// Search function for History tab
-function filterMyHistory(q) {
-    const query = (q || '').toLowerCase().trim();
-    const cards = document.querySelectorAll('#myHistoryList [data-mobile]');
 
-    if (!query) {
-        cards.forEach(c => c.style.display = '');
-        return;
-    }
-
-    cards.forEach(c => {
-        const mobile = (c.dataset.mobile || '').toLowerCase();
-        const text = (c.innerText || '').toLowerCase();
-
-        if (mobile.includes(query) || text.includes(query)) {
-            c.style.display = '';
-        } else {
-            c.style.display = 'none';
-        }
-    });
-}
 
 // Search function for Cancelled Orders tab
 function filterMyCancelledOrders(q) {
@@ -1546,21 +1584,19 @@ window.selectPO = selectPO;
 window.saveOrder = saveOrder;
 window.switchEmpTab = switchEmpTab;
 window.addItem = addItem;
+window.buildEmployeeProductOptions = buildEmployeeProductOptions;
 window.updateTotal = updateTotal;
 window.calculateTotal = calculateTotal;
 window.calculateDiscountFromTotal = calculateDiscountFromTotal;
 window.calculateCOD = calculateCOD;
 window.filterMyOrders = filterMyOrders;
-window.filterMyHistory = filterMyHistory;
 window.filterMyCancelledOrders = filterMyCancelledOrders;
 window.reorderFromHistory = reorderFromHistory;
-window.loadMyHistory = loadMyHistory;
 
 // Override slow legacy functions from app.js with optimized paginated versions
 window.loadMyOrders = loadMyOrders;
 window._empLoadMyOrders = loadMyOrders; // Used by app.js to delegate to fast version
 window.loadCancelledOrders = loadCancelledOrders;
-window.loadEmpProgress = loadEmpProgress;
 window.loadMyOfdOrders = loadMyOfdOrders;
 
 
