@@ -448,12 +448,18 @@ function openDispatchModal(orderId, order = null) {
                 </div>
             </div>
             
-            <!-- Print Label Button for Post Office -->
+            <!-- Print Buttons -->
             <div class="mt-4 pt-4 border-t border-dashed border-gray-200">
-                <button onclick="openLabelFromDispatch('${orderId}')" 
-                    class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg flex items-center justify-center gap-2">
-                    <span>🏷️</span> Print Speed Post Label
-                </button>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="openLabelFromDispatch('${orderId}')" 
+                        class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg flex items-center justify-center gap-2">
+                        <span>🏷️</span> Speed Post Label
+                    </button>
+                    <button onclick="printMedicineInstructions('${orderId}')" 
+                        class="w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold py-3 rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg flex items-center justify-center gap-2">
+                        <span>🖨️</span> Print Instructions
+                    </button>
+                </div>
                 <p class="text-xs text-gray-400 text-center mt-2">For India Post / Speed Post COD</p>
             </div>
             

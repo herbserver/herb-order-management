@@ -554,10 +554,17 @@ function generateOrderCardHTML(order) {
         </div>
 
         ${order.status === 'Dispatched' ? `
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-2 mb-2">
             <button onclick="revertDispatch('${order.orderId}')" class="bg-red-50 text-red-600 py-2 rounded-lg font-bold text-xs hover:bg-red-100">BACK TO READY</button>
             <button onclick="approveDelivery('${order.orderId}')" class="bg-blue-50 text-blue-600 py-2 rounded-lg font-bold text-xs hover:bg-blue-100">MARK DELIVERED</button>
         </div>` : ''}
+
+        ${!isVerification ? `
+        <button onclick="printMedicineInstructions('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+            class="w-full bg-teal-50 text-teal-600 py-2 rounded-lg font-bold text-xs hover:bg-teal-100 transition-all flex items-center justify-center gap-1">
+            🖨️ PRINT INSTRUCTIONS
+        </button>
+        ` : ''}
     </div>`;
 }
 
@@ -1090,9 +1097,14 @@ function renderDispatchCard(o) {
         
         <!-- Dispatch Button -->
         <button onclick="dispatchWithShiprocket('${o.orderId}')" 
-            class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-4 rounded-xl hover:from-orange-600 hover:to-red-600 transition-all shadow-2xl shadow-orange-300 hover:shadow-orange-400 hover:scale-105 transform flex items-center justify-center gap-3 text-base">
+            class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-4 rounded-xl hover:from-orange-600 hover:to-red-600 transition-all shadow-2xl shadow-orange-300 hover:shadow-orange-400 hover:scale-105 transform flex items-center justify-center gap-3 text-base mb-2">
             <span class="text-2xl">🚀</span>
             <span>Dispatch via Shiprocket</span>
+        </button>
+        <button onclick="printMedicineInstructions('${o.orderId}', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
+            class="w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold py-2.5 rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-200 hover:shadow-teal-300 hover:scale-[1.02] transform flex items-center justify-center gap-2 text-sm">
+            <span class="text-lg">🖨️</span>
+            <span>Print Medicine Instructions</span>
         </button>
     </div>`;
 }

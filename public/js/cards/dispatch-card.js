@@ -99,6 +99,11 @@ function renderDispatchCardModern(o) {
                 <span class="text-xl">🚀</span>
                 <span>Shiprocket</span>
             </button>
+            <button onclick="printMedicineInstructions('${o.orderId}', ${JSON.stringify(o).replace(/\"/g, '&quot;')})"
+                class="col-span-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold py-2.5 rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-200 hover:shadow-teal-300 hover:scale-[1.02] transform flex items-center justify-center gap-2 text-sm mt-1">
+                <span class="text-lg">🖨️</span>
+                <span>Print Medicine Instructions</span>
+            </button>
         </div>
     </div>`;
 }

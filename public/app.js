@@ -5534,6 +5534,9 @@ function generateOrderCardHTML(order, forceVerification = null) {
                         <button type="button" onclick="viewOrder('${order.orderId}')" 
                             class="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl text-xs font-black shadow-lg shadow-gray-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all">👁️ VIEW</button>
                     </div>
+                    <!-- Print Instructions -->
+                    <button type="button" onclick="printMedicineInstructions('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                        class="w-full bg-gradient-to-r from-teal-500 to-emerald-600 text-white py-2.5 rounded-xl text-xs font-black shadow-lg shadow-teal-300/40 hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all">🖨️ PRINT INSTRUCTIONS</button>
                     ${(order.tracking?.trackingId || order.shiprocket?.awb) ? `
                     <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 p-3.5 rounded-xl space-y-2 shadow-sm">
                         <div class="flex justify-between items-center">
@@ -5584,6 +5587,10 @@ function generateOrderCardHTML(order, forceVerification = null) {
                     <!-- Manual Dispatch -->
                     <button type="button" onclick="openDispatchModal('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
                         class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2.5 rounded-xl text-xs font-black shadow-lg shadow-purple-300/40 hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all">📦 MANUAL DISPATCH</button>
+
+                    <!-- Print Instructions -->
+                    <button type="button" onclick="printMedicineInstructions('${order.orderId}', ${JSON.stringify(order).replace(/"/g, '&quot;')})" 
+                        class="w-full bg-gradient-to-r from-teal-500 to-emerald-600 text-white py-2.5 rounded-xl text-xs font-black shadow-lg shadow-teal-300/40 hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all">🖨️ PRINT INSTRUCTIONS</button>
                 </div>
             `}
         </div>
