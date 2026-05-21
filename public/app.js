@@ -5260,7 +5260,7 @@ function generateOrderCardHTML(order, forceVerification = null) {
         const codVal = order.codAmount !== undefined ? order.codAmount : (order.cod !== undefined ? order.cod : Math.max(0, (order.total || 0) - (order.advance || 0)));
 
         return `
-        <div class="relative overflow-hidden hover:scale-[1.01] hover:shadow-xl transition-all duration-500 bg-white border border-slate-100 rounded-3xl flex flex-col h-full group" style="box-shadow: 0 8px 24px -8px rgba(148, 163, 184, 0.12), 0 1px 2px rgba(148, 163, 184, 0.04);">
+        <div class="premium-hover-card overflow-hidden hover:shadow-xl flex flex-col h-full group" style="box-shadow: 0 8px 24px -8px rgba(148, 163, 184, 0.12), 0 1px 2px rgba(148, 163, 184, 0.04);">
             <!-- Premium Left Active Tag & Gradient Glow -->
             <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-500 via-indigo-500 to-purple-600 rounded-l-full"></div>
             
@@ -5416,7 +5416,7 @@ function generateOrderCardHTML(order, forceVerification = null) {
     const config = statusMap[order.status] || { color: 'slate', bg: 'from-slate-500 to-gray-500', badge: 'bg-slate-50 text-slate-700 border-slate-100', dot: 'bg-slate-500', glow: 'shadow-slate-100' };
 
     return `
-    <div class="relative overflow-hidden hover:scale-[1.01] hover:shadow-2xl transition-all duration-500 bg-white border border-slate-100 rounded-3xl flex flex-col h-full group" style="box-shadow: 0 10px 30px -10px rgba(148, 163, 184, 0.12), 0 1px 3px rgba(148, 163, 184, 0.04);">
+    <div class="premium-hover-card overflow-hidden hover:shadow-2xl flex flex-col h-full group" style="box-shadow: 0 10px 30px -10px rgba(148, 163, 184, 0.12), 0 1px 3px rgba(148, 163, 184, 0.04);">
         <!-- Premium Left Active Tag & Gradient Glow -->
         <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${config.bg} rounded-l-full"></div>
         
@@ -10387,7 +10387,7 @@ async function loadVerificationUnverified() {
             const codVal = order.codAmount !== undefined ? order.codAmount : (order.cod !== undefined ? order.cod : Math.max(0, (order.total || 0) - (order.advance || 0)));
 
             html += `
-            <div class="relative overflow-hidden hover:scale-[1.01] hover:shadow-xl transition-all duration-500 bg-white border border-slate-100 rounded-3xl flex flex-col h-full group" style="box-shadow: 0 8px 24px -8px rgba(148, 163, 184, 0.12), 0 1px 2px rgba(148, 163, 184, 0.04);">
+            <div class="premium-hover-card overflow-hidden hover:shadow-xl flex flex-col h-full group" style="box-shadow: 0 8px 24px -8px rgba(148, 163, 184, 0.12), 0 1px 2px rgba(148, 163, 184, 0.04);">
                 <!-- Premium Left Active Tag & Gradient Glow -->
                 <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-500 via-orange-500 to-yellow-650 rounded-l-full"></div>
                 

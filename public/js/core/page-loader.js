@@ -54,7 +54,7 @@
             "  display: flex;",
             "  align-items: center;",
             "  gap: 14px;",
-            "  font-family: Poppins, Segoe UI, sans-serif;",
+            "  font-family: Inter, system-ui, -apple-system, sans-serif;",
             "}",
             ".herb-page-loader-badge {",
             "  position: relative;",

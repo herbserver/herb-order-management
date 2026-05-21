@@ -233,7 +233,7 @@
         const reorderPayload = JSON.stringify(o).replace(/'/g, '&#39;');
 
         return `
-        <div class="relative overflow-hidden hover:scale-[1.01] hover:shadow-2xl transition-all duration-500 bg-white border border-slate-100 rounded-3xl flex flex-col h-full group" style="box-shadow: 0 10px 30px -10px rgba(148, 163, 184, 0.12), 0 1px 3px rgba(148, 163, 184, 0.04);" data-mobile="${escapeHtml(o?.telNo || o?.mobile || '')}">
+        <div class="premium-hover-card overflow-hidden hover:shadow-2xl flex flex-col h-full group" style="box-shadow: 0 10px 30px -10px rgba(148, 163, 184, 0.12), 0 1px 3px rgba(148, 163, 184, 0.04);" data-mobile="${escapeHtml(o?.telNo || o?.mobile || '')}">
             <!-- Premium Left Active Tag & Gradient Glow -->
             <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${config.bg} rounded-l-full"></div>
             

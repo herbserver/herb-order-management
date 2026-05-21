@@ -1,37 +1,42 @@
-/* Eye-Friendly Color Palette */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Eye-Friendly & Comfortable Color Palette */
 :root {
-    --bg-primary: #f8f9fa;
-    --bg-secondary: #f1f3f5;
+    --bg-primary: #f8fafc; /* Gentle slate white background */
+    --bg-secondary: #f1f5f9;
     --bg-card: #ffffff;
-    --text-primary: #2d3748;
-    --text-secondary: #718096;
-    --text-muted: #a0aec0;
+    --text-primary: #1e293b; /* Gentle slate dark for comfortable reading */
+    --text-secondary: #475569;
+    --text-muted: #64748b;
 
-    /* Soft Accent Colors */
-    --accent-blue: #5a9fd4;
-    --accent-blue-light: #7bb3e0;
-    --accent-green: #5fb878;
-    --accent-orange: #f0ad4e;
-    --accent-red: #e57373;
-    --accent-teal: #4db6ac;
-    --accent-purple: #9575cd;
+    /* Calm, Matte Accent Colors (Non-straining) */
+    --accent-blue: #4f46e5;
+    --accent-blue-light: #6366f1;
+    --accent-green: #10b981;
+    --accent-orange: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-teal: #0f766e;
+    --accent-purple: #7c3aed;
 
-    /* Border & Shadow */
+    /* Soft, Matte Borders & Shadows */
     --border-light: #e2e8f0;
     --border-medium: #cbd5e0;
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+    --shadow-lg: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
 }
 
-/* High Performance Animations */
+/* Global Font Override with Calm Fallbacks and Ultra-Crisp Rendering */
 * {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
 body {
-    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 50%, #e9ecef 100%);
+    background: #f8fafc; /* Solid, highly comfortable slate background to minimize eye strain */
     min-height: 100vh;
     overflow-x: hidden;
     scroll-behavior: smooth;
@@ -66,22 +71,19 @@ select {
         box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
         background-color 0.2s ease,
         opacity 0.2s ease;
-    will-change: transform, box-shadow;
 }
 
 .glass-card,
 .glass-panel {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-radius: 1.5rem;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: #ffffff;
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 18px 0 rgba(15, 23, 42, 0.05);
+    border: 1px solid #e2e8f0;
 }
 
 .glass-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+    box-shadow: 0 10px 25px 0 rgba(15, 23, 42, 0.08);
 }
 
 .btn-primary {
@@ -90,7 +92,7 @@ select {
 
 .btn-primary:hover {
     transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 12px 24px rgba(90, 159, 212, 0.25);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
 }
 
 .btn-primary:active {
@@ -133,17 +135,17 @@ button:active {
 }
 
 .tab-active {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%) !important;
     color: white !important;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15) !important;
     transform: scale(1.02);
 }
 
 /* Employee Panel Tab Buttons */
 .emp-tab-btn.tab-active {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%) !important;
     color: white !important;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15) !important;
 }
 
 /* Employee Sidebar - Fixed and Sticky */
@@ -211,12 +213,34 @@ button:active {
 
 .order-card {
     border-left: 4px solid transparent;
+    background: #ffffff;
 }
 
 .order-card:hover {
-    transform: translateX(4px) scale(1.01);
+    transform: translateX(4px);
     border-left-color: var(--accent-blue);
-    background: rgba(255, 255, 255, 0.95);
+    background: #ffffff;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+/* Razor-Sharp Premium Hover Cards with Zero Blur */
+.premium-hover-card {
+    position: relative;
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: 1.5rem;
+    transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1),
+                box-shadow 0.2s cubic-bezier(0.25, 0.8, 0.25, 1),
+                border-color 0.2s ease,
+                background-color 0.2s ease;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.premium-hover-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-medium);
 }
 
 @keyframes fadeIn {
@@ -227,13 +251,12 @@ button:active {
 
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: none;
     }
 }
 
 .animate-fadeIn {
     animation: fadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    will-change: opacity, transform;
 }
 
 /* Bouncy Sidebar Transition */
@@ -358,53 +381,53 @@ button:active {
 .admin-tab.tab-active {
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     color: white;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
     transform: scale(1.02);
 }
 
 .admin-tab.tab-active[data-color="red"] {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+    background: linear-gradient(135deg, #be123c 0%, #9f1239 100%);
+    box-shadow: 0 4px 12px rgba(190, 18, 60, 0.15);
 }
 
 .admin-tab.tab-active[data-color="blue"] {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.15);
 }
 
 .admin-tab.tab-active[data-color="purple"] {
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+    background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+    box-shadow: 0 4px 12px rgba(109, 40, 217, 0.15);
 }
 
 .admin-tab.tab-active[data-color="emerald"] {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    box-shadow: 0 4px 12px rgba(4, 120, 87, 0.15);
 }
 
 .admin-tab.tab-active[data-color="rose"] {
-    background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
-    box-shadow: 0 4px 12px rgba(244, 63, 94, 0.35);
+    background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.15);
 }
 
 .admin-tab.tab-active[data-color="indigo"] {
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+    background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+    box-shadow: 0 4px 12px rgba(67, 56, 202, 0.15);
 }
 
 .admin-tab.tab-active[data-color="violet"] {
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+    background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+    box-shadow: 0 4px 12px rgba(109, 40, 217, 0.15);
 }
 
 .admin-tab.tab-active[data-color="slate"] {
-    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.35);
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+    box-shadow: 0 4px 12px rgba(71, 85, 105, 0.15);
 }
 
 .admin-tab.tab-active[data-color="cyan"] {
-    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.35);
+    background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+    box-shadow: 0 4px 12px rgba(14, 116, 144, 0.15);
 }
 
 /* Quick Stats Pulse Animation */

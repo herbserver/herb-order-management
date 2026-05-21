@@ -30,7 +30,7 @@
             "  padding: 10px 16px;",
             "  background: linear-gradient(135deg, #0f766e, #10b981);",
             "  color: #ffffff;",
-            "  font: 700 13px/1.2 Poppins, Segoe UI, sans-serif;",
+            "  font: 700 13px/1.2 Inter, system-ui, -apple-system, sans-serif;",
             "  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.35);",
             "  cursor: pointer;",
             "  display: none;",
@@ -46,7 +46,7 @@
             "  background: #0f172a;",
             "  color: #f8fafc;",
             "  padding: 10px 12px;",
-            "  font: 600 12px/1.4 Poppins, Segoe UI, sans-serif;",
+            "  font: 600 12px/1.4 Inter, system-ui, -apple-system, sans-serif;",
             "  display: none;",
             "}",
             "#" + IOS_HINT_ID + ".is-visible { display: block; }",
@@ -57,7 +57,7 @@
             "  background: #334155;",
             "  color: #f8fafc;",
             "  padding: 4px 8px;",
-            "  font: 700 11px/1 Poppins, Segoe UI, sans-serif;",
+            "  font: 700 11px/1 Inter, system-ui, -apple-system, sans-serif;",
             "}"
         ].join("\n");
         (document.head || document.documentElement).appendChild(style);
