@@ -262,7 +262,7 @@
                 </div>
                 <div class="min-w-0 flex-1">
                     <h3 class="font-black text-slate-800 text-base leading-tight truncate capitalize" title="${escapeHtml(o?.customerName || '')}">${escapeHtml(o?.customerName || '')}</h3>
-                    ${o?.fatherOrHusbandName ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5 truncate uppercase tracking-tight">S/O, W/O: ${escapeHtml(o.fatherOrHusbandName)}</p>` : `<p class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">Customer</p>`}
+                    ${o?.fatherOrHusbandName ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5 truncate uppercase tracking-tight">${o.gender === 'Female' ? 'W/O' : 'S/O'}: ${escapeHtml(o.fatherOrHusbandName)}</p>` : `<p class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">Customer</p>`}
                 </div>
                 <div class="flex flex-col items-end shrink-0">
                     <span class="${config.badge} px-2.5 py-1 rounded-lg text-[9px] font-extrabold border uppercase tracking-wider">${escapeHtml(status)}</span>

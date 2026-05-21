@@ -421,6 +421,10 @@ function initOrderForm() {
         if (input) input.addEventListener('input', updateAddress);
     });
 
+    // Reset Father/Husband label to default
+    const lbl = document.getElementById('fatherHusbandLabel');
+    if (lbl) lbl.textContent = 'Father Name (S/O)';
+
     // Set Date/Time
     const now = new Date();
     const dateInput = document.querySelector('[name="date"]');
@@ -1388,7 +1392,7 @@ function renderEmpOrderCard(o, isHistory = false) {
             </div>
             <div class="min-w-0 flex-1">
                 <h3 class="font-black text-slate-800 text-base leading-tight truncate capitalize" title="${o.customerName}">${o.customerName}</h3>
-                ${o.fatherOrHusbandName ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5 truncate uppercase tracking-tight">S/O, W/O: ${o.fatherOrHusbandName}</p>` : `<p class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">Customer</p>`}
+                ${o.fatherOrHusbandName ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5 truncate uppercase tracking-tight">${o.gender === 'Female' ? 'W/O' : 'S/O'}: ${o.fatherOrHusbandName}</p>` : `<p class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">Customer</p>`}
             </div>
             <div class="flex flex-col items-end shrink-0">
                 <span class="${config.badge} px-2.5 py-1 rounded-lg text-[9px] font-extrabold border uppercase tracking-wider">${o.status}</span>
@@ -1561,16 +1565,40 @@ function filterMyCancelledOrders(q) {
 
 function reorderFromHistory(order) {
     const f = document.getElementById('orderForm');
-    f.customerName.value = order.customerName;
-    f.fatherOrHusbandName.value = order.fatherOrHusbandName || '';
-    f.telNo.value = order.telNo;
-    // Attempt parsing address if possible, or just raw fill if fields match
-    // Simplified: Just clear fields then user fills. 
-    // For now, let's just alert
+    if (!f) return;
+    
+    // Core Customer Info
+    if (f.customerName) f.customerName.value = order.customerName || '';
+    if (f.fatherOrHusbandName) f.fatherOrHusbandName.value = order.fatherOrHusbandName || '';
+    if (f.telNo) f.telNo.value = order.telNo || '';
+    if (f.altNo) f.altNo.value = order.altNo || '';
+    if (f.age) f.age.value = order.age || '';
+    if (f.problem) f.problem.value = order.problem || '';
+    
+    // Set Gender and trigger its onchange handler to update Father/Husband label
+    if (f.gender && order.gender) {
+        f.gender.value = order.gender;
+        // Trigger manual label update
+        var lbl = document.getElementById('fatherHusbandLabel');
+        if (lbl) {
+            lbl.textContent = order.gender === 'Female' ? 'Husband Name (W/O)' : 'Father Name (S/O)';
+        }
+    }
 
-    // Better: parse if we have stored detailed address in 'order' object (we do in backend usually)
-    // If not, we rely on user.
-    // Let's at least switch tab
+    // Address Info
+    if (f.hNo) f.hNo.value = order.hNo || '';
+    if (f.blockGaliNo) f.blockGaliNo.value = order.blockGaliNo || '';
+    if (f.villColony) f.villColony.value = order.villColony || '';
+    if (f.po) f.po.value = order.po || '';
+    if (f.tahTaluka) f.tahTaluka.value = order.tahTaluka || '';
+    if (f.distt) f.distt.value = order.distt || '';
+    if (f.state) f.state.value = order.state || '';
+    if (f.pin) f.pin.value = order.pin || '';
+    if (f.landMark) f.landMark.value = order.landMark || '';
+    
+    // Update the concatenated Address field
+    updateAddress();
+
     switchEmpTab('order');
     showSuccessPopup('Reorder Started', `Details for ${order.customerName} loaded. Please check address and add items.`, '🔄', '#3b82f6');
 }

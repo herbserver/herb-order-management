@@ -5276,7 +5276,7 @@ function generateOrderCardHTML(order, forceVerification = null) {
                         <h3 class="font-black text-slate-800 text-sm leading-tight truncate capitalize" title="${order.customerName}">${order.customerName}</h3>
                         ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ? `<span class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-1.5 py-0.2 rounded text-[7px] font-black tracking-widest shadow-sm uppercase shrink-0">REORDER</span>` : ''}
                     </div>
-                    ${order.fatherOrHusbandName ? `<p class="text-[9px] font-bold text-slate-400 truncate uppercase mt-0.5">S/O, W/O: ${order.fatherOrHusbandName}</p>` : `<p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Customer</p>`}
+                    ${order.fatherOrHusbandName ? `<p class="text-[9px] font-bold text-slate-400 truncate uppercase mt-0.5">${order.gender === 'Female' ? 'W/O' : 'S/O'}: ${order.fatherOrHusbandName}</p>` : `<p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Customer</p>`}
                 </div>
                 <div class="flex flex-col items-end shrink-0">
                     <span class="text-sm font-black text-slate-800">₹${order.total}</span>
@@ -5445,7 +5445,7 @@ function generateOrderCardHTML(order, forceVerification = null) {
             </div>
             <div class="min-w-0 flex-1">
                 <h3 class="font-black text-slate-800 text-base leading-tight truncate capitalize" title="${order.customerName}">${order.customerName}</h3>
-                ${order.fatherOrHusbandName ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5 truncate uppercase tracking-tight">S/O, W/O: ${order.fatherOrHusbandName}</p>` : `<p class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">Customer</p>`}
+                ${order.fatherOrHusbandName ? `<p class="text-[10px] font-bold text-slate-400 mt-0.5 truncate uppercase tracking-tight">${order.gender === 'Female' ? 'W/O' : 'S/O'}: ${order.fatherOrHusbandName}</p>` : `<p class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">Customer</p>`}
             </div>
             <div class="flex flex-col items-end shrink-0">
                 <span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg text-[10px] font-extrabold border border-emerald-100">COD: ₹${codVal}</span>
@@ -10396,7 +10396,7 @@ async function loadVerificationUnverified() {
                             <h3 class="font-black text-slate-800 text-sm leading-tight truncate capitalize" title="${order.customerName}">${order.customerName}</h3>
                             ${(order.orderType === 'REORDER' || order.orderType === 'Reorder') ? `<span class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-1.5 py-0.2 rounded text-[7px] font-black tracking-widest shadow-sm uppercase shrink-0">REORDER</span>` : ''}
                         </div>
-                        ${order.fatherOrHusbandName ? `<p class="text-[9px] font-bold text-slate-400 truncate uppercase mt-0.5">S/O, W/O: ${order.fatherOrHusbandName}</p>` : `<p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Customer</p>`}
+                        ${order.fatherOrHusbandName ? `<p class="text-[9px] font-bold text-slate-400 truncate uppercase mt-0.5">${order.gender === 'Female' ? 'W/O' : 'S/O'}: ${order.fatherOrHusbandName}</p>` : `<p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Customer</p>`}
                     </div>
                     <div class="flex flex-col items-end shrink-0">
                         <span class="text-sm font-black text-slate-800">₹${order.total}</span>

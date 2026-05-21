@@ -24,7 +24,7 @@ function renderDispatchCardModern(o) {
             <div class="flex items-center gap-3 flex-1">
                 <div>
                     <h4 class="font-black text-xl text-gray-900 leading-tight">${o.customerName}</h4>
-                    ${o.fatherOrHusbandName ? `<p class="text-xs font-bold text-gray-500 mt-0.5">S/O, W/O: ${o.fatherOrHusbandName}</p>` : ''}
+                    ${o.fatherOrHusbandName ? `<p class="text-xs font-bold text-gray-500 mt-0.5">${o.gender === 'Female' ? 'W/O' : 'S/O'}: ${o.fatherOrHusbandName}</p>` : ''}
                 </div>
                 <button onclick="sendWhatsAppDirect('booked', ${JSON.stringify(o).replace(/"/g, '&quot;')})" 
                     class="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl flex items-center justify-center hover:scale-110 hover:rotate-12 shadow-lg shadow-green-200 transition-all">

@@ -21,7 +21,7 @@ function renderVerificationCardModern(o) {
                 <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-xl shadow-indigo-100 group-hover:rotate-6 transition-transform">👤</div>
                 <div>
                    <h4 class="font-black text-2xl text-slate-900 leading-tight">${o.customerName}</h4>
-                   ${o.fatherOrHusbandName ? `<p class="text-xs font-bold text-slate-500 mt-0.5">S/O, W/O: ${o.fatherOrHusbandName}</p>` : ''}
+                   ${o.fatherOrHusbandName ? `<p class="text-xs font-bold text-slate-500 mt-0.5">${o.gender === 'Female' ? 'W/O' : 'S/O'}: ${o.fatherOrHusbandName}</p>` : ''}
                    <div class="flex items-center gap-2 mt-1">
                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${o.orderId}</span>

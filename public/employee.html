@@ -252,7 +252,7 @@
                                                     class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none">
                                             </div>
                                             <div>
-                                                <label class="block text-sm font-medium mb-1">Father / Husband Name</label>
+                                                <label class="block text-sm font-medium mb-1" id="fatherHusbandLabel">Father Name (S/O)</label>
                                                 <input type="text" name="fatherOrHusbandName"
                                                     style="text-transform: capitalize;"
                                                     oninput="this.value = toTitleCase(this.value)"
@@ -262,7 +262,8 @@
                                         <div class="grid grid-cols-2 gap-3 mb-4">
                                             <div>
                                                 <label class="block text-sm font-medium mb-1">Gender *</label>
-                                                <select name="gender" required class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none bg-white">
+                                                <select name="gender" required class="w-full border-2 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none bg-white"
+                                                    onchange="(function(v){ var lbl=document.getElementById('fatherHusbandLabel'); if(lbl) lbl.textContent = v==='Female' ? 'Husband Name (W/O)' : 'Father Name (S/O)'; })(this.value)">
                                                     <option value="" disabled selected>Select</option>
                                                     <option value="Male">Male</option>
                                                     <option value="Female">Female</option>
@@ -661,16 +662,16 @@
     <script src="js/core/utils.js?v=2"></script>
     <script src="js/core/page-links.js?v=3" defer></script>
 
-    <script src="js/ui/modals.js?v=5" defer></script>
-    <script src="js/common.js?v=2.2"></script>
+    <script src="js/ui/modals.js?v=6" defer></script>
+    <script src="js/common.js?v=2.3"></script>
 
     <script src="js/global-search.js?v=2" defer></script>
 
     <!-- Main app.js for shared functions (toggleEmpSidebar, toTitleCase, fetchPincodeDetails, etc.) -->
-    <script src="app.js?v=EmpStandalone-v13" defer></script>
+    <script src="app.js?v=EmpStandalone-v14" defer></script>
 
     <!-- Employee Panel (loads after app.js to override legacy functions) -->
-    <script src="js/panels/employee.js?v=16" defer></script>
+    <script src="js/panels/employee.js?v=17" defer></script>
     <script src="js/services/order-notifications.js?v=3" defer></script>
 
     <script>

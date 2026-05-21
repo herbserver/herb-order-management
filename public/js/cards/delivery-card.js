@@ -36,7 +36,7 @@ function renderDeliveryCardModern(o) {
            <div>
                <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md mb-1 inline-block">${o.orderId}</span>
                <h4 class="font-black text-xl text-gray-900 leading-tight">${o.customerName}</h4>
-               ${o.fatherOrHusbandName ? `<p class="text-xs font-bold text-slate-500 mt-0.5">S/O, W/O: ${o.fatherOrHusbandName}</p>` : ''}
+               ${o.fatherOrHusbandName ? `<p class="text-xs font-bold text-slate-500 mt-0.5">${o.gender === 'Female' ? 'W/O' : 'S/O'}: ${o.fatherOrHusbandName}</p>` : ''}
            </div>
            <div class="text-right">
                <p class="font-black text-xl text-indigo-600">₹${o.total}</p>
