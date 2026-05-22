@@ -94,6 +94,41 @@ const TEMPLATES = [
         desc: 'Remark / call back ke liye',
         color: 'indigo',
         params: ['Customer Name', 'Order ID', 'Remark Message']
+    },
+    {
+        name: 'varicose_veins_wellness',
+        label: '🩸 Varicose Veins Follow-up',
+        desc: 'Varicose Veins (नसों की सूजन/blockage) ke purane customers ke liye',
+        color: 'red',
+        params: ['Customer Name', 'Condition']
+    },
+    {
+        name: 'joint_pain_wellness',
+        label: '🦴 Joint Pain Follow-up',
+        desc: 'Joint Pain (जोड़ों और घुटनों के दर्द) ke purane customers ke liye',
+        color: 'amber',
+        params: ['Customer Name']
+    },
+    {
+        name: 'diabetes_care_followup',
+        label: '🩸 Diabetes Sugar Care',
+        desc: 'Sugar/Diabetes (मधुमेह) ke purane customers ke liye',
+        color: 'blue',
+        params: ['Customer Name']
+    },
+    {
+        name: 'weight_loss_followup',
+        label: '⚖️ Weight Management',
+        desc: 'Weight Loss (वजन नियंत्रण) aur diet routine share karne ke liye',
+        color: 'teal',
+        params: ['Customer Name', 'Discount %']
+    },
+    {
+        name: 'vitality_strength_stamina',
+        label: '💪 Strength & Vitality Care',
+        desc: 'Energy, Stamina (शारीरिक कमजोरी) ke wellness consultation ke liye',
+        color: 'emerald',
+        params: ['Customer Name']
     }
 ];
 

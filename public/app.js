@@ -12047,7 +12047,12 @@ function renderWAMessages(messages, scrollToBottom = true) {
                 delivered: { icon: '🎉', label: 'Order Delivered', bg: 'bg-teal-50/80', bd: 'border-teal-100', tx: 'text-teal-800' },
                 order_on_hold: { icon: '⏸', label: 'Order On Hold', bg: 'bg-amber-50/80', bd: 'border-amber-100', tx: 'text-amber-800' },
                 order_cancelled: { icon: '❌', label: 'Order Cancelled', bg: 'bg-red-50/80', bd: 'border-red-100', tx: 'text-red-800' },
-                order_remark: { icon: '📞', label: 'Callback Request', bg: 'bg-indigo-50/80', bd: 'border-indigo-100', tx: 'text-indigo-800' }
+                order_remark: { icon: '📞', label: 'Callback Request', bg: 'bg-indigo-50/80', bd: 'border-indigo-100', tx: 'text-indigo-800' },
+                varicose_veins_wellness: { icon: '🩸', label: 'Varicose Veins Care', bg: 'bg-red-50/80', bd: 'border-red-100', tx: 'text-red-800' },
+                joint_pain_wellness: { icon: '🦴', label: 'Joint Pain Care', bg: 'bg-amber-50/80', bd: 'border-amber-100', tx: 'text-amber-800' },
+                diabetes_care_followup: { icon: '🩸', label: 'Diabetes Sugar Care', bg: 'bg-blue-50/80', bd: 'border-blue-100', tx: 'text-blue-800' },
+                weight_loss_followup: { icon: '⚖️', label: 'Weight Management', bg: 'bg-teal-50/80', bd: 'border-teal-100', tx: 'text-teal-800' },
+                vitality_strength_stamina: { icon: '💪', label: 'Strength & Vitality', bg: 'bg-emerald-50/80', bd: 'border-emerald-100', tx: 'text-emerald-800' }
             };
             const t = tplMap[tplName] || { icon: '📋', label: tplName || 'Template', bg: 'bg-slate-50/80', bd: 'border-slate-200', tx: 'text-slate-700' };
             const paramLabels = {
@@ -12058,7 +12063,12 @@ function renderWAMessages(messages, scrollToBottom = true) {
                 delivered: ['Customer', 'Order ID', 'Products'],
                 order_on_hold: ['Customer', 'Order ID', 'Hold Reason', 'Callback Date'],
                 order_cancelled: ['Customer', 'Order ID', 'Cancel Reason'],
-                order_remark: ['Customer', 'Order ID', 'Remark']
+                order_remark: ['Customer', 'Order ID', 'Remark'],
+                varicose_veins_wellness: ['Customer Name', 'Target Condition'],
+                joint_pain_wellness: ['Customer Name'],
+                diabetes_care_followup: ['Customer Name'],
+                weight_loss_followup: ['Customer Name', 'Discount %'],
+                vitality_strength_stamina: ['Customer Name']
             };
             const lbls = paramLabels[tplName] || [];
             let params = [];
@@ -12189,6 +12199,11 @@ async function sendWATemplate(templateName) {
     else if (templateName === 'order_on_hold') params = [name, oid, 'Call not answered', 'Jaldi'];
     else if (templateName === 'order_cancelled') params = [name, oid, 'As discussed'];
     else if (templateName === 'order_remark') params = [name, oid, 'Aapke order ke baare mein baat karni thi'];
+    else if (templateName === 'varicose_veins_wellness') params = [name, 'Varicose Veins'];
+    else if (templateName === 'joint_pain_wellness') params = [name];
+    else if (templateName === 'diabetes_care_followup') params = [name];
+    else if (templateName === 'weight_loss_followup') params = [name, '20'];
+    else if (templateName === 'vitality_strength_stamina') params = [name];
     // Sanitize parameters to avoid empty/blank values
     params = params.map(p => {
         const val = String(p ?? '').trim();
