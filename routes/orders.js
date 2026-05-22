@@ -917,6 +917,120 @@ router.post('/track-bluedart/:orderId', async (req, res) => {
     }
 });
 
+// Get Customer CRM Profile for WhatsApp active conversation
+router.get('/customer/:phone', async (req, res) => {
+    try {
+        const { phone } = req.params;
+        if (!phone) {
+            return res.status(400).json({ success: false, message: 'Phone number is required' });
+        }
+
+        // Clean phone number: remove all non-digits
+        const cleanPhone = phone.replace(/\D/g, '');
+        const last10 = cleanPhone.slice(-10);
+
+        if (!cleanPhone) {
+            return res.status(400).json({ success: false, message: 'Invalid phone number format' });
+        }
+
+        // Generate multiple search formats for high robust matching
+        const formats = [cleanPhone];
+        if (last10 && last10.length === 10) {
+            formats.push(last10);
+            formats.push(`91${last10}`);
+            formats.push(`+91${last10}`);
+            formats.push(`+91 ${last10}`);
+            formats.push(`0${last10}`);
+        }
+
+        const phoneFields = ['telNo', 'mobile', 'altNo', 'mobileNumber'];
+        const orQuery = [];
+        phoneFields.forEach(field => {
+            formats.forEach(format => {
+                orQuery.push({ [field]: format });
+            });
+        });
+
+        // Use standard dataAccess exports
+        const Order = dataAccess.Order;
+        let orders = [];
+
+        if (dataAccess.getMongoStatus()) {
+            orders = await Order.find({ $or: orQuery }).sort({ timestamp: -1 }).lean();
+        } else {
+            // Fallback for JSON
+            const fsPath = require('path');
+            const { readJSON } = require('../utils/fileHelpers');
+            const fileOrders = await readJSON(fsPath.join(__dirname, '../data/orders.json')) || [];
+            orders = fileOrders.filter(o => {
+                return formats.includes(o.telNo) || formats.includes(o.mobile) || formats.includes(o.altNo) || formats.includes(o.mobileNumber);
+            });
+            orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+
+        // Return empty profile gracefully if no orders found
+        if (orders.length === 0) {
+            return res.status(404).json({ success: false, message: 'No profile found for this number' });
+        }
+
+        // Calculate Key Metrics
+        const totalOrders = orders.length;
+        const deliveredOrders = orders.filter(o => o.status === 'Delivered');
+        const ltv = deliveredOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const completedCount = deliveredOrders.length;
+        const cancelledOrRtoCount = orders.filter(o => ['Cancelled', 'RTO'].includes(o.status)).length;
+
+        // Extract the latest address with complete fields
+        let latestAddress = null;
+        const addressOrder = orders.find(o => o.address && o.state && (o.pincode || o.pin));
+        if (addressOrder) {
+            latestAddress = {
+                customerName: addressOrder.customerName,
+                fatherOrHusbandName: addressOrder.fatherOrHusbandName || '',
+                gender: addressOrder.gender || '',
+                age: addressOrder.age || '',
+                problem: addressOrder.problem || '',
+                address: addressOrder.address,
+                hNo: addressOrder.hNo || '',
+                blockGaliNo: addressOrder.blockGaliNo || '',
+                villColony: addressOrder.villColony || '',
+                landmark: addressOrder.landmark || addressOrder.landMark || '',
+                city: addressOrder.city || addressOrder.distt || '',
+                state: addressOrder.state || '',
+                pincode: addressOrder.pincode || addressOrder.pin || ''
+            };
+        }
+
+        res.json({
+            success: true,
+            phone: last10 || cleanPhone,
+            metrics: {
+                totalOrders,
+                ltv,
+                completedCount,
+                cancelledOrRtoCount
+            },
+            latestAddress,
+            orders: orders.map(o => ({
+                orderId: o.orderId,
+                timestamp: o.timestamp,
+                status: o.status,
+                total: o.total,
+                items: o.items || [],
+                tracking: {
+                    courier: o.tracking?.courier || o.shiprocket?.courierName || '',
+                    trackingId: o.tracking?.trackingId || o.shiprocket?.awb || '',
+                    currentStatus: o.tracking?.currentStatus || ''
+                }
+            }))
+        });
+
+    } catch (error) {
+        console.error('❌ Get customer CRM profile route error:', error);
+        res.status(500).json({ success: false, message: 'Server error loading customer CRM profile' });
+    }
+});
+
 // Get Single Order
 router.get('/:orderId', async (req, res) => {
     try {

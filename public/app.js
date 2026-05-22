@@ -101,7 +101,7 @@ Namaste *${order.customerName}* ji! 🙏
 🚫 Product milne se pehle OTP share NA karein!
 
 _Team Herb On Naturals_ 💚
-🌐 herbonnaturals.in`,
+🌐 www.herbonnaturals.in`,
 
         verified: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
@@ -182,7 +182,7 @@ Namaste *${order.customerName}* ji! 🙏
 
 ⭐ Hume umeed hai ki aapko products pasand aayenge. Apna feedback zarur share karein - yeh hamare liye bahut important hai!
 
-🛒 Dobara shopping karein: herbonnaturals.in
+🛒 Dobara shopping karein: www.herbonnaturals.in
 
 _Warm regards,_ 💚
 _Team Herb On Naturals_`
@@ -11821,7 +11821,7 @@ async function refreshWAConversations() {
         const data = await res.json();
         if (data.success) {
             waAllConversations = data.conversations;
-            renderWAConversations(data.conversations);
+            filterWAByTab(waActiveFilterTab);
         }
     } catch (e) { }
 }
@@ -11875,7 +11875,7 @@ async function loadWAConversations() {
         const data = await res.json();
         if (data.success) {
             waAllConversations = data.conversations;
-            renderWAConversations(data.conversations);
+            filterWAByTab(waActiveFilterTab);
             startWAConvPolling(); // Fallback polling
             startWASSE();         // Instant SSE updates
         }
@@ -11883,6 +11883,41 @@ async function loadWAConversations() {
     } catch (e) {
         list.innerHTML = `<div class="flex flex-col items-center justify-center py-10 text-red-400"><div class="text-3xl mb-2">!</div><p class="text-xs font-medium mb-3">Failed to load</p><button onclick="loadWAConversations()" class="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-bold">Retry</button></div>`;
     }
+}
+
+let waActiveFilterTab = 'all';
+
+function filterWAByTab(tab) {
+    waActiveFilterTab = tab;
+    
+    // Remove active class from all filter chips
+    document.querySelectorAll('.wa-filter-chip').forEach(btn => btn.classList.remove('active'));
+    
+    // Add active class to selected chip
+    const activeBtn = document.getElementById('waFilter' + tab.charAt(0).toUpperCase() + tab.slice(1));
+    if (activeBtn) activeBtn.classList.add('active');
+    
+    // Filter the conversations
+    let filtered = waAllConversations;
+    if (tab === 'unread') {
+        filtered = waAllConversations.filter(c => c.unread > 0);
+    } else if (tab === 'call') {
+        filtered = waAllConversations.filter(c => {
+            const body = (c.lastMsg || '').toLowerCase();
+            const isCallTemplate = ['order_remark', 'callback'].some(k => (c.lastMsg || '').includes(k));
+            const hasCallKeywords = ['call', 'callback', 'baat', 'phone', 'number', 'contact', 'milna', 'remark'].some(k => body.includes(k));
+            return isCallTemplate || hasCallKeywords;
+        });
+    } else if (tab === 'wellness') {
+        filtered = waAllConversations.filter(c => {
+            const body = (c.lastMsg || '').toLowerCase();
+            const isWellnessTemplate = ['veins', 'joint', 'diabetes', 'wellness', 'sugar', 'weight', 'vitality', 'strength'].some(k => (c.lastMsg || '').includes(k) || body.includes(k));
+            return isWellnessTemplate;
+        });
+    }
+    
+    // Render the filtered conversations
+    renderWAConversations(filtered);
 }
 
 function renderWAConversations(convs) {
@@ -11915,35 +11950,56 @@ function renderWAConversations(convs) {
             const weekStart = new Date(todayStart - 6 * 86400000);
 
             if (msgDate >= todayStart) {
-                // Today → show time only
                 timeStr = msgDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
             } else if (msgDate >= yesterdayStart) {
-                // Yesterday
                 timeStr = 'Yesterday';
             } else if (msgDate >= weekStart) {
-                // Within last 7 days → show day name
-                timeStr = msgDate.toLocaleDateString('en-IN', { weekday: 'short' }); // Mon, Tue...
+                timeStr = msgDate.toLocaleDateString('en-IN', { weekday: 'short' });
             } else {
-                // Older → show date
                 timeStr = msgDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
             }
         }
+        
+        let tagsHtml = '';
+        if (c.unread > 0) {
+            tagsHtml += `<span class="px-1.5 py-0.5 bg-teal-50 text-teal-700 text-[8px] font-extrabold rounded border border-teal-200/50">UNREAD</span>`;
+        }
+        const body = (c.lastMsg || '').toLowerCase();
+        const isCallTemplate = ['order_remark', 'callback'].some(k => (c.lastMsg || '').includes(k));
+        const hasCallKeywords = ['call', 'callback', 'baat', 'phone', 'number', 'contact', 'milna', 'remark'].some(k => body.includes(k));
+        if (isCallTemplate || hasCallKeywords) {
+            tagsHtml += `<span class="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-[8px] font-extrabold rounded border border-indigo-200/50">CALLBACK</span>`;
+        }
+        const isWellnessTemplate = ['veins', 'joint', 'diabetes', 'wellness', 'sugar', 'weight', 'vitality', 'strength'].some(k => (c.lastMsg || '').includes(k) || body.includes(k));
+        if (isWellnessTemplate) {
+            tagsHtml += `<span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[8px] font-extrabold rounded border border-emerald-200/50">WELLNESS</span>`;
+        }
+
+        let tickHtml = '';
+        if (c.lastMsgDirection === 'out') {
+            const tickColor = c.lastMsgStatus === 'read' ? 'text-teal-600 font-bold' : c.lastMsgStatus === 'delivered' ? 'text-slate-400 font-bold' : 'text-slate-400';
+            const tickMarks = c.lastMsgStatus === 'read' || c.lastMsgStatus === 'delivered' ? '✓✓' : '✓';
+            tickHtml = `<span class="flex-shrink-0 text-[10px] ${tickColor} mr-1">${tickMarks}</span>`;
+        }
 
         return `<button onclick="openWAChat('${c.phone}','${(c.name || 'Customer').replace(/'/g, "\\'")}','${c.orderId || ''}')"
-            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 border-b border-slate-100/70 transition-all duration-200 text-left ${isActive ? 'bg-teal-50/70 border-l-4 border-teal-600 pl-3' : ''}">
-            <div class="w-10 h-10 bg-gradient-to-tr ${grad} rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0 relative">
+            class="w-[calc(100%-0.75rem)] flex items-center gap-3 px-3.5 py-3 border border-slate-100/30 transition-all duration-200 text-left wa-conv-item ${isActive ? 'active' : ''}">
+            <div class="w-10 h-10 bg-gradient-to-tr ${grad} rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm flex-shrink-0 relative">
                 ${initials}
-                ${c.unread > 0 ? '<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-teal-500 border-2 border-white rounded-full animate-pulse"></span>' : ''}
+                ${c.unread > 0 ? '<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-teal-500 border-2 border-white rounded-full wa-pulse-glow"></span>' : ''}
             </div>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
-                    <span class="font-semibold text-xs text-slate-800 truncate">${c.name || 'Customer'}</span>
-                    <span class="text-[9px] ${c.unread > 0 ? 'text-teal-600 font-bold' : 'text-slate-400'} flex-shrink-0 ml-1">${timeStr}</span>
+                    <span class="font-extrabold text-xs text-slate-800 truncate">${c.name || 'Customer'}</span>
+                    <span class="text-[9px] ${c.unread > 0 ? 'text-teal-600 font-black' : 'text-slate-400'} flex-shrink-0 ml-1 font-semibold">${timeStr}</span>
                 </div>
-                <p class="text-[10px] text-slate-400 truncate mt-0.5 font-medium">${c.phone}</p>
-                <div class="flex items-center gap-1 mt-0.5">
-                    ${c.lastMsgDirection === 'out' ? `<span class="flex-shrink-0 text-[10px] font-bold ${c.lastMsgStatus === 'read' ? 'text-blue-500' : 'text-slate-400'}">${c.lastMsgStatus === 'read' ? '✓✓' : c.lastMsgStatus === 'delivered' ? '✓✓' : '✓'}</span>` : ''}
-                    <p class="text-[10px] ${c.unread > 0 ? 'text-slate-700 font-semibold' : 'text-slate-400'} truncate">${c.lastMsg || ''}</p>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                    <p class="text-[10px] text-slate-400 font-semibold">${c.phone}</p>
+                    ${tagsHtml}
+                </div>
+                <div class="flex items-center mt-1">
+                    ${tickHtml}
+                    <p class="text-[10px] ${c.unread > 0 ? 'text-slate-700 font-bold' : 'text-slate-400'} truncate font-medium">${c.lastMsg || ''}</p>
                 </div>
             </div>
             ${c.unread > 0 && !isActive ? `<span class="w-4 h-4 bg-teal-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold flex-shrink-0 shadow-sm">${c.unread}</span>` : ''}
@@ -11952,11 +12008,32 @@ function renderWAConversations(convs) {
 }
 
 function filterWAConversations(q) {
-    if (!q) { renderWAConversations(waAllConversations); return; }
+    if (!q) { filterWAByTab(waActiveFilterTab); return; }
     const ql = q.toLowerCase();
-    renderWAConversations(waAllConversations.filter(c =>
+    const filtered = waAllConversations.filter(c =>
         (c.name || '').toLowerCase().includes(ql) || (c.phone || '').includes(ql) || (c.orderId || '').toLowerCase().includes(ql)
-    ));
+    );
+    renderWAConversations(filtered);
+}
+
+let waActiveOrderDetails = null;
+
+async function fetchWAActiveOrderDetails() {
+    if (!waCurrentOrderId) {
+        waActiveOrderDetails = null;
+        return;
+    }
+    try {
+        const res = await fetch(`${API_URL}/orders/${waCurrentOrderId}`);
+        const data = await res.json();
+        if (data.success && data.order) {
+            waActiveOrderDetails = data.order;
+        } else {
+            waActiveOrderDetails = null;
+        }
+    } catch (e) {
+        waActiveOrderDetails = null;
+    }
 }
 
 async function openWAChat(phone, name, orderId) {
@@ -11969,15 +12046,22 @@ async function openWAChat(phone, name, orderId) {
     document.getElementById('waChatAvatar').textContent = initials;
     document.getElementById('waChatName').textContent = name;
     document.getElementById('waChatPhone').textContent = `+91-${phone.replace(/^91/, '')}`;
+    
+    // Fetch active order details if any
+    await fetchWAActiveOrderDetails();
+    
     await loadWAMessages(phone);
-    renderWAConversations(waAllConversations);
+    filterWAByTab(waActiveFilterTab);
     startWAPolling();
+
+    // Fetch and render dynamic CRM Customer Profile Panel on the right!
+    fetchAndRenderWACustomerProfile(phone, name);
 
     // Mark all incoming as read → clears green badge
     fetch(`${API_URL}/whatsapp/messages/${phone}/markread`, { method: 'POST' })
         .then(() => {
             const conv = waAllConversations.find(c => c.phone === phone);
-            if (conv) { conv.unread = 0; renderWAConversations(waAllConversations); }
+            if (conv) { conv.unread = 0; filterWAByTab(waActiveFilterTab); }
         }).catch(() => { });
 }
 
@@ -11987,7 +12071,36 @@ async function loadWAMessages(phone) {
     try {
         const res = await fetch(`${API_URL}/whatsapp/messages/${phone}`);
         const data = await res.json();
-        if (data.success && data.messages.length > 0) { renderWAMessages(data.messages); }
+        if (data.success && data.messages.length > 0) {
+            renderWAMessages(data.messages);
+            
+            // Dynamic Active 24h Countdown Badge in Header
+            let lastIncoming = null;
+            for (let i = data.messages.length - 1; i >= 0; i--) {
+                if (data.messages[i].direction === 'in') {
+                    lastIncoming = data.messages[i];
+                    break;
+                }
+            }
+            const badge = document.getElementById('wa24hBadge');
+            if (badge) {
+                if (lastIncoming) {
+                    const lastInTime = new Date(lastIncoming.timestamp).getTime();
+                    const diffMs = (24 * 60 * 60 * 1000) - (Date.now() - lastInTime);
+                    if (diffMs > 0) {
+                        badge.classList.remove('hidden');
+                        const hours = Math.floor(diffMs / (3600 * 1000));
+                        const mins = Math.floor((diffMs % (3600 * 1000)) / (60 * 1000));
+                        badge.textContent = `ACTIVE ${hours}h ${mins}m`;
+                        badge.className = "bg-emerald-500/20 text-emerald-300 text-[8px] font-black px-1.5 py-0.5 rounded border border-emerald-500/30 tracking-wider animate-pulse";
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
         else { msgContent.innerHTML = `<div class="flex justify-center"><div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-4 py-2 rounded-xl text-center max-w-xs">No message history yet.<br>Template bhejo ya message karo.</div></div>`; }
     } catch (e) {
         msgContent.innerHTML = `<div class="flex justify-center"><div class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-xl">Messages load failed</div></div>`;
@@ -12005,15 +12118,16 @@ function renderWAMessages(messages, scrollToBottom = true) {
         const dateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
         if (dateStr !== lastDate) {
             html += `<div class="flex items-center justify-center my-4">
-                <div class="h-[1px] bg-slate-200/70 flex-1"></div>
-                <span class="mx-3 bg-white/90 backdrop-blur-sm text-slate-500 text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-sm border border-slate-100 flex-shrink-0">${dateStr}</span>
-                <div class="h-[1px] bg-slate-200/70 flex-1"></div>
+                <div class="h-[1px] bg-slate-200/50 flex-1"></div>
+                <span class="mx-3 bg-white/90 backdrop-blur-md text-slate-500 text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-sm border border-slate-100/80 flex-shrink-0">${dateStr}</span>
+                <div class="h-[1px] bg-slate-200/50 flex-1"></div>
             </div>`;
             lastDate = dateStr;
         }
         const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
         const isOut = msg.direction === 'out';
         const isFailed = msg.status === 'failed';
+        
         // Detect template: type=template OR has templateName OR body starts with [Auto]
         const bodyStartsAuto = (msg.body || '').startsWith('[Auto]');
         const isTemplate = msg.type === 'template' || (msg.templateName && msg.templateName.length > 0) || bodyStartsAuto;
@@ -12035,26 +12149,26 @@ function renderWAMessages(messages, scrollToBottom = true) {
             else if (msg.type === 'document') mediaHtml = '<a href="' + mediaUrl + '" target="_blank" class="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 mb-1.5 text-xs text-blue-600">📄 ' + waEscapeHtml(msg.body || 'Document') + '</a>';
         }
 
-        const tickHtml = '<span class="text-[10px] ' + (msg.status === 'read' ? 'text-blue-500 font-bold' : 'text-slate-400') + '">' + (msg.status === 'read' ? '✓✓' : msg.status === 'delivered' ? '✓✓' : '✓') + '</span>';
+        const tickHtml = '<span class="text-[10px] ' + (msg.status === 'read' ? 'text-teal-600 font-bold' : 'text-slate-400') + '">' + (msg.status === 'read' ? '✓✓' : msg.status === 'delivered' ? '✓✓' : '✓') + '</span>';
 
         if (isOut && isTemplate) {
             // Beautiful template card
             const tplMap = {
-                order_confirm: { icon: '✅', label: 'Order Confirmed', bg: 'bg-emerald-50/80', bd: 'border-emerald-100', tx: 'text-emerald-800' },
-                address_verify: { icon: '📍', label: 'Address Verified', bg: 'bg-blue-50/80', bd: 'border-blue-100', tx: 'text-blue-800' },
-                order_dispatch: { icon: '🚚', label: 'Order Dispatched', bg: 'bg-purple-50/80', bd: 'border-purple-100', tx: 'text-purple-800' },
-                out_for_delivery: { icon: '🛵', label: 'Out For Delivery', bg: 'bg-orange-50/80', bd: 'border-orange-100', tx: 'text-orange-800' },
-                delivered: { icon: '🎉', label: 'Order Delivered', bg: 'bg-teal-50/80', bd: 'border-teal-100', tx: 'text-teal-800' },
-                order_on_hold: { icon: '⏸', label: 'Order On Hold', bg: 'bg-amber-50/80', bd: 'border-amber-100', tx: 'text-amber-800' },
-                order_cancelled: { icon: '❌', label: 'Order Cancelled', bg: 'bg-red-50/80', bd: 'border-red-100', tx: 'text-red-800' },
-                order_remark: { icon: '📞', label: 'Callback Request', bg: 'bg-indigo-50/80', bd: 'border-indigo-100', tx: 'text-indigo-800' },
-                varicose_veins_wellness: { icon: '🩸', label: 'Varicose Veins Care', bg: 'bg-red-50/80', bd: 'border-red-100', tx: 'text-red-800' },
-                joint_pain_wellness: { icon: '🦴', label: 'Joint Pain Care', bg: 'bg-amber-50/80', bd: 'border-amber-100', tx: 'text-amber-800' },
-                diabetes_care_followup: { icon: '🩸', label: 'Diabetes Sugar Care', bg: 'bg-blue-50/80', bd: 'border-blue-100', tx: 'text-blue-800' },
-                weight_loss_followup: { icon: '⚖️', label: 'Weight Management', bg: 'bg-teal-50/80', bd: 'border-teal-100', tx: 'text-teal-800' },
-                vitality_strength_stamina: { icon: '💪', label: 'Strength & Vitality', bg: 'bg-emerald-50/80', bd: 'border-emerald-100', tx: 'text-emerald-800' }
+                order_confirm: { icon: '✅', label: 'Order Confirmed', bg: 'bg-emerald-50/80', bd: 'border-emerald-100', tx: 'text-emerald-800', borderTop: 'border-t-emerald-500' },
+                address_verify: { icon: '📍', label: 'Address Verified', bg: 'bg-blue-50/80', bd: 'border-blue-100', tx: 'text-blue-800', borderTop: 'border-t-blue-500' },
+                order_dispatch: { icon: '🚚', label: 'Order Dispatched', bg: 'bg-purple-50/80', bd: 'border-purple-100', tx: 'text-purple-800', borderTop: 'border-t-purple-500' },
+                out_for_delivery: { icon: '🛵', label: 'Out For Delivery', bg: 'bg-orange-50/80', bd: 'border-orange-100', tx: 'text-orange-800', borderTop: 'border-t-orange-500' },
+                delivered: { icon: '🎉', label: 'Order Delivered', bg: 'bg-teal-50/80', bd: 'border-teal-100', tx: 'text-teal-800', borderTop: 'border-t-teal-500' },
+                order_on_hold: { icon: '⏸', label: 'Order On Hold', bg: 'bg-amber-50/80', bd: 'border-amber-100', tx: 'text-amber-800', borderTop: 'border-t-amber-500' },
+                order_cancelled: { icon: '❌', label: 'Order Cancelled', bg: 'bg-red-50/80', bd: 'border-red-100', tx: 'text-red-800', borderTop: 'border-t-red-500' },
+                order_remark: { icon: '📞', label: 'Callback Request', bg: 'bg-indigo-50/80', bd: 'border-indigo-100', tx: 'text-indigo-800', borderTop: 'border-t-indigo-500' },
+                varicose_veins_wellness: { icon: '🩸', label: 'Varicose Veins Care', bg: 'bg-red-50/80', bd: 'border-red-100', tx: 'text-red-800', borderTop: 'border-t-red-500' },
+                joint_pain_wellness: { icon: '🦴', label: 'Joint Pain Care', bg: 'bg-amber-50/80', bd: 'border-amber-100', tx: 'text-amber-800', borderTop: 'border-t-amber-500' },
+                diabetes_care_followup: { icon: '🩸', label: 'Diabetes Sugar Care', bg: 'bg-blue-50/80', bd: 'border-blue-100', tx: 'text-blue-800', borderTop: 'border-t-blue-500' },
+                weight_loss_followup: { icon: '⚖️', label: 'Weight Management', bg: 'bg-teal-50/80', bd: 'border-teal-100', tx: 'text-teal-800', borderTop: 'border-t-teal-500' },
+                vitality_strength_stamina: { icon: '💪', label: 'Strength & Vitality', bg: 'bg-emerald-50/80', bd: 'border-emerald-100', tx: 'text-emerald-800', borderTop: 'border-t-emerald-500' }
             };
-            const t = tplMap[tplName] || { icon: '📋', label: tplName || 'Template', bg: 'bg-slate-50/80', bd: 'border-slate-200', tx: 'text-slate-700' };
+            const t = tplMap[tplName] || { icon: '📋', label: tplName || 'Template', bg: 'bg-slate-50/80', bd: 'border-slate-200', tx: 'text-slate-700', borderTop: 'border-t-indigo-500' };
             const paramLabels = {
                 order_confirm: ['Customer', 'Order ID', 'Total ₹', 'Advance ₹', 'COD ₹', 'Products'],
                 address_verify: ['Customer', 'Order ID', 'Total ₹', 'Advance ₹', 'COD ₹', 'Products'],
@@ -12077,21 +12191,19 @@ function renderWAMessages(messages, scrollToBottom = true) {
             if (ci > 0) params = bodyStr.substring(ci + 1).trim().split(' | ').filter(function (p) { return p.trim(); });
             let pHtml = '';
             params.forEach(function (p, i) {
-                pHtml += '<div class="flex justify-between text-[10px] py-0.5"><span class="text-slate-400 font-medium">' + waEscapeHtml(lbls[i] || 'Param ' + (i + 1)) + ':</span><span class="font-bold text-slate-700 text-right ml-4">' + waEscapeHtml(p.trim()) + '</span></div>';
+                pHtml += '<div class="flex justify-between text-[10px] py-0.5 border-b border-slate-100/50 last:border-b-0"><span class="text-slate-400 font-medium">' + waEscapeHtml(lbls[i] || 'Param ' + (i + 1)) + ':</span><span class="font-bold text-slate-700 text-right ml-4 max-w-[70%] truncate">' + waEscapeHtml(p.trim()) + '</span></div>';
             });
             
-            const borderTopClass = tplName === 'order_confirm' ? 'border-t-emerald-500' : tplName === 'address_verify' ? 'border-t-blue-500' : tplName === 'order_dispatch' ? 'border-t-purple-500' : tplName === 'out_for_delivery' ? 'border-t-orange-500' : tplName === 'delivered' ? 'border-t-teal-500' : tplName === 'order_on_hold' ? 'border-t-amber-500' : tplName === 'order_cancelled' ? 'border-t-red-500' : 'border-t-indigo-500';
-
-            html += '<div class="flex justify-end mb-3"><div class="bg-white border ' + t.bd + ' rounded-2xl rounded-tr-sm p-4 max-w-[80%] shadow-md border-t-4 ' + borderTopClass + '">'
+            html += '<div class="flex justify-end mb-3"><div class="wa-template-card border ' + t.bd + ' rounded-2xl rounded-tr-sm p-4 max-w-[80%] border-t-4 ' + t.borderTop + '">'
                 + '<div class="flex items-center gap-2 mb-2.5"><span class="text-base leading-none">' + t.icon + '</span><span class="font-bold text-xs ' + t.tx + '">' + t.label + '</span></div>'
-                + (pHtml ? '<div class="bg-slate-50/80 border border-slate-100/60 rounded-xl px-3.5 py-2.5 mb-2.5 space-y-1">' + pHtml + '</div>' : '')
-                + '<div class="flex items-center justify-between border-t border-slate-100 pt-2"><span class="text-[9px] text-slate-400 font-medium italic">Auto-sent template</span><div class="flex items-center gap-1.5"><span class="text-[9px] text-slate-400 font-medium">' + timeStr + '</span>' + tickHtml + '</div></div>'
+                + (pHtml ? '<div class="bg-slate-50 border border-slate-100/60 rounded-xl px-3.5 py-2.5 mb-2.5 space-y-1">' + pHtml + '</div>' : '')
+                + '<div class="flex items-center justify-between border-t border-slate-100 pt-2"><span class="text-[9px] text-slate-400 font-semibold italic">Auto-sent template</span><div class="flex items-center gap-1.5"><span class="text-[9px] text-slate-400 font-medium">' + timeStr + '</span>' + tickHtml + '</div></div>'
                 + '</div></div>';
         } else if (isOut) {
-            html += '<div class="flex justify-end mb-2.5"><div class="bg-teal-50 border border-teal-100/50 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[75%] shadow-sm">'
+            html += '<div class="flex justify-end mb-2.5"><div class="wa-bubble-out px-4 py-2.5 max-w-[75%]">'
                 + (isFailed ? '<p class="text-[10px] text-red-500 font-bold mb-1">Failed to send</p>' : '')
                 + mediaHtml
-                + '<p class="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">' + waEscapeHtml(msg.body || '') + '</p>'
+                + '<p class="text-[13px] text-slate-800 whitespace-pre-wrap leading-relaxed font-medium">' + waEscapeHtml(msg.body || '') + '</p>'
                 + '<div class="flex items-center justify-end gap-1 mt-1.5"><span class="text-[9px] text-slate-400 font-medium">' + timeStr + '</span>' + tickHtml + '</div></div></div>';
         } else {
             // For old media messages without mediaId, show styled placeholder
@@ -12105,12 +12217,12 @@ function renderWAMessages(messages, scrollToBottom = true) {
                 else if (msg.body.startsWith('[Location')) placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1.5 flex items-center gap-2 text-slate-500"><span class="text-xl">📍</span><span class="text-xs font-medium">Location</span></div>';
             }
 
-            html += '<div class="flex justify-start mb-2.5"><div class="bg-white rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[75%] shadow-sm border border-slate-100/80">'
+            html += '<div class="flex justify-start mb-2.5"><div class="wa-bubble-in px-4 py-2.5 max-w-[75%]">'
                 + mediaHtml
                 + placeholderHtml
                 + (hasMedia && msg.type !== 'document' && msg.body && !['[Image]', '[Video]', '[Voice Message]', '[Sticker]'].includes(msg.body)
-                    ? '<p class="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">' + waEscapeHtml(msg.body) + '</p>'
-                    : (!hasMedia && !placeholderHtml ? '<p class="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">' + waEscapeHtml(msg.body || '') + '</p>' : ''))
+                    ? '<p class="text-[13px] text-slate-800 whitespace-pre-wrap leading-relaxed font-medium">' + waEscapeHtml(msg.body) + '</p>'
+                    : (!hasMedia && !placeholderHtml ? '<p class="text-[13px] text-slate-800 whitespace-pre-wrap leading-relaxed font-medium">' + waEscapeHtml(msg.body || '') + '</p>' : ''))
                 + '<span class="text-[9px] text-slate-400 block text-right mt-1.5 font-medium">' + timeStr + '</span></div></div>';
         }
     });
@@ -12177,52 +12289,239 @@ async function openWATemplatePanel() {
             <p class="font-bold text-xs tracking-wide">${t.label}</p>
             <p class="text-[10px] opacity-80 mt-1 leading-normal">${t.desc}</p>
             <div class="mt-2.5 pt-2 border-t border-slate-950/5 flex items-center justify-between text-[9px] opacity-60">
-                <span class="font-medium">Variables: ${t.params.length}</span>
-                <span class="font-semibold uppercase tracking-wider">Send →</span>
+                <span class="font-bold">Variables: ${t.params.length}</span>
+                <span class="font-black uppercase tracking-wider">Customize →</span>
             </div></button>`;
     }).join('');
     if (panel) panel.classList.remove('hidden');
 }
 
-async function sendWATemplate(templateName) {
+let currentPreviewTemplate = null;
+
+async function openWATemplatePreviewModal(templateName) {
     const tpl = waAllTemplates.find(t => t.name === templateName);
     if (!tpl) return;
-    document.getElementById('waTemplatePanel').classList.add('hidden');
+    
+    currentPreviewTemplate = tpl;
+    
+    // Show modal
+    const modal = document.getElementById('waTemplatePreviewModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    
+    // Update modal title
+    document.getElementById('waPreviewModalSubtitle').textContent = tpl.label + ' (' + tpl.name + ')';
+    
+    // Populate parameter inputs
     const name = waCurrentName || 'Customer';
     const oid = waCurrentOrderId || 'N/A';
+    
+    let totalAmount = '';
+    let advanceAmount = '0';
+    let codAmount = '';
+    let products = '';
+    let awbNo = '';
+    let courier = '';
+    let holdReason = 'Call not answered';
+    let cancelReason = 'As discussed';
+    
+    if (waActiveOrderDetails) {
+        totalAmount = waActiveOrderDetails.total || '';
+        advanceAmount = waActiveOrderDetails.advance || '0';
+        codAmount = (Number(waActiveOrderDetails.total || 0) - Number(waActiveOrderDetails.advance || 0)) || '';
+        products = (waActiveOrderDetails.items || []).map(item => (item.description || item.product || item.name || '') + ' x' + (item.quantity || 1)).join(', ') || '';
+        awbNo = waActiveOrderDetails.trackingId || waActiveOrderDetails.awbNumber || '';
+        courier = waActiveOrderDetails.courier || '';
+        holdReason = waActiveOrderDetails.holdReason || 'Call not answered';
+        cancelReason = waActiveOrderDetails.cancelReason || 'As discussed';
+    }
+    
     let params = tpl.params.map(() => '');
-    if (templateName === 'order_confirm') params = [name, oid, '', '', '', ''];
-    else if (templateName === 'address_verify') params = [name, oid, '', '', '', ''];
-    else if (templateName === 'order_dispatch') params = [name, oid, '', '', '', '', ''];
-    else if (templateName === 'out_for_delivery') params = [name, oid, '', new Date().toLocaleDateString('en-IN')];
-    else if (templateName === 'delivered') params = [name, oid, new Date().toLocaleDateString('en-IN')];
-    else if (templateName === 'order_on_hold') params = [name, oid, 'Call not answered', 'Jaldi'];
-    else if (templateName === 'order_cancelled') params = [name, oid, 'As discussed'];
+    if (templateName === 'order_confirm') params = [name, oid, totalAmount, advanceAmount, codAmount, products];
+    else if (templateName === 'address_verify') params = [name, oid, totalAmount, advanceAmount, codAmount, products];
+    else if (templateName === 'order_dispatch') params = [name, oid, awbNo, courier, totalAmount, codAmount, products];
+    else if (templateName === 'out_for_delivery') params = [name, oid, codAmount, products];
+    else if (templateName === 'delivered') params = [name, oid, products];
+    else if (templateName === 'order_on_hold') params = [name, oid, holdReason, ''];
+    else if (templateName === 'order_cancelled') params = [name, oid, cancelReason];
     else if (templateName === 'order_remark') params = [name, oid, 'Aapke order ke baare mein baat karni thi'];
     else if (templateName === 'varicose_veins_wellness') params = [name];
     else if (templateName === 'joint_pain_wellness') params = [name];
     else if (templateName === 'diabetes_care_followup') params = [name];
     else if (templateName === 'weight_loss_followup') params = [name, '20'];
     else if (templateName === 'vitality_strength_stamina') params = [name];
-    // Sanitize parameters to avoid empty/blank values
+    
     params = params.map(p => {
         const val = String(p ?? '').trim();
-        return val === '' ? '-' : val;
+        return val === '' ? '' : val;
     });
+    
+    // Render input fields
+    const listDiv = document.getElementById('waPreviewParamsList');
+    let inputsHtml = '';
+    
+    tpl.params.forEach((param, i) => {
+        const val = params[i] || '';
+        inputsHtml += `
+            <div class="space-y-1">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">${param}</label>
+                <input type="text" data-preview-param-idx="${i}" placeholder="Enter ${param}" value="${val}" class="wa-preview-param-input w-full px-3.5 py-2 bg-white border border-slate-200/80 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-xs outline-none transition-all font-semibold text-slate-700 shadow-sm" onkeyup="updateWATemplateMockup()">
+            </div>
+        `;
+    });
+    
+    listDiv.innerHTML = inputsHtml;
+    
+    // Update Phone Mockup Header
+    const initials = (name || 'C').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('waMockupAvatar').textContent = initials;
+    document.getElementById('waMockupName').textContent = name;
+    
+    // Render Mockup Bubble
+    updateWATemplateMockup();
+}
 
-    const preview = params.map((p, i) => `${tpl.params[i] || 'Param ' + (i + 1)}: ${p}`).join('\n');
-    if (!confirm(`Send: ${tpl.label}\nTo: ${waCurrentName} (${waCurrentPhone})\n\n${preview}\n\nBhejein?`)) return;
+function closeWATemplatePreviewModal() {
+    const modal = document.getElementById('waTemplatePreviewModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    currentPreviewTemplate = null;
+}
+
+function updateWATemplateMockup() {
+    if (!currentPreviewTemplate) return;
+    
+    const tpl = currentPreviewTemplate;
+    const tplName = tpl.name;
+    
+    const tplMap = {
+        order_confirm: { icon: '✅', label: 'Order Confirmed', bg: 'bg-emerald-50/80', bd: 'border-emerald-100', tx: 'text-emerald-800', borderTop: 'border-t-emerald-500' },
+        address_verify: { icon: '📍', label: 'Address Verified', bg: 'bg-blue-50/80', bd: 'border-blue-100', tx: 'text-blue-800', borderTop: 'border-t-blue-500' },
+        order_dispatch: { icon: '🚚', label: 'Order Dispatched', bg: 'bg-purple-50/80', bd: 'border-purple-100', tx: 'text-purple-800', borderTop: 'border-t-purple-500' },
+        out_for_delivery: { icon: '🛵', label: 'Out For Delivery', bg: 'bg-orange-50/80', bd: 'border-orange-100', tx: 'text-orange-800', borderTop: 'border-t-orange-500' },
+        delivered: { icon: '🎉', label: 'Order Delivered', bg: 'bg-teal-50/80', bd: 'border-teal-100', tx: 'text-teal-800', borderTop: 'border-t-teal-500' },
+        order_on_hold: { icon: '⏸', label: 'Order On Hold', bg: 'bg-amber-50/80', bd: 'border-amber-100', tx: 'text-amber-800', borderTop: 'border-t-amber-500' },
+        order_cancelled: { icon: '❌', label: 'Order Cancelled', bg: 'bg-red-50/80', bd: 'border-red-100', tx: 'text-red-800', borderTop: 'border-t-red-500' },
+        order_remark: { icon: '📞', label: 'Callback Request', bg: 'bg-indigo-50/80', bd: 'border-indigo-100', tx: 'text-indigo-800', borderTop: 'border-t-indigo-500' },
+        varicose_veins_wellness: { icon: '🩸', label: 'Varicose Veins Care', bg: 'bg-red-50/80', bd: 'border-red-100', tx: 'text-red-800', borderTop: 'border-t-red-500' },
+        joint_pain_wellness: { icon: '🦴', label: 'Joint Pain Care', bg: 'bg-amber-50/80', bd: 'border-amber-100', tx: 'text-amber-800', borderTop: 'border-t-amber-500' },
+        diabetes_care_followup: { icon: '🩸', label: 'Diabetes Sugar Care', bg: 'bg-blue-50/80', bd: 'border-blue-100', tx: 'text-blue-800', borderTop: 'border-t-blue-500' },
+        weight_loss_followup: { icon: '⚖️', label: 'Weight Management', bg: 'bg-teal-50/80', bd: 'border-teal-100', tx: 'text-teal-800', borderTop: 'border-t-teal-500' },
+        vitality_strength_stamina: { icon: '💪', label: 'Strength & Vitality', bg: 'bg-emerald-50/80', bd: 'border-emerald-100', tx: 'text-emerald-800', borderTop: 'border-t-emerald-500' }
+    };
+    
+    const t = tplMap[tplName] || { icon: '📋', label: tpl.label || tplName, bg: 'bg-slate-50/80', bd: 'border-slate-200', tx: 'text-slate-700', borderTop: 'border-t-indigo-500' };
+    
+    const paramInputs = document.querySelectorAll('.wa-preview-param-input');
+    const params = [];
+    paramInputs.forEach(input => {
+        const idx = parseInt(input.getAttribute('data-preview-param-idx'), 10);
+        params[idx] = input.value || '-';
+    });
+    
+    const paramLabels = {
+        order_confirm: ['Customer', 'Order ID', 'Total ₹', 'Advance ₹', 'COD ₹', 'Products'],
+        address_verify: ['Customer', 'Order ID', 'Total ₹', 'Advance ₹', 'COD ₹', 'Products'],
+        order_dispatch: ['Customer', 'Order ID', 'AWB No.', 'Courier', 'Total ₹', 'COD ₹', 'Products'],
+        out_for_delivery: ['Customer', 'Order ID', 'COD ₹', 'Products'],
+        delivered: ['Customer', 'Order ID', 'Products'],
+        order_on_hold: ['Customer', 'Order ID', 'Hold Reason', 'Callback Date'],
+        order_cancelled: ['Customer', 'Order ID', 'Cancel Reason'],
+        order_remark: ['Customer', 'Order ID', 'Remark'],
+        varicose_veins_wellness: ['Customer Name'],
+        joint_pain_wellness: ['Customer Name'],
+        diabetes_care_followup: ['Customer Name'],
+        weight_loss_followup: ['Customer Name', 'Discount %'],
+        vitality_strength_stamina: ['Customer Name']
+    };
+    
+    const lbls = paramLabels[tplName] || [];
+    let pHtml = '';
+    tpl.params.forEach((param, i) => {
+        const val = params[i] || '-';
+        pHtml += `
+            <div class="flex justify-between text-[8px] py-0.5 border-b border-slate-100/50 last:border-b-0">
+                <span class="text-slate-400 font-medium">${waEscapeHtml(lbls[i] || param)}:</span>
+                <span class="font-bold text-slate-700 text-right ml-2 max-w-[65%] truncate">${waEscapeHtml(val)}</span>
+            </div>
+        `;
+    });
+    
+    const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    
+    const bubbleContainer = document.getElementById('waMockupBubbleContainer');
+    if (bubbleContainer) {
+        bubbleContainer.innerHTML = `
+            <div class="flex justify-end animate-fadeIn">
+                <div class="bg-white border ${t.bd} rounded-2xl rounded-tr-sm p-3 w-full shadow-sm border-t-4 ${t.borderTop}">
+                    <div class="flex items-center gap-1.5 mb-1.5">
+                        <span class="text-xs leading-none">${t.icon}</span>
+                        <span class="font-black text-[9px] ${t.tx}">${t.label}</span>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-100/60 rounded-xl px-2 py-1.5 mb-1.5 space-y-0.5">
+                        ${pHtml}
+                    </div>
+                    <div class="flex items-center justify-between border-t border-slate-100 pt-1.5">
+                        <span class="text-[7px] text-slate-400 font-bold italic">Auto-sent template</span>
+                        <div class="flex items-center gap-0.5">
+                            <span class="text-[7px] text-slate-400 font-medium">${now}</span>
+                            <span class="text-[7px] text-slate-400">✓✓</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+async function sendWATemplate(templateName) {
+    document.getElementById('waTemplatePanel').classList.add('hidden');
+    openWATemplatePreviewModal(templateName);
+}
+
+async function confirmAndSendWATemplate() {
+    if (!currentPreviewTemplate || !waCurrentPhone) return;
+    
+    const tpl = currentPreviewTemplate;
+    const templateName = tpl.name;
+    
+    // Gather parameters
+    const paramInputs = document.querySelectorAll('.wa-preview-param-input');
+    let params = [];
+    paramInputs.forEach(input => {
+        const idx = parseInt(input.getAttribute('data-preview-param-idx'), 10);
+        const val = input.value.trim();
+        params[idx] = val === '' ? '-' : val;
+    });
+    
+    closeWATemplatePreviewModal();
+    
     appendWAMessage(`[Template: ${tpl.label}]\n${params.join(' | ')}`, 'out', 'sent');
+    
     try {
         const res = await fetch(`${API_URL}/whatsapp/send`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to: waCurrentPhone, templateName, parameters: params, lang: 'en', customerName: waCurrentName, orderId: waCurrentOrderId })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to: waCurrentPhone,
+                templateName,
+                parameters: params,
+                lang: 'en',
+                customerName: waCurrentName,
+                orderId: waCurrentOrderId
+            })
         });
         const data = await res.json();
-        if (!data.success) appendWAMessage(`Template failed: ${JSON.stringify(data.error?.error_data?.details || data.message)}`, 'error');
-        else appendWAMessage('Template sent!', 'info');
+        if (!data.success) {
+            appendWAMessage(`Template failed: ${JSON.stringify(data.error?.error_data?.details || data.message)}`, 'error');
+        } else {
+            appendWAMessage('Template sent!', 'info');
+        }
         await loadWAConversations();
-    } catch (e) { appendWAMessage('Network error', 'error'); }
+    } catch (e) {
+        appendWAMessage('Network error', 'error');
+    }
 }
 
 function appendWAMessage(text, direction, status) {
@@ -12232,12 +12531,12 @@ function appendWAMessage(text, direction, status) {
     const div = document.createElement('div');
     if (direction === 'error' || direction === 'info') {
         div.className = 'flex justify-center mb-2';
-        div.innerHTML = `<div class="${direction === 'error' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'} text-xs px-4 py-2 rounded-xl shadow-sm">${text}</div>`;
+        div.innerHTML = `<div class="${direction === 'error' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'} text-xs px-4 py-2 rounded-xl shadow-sm font-bold">${text}</div>`;
     } else if (direction === 'out') {
-        div.className = 'flex justify-end mb-2';
-        div.innerHTML = `<div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] shadow-sm">
-            <p class="text-sm text-slate-800 whitespace-pre-wrap">${waEscapeHtml(text)}</p>
-            <div class="flex items-center justify-end gap-1 mt-1"><span class="text-[10px] text-slate-400">${now}</span><span class="text-[10px] text-slate-400">✓</span></div></div>`;
+        div.className = 'flex justify-end mb-2.5';
+        div.innerHTML = `<div class="wa-bubble-out px-4 py-2.5 max-w-[75%]">
+            <p class="text-[13px] text-slate-800 whitespace-pre-wrap leading-relaxed font-medium">${waEscapeHtml(text)}</p>
+            <div class="flex items-center justify-end gap-1 mt-1.5"><span class="text-[9px] text-slate-400 font-medium">${now}</span><span class="text-[9px] text-slate-400">✓</span></div></div>`;
     }
     msgContent.appendChild(div);
     const msgArea = document.getElementById('waChatMessages');
@@ -12247,6 +12546,25 @@ function appendWAMessage(text, direction, status) {
 function closeWATemplatePanel() {
     const p = document.getElementById('waTemplatePanel');
     if (p) p.classList.add('hidden');
+}
+
+function toggleWAEmojiDrawer() {
+    const drawer = document.getElementById('waEmojiDrawer');
+    if (drawer) {
+        drawer.classList.toggle('hidden');
+    }
+}
+
+function injectWAEmoji(emoji) {
+    const input = document.getElementById('waMessageInput');
+    if (!input) return;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const val = input.value;
+    input.value = val.substring(0, start) + emoji + val.substring(end);
+    input.focus();
+    input.selectionStart = input.selectionEnd = start + emoji.length;
+    input.dispatchEvent(new Event('input'));
 }
 
 // ── Start New Chat Modal Workflows ───────────────────────────────────────────
@@ -12959,3 +13277,251 @@ window.handleDeliveryStatusChange = function (statusAction, orderId) {
         if (typeof markAsRTO === 'function') markAsRTO(orderId);
     }
 };
+
+// WhatsApp CRM Customer Profile Dynamic Panel Renderer
+async function fetchAndRenderWACustomerProfile(phone, name) {
+    const profilePanel = document.getElementById('waCustomerProfilePanel');
+    if (!profilePanel) return;
+
+    // Loading State with high-end spinning feedback
+    profilePanel.innerHTML = `
+        <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 min-h-[300px]">
+            <div class="w-8 h-8 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mb-3"></div>
+            <p class="text-xs font-bold text-slate-500">Loading Customer CRM...</p>
+        </div>
+    `;
+
+    try {
+        const res = await fetch(`${API_URL}/orders/customer/${phone}`);
+        const data = await res.json();
+
+        if (!data.success || !data.orders || data.orders.length === 0) {
+            profilePanel.innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 min-h-[300px]">
+                    <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-3xl mb-4">👤</div>
+                    <p class="text-xs font-bold text-slate-500">No CRM record found for this number.</p>
+                    <button onclick="bookNewOrderFromWA('${(name || 'Customer').replace(/'/g, "\\'")}', '${phone}')" class="mt-4 px-4 py-2 bg-teal-600 text-white rounded-xl text-[10px] font-black hover:bg-teal-700 shadow-md hover:shadow-teal-100/50 transition-all hover:scale-102 flex items-center gap-1">
+                        ➕ Book New Order
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        const metrics = data.metrics || { totalOrders: 0, ltv: 0, completedCount: 0, cancelledOrRtoCount: 0 };
+        const ordersList = data.orders || [];
+        const latestAddress = data.latestAddress;
+
+        // Render Panel Contents
+        let html = '';
+
+        // 1. Header Details (Profile initials + title)
+        const initials = (name || 'C').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        const displayPhone = `+91-${phone.replace(/^91/, '')}`;
+        html += `
+            <!-- Profile Info Header -->
+            <div class="p-4 bg-slate-50/50 border-b border-slate-100 flex-shrink-0 text-center">
+                <div class="w-14 h-14 bg-gradient-to-tr from-teal-500 to-emerald-500 text-white font-extrabold text-lg rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-sm border border-white/10">
+                    ${initials}
+                </div>
+                <h3 class="text-xs font-black text-slate-800 tracking-wide truncate max-w-full" title="${name || 'Customer'}">${name || 'Customer'}</h3>
+                <p class="text-[10px] text-slate-400 font-bold mt-0.5">${displayPhone}</p>
+            </div>
+
+            <div class="p-4 space-y-5 flex-1">
+                <!-- 2. Metrics Deck -->
+                <div>
+                    <h4 class="crm-section-title">🏆 Key Metrics</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="crm-metric-card">
+                            <span class="text-[8px] text-slate-400 font-extrabold block uppercase tracking-wider">Total Orders</span>
+                            <span class="text-xs font-black text-slate-800 block mt-0.5">${metrics.totalOrders}</span>
+                        </div>
+                        <div class="crm-metric-card">
+                            <span class="text-[8px] text-slate-400 font-extrabold block uppercase tracking-wider">LTV (Delivered)</span>
+                            <span class="text-xs font-black text-teal-600 block mt-0.5">₹${metrics.ltv}</span>
+                        </div>
+                        <div class="crm-metric-card col-span-2 flex items-center justify-between px-3 py-2">
+                            <span class="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider">Order Ratio</span>
+                            <span class="text-[9px] font-extrabold text-slate-700 bg-white border border-slate-100 px-2 py-0.5 rounded-full shadow-sm">
+                                <span class="text-emerald-500">${metrics.completedCount} ✔</span> : <span class="text-red-500">${metrics.cancelledOrRtoCount} ✖</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+        `;
+
+        // 3. Shipping Address Card
+        if (latestAddress) {
+            const fullAddr = latestAddress.address;
+            html += `
+                <!-- Shipping Address Card -->
+                <div>
+                    <h4 class="crm-section-title">📍 Shipping Address</h4>
+                    <div class="bg-gradient-to-tr from-slate-50 to-slate-100/50 border border-slate-200/60 rounded-xl p-3 relative shadow-sm group">
+                        <p class="text-[10px] text-slate-700 font-semibold leading-relaxed break-words">${fullAddr}</p>
+                        
+                        <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-200/50">
+                            <span class="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider">Latest Address</span>
+                            <button id="copyAddressBtn" onclick="copyCRMAddressToClipboard(this, \`${fullAddr.replace(/`/g, "\\`").replace(/"/g, '\\"')}\`)" class="text-[9px] text-teal-600 hover:text-teal-700 font-bold flex items-center gap-1 transition-all select-none hover:scale-105 active:scale-95">
+                                📋 Copy Address
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <!-- No Address Placeholder -->
+                <div>
+                    <h4 class="crm-section-title">📍 Shipping Address</h4>
+                    <div class="border border-dashed border-slate-200 rounded-xl p-4 text-center text-[10px] text-slate-400 font-bold">
+                        No historical shipping address found
+                    </div>
+                </div>
+            `;
+        }
+
+        // 4. Book New Order Button
+        const prefillAddrQuery = latestAddress ? `&fatherOrHusbandName=${encodeURIComponent(latestAddress.fatherOrHusbandName || '')}&gender=${encodeURIComponent(latestAddress.gender || '')}&age=${encodeURIComponent(latestAddress.age || '')}&problem=${encodeURIComponent(latestAddress.problem || '')}&hNo=${encodeURIComponent(latestAddress.hNo || '')}&blockGaliNo=${encodeURIComponent(latestAddress.blockGaliNo || '')}&villColony=${encodeURIComponent(latestAddress.villColony || '')}&landmark=${encodeURIComponent(latestAddress.landmark || '')}&city=${encodeURIComponent(latestAddress.city || '')}&state=${encodeURIComponent(latestAddress.state || '')}&pincode=${encodeURIComponent(latestAddress.pincode || '')}` : '';
+        html += `
+                <!-- Action Button -->
+                <div class="pt-1">
+                    <button onclick="bookNewOrderFromWA('${(name || 'Customer').replace(/'/g, "\\'")}', '${phone}', \`${prefillAddrQuery}\`)" class="w-full py-2 bg-teal-600 text-white rounded-xl text-[10px] font-black hover:bg-teal-700 shadow-md hover:shadow-teal-100/50 transition-all hover:scale-102 flex items-center justify-center gap-1.5 select-none active:scale-98">
+                        ➕ Book New Order
+                    </button>
+                </div>
+        `;
+
+        // 5. Timeline of past orders
+        if (ordersList.length > 0) {
+            html += `
+                <!-- Order Timeline -->
+                <div class="pt-1">
+                    <h4 class="crm-section-title">⏳ Order History (${ordersList.length})</h4>
+                    <div class="space-y-0.5 mt-2">
+            `;
+
+            ordersList.forEach(order => {
+                const dateVal = new Date(order.timestamp);
+                const orderDateStr = isNaN(dateVal.getTime()) ? (order.timestamp || '').split('T')[0] : dateVal.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                
+                // Dot status-dependent styling
+                let dotClass = 'crm-dot-pending';
+                let pillClass = 'bg-indigo-50 text-indigo-700 border-indigo-100';
+                const statusStr = String(order.status || '').toLowerCase();
+                
+                if (statusStr.includes('delivered')) {
+                    dotClass = 'crm-dot-delivered';
+                    pillClass = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+                } else if (statusStr.includes('cancelled')) {
+                    dotClass = 'crm-dot-cancelled';
+                    pillClass = 'bg-red-50 text-red-700 border-red-100';
+                } else if (statusStr.includes('rto')) {
+                    dotClass = 'crm-dot-rto';
+                    pillClass = 'bg-amber-50 text-amber-700 border-amber-100';
+                } else if (statusStr.includes('dispatch') || statusStr.includes('ofd') || statusStr.includes('out for delivery') || statusStr.includes('verified')) {
+                    dotClass = 'crm-dot-dispatched';
+                    pillClass = 'bg-blue-50 text-blue-700 border-blue-100';
+                }
+
+                // Render items descriptions
+                let itemsList = '';
+                if (Array.isArray(order.items) && order.items.length > 0) {
+                    itemsList = order.items.map(item => `<div class="text-[9px] text-slate-500 font-semibold">• ${item.description || item.product || 'Product'} (x${item.quantity || 1})</div>`).join('');
+                } else {
+                    itemsList = `<div class="text-[9px] text-slate-400 font-bold italic">No items listed</div>`;
+                }
+
+                // Courier tracking info if available
+                let trackingHtml = '';
+                if (order.tracking?.trackingId) {
+                    trackingHtml = `
+                        <div class="mt-1 flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                            <span class="text-[8px] text-slate-400 font-extrabold uppercase">AWB</span>
+                            <span class="text-[9px] text-slate-700 font-black font-mono">${order.tracking.trackingId}</span>
+                            ${order.tracking.courier ? `<span class="text-[8px] text-slate-500 font-bold bg-white px-1 py-0.5 rounded border border-slate-200/30">${order.tracking.courier}</span>` : ''}
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div class="crm-timeline-item">
+                        <div class="crm-timeline-dot ${dotClass}"></div>
+                        <div class="flex items-center justify-between gap-1">
+                            <span class="text-[9px] text-slate-800 font-black">#${order.orderId}</span>
+                            <span class="text-[8px] px-2 py-0.5 border rounded-full font-black uppercase tracking-wider ${pillClass}">${order.status}</span>
+                        </div>
+                        <div class="text-[8px] text-slate-400 font-bold mt-0.5">${orderDateStr}</div>
+                        
+                        <!-- Items list -->
+                        <div class="mt-1.5 space-y-0.5 bg-slate-50/50 p-2 rounded-xl border border-slate-100">
+                            ${itemsList}
+                        </div>
+                        
+                        <div class="flex items-center justify-between mt-1 text-[9px] font-extrabold text-slate-600">
+                            <span>Amount:</span>
+                            <span class="text-slate-800 font-black">₹${order.total}</span>
+                        </div>
+
+                        ${trackingHtml}
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `</div>`; // Close content body
+        profilePanel.innerHTML = html;
+
+    } catch (e) {
+        console.error('Error fetching CRM profile:', e);
+        profilePanel.innerHTML = `
+            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 min-h-[300px]">
+                <span class="text-3xl mb-2">⚠️</span>
+                <p class="text-xs font-bold text-slate-500">Error loading customer CRM profile.</p>
+                <button onclick="fetchAndRenderWACustomerProfile('${phone}', '${(name || 'Customer').replace(/'/g, "\\'")}')" class="mt-4 px-4 py-1.5 bg-slate-200 text-slate-700 rounded-xl text-[10px] font-black hover:bg-slate-300 transition-all select-none">
+                    🔄 Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+function copyCRMAddressToClipboard(btn, address) {
+    if (!navigator.clipboard) {
+        const t = document.createElement('textarea');
+        t.value = address;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand('copy');
+        document.body.removeChild(t);
+    } else {
+        navigator.clipboard.writeText(address);
+    }
+    
+    // Smooth Feedback text
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<span class="text-emerald-600 copy-feedback">✔ Copied!</span>`;
+    btn.disabled = true;
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }, 2000);
+}
+
+function bookNewOrderFromWA(name, phone, additionalParams = '') {
+    const last10 = phone.replace(/\D/g, '').slice(-10);
+    const prefillUrl = `employee.html?prefill=true&customerName=${encodeURIComponent(name)}&telNo=${encodeURIComponent(last10)}${additionalParams}`;
+    window.open(prefillUrl, '_blank');
+}
+
+// Expose CRM helpers globally
+window.fetchAndRenderWACustomerProfile = fetchAndRenderWACustomerProfile;
+window.copyCRMAddressToClipboard = copyCRMAddressToClipboard;
+window.bookNewOrderFromWA = bookNewOrderFromWA;
+

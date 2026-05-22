@@ -330,7 +330,7 @@ async function notifyOrderCancelled(order) {
                 `Aapka Order *${oid}* cancel ho gaya hai.\n\n` +
                 `📋 *Kaaran:* ${reason}\n\n` +
                 `Koi bhi sawaal ho toh humse contact karein.\n` +
-                `Dobara shopping karein: herbonnaturals.in 🛒\n\n` +
+                `Dobara shopping karein: www.herbonnaturals.in 🛒\n\n` +
                 `_Team Herb On Naturals_ 💚`
             );
         }
@@ -398,7 +398,7 @@ async function notifyOrderRemark(order, remarkText) {
 
         // ─── Helpline / Contact Numbers ────────────────────────
         const HELPLINE = '9911799660';
-        const WEBSITE = 'herbonnaturals.in';
+        const WEBSITE = 'www.herbonnaturals.in';
         // ───────────────────────────────────────────────────────
         // ───────────────────────────────────────────────────────
 

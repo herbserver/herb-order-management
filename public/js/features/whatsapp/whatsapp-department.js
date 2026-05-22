@@ -151,7 +151,7 @@ Namaste *${order.customerName}* ji! 🙏
 ${message}
 
 _Team Herb On Naturals_ 💚
-🌐 herbonnaturals.in`
+🌐 www.herbonnaturals.in`
     }
 };
 

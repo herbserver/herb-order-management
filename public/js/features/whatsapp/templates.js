@@ -25,7 +25,7 @@ Namaste *${order.customerName}* ji! 🙏
 🚫 Product milne se pehle OTP share NA karein!
 
 _Team Herb On Naturals_ 💚
-🌐 herbonnaturals.in`,
+🌐 www.herbonnaturals.in`,
 
         verified: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
@@ -106,7 +106,7 @@ Namaste *${order.customerName}* ji! 🙏
 
 ⭐ Hume umeed hai ki aapko products pasand aayenge. Apna feedback zarur share karein - yeh hamare liye bahut important hai!
 
-🛒 Dobara shopping karein: herbonnaturals.in
+🛒 Dobara shopping karein: www.herbonnaturals.in
 
 _Warm regards,_ 💚
 _Team Herb On Naturals_`

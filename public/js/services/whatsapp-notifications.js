@@ -124,7 +124,7 @@ ${getItemsList(order)}
 🚫 Product मिलने से पहले OTP share न करें!
 
 _Team Herb On Naturals_ 💚
-🌐 herbonnaturals.in`,
+🌐 www.herbonnaturals.in`,
 
         verified: (order) => `🌿 *_HERB ON NATURALS_* 🌿
 _____________________
@@ -208,7 +208,7 @@ ${getItemsList(order)}
 
 ⭐ हमें उम्मीद है कि आपको products पसंद आएंगे। अपना feedback ज़रूर share करें - यह हमारे लिए बहुत important है!
 
-🛒 दोबारा shopping करें: herbonnaturals.in
+🛒 दोबारा shopping करें: www.herbonnaturals.in
 
 _Warm regards,_ 💚
 _Team Herb On Naturals_`

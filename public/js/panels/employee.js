@@ -142,6 +142,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial Tab
     if (window.switchEmpTab) switchEmpTab('order');
+
+    // Parse URL prefill parameters if booking new order from WhatsApp profile panel
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('prefill') === 'true') {
+            const name = urlParams.get('customerName') || '';
+            const phone = urlParams.get('telNo') || '';
+            const fatherOrHusbandName = urlParams.get('fatherOrHusbandName') || '';
+            const gender = urlParams.get('gender') || '';
+            const age = urlParams.get('age') || '';
+            const problem = urlParams.get('problem') || '';
+
+            const hNo = urlParams.get('hNo') || '';
+            const blockGaliNo = urlParams.get('blockGaliNo') || '';
+            const villColony = urlParams.get('villColony') || '';
+            const landmark = urlParams.get('landmark') || '';
+            const city = urlParams.get('city') || '';
+            const state = urlParams.get('state') || '';
+            const pin = urlParams.get('pincode') || '';
+
+            const f = document.getElementById('orderForm');
+            if (f) {
+                if (f.customerName) f.customerName.value = name;
+                if (f.telNo) f.telNo.value = phone.replace(/\D/g, '').slice(-10);
+                if (f.fatherOrHusbandName) f.fatherOrHusbandName.value = fatherOrHusbandName;
+                if (f.gender) {
+                    f.gender.value = gender;
+                    const lbl = document.getElementById('fatherHusbandLabel');
+                    if (lbl) {
+                        lbl.textContent = gender === 'Female' ? 'Husband Name (W/O)' : 'Father Name (S/O)';
+                    }
+                }
+                if (f.age) f.age.value = age;
+                if (f.problem) f.problem.value = problem;
+
+                if (f.hNo) f.hNo.value = hNo;
+                if (f.blockGaliNo) f.blockGaliNo.value = blockGaliNo;
+                if (f.villColony) f.villColony.value = villColony;
+                if (f.landMark) f.landMark.value = landmark;
+                if (f.distt) f.distt.value = city;
+                if (f.state) f.state.value = state;
+                if (f.pin) f.pin.value = pin;
+
+                // Set order type to Reorder (REORDER) since there's customer history
+                const reorderRadio = document.querySelector('input[name="orderType"][value="REORDER"]');
+                if (reorderRadio) {
+                    reorderRadio.checked = true;
+                } else {
+                    const reorderRadioAlt = document.querySelector('input[name="orderType"][value="Reorder"]');
+                    if (reorderRadioAlt) reorderRadioAlt.checked = true;
+                }
+
+                // Concatenate the complete address string
+                if (typeof updateAddress === 'function') {
+                    updateAddress();
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error prefilling order form:', e);
+    }
 });
 
 // ==================== TAB SWITCHING ====================
