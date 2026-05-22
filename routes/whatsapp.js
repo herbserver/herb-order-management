@@ -250,9 +250,15 @@ async function sendMetaMessageInternal({ to, type, text, templateName, parameter
         if (!templateName || !parameters) {
             throw new Error('templateName and parameters required.');
         }
+        // Sanitize parameters to avoid empty strings which Meta API strictly rejects with 400 Bad Request
+        parameters = parameters.map(p => {
+            const txt = String(p ?? '').trim();
+            return txt === '' ? '-' : txt;
+        });
+
         const components = [{
             type: 'body',
-            parameters: parameters.map(p => ({ type: 'text', text: String(p) }))
+            parameters: parameters.map(p => ({ type: 'text', text: p }))
         }];
 
         if (templateName === 'order_dispatch' || templateName === 'delivered') {

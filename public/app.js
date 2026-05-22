@@ -12189,7 +12189,13 @@ async function sendWATemplate(templateName) {
     else if (templateName === 'order_on_hold') params = [name, oid, 'Call not answered', 'Jaldi'];
     else if (templateName === 'order_cancelled') params = [name, oid, 'As discussed'];
     else if (templateName === 'order_remark') params = [name, oid, 'Aapke order ke baare mein baat karni thi'];
-    const preview = params.map((p, i) => `Param ${i + 1}: ${p || '[empty]'}`).join('\n');
+    // Sanitize parameters to avoid empty/blank values
+    params = params.map(p => {
+        const val = String(p ?? '').trim();
+        return val === '' ? '-' : val;
+    });
+
+    const preview = params.map((p, i) => `${tpl.params[i] || 'Param ' + (i + 1)}: ${p}`).join('\n');
     if (!confirm(`Send: ${tpl.label}\nTo: ${waCurrentName} (${waCurrentPhone})\n\n${preview}\n\nBhejein?`)) return;
     appendWAMessage(`[Template: ${tpl.label}]\n${params.join(' | ')}`, 'out', 'sent');
     try {
@@ -12379,7 +12385,8 @@ async function sendWANewChat() {
         const params = [];
         paramInputs.forEach(input => {
             const idx = parseInt(input.getAttribute('data-param-idx'), 10);
-            params[idx] = input.value.trim();
+            const val = input.value.trim();
+            params[idx] = val === '' ? '-' : val;
         });
         
         payload.type = 'template';
@@ -12707,10 +12714,11 @@ async function processNextBulkRecipient() {
     
     // Map variables
     const parameters = waBulkParamConfigs.map(val => {
-        let mapped = val;
-        mapped = mapped.replace(/\{\{name\}\}/gi, recipient.name);
-        mapped = mapped.replace(/\{\{order_id\}\}/gi, recipient.orderId);
-        return mapped;
+        let mapped = String(val ?? '').trim();
+        mapped = mapped.replace(/\{\{name\}\}/gi, recipient.name || '');
+        mapped = mapped.replace(/\{\{order_id\}\}/gi, recipient.orderId || '');
+        mapped = mapped.trim();
+        return mapped === '' ? '-' : mapped;
     });
     
     try {
