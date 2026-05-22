@@ -618,78 +618,78 @@ async function handleChatbotReply(phone, text, customerName) {
 
         // 2. Button-wise custom response router
         if (isVVCall) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी कॉल रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nकृपया अपना फोन चालू रखें और थोड़ा धैर्य रखें। आयुर्वेद के नियम और सही परामर्श से ही पैरों के दर्द व ब्लॉकेज का संपूर्ण निदान संभव है! 🌿\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी कॉल रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nकृपया अपना फोन चालू रखें और थोड़ा धैर्य रखें। आयुर्वेद के नियम और सही परामर्श से ही पैरों के दर्द व ब्लॉकेज का संपूर्ण निदान संभव है! 🌿\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '🚨 High Priority: Varicose Veins Call Request';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested a callback from a Senior Health Expert regarding Varicose Veins. Phone: ${phone}.`;
         }
         else if (isVVRepeat) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nदवा रिपीट करने की आपकी रिक्वेस्ट हमारे सिस्टम में दर्ज कर ली गई है। 📦\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 ताकि आपके पते (Address) की पुष्टि की जा सके और दवा बिना किसी देरी के जल्द से जल्द रवाना की जा सके।\n\nआयुर्वेदिक कोर्स को पूरा करना ही बीमारी को जड़ से खत्म करने का एकमात्र मार्ग है! 🌿\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nदवा रिपीट करने की आपकी रिक्वेस्ट हमारे सिस्टम में दर्ज कर ली गई है। 📦\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 ताकि आपके पते (Address) की पुष्टि की जा सके और दवा बिना किसी देरी के जल्द से जल्द रवाना की जा सके।\n\nआयुर्वेदिक कोर्स को पूरा करना ही बीमारी को जड़ से खत्म करने का एकमात्र मार्ग है! 🌿\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '📦 Urgent: Varicose Veins Dawa Repeat';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested medicine repeat (Dawa Repeat) for Varicose Veins. Phone: ${phone}.`;
         }
         else if (isJPCall) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी कॉल रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nकृपया अपना फोन चालू रखें और थोड़ा धैर्य रखें। आयुर्वेद के नियम और सही परामर्श से ही जोड़ों व घुटनों के दर्द का संपूर्ण निदान संभव है! 🌿\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी कॉल रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nकृपया अपना फोन चालू रखें और थोड़ा धैर्य रखें। आयुर्वेद के नियम और सही परामर्श से ही जोड़ों व घुटनों के दर्द का संपूर्ण निदान संभव है! 🌿\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '🚨 High Priority: Joint Pain Call Request';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested a callback from a Senior Health Expert regarding Joint Pain. Phone: ${phone}.`;
         }
         else if (isJPCured) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nयह जानकर हमारा मन अत्यंत प्रसन्नता और संतोष से भर गया! 😍🌿\n\nआयुर्वेद की औषधियों और आपके अनुशासन ने मिलकर यह चमत्कार कर दिखाया है। अब आप पूरी तरह स्वस्थ हैं, यह जानकर हमें बेहद खुशी हुई।\n\nभविष्य में भी अपनी दिनचर्या और खान-पान का विशेष ध्यान रखें। यदि कभी भी आपको कोई स्वास्थ्य संबंधी सलाह या मार्गदर्शन चाहिए हो, तो आप यहाँ बेझिझक मैसेज कर सकते हैं।\n\nआपके सुखी, समृद्ध और दीर्घायु जीवन की मंगल कामना करते हैं! 😇✨\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nयह जानकर हमारा मन अत्यंत प्रसन्नता और संतोष से भर गया! 😍🌿\n\nआयुर्वेद की औषधियों और आपके अनुशासन ने मिलकर यह चमत्कार कर दिखाया है। अब आप पूरी तरह स्वस्थ हैं, यह जानकर हमें बेहद खुशी हुई।\n\nभविष्य में भी अपनी दिनचर्या और खान-पान का विशेष ध्यान रखें। यदि कभी भी आपको कोई स्वास्थ्य संबंधी सलाह या मार्गदर्शन चाहिए हो, तो आप यहाँ बेझिझक मैसेज कर सकते हैं।\n\nआपके सुखी, समृद्ध और दीर्घायु जीवन की मंगल कामना करते हैं! 😇✨\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertPriority = 'medium';
             alertTitle = 'ℹ️ Info: Joint Pain Cured Report';
             alertMsg = `Customer ${nameToUse} (#${orderId}) reports they are now completely fine/cured of Joint Pain. Phone: ${phone}.`;
         }
         else if (isDBClose) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी शुगर रिपोर्ट की जांच के लिए रिक्वेस्ट दर्ज हो गई है। 📊\n\nआप अपनी खाली पेट (Fasting) और खाने के बाद (PP) की शुगर रिपोर्ट की फोटो या रीडिंग यहाँ व्हाट्सएप पर सहेजें।\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** आपकी रिपोर्ट का गहन अध्ययन करके अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 और सही मार्गदर्शन प्रदान करेंगे।\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी शुगर रिपोर्ट की जांच के लिए रिक्वेस्ट दर्ज हो गई है। 📊\n\nआप अपनी खाली पेट (Fasting) और खाने के बाद (PP) की शुगर रिपोर्ट की फोटो या रीडिंग यहाँ व्हाट्सएप पर सहेजें।\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** आपकी रिपोर्ट का गहन अध्ययन करके अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 और सही मार्गदर्शन प्रदान करेंगे।\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '📊 Urgent: Diabetes Report Verification';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested sugar report verification. Callback required. Phone: ${phone}.`;
         }
         else if (isDBRepeat) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nदवा रिपीट करने की आपकी रिक्वेस्ट हमारे सिस्टम में दर्ज कर ली गई है। 📦\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 ताकि आपके पते (Address) की पुष्टि की जा सके और दवा बिना किसी देरी के जल्द से जल्द रवाना की जा सके।\n\nआयुर्वेदिक कोर्स को पूरा करना ही बीमारी को जड़ से खत्म करने का एकमात्र मार्ग है! 🌿\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nदवा रिपीट करने की आपकी रिक्वेस्ट हमारे सिस्टम में दर्ज कर ली गई है। 📦\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 ताकि आपके पते (Address) की पुष्टि की जा सके और दवा बिना किसी देरी के जल्द से जल्द रवाना की जा सके।\n\nआयुर्वेदिक कोर्स को पूरा करना ही बीमारी को जड़ से खत्म करने का एकमात्र मार्ग है! 🌿\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '📦 Urgent: Diabetes Dawa Repeat';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested medicine repeat (Dawa Repeat) for Diabetes. Phone: ${phone}.`;
         }
         else if (isWLDiet) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nवजन नियंत्रण के लिए आपका कस्टमाइज्ड डाइट प्लान तैयार है! 📋🥗\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट के अंदर आपको सीधे कॉल करेंगे 📞 और आपकी शारीरिक स्थिति के अनुसार सबसे बेस्ट डाइट चार्ट आपके व्हाट्सएप पर शेयर करेंगे।\n\nकृपया अपना फोन चालू रखें! 🍎\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nवजन नियंत्रण के लिए आपका कस्टमाइज्ड डाइट प्लान तैयार है! 📋🥗\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट के अंदर आपको सीधे कॉल करेंगे 📞 और आपकी शारीरिक स्थिति के अनुसार सबसे बेस्ट डाइट चार्ट आपके व्हाट्सएप पर शेयर करेंगे।\n\nकृपया अपना फोन चालू रखें! 🍎\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '📋 Urgent: Diet Plan Requested';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested weight management diet plan on WhatsApp. Phone: ${phone}.`;
         }
         else if (isWLCall) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी सलाह रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nकृपया अपना फोन चालू रखें। आयुर्वेद के नियम और सही परामर्श से ही वजन का प्राकृतिक संतुलन संभव है! 🌿\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी सलाह रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nकृपया अपना फोन चालू रखें। आयुर्वेद के नियम और सही परामर्श से ही वजन का प्राकृतिक संतुलन संभव है! 🌿\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '🚨 High Priority: Weight Loss Consultation Request';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested weight loss consultation with a Senior Health Expert. Phone: ${phone}.`;
         }
         else if (isVCCall) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी सलाह रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nआपकी सभी जानकारी और बातचीत बिल्कुल 100% गोपनीय रखी जाएगी। कृपया अपना फोन चालू रखें। 🌿\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी सलाह रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nआपकी सभी जानकारी और बातचीत बिल्कुल 100% गोपनीय रखी जाएगी। कृपया अपना फोन चालू रखें। 🌿\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '🚨 High Priority: Vitality Care Consultation Request';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested confidential strength/vitality consultation with a Senior Health Expert. Phone: ${phone}.`;
         }
         else if (isVCRepeat) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nदवा रिपीट करने की आपकी रिक्वेस्ट हमारे सिस्टम में दर्ज कर ली गई है। 📦\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 ताकि आपके पते (Address) की पुष्टि की जा सके और दवा बिना किसी देरी के जल्द से जल्द रवाना की जा सके।\n\nकृपया अपना फोन चालू रखें! 🌿\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nदवा रिपीट करने की आपकी रिक्वेस्ट हमारे सिस्टम में दर्ज कर ली गई है। 📦\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 ताकि आपके पते (Address) की पुष्टि की जा सके और दवा बिना किसी देरी के जल्द से जल्द रवाना की जा सके।\n\nकृपया अपना फोन चालू रखें! 🌿\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '📦 Urgent: Vitality Dawa Repeat';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested medicine repeat (Dawa Repeat) for Strength & Vitality. Phone: ${phone}.`;
         }
         // Legacy fallback button click detection
         else if (isPositiveButton) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nयह जानकर बहुत खुशी हुई! 😍 आयुर्वेद के प्राकृतिक उपचार से आपके शरीर में यह सकारात्मक सुधार आया है।\n\nअपनी दवा को नियम से लेते रहें और बताए गए परहेज का पालन करें। यदि आपको आगे भी कोई मार्गदर्शन या डाइट टिप्स चाहिए, तो आप यहाँ लिख सकते हैं।\n\nआपके सदैव स्वस्थ और दीर्घायु रहने की मंगल कामना करते हैं! 🌿\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nयह जानकर बहुत खुशी हुई! 😍 आयुर्वेद के प्राकृतिक उपचार से आपके शरीर में यह सकारात्मक सुधार आया है।\n\nअपनी दवा को नियम से लेते रहें और बताए गए परहेज का पालन करें। यदि आपको आगे भी कोई मार्गदर्शन या डाइट टिप्स चाहिए, तो आप यहाँ लिख सकते हैं।\n\nआपके सदैव स्वस्थ और दीर्घायु रहने की मंगल कामना करते हैं! 🌿\n\n🙏 Herb On Naturals`;
         } 
         else if (isNegativeButton) {
-            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nहम आपकी स्थिति को पूरी तरह समझते हैं। 🥺 पुरानी समस्या और नसों या जोड़ों की जकड़न को जड़ से ठीक होने में थोड़ा समय लगता है।\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट के अंदर आपको सीधे कॉल करेंगे 📞 और दवा का सही तरीका व परहेज दोबारा समझाएंगे।\n\nकृपया अपना फोन चालू रखें और थोड़ा धैर्य रखें। धन्यवाद! 🩺\n\n🙏 Herbonnaturals`;
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nहम आपकी स्थिति को पूरी तरह समझते हैं। 🥺 पुरानी समस्या और नसों या जोड़ों की जकड़न को जड़ से ठीक होने में थोड़ा समय लगता है।\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट के अंदर आपको सीधे कॉल करेंगे 📞 और दवा का सही तरीका व परहेज दोबारा समझाएंगे।\n\nकृपया अपना फोन चालू रखें और थोड़ा धैर्य रखें। धन्यवाद! 🩺\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '🚨 High Priority: Customer Reporting Pain';
             alertMsg = `Customer ${nameToUse} (#${orderId}) reporting pain or high symptoms via WhatsApp. Immediate callback requested by Senior Health Expert. Phone: ${phone}.`;
         } 
         else if (isConsultationButton) {
-            replyText = `जी बिल्कुल! आपकी कॉल रिक्वेस्ट हमारे **सीनियर हेल्थ एक्सपर्ट** टीम के पास दर्ज कर ली गई है। 📞\n\nअगले 15 मिनट के अंदर हमारे एक्सपर्ट आपको सीधे संपर्क करेंगे। कृपया अपना फोन चालू रखें। धन्यवाद! 🩺\n\n🙏 Herbonnaturals`;
+            replyText = `जी बिल्कुल! आपकी कॉल रिक्वेस्ट हमारे **सीनियर हेल्थ एक्सपर्ट** टीम के पास दर्ज कर ली गई है। 📞\n\nअगले 15 मिनट के अंदर हमारे एक्सपर्ट आपको सीधे संपर्क करेंगे। कृपया अपना फोन चालू रखें। धन्यवाद! 🩺\n\n🙏 Herb On Naturals`;
             triggerAlert = true;
             alertTitle = '📞 Senior Health Expert Requested';
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested a call with a Senior Health Expert on WhatsApp. Phone: ${phone}.`;
@@ -698,7 +698,7 @@ async function handleChatbotReply(phone, text, customerName) {
             // Check if there is a pending or shipped order to provide status details
             if (order && (order.status === 'Pending' || order.status === 'Shipped' || order.status === 'In-Transit')) {
                 const statusHindi = order.status === 'Shipped' ? 'भेज दिया गया है (Shipped)' : 'प्रक्रिया में है (Pending)';
-                replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपके ऑर्डर (#${orderId}) का स्टेटस अभी **${statusHindi}** है। 📦\n\nहमारा प्रयास है कि आपकी आयुर्वेदिक औषधियाँ जल्द से जल्द आप तक सुरक्षित पहुँचें। जैसे ही डिलीवरी का नया अपडेट मिलेगा, हम आपके साथ साझा करेंगे। 🚚\n\nयदि आपका कोई अन्य प्रश्न है, तो हमारे सीनियर हेल्थ एक्सपर्ट अगले 15 मिनट में आपसे संपर्क करेंगे।\n\n🙏 Herbonnaturals`;
+                replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपके ऑर्डर (#${orderId}) का स्टेटस अभी **${statusHindi}** है। 📦\n\nहमारा प्रयास है कि आपकी आयुर्वेदिक औषधियाँ जल्द से जल्द आप तक सुरक्षित पहुँचें। जैसे ही डिलीवरी का नया अपडेट मिलेगा, हम आपके साथ साझा करेंगे। 🚚\n\nयदि आपका कोई अन्य प्रश्न है, तो हमारे सीनियर हेल्थ एक्सपर्ट अगले 15 मिनट में आपसे संपर्क करेंगे।\n\n🙏 Herb On Naturals`;
                 triggerAlert = true;
                 alertTitle = '📦 Order Status Inquiry';
                 alertMsg = `Customer ${nameToUse} (#${orderId}) asked a question. Order status is ${order.status}. Callback recommended. Phone: ${phone}.`;
@@ -741,7 +741,7 @@ async function handleChatbotReply(phone, text, customerName) {
                             const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
                             
                             const prompt = `Customer replied: "${text}"`;
-                            const systemInstruction = `You are the automated WhatsApp Senior Health Expert chatbot for "Herbonnaturals" (an Ayurvedic wellness brand).
+                            const systemInstruction = `You are the automated WhatsApp Senior Health Expert chatbot for "Herb On Naturals" (an Ayurvedic wellness brand).
 A customer has asked a question. Reply in a warm, extremely polite, caring manner in Hindi Devnagari script (शुद्ध हिंदी) or readable Hinglish if natural.
 
 Customer Name: ${nameToUse}
@@ -753,7 +753,7 @@ Guidelines:
 2. Answer their question about their Ayurvedic medicine or general usage in 2-3 short, clear sentences.
 3. Keep it brief, friendly and clinical.
 4. If they report pain, ask for a call, or have complex complaints, state: "मैंने आपकी रिक्वेस्ट दर्ज कर ली है। हमारे सीनियर हेल्थ एक्सपर्ट आपको जल्द ही कॉल करेंगे।"
-5. End with "🙏 Herbonnaturals".`;
+5. End with "🙏 Herb On Naturals".`;
 
                             const geminiRes = await axios.post(geminiUrl, {
                                 contents: [{ parts: [{ text: prompt }] }],
