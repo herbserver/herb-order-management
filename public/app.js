@@ -11888,13 +11888,21 @@ async function loadWAConversations() {
 function renderWAConversations(convs) {
     const list = document.getElementById('waConversationList');
     if (!convs || convs.length === 0) {
-        list.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="text-4xl mb-3">💬</div><p class="text-xs font-medium text-center">No chats yet.</p><button onclick="loadWAConversations()" class="mt-3 px-4 py-2 bg-green-500 text-white rounded-lg text-xs font-bold">Refresh</button></div>`;
+        list.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-slate-400"><div class="text-4xl mb-3 opacity-60">💬</div><p class="text-xs font-semibold text-center text-slate-500">No chats yet.</p><button onclick="loadWAConversations()" class="mt-3 px-4 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 shadow-sm transition-all">Refresh</button></div>`;
         return;
     }
-    const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-rose-500', 'bg-amber-500', 'bg-teal-500', 'bg-indigo-500'];
+    const gradients = [
+        'from-teal-500 to-emerald-600',
+        'from-sky-500 to-blue-600',
+        'from-purple-500 to-indigo-600',
+        'from-pink-500 to-rose-600',
+        'from-amber-500 to-orange-600',
+        'from-cyan-500 to-teal-600',
+        'from-violet-500 to-purple-600'
+    ];
     list.innerHTML = convs.map(c => {
         const initials = (c.name || 'C').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-        const color = colors[(c.phone || '').charCodeAt(0) % colors.length];
+        const grad = gradients[(c.phone || '').charCodeAt(0) % gradients.length];
         const isActive = waCurrentPhone === c.phone;
 
         // Smart time - like WhatsApp
@@ -11922,20 +11930,23 @@ function renderWAConversations(convs) {
         }
 
         return `<button onclick="openWAChat('${c.phone}','${(c.name || 'Customer').replace(/'/g, "\\'")}','${c.orderId || ''}')"
-            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 border-b border-slate-100 transition-colors text-left ${isActive ? 'bg-green-50' : ''}">
-            <div class="w-10 h-10 ${color} rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${initials}</div>
+            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 border-b border-slate-100/70 transition-all duration-200 text-left ${isActive ? 'bg-teal-50/70 border-l-4 border-teal-600 pl-3' : ''}">
+            <div class="w-10 h-10 bg-gradient-to-tr ${grad} rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0 relative">
+                ${initials}
+                ${c.unread > 0 ? '<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-teal-500 border-2 border-white rounded-full animate-pulse"></span>' : ''}
+            </div>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
-                    <span class="font-semibold text-sm text-slate-800 truncate">${c.name || 'Customer'}</span>
-                    <span class="text-[10px] ${c.unread > 0 ? 'text-green-600 font-bold' : 'text-slate-400'} flex-shrink-0 ml-1">${timeStr}</span>
+                    <span class="font-semibold text-xs text-slate-800 truncate">${c.name || 'Customer'}</span>
+                    <span class="text-[9px] ${c.unread > 0 ? 'text-teal-600 font-bold' : 'text-slate-400'} flex-shrink-0 ml-1">${timeStr}</span>
                 </div>
-                <p class="text-xs text-slate-400 truncate">${c.phone}</p>
+                <p class="text-[10px] text-slate-400 truncate mt-0.5 font-medium">${c.phone}</p>
                 <div class="flex items-center gap-1 mt-0.5">
-                    ${c.lastMsgDirection === 'out' ? `<span class="flex-shrink-0 text-[11px] font-bold ${c.lastMsgStatus === 'read' ? 'text-blue-500' : 'text-slate-400'}">${c.lastMsgStatus === 'read' ? '✓✓' : c.lastMsgStatus === 'delivered' ? '✓✓' : '✓'}</span>` : ''}
-                    <p class="text-xs ${c.unread > 0 ? 'text-slate-700 font-semibold' : 'text-slate-400'} truncate">${c.lastMsg || ''}</p>
+                    ${c.lastMsgDirection === 'out' ? `<span class="flex-shrink-0 text-[10px] font-bold ${c.lastMsgStatus === 'read' ? 'text-blue-500' : 'text-slate-400'}">${c.lastMsgStatus === 'read' ? '✓✓' : c.lastMsgStatus === 'delivered' ? '✓✓' : '✓'}</span>` : ''}
+                    <p class="text-[10px] ${c.unread > 0 ? 'text-slate-700 font-semibold' : 'text-slate-400'} truncate">${c.lastMsg || ''}</p>
                 </div>
             </div>
-            ${c.unread > 0 ? `<span class="w-5 h-5 bg-green-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold flex-shrink-0">${c.unread}</span>` : ''}
+            ${c.unread > 0 && !isActive ? `<span class="w-4 h-4 bg-teal-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold flex-shrink-0 shadow-sm">${c.unread}</span>` : ''}
         </button>`;
     }).join('');
 }
@@ -11993,7 +12004,11 @@ function renderWAMessages(messages, scrollToBottom = true) {
         const d = new Date(msg.timestamp);
         const dateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
         if (dateStr !== lastDate) {
-            html += `<div class="flex justify-center my-3"><span class="bg-white/80 text-slate-500 text-[10px] px-3 py-1 rounded-full shadow-sm border border-slate-100">${dateStr}</span></div>`;
+            html += `<div class="flex items-center justify-center my-4">
+                <div class="h-[1px] bg-slate-200/70 flex-1"></div>
+                <span class="mx-3 bg-white/90 backdrop-blur-sm text-slate-500 text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-sm border border-slate-100 flex-shrink-0">${dateStr}</span>
+                <div class="h-[1px] bg-slate-200/70 flex-1"></div>
+            </div>`;
             lastDate = dateStr;
         }
         const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -12014,27 +12029,27 @@ function renderWAMessages(messages, scrollToBottom = true) {
         const mediaUrl = hasMedia ? (API_URL + '/whatsapp/media/' + msg.mediaId) : '';
         let mediaHtml = '';
         if (hasMedia) {
-            if (msg.type === 'image') mediaHtml = '<img src="' + mediaUrl + '" class="rounded-lg max-w-full max-h-60 mb-1 cursor-pointer" onclick="window.open(this.src)" loading="lazy">';
-            else if (msg.type === 'video') mediaHtml = '<video src="' + mediaUrl + '" controls class="rounded-lg max-w-full max-h-60 mb-1"></video>';
-            else if (msg.type === 'audio') mediaHtml = '<audio src="' + mediaUrl + '" controls class="w-full mb-1"></audio>';
-            else if (msg.type === 'document') mediaHtml = '<a href="' + mediaUrl + '" target="_blank" class="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2 mb-1 text-xs text-blue-600">📄 ' + waEscapeHtml(msg.body || 'Document') + '</a>';
+            if (msg.type === 'image') mediaHtml = '<img src="' + mediaUrl + '" class="rounded-lg max-w-full max-h-60 mb-1.5 cursor-pointer" onclick="window.open(this.src)" loading="lazy">';
+            else if (msg.type === 'video') mediaHtml = '<video src="' + mediaUrl + '" controls class="rounded-lg max-w-full max-h-60 mb-1.5"></video>';
+            else if (msg.type === 'audio') mediaHtml = '<audio src="' + mediaUrl + '" controls class="w-full mb-1.5"></audio>';
+            else if (msg.type === 'document') mediaHtml = '<a href="' + mediaUrl + '" target="_blank" class="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 mb-1.5 text-xs text-blue-600">📄 ' + waEscapeHtml(msg.body || 'Document') + '</a>';
         }
 
-        const tickHtml = '<span class="text-[10px] ' + (msg.status === 'read' ? 'text-blue-500' : 'text-slate-400') + '">' + (msg.status === 'read' ? '✓✓' : msg.status === 'delivered' ? '✓✓' : '✓') + '</span>';
+        const tickHtml = '<span class="text-[10px] ' + (msg.status === 'read' ? 'text-blue-500 font-bold' : 'text-slate-400') + '">' + (msg.status === 'read' ? '✓✓' : msg.status === 'delivered' ? '✓✓' : '✓') + '</span>';
 
         if (isOut && isTemplate) {
             // Beautiful template card
             const tplMap = {
-                order_confirm: { icon: '✅', label: 'Order Confirmed', bg: 'bg-emerald-50', bd: 'border-emerald-200', tx: 'text-emerald-700' },
-                address_verify: { icon: '📍', label: 'Address Verified', bg: 'bg-blue-50', bd: 'border-blue-200', tx: 'text-blue-700' },
-                order_dispatch: { icon: '🚚', label: 'Order Dispatched', bg: 'bg-purple-50', bd: 'border-purple-200', tx: 'text-purple-700' },
-                out_for_delivery: { icon: '🛵', label: 'Out For Delivery', bg: 'bg-orange-50', bd: 'border-orange-200', tx: 'text-orange-700' },
-                delivered: { icon: '🎉', label: 'Order Delivered', bg: 'bg-teal-50', bd: 'border-teal-200', tx: 'text-teal-700' },
-                order_on_hold: { icon: '⏸', label: 'Order On Hold', bg: 'bg-amber-50', bd: 'border-amber-200', tx: 'text-amber-700' },
-                order_cancelled: { icon: '❌', label: 'Order Cancelled', bg: 'bg-red-50', bd: 'border-red-200', tx: 'text-red-700' },
-                order_remark: { icon: '📞', label: 'Callback Request', bg: 'bg-indigo-50', bd: 'border-indigo-200', tx: 'text-indigo-700' }
+                order_confirm: { icon: '✅', label: 'Order Confirmed', bg: 'bg-emerald-50/80', bd: 'border-emerald-100', tx: 'text-emerald-800' },
+                address_verify: { icon: '📍', label: 'Address Verified', bg: 'bg-blue-50/80', bd: 'border-blue-100', tx: 'text-blue-800' },
+                order_dispatch: { icon: '🚚', label: 'Order Dispatched', bg: 'bg-purple-50/80', bd: 'border-purple-100', tx: 'text-purple-800' },
+                out_for_delivery: { icon: '🛵', label: 'Out For Delivery', bg: 'bg-orange-50/80', bd: 'border-orange-100', tx: 'text-orange-800' },
+                delivered: { icon: '🎉', label: 'Order Delivered', bg: 'bg-teal-50/80', bd: 'border-teal-100', tx: 'text-teal-800' },
+                order_on_hold: { icon: '⏸', label: 'Order On Hold', bg: 'bg-amber-50/80', bd: 'border-amber-100', tx: 'text-amber-800' },
+                order_cancelled: { icon: '❌', label: 'Order Cancelled', bg: 'bg-red-50/80', bd: 'border-red-100', tx: 'text-red-800' },
+                order_remark: { icon: '📞', label: 'Callback Request', bg: 'bg-indigo-50/80', bd: 'border-indigo-100', tx: 'text-indigo-800' }
             };
-            const t = tplMap[tplName] || { icon: '📋', label: tplName || 'Template', bg: 'bg-slate-50', bd: 'border-slate-200', tx: 'text-slate-700' };
+            const t = tplMap[tplName] || { icon: '📋', label: tplName || 'Template', bg: 'bg-slate-50/80', bd: 'border-slate-200', tx: 'text-slate-700' };
             const paramLabels = {
                 order_confirm: ['Customer', 'Order ID', 'Total ₹', 'Advance ₹', 'COD ₹', 'Products'],
                 address_verify: ['Customer', 'Order ID', 'Total ₹', 'Advance ₹', 'COD ₹', 'Products'],
@@ -12052,38 +12067,41 @@ function renderWAMessages(messages, scrollToBottom = true) {
             if (ci > 0) params = bodyStr.substring(ci + 1).trim().split(' | ').filter(function (p) { return p.trim(); });
             let pHtml = '';
             params.forEach(function (p, i) {
-                pHtml += '<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-400">' + waEscapeHtml(lbls[i] || 'Param ' + (i + 1)) + ':</span><span class="font-medium text-slate-700 text-right">' + waEscapeHtml(p.trim()) + '</span></div>';
+                pHtml += '<div class="flex justify-between text-[10px] py-0.5"><span class="text-slate-400 font-medium">' + waEscapeHtml(lbls[i] || 'Param ' + (i + 1)) + ':</span><span class="font-bold text-slate-700 text-right ml-4">' + waEscapeHtml(p.trim()) + '</span></div>';
             });
-            html += '<div class="flex justify-end mb-2"><div class="' + t.bg + ' border ' + t.bd + ' rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%] shadow-sm">'
-                + '<div class="flex items-center gap-2 mb-2"><span class="text-lg">' + t.icon + '</span><span class="font-bold text-sm ' + t.tx + '">' + t.label + '</span></div>'
-                + (pHtml ? '<div class="bg-white/70 rounded-lg px-3 py-2 mb-2">' + pHtml + '</div>' : '')
-                + '<div class="flex items-center justify-between"><span class="text-[9px] text-slate-400 italic">Auto-sent template</span><div class="flex items-center gap-1"><span class="text-[10px] text-slate-400">' + timeStr + '</span>' + tickHtml + '</div></div>'
+            
+            const borderTopClass = tplName === 'order_confirm' ? 'border-t-emerald-500' : tplName === 'address_verify' ? 'border-t-blue-500' : tplName === 'order_dispatch' ? 'border-t-purple-500' : tplName === 'out_for_delivery' ? 'border-t-orange-500' : tplName === 'delivered' ? 'border-t-teal-500' : tplName === 'order_on_hold' ? 'border-t-amber-500' : tplName === 'order_cancelled' ? 'border-t-red-500' : 'border-t-indigo-500';
+
+            html += '<div class="flex justify-end mb-3"><div class="bg-white border ' + t.bd + ' rounded-2xl rounded-tr-sm p-4 max-w-[80%] shadow-md border-t-4 ' + borderTopClass + '">'
+                + '<div class="flex items-center gap-2 mb-2.5"><span class="text-base leading-none">' + t.icon + '</span><span class="font-bold text-xs ' + t.tx + '">' + t.label + '</span></div>'
+                + (pHtml ? '<div class="bg-slate-50/80 border border-slate-100/60 rounded-xl px-3.5 py-2.5 mb-2.5 space-y-1">' + pHtml + '</div>' : '')
+                + '<div class="flex items-center justify-between border-t border-slate-100 pt-2"><span class="text-[9px] text-slate-400 font-medium italic">Auto-sent template</span><div class="flex items-center gap-1.5"><span class="text-[9px] text-slate-400 font-medium">' + timeStr + '</span>' + tickHtml + '</div></div>'
                 + '</div></div>';
         } else if (isOut) {
-            html += '<div class="flex justify-end mb-2"><div class="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] shadow-sm">'
+            html += '<div class="flex justify-end mb-2.5"><div class="bg-teal-50 border border-teal-100/50 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[75%] shadow-sm">'
                 + (isFailed ? '<p class="text-[10px] text-red-500 font-bold mb-1">Failed to send</p>' : '')
                 + mediaHtml
-                + '<p class="text-sm text-slate-800 whitespace-pre-wrap">' + waEscapeHtml(msg.body || '') + '</p>'
-                + '<div class="flex items-center justify-end gap-1 mt-1"><span class="text-[10px] text-slate-400">' + timeStr + '</span>' + tickHtml + '</div></div></div>';
+                + '<p class="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">' + waEscapeHtml(msg.body || '') + '</p>'
+                + '<div class="flex items-center justify-end gap-1 mt-1.5"><span class="text-[9px] text-slate-400 font-medium">' + timeStr + '</span>' + tickHtml + '</div></div></div>';
         } else {
             // For old media messages without mediaId, show styled placeholder
             let placeholderHtml = '';
             if (!hasMedia && msg.body) {
-                if (msg.body === '[Image]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">📷</span><span class="text-xs font-medium">Photo</span></div>';
-                else if (msg.body === '[Video]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">🎬</span><span class="text-xs font-medium">Video</span></div>';
-                else if (msg.body === '[Voice Message]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">🎤</span><span class="text-xs font-medium">Voice Message</span></div>';
-                else if (msg.body === '[Document]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">📄</span><span class="text-xs font-medium">Document</span></div>';
-                else if (msg.body === '[Sticker]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">🏷️</span><span class="text-xs font-medium">Sticker</span></div>';
-                else if (msg.body.startsWith('[Location')) placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1 flex items-center gap-2 text-slate-500"><span class="text-xl">📍</span><span class="text-xs font-medium">Location</span></div>';
+                if (msg.body === '[Image]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1.5 flex items-center gap-2 text-slate-500"><span class="text-xl">📷</span><span class="text-xs font-medium">Photo</span></div>';
+                else if (msg.body === '[Video]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1.5 flex items-center gap-2 text-slate-500"><span class="text-xl">🎬</span><span class="text-xs font-medium">Video</span></div>';
+                else if (msg.body === '[Voice Message]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1.5 flex items-center gap-2 text-slate-500"><span class="text-xl">🎤</span><span class="text-xs font-medium">Voice Message</span></div>';
+                else if (msg.body === '[Document]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1.5 flex items-center gap-2 text-slate-500"><span class="text-xl">📄</span><span class="text-xs font-medium">Document</span></div>';
+                else if (msg.body === '[Sticker]') placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1.5 flex items-center gap-2 text-slate-500"><span class="text-xl">🏷️</span><span class="text-xs font-medium">Sticker</span></div>';
+                else if (msg.body.startsWith('[Location')) placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1.5 flex items-center gap-2 text-slate-500"><span class="text-xl">📍</span><span class="text-xs font-medium">Location</span></div>';
             }
 
-            html += '<div class="flex justify-start mb-2"><div class="bg-white rounded-2xl rounded-tl-sm px-4 py-2 max-w-[75%] shadow-sm border border-slate-100">'
+            html += '<div class="flex justify-start mb-2.5"><div class="bg-white rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[75%] shadow-sm border border-slate-100/80">'
                 + mediaHtml
                 + placeholderHtml
                 + (hasMedia && msg.type !== 'document' && msg.body && !['[Image]', '[Video]', '[Voice Message]', '[Sticker]'].includes(msg.body)
-                    ? '<p class="text-sm text-slate-800 whitespace-pre-wrap">' + waEscapeHtml(msg.body) + '</p>'
-                    : (!hasMedia && !placeholderHtml ? '<p class="text-sm text-slate-800 whitespace-pre-wrap">' + waEscapeHtml(msg.body || '') + '</p>' : ''))
-                + '<span class="text-[10px] text-slate-400 block text-right mt-1">' + timeStr + '</span></div></div>';
+                    ? '<p class="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">' + waEscapeHtml(msg.body) + '</p>'
+                    : (!hasMedia && !placeholderHtml ? '<p class="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">' + waEscapeHtml(msg.body || '') + '</p>' : ''))
+                + '<span class="text-[9px] text-slate-400 block text-right mt-1.5 font-medium">' + timeStr + '</span></div></div>';
         }
     });
     msgContent.innerHTML = html;
@@ -12133,13 +12151,25 @@ async function openWATemplatePanel() {
     if (waAllTemplates.length === 0) await loadWATemplates();
     const panel = document.getElementById('waTemplatePanel');
     const list = document.getElementById('waTemplatePanelList');
-    const colors = { emerald: 'bg-emerald-50 border-emerald-200 text-emerald-800', blue: 'bg-blue-50 border-blue-200 text-blue-800', purple: 'bg-purple-50 border-purple-200 text-purple-800', orange: 'bg-orange-50 border-orange-200 text-orange-800', teal: 'bg-teal-50 border-teal-200 text-teal-800', amber: 'bg-amber-50 border-amber-200 text-amber-800', red: 'bg-red-50 border-red-200 text-red-800', indigo: 'bg-indigo-50 border-indigo-200 text-indigo-800' };
+    const colors = {
+        emerald: 'bg-emerald-50/50 hover:bg-emerald-50 border-emerald-100 hover:border-emerald-300 text-emerald-950',
+        blue: 'bg-blue-50/50 hover:bg-blue-50 border-blue-100 hover:border-blue-300 text-blue-950',
+        purple: 'bg-purple-50/50 hover:bg-purple-50 border-purple-100 hover:border-purple-300 text-purple-950',
+        orange: 'bg-orange-50/50 hover:bg-orange-50 border-orange-100 hover:border-orange-300 text-orange-950',
+        teal: 'bg-teal-50/50 hover:bg-teal-50 border-teal-100 hover:border-teal-300 text-teal-950',
+        amber: 'bg-amber-50/50 hover:bg-amber-50 border-amber-100 hover:border-amber-300 text-amber-950',
+        red: 'bg-red-50/50 hover:bg-red-50 border-red-100 hover:border-red-300 text-red-950',
+        indigo: 'bg-indigo-50/50 hover:bg-indigo-50 border-indigo-100 hover:border-indigo-300 text-indigo-950'
+    };
     if (list) list.innerHTML = waAllTemplates.map(t => {
         const cls = colors[t.color] || colors.indigo;
-        return `<button onclick="sendWATemplate('${t.name}')" class="w-full text-left p-3 border rounded-xl hover:opacity-80 transition-opacity ${cls}">
-            <p class="font-bold text-sm">${t.label}</p>
-            <p class="text-xs opacity-70 mt-0.5">${t.desc}</p>
-            <p class="text-[10px] opacity-50 mt-1">Params: ${t.params.join(', ')}</p></button>`;
+        return `<button onclick="sendWATemplate('${t.name}')" class="w-full text-left p-3.5 border rounded-2xl shadow-sm transition-all duration-200 hover:scale-[1.015] hover:shadow-md ${cls}">
+            <p class="font-bold text-xs tracking-wide">${t.label}</p>
+            <p class="text-[10px] opacity-80 mt-1 leading-normal">${t.desc}</p>
+            <div class="mt-2.5 pt-2 border-t border-slate-950/5 flex items-center justify-between text-[9px] opacity-60">
+                <span class="font-medium">Variables: ${t.params.length}</span>
+                <span class="font-semibold uppercase tracking-wider">Send →</span>
+            </div></button>`;
     }).join('');
     if (panel) panel.classList.remove('hidden');
 }
@@ -12197,6 +12227,604 @@ function closeWATemplatePanel() {
     const p = document.getElementById('waTemplatePanel');
     if (p) p.classList.add('hidden');
 }
+
+// ── Start New Chat Modal Workflows ───────────────────────────────────────────
+function openWANewChatModal() {
+    const modal = document.getElementById('waNewChatModal');
+    if (!modal) return;
+    
+    // Clear inputs
+    const phoneInput = document.getElementById('waNewChatPhone');
+    const nameInput = document.getElementById('waNewChatName');
+    const freeText = document.getElementById('waNewChatFreeText');
+    const tplSelect = document.getElementById('waNewChatTplSelect');
+    
+    if (phoneInput) phoneInput.value = '';
+    if (nameInput) nameInput.value = '';
+    if (freeText) freeText.value = '';
+    
+    // Populate templates dropdown if loaded
+    if (tplSelect) {
+        tplSelect.innerHTML = '<option value="">-- Choose Template --</option>';
+        waAllTemplates.forEach(t => {
+            tplSelect.innerHTML += `<option value="${t.name}">${t.label}</option>`;
+        });
+    }
+    
+    // Set message type to free text by default
+    onWANewChatTypeChange('free');
+    
+    modal.classList.remove('hidden');
+    modal.querySelector('.transform').classList.remove('scale-95');
+    modal.querySelector('.transform').classList.add('scale-100');
+}
+
+function closeWANewChatModal() {
+    const modal = document.getElementById('waNewChatModal');
+    if (!modal) return;
+    modal.querySelector('.transform').classList.remove('scale-100');
+    modal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => { modal.classList.add('hidden'); }, 150);
+}
+
+function onWANewChatTypeChange(type) {
+    const freeBtn = document.getElementById('waNewChatTypeFree');
+    const tplBtn = document.getElementById('waNewChatTypeTpl');
+    const freeCont = document.getElementById('waNewChatFreeContainer');
+    const tplCont = document.getElementById('waNewChatTplContainer');
+    
+    if (type === 'free') {
+        if (freeBtn) {
+            freeBtn.className = 'py-2.5 border-2 rounded-xl text-xs font-bold text-center transition-all bg-teal-50 border-teal-600 text-teal-700 shadow-sm';
+        }
+        if (tplBtn) {
+            tplBtn.className = 'py-2.5 border-2 rounded-xl text-xs font-bold text-center transition-all bg-white border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-700 hover:shadow-sm';
+        }
+        if (freeCont) freeCont.classList.remove('hidden');
+        if (tplCont) tplCont.classList.add('hidden');
+    } else {
+        if (freeBtn) {
+            freeBtn.className = 'py-2.5 border-2 rounded-xl text-xs font-bold text-center transition-all bg-white border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-700 hover:shadow-sm';
+        }
+        if (tplBtn) {
+            tplBtn.className = 'py-2.5 border-2 rounded-xl text-xs font-bold text-center transition-all bg-teal-50 border-teal-600 text-teal-700 shadow-sm';
+        }
+        if (freeCont) freeCont.classList.add('hidden');
+        if (tplCont) tplCont.classList.remove('hidden');
+        
+        // Reset dynamic templates
+        const select = document.getElementById('waNewChatTplSelect');
+        if (select) onWANewChatTemplateSelect(select.value);
+    }
+}
+
+function onWANewChatTemplateSelect(tplName) {
+    const listDiv = document.getElementById('waNewChatTplParamsList');
+    const container = document.getElementById('waNewChatTplParams');
+    if (!listDiv || !container) return;
+    
+    if (!tplName) {
+        listDiv.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+    }
+    
+    const tpl = waAllTemplates.find(t => t.name === tplName);
+    if (!tpl) {
+        listDiv.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+    }
+    
+    container.classList.remove('hidden');
+    let html = '';
+    const custNameVal = document.getElementById('waNewChatName').value.trim() || 'Customer';
+    
+    tpl.params.forEach((param, i) => {
+        let defaultVal = '';
+        if (param.toLowerCase().includes('name') || param.toLowerCase().includes('customer')) {
+            defaultVal = custNameVal;
+        }
+        html += `
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1 ml-1">${param}</label>
+                <input type="text" data-param-idx="${i}" placeholder="Enter ${param}" value="${defaultVal}" class="wa-new-chat-param-input w-full px-3.5 py-2 bg-slate-50 border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-100 rounded-xl text-xs outline-none transition-all font-semibold text-slate-700 shadow-sm">
+            </div>
+        `;
+    });
+    
+    listDiv.innerHTML = html;
+}
+
+async function sendWANewChat() {
+    const phoneInput = document.getElementById('waNewChatPhone');
+    const nameInput = document.getElementById('waNewChatName');
+    
+    if (!phoneInput) return;
+    
+    const rawPhone = phoneInput.value.trim();
+    if (!rawPhone || rawPhone.length !== 10) {
+        alert('Please enter a valid 10-digit phone number.');
+        return;
+    }
+    
+    const formattedPhone = '91' + rawPhone;
+    const name = nameInput ? nameInput.value.trim() || 'Customer' : 'Customer';
+    const isFree = document.getElementById('waNewChatFreeContainer').classList.contains('hidden') === false;
+    
+    let payload = {
+        to: formattedPhone,
+        customerName: name
+    };
+    
+    if (isFree) {
+        const textInput = document.getElementById('waNewChatFreeText');
+        const text = textInput ? textInput.value.trim() : '';
+        if (!text) {
+            alert('Please type a message first.');
+            return;
+        }
+        payload.type = 'text';
+        payload.text = text;
+    } else {
+        const tplSelect = document.getElementById('waNewChatTplSelect');
+        const tplName = tplSelect ? tplSelect.value : '';
+        if (!tplName) {
+            alert('Please select a template.');
+            return;
+        }
+        
+        // Gather parameters
+        const paramInputs = document.querySelectorAll('.wa-new-chat-param-input');
+        const params = [];
+        paramInputs.forEach(input => {
+            const idx = parseInt(input.getAttribute('data-param-idx'), 10);
+            params[idx] = input.value.trim();
+        });
+        
+        payload.type = 'template';
+        payload.templateName = tplName;
+        payload.parameters = params;
+        payload.lang = 'en';
+    }
+    
+    // Disable submit
+    const submitBtn = document.querySelector('#waNewChatModal button[onclick="sendWANewChat()"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="inline-block animate-spin mr-1">⌛</span> Sending...';
+    }
+    
+    try {
+        const res = await fetch(`${API_URL}/whatsapp/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            closeWANewChatModal();
+            if (typeof showSuccessPopup === 'function') {
+                showSuccessPopup('Chat Initiated! 💬', `Initial message sent to ${name}.`, '💬', '#0f766e');
+            }
+            await loadWAConversations();
+            openWAChat(formattedPhone, name);
+        } else {
+            alert('Failed to send message: ' + (data.message || 'Meta API error'));
+        }
+    } catch (e) {
+        alert('Network error: ' + e.message);
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>🚀</span> Start & Send';
+        }
+    }
+}
+
+
+// ── Bulk Broadcast Modal Workflows ───────────────────────────────────────────
+let waBulkQueue = [];
+let waBulkIndex = 0;
+let waBulkSuccesses = 0;
+let waBulkFailures = 0;
+let waBulkIsPaused = false;
+let waBulkIsCancelled = false;
+let waBulkDelayMs = 350; // safe pacing delay
+let waBulkActiveTemplate = null;
+let waBulkParamConfigs = [];
+
+function openWABulkSendModal() {
+    const modal = document.getElementById('waBulkSendModal');
+    if (!modal) return;
+    
+    // Reset state
+    const textarea = document.getElementById('waBulkRecipientsText');
+    const confirmCheck = document.getElementById('waBulkConfirmCheck');
+    const tplSelect = document.getElementById('waBulkTemplateSelect');
+    
+    if (textarea) textarea.value = '';
+    if (confirmCheck) confirmCheck.checked = false;
+    
+    updateWABulkRecipientCount();
+    
+    // Populate dropdown
+    if (tplSelect) {
+        tplSelect.innerHTML = '<option value="">-- Choose Template --</option>';
+        waAllTemplates.forEach(t => {
+            tplSelect.innerHTML += `<option value="${t.name}">${t.label}</option>`;
+        });
+        onWABulkTemplateSelect('');
+    }
+    
+    modal.classList.remove('hidden');
+    modal.querySelector('.transform').classList.remove('scale-95');
+    modal.querySelector('.transform').classList.add('scale-100');
+}
+
+function closeWABulkSendModal() {
+    const modal = document.getElementById('waBulkSendModal');
+    if (!modal) return;
+    modal.querySelector('.transform').classList.remove('scale-100');
+    modal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => { modal.classList.add('hidden'); }, 150);
+}
+
+function updateWABulkRecipientCount() {
+    const txtArea = document.getElementById('waBulkRecipientsText');
+    const badge = document.getElementById('waBulkCountBadge');
+    if (!txtArea || !badge) return;
+    
+    const text = txtArea.value;
+    const lines = text.split('\n');
+    let validCount = 0;
+    
+    lines.forEach(line => {
+        const cleaned = line.trim();
+        if (!cleaned) return;
+        
+        const parts = cleaned.split(/[,,;]/);
+        const phoneRaw = parts[0].trim().replace(/\D/g, '');
+        
+        if (phoneRaw.length === 10 || phoneRaw.length === 12 || (phoneRaw.length === 11 && phoneRaw.startsWith('0'))) {
+            validCount++;
+        }
+    });
+    
+    badge.textContent = `${validCount} Valid Number${validCount !== 1 ? 's' : ''}`;
+    if (validCount > 0) {
+        badge.className = "bg-teal-100 text-teal-700 text-[9px] font-black px-2.5 py-1 rounded-full border border-teal-200/50";
+    } else {
+        badge.className = "bg-slate-200 text-slate-700 text-[9px] font-black px-2.5 py-1 rounded-full";
+    }
+}
+
+function onWABulkTemplateSelect(tplName) {
+    const listDiv = document.getElementById('waBulkParamsList');
+    const container = document.getElementById('waBulkParamsContainer');
+    if (!listDiv || !container) return;
+    
+    if (!tplName) {
+        listDiv.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+    }
+    
+    const tpl = waAllTemplates.find(t => t.name === tplName);
+    if (!tpl) {
+        listDiv.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+    }
+    
+    container.classList.remove('hidden');
+    let html = '';
+    
+    tpl.params.forEach((param, i) => {
+        let isSpecial = false;
+        let placeholderText = `Enter value for ${param}`;
+        let defaultVal = '';
+        
+        if (param.toLowerCase().includes('name') || param.toLowerCase().includes('customer')) {
+            placeholderText = "Type static name or use {{name}}";
+            defaultVal = "{{name}}";
+            isSpecial = true;
+        } else if (param.toLowerCase().includes('order')) {
+            placeholderText = "Type static Order ID or use {{order_id}}";
+            defaultVal = "{{order_id}}";
+            isSpecial = true;
+        }
+        
+        html += `
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5 ml-1">${param}</label>
+                <input type="text" data-param-idx="${i}" placeholder="${placeholderText}" value="${defaultVal}" class="wa-bulk-param-input w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-xs outline-none transition-all font-semibold text-slate-700 shadow-sm">
+                ${isSpecial ? `<p class="text-[8px] text-teal-600 font-bold mt-1 ml-1">✨ Dynamic placeholder enabled for this field</p>` : ''}
+            </div>
+        `;
+    });
+    
+    listDiv.innerHTML = html;
+}
+
+function logWABulkConsole(msg) {
+    const consoleDiv = document.getElementById('waBulkConsoleLog');
+    if (!consoleDiv) return;
+    
+    const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const line = document.createElement('div');
+    if (msg.startsWith('//') || msg.startsWith('\n//')) {
+        line.className = 'text-slate-500 font-bold';
+    } else if (msg.includes('[SUCCESS]')) {
+        line.className = 'text-emerald-400 font-semibold';
+    } else if (msg.includes('[FAILED]') || msg.includes('[NETWORK ERROR]')) {
+        line.className = 'text-rose-400 font-semibold';
+    } else {
+        line.className = 'text-teal-300';
+    }
+    
+    line.textContent = `[${timeStr}] ${msg}`;
+    consoleDiv.appendChild(line);
+    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+}
+
+function startWABulkBroadcast() {
+    const confirmCheck = document.getElementById('waBulkConfirmCheck');
+    if (!confirmCheck || !confirmCheck.checked) {
+        alert('Please check the safety confirmation box to proceed.');
+        return;
+    }
+    
+    const recipientsText = document.getElementById('waBulkRecipientsText').value;
+    const tplSelect = document.getElementById('waBulkTemplateSelect');
+    const tplName = tplSelect ? tplSelect.value : '';
+    
+    if (!tplName) {
+        alert('Please select a template for broadcasting.');
+        return;
+    }
+    
+    // Parse recipients
+    const lines = recipientsText.split('\n');
+    waBulkQueue = [];
+    
+    lines.forEach(line => {
+        const cleaned = line.trim();
+        if (!cleaned) return;
+        
+        const parts = cleaned.split(/[,,;]/);
+        let phoneRaw = parts[0].trim().replace(/\D/g, '');
+        
+        if (phoneRaw.length === 10) phoneRaw = '91' + phoneRaw;
+        if (phoneRaw.length === 11 && phoneRaw.startsWith('0')) phoneRaw = '91' + phoneRaw.slice(1);
+        
+        if (phoneRaw.length >= 10) {
+            waBulkQueue.push({
+                phone: phoneRaw,
+                name: parts[1] ? parts[1].trim() : 'Customer',
+                orderId: parts[2] ? parts[2].trim() : ''
+            });
+        }
+    });
+    
+    if (waBulkQueue.length === 0) {
+        alert('No valid recipients found. Please review formatting guidelines.');
+        return;
+    }
+    
+    // Gather variables
+    const paramInputs = document.querySelectorAll('.wa-bulk-param-input');
+    waBulkParamConfigs = [];
+    paramInputs.forEach(input => {
+        const idx = parseInt(input.getAttribute('data-param-idx'), 10);
+        waBulkParamConfigs[idx] = input.value.trim();
+    });
+    
+    // Reset status counters
+    waBulkIndex = 0;
+    waBulkSuccesses = 0;
+    waBulkFailures = 0;
+    waBulkIsPaused = false;
+    waBulkIsCancelled = false;
+    waBulkActiveTemplate = tplName;
+    
+    // Close send modal, open progress modal
+    closeWABulkSendModal();
+    
+    const progressModal = document.getElementById('waBulkProgressModal');
+    if (progressModal) {
+        document.getElementById('waBulkTotalCount').textContent = waBulkQueue.length;
+        document.getElementById('waBulkSuccessCount').textContent = 0;
+        document.getElementById('waBulkFailedCount').textContent = 0;
+        document.getElementById('waBulkPercentText').textContent = '0% Complete';
+        document.getElementById('waBulkProgressBar').style.width = '0%';
+        
+        const consoleDiv = document.getElementById('waBulkConsoleLog');
+        if (consoleDiv) consoleDiv.innerHTML = '<div class="text-slate-500">// Initiating broadcast run...</div>';
+        
+        // Configure control buttons
+        const spinner = document.getElementById('waBulkProgressSpinner');
+        const title = document.getElementById('waBulkProgressTitle');
+        const doneBtn = document.getElementById('waBulkDoneCloseBtn');
+        const pauseBtn = document.getElementById('waBulkPauseBtn');
+        const cancelBtn = document.getElementById('waBulkCancelBtn');
+        const header = document.getElementById('waBulkProgressHeader');
+        
+        if (spinner) spinner.classList.remove('hidden');
+        if (title) title.textContent = 'Broadcasting Templates...';
+        if (header) {
+            header.className = 'bg-gradient-to-r from-teal-900 to-teal-800 px-6 py-4 flex items-center justify-between text-white flex-shrink-0';
+        }
+        if (doneBtn) {
+            doneBtn.disabled = true;
+            doneBtn.textContent = 'Running...';
+        }
+        if (pauseBtn) {
+            pauseBtn.classList.remove('hidden');
+            pauseBtn.textContent = 'Pause Broadcast';
+            pauseBtn.className = 'px-4 py-2 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 rounded-xl text-xs font-bold transition-all';
+        }
+        if (cancelBtn) cancelBtn.classList.remove('hidden');
+        
+        progressModal.classList.remove('hidden');
+        progressModal.querySelector('.transform').classList.remove('scale-95');
+        progressModal.querySelector('.transform').classList.add('scale-100');
+    }
+    
+    logWABulkConsole(`// Starting broadcast run for ${waBulkQueue.length} contacts.`);
+    logWABulkConsole(`// Template: ${tplName}. Pacing delay: ${waBulkDelayMs}ms.`);
+    
+    // Start loop
+    processNextBulkRecipient();
+}
+
+function updateWABulkProgressBar() {
+    const total = waBulkQueue.length;
+    const progress = Math.min(100, Math.round((waBulkIndex / total) * 100));
+    
+    const bar = document.getElementById('waBulkProgressBar');
+    const txt = document.getElementById('waBulkPercentText');
+    
+    if (bar) bar.style.width = `${progress}%`;
+    if (txt) txt.textContent = `${progress}% Complete`;
+}
+
+async function processNextBulkRecipient() {
+    if (waBulkIsPaused || waBulkIsCancelled) return;
+    
+    if (waBulkIndex >= waBulkQueue.length) {
+        finishWABulkBroadcast('COMPLETED');
+        return;
+    }
+    
+    const recipient = waBulkQueue[waBulkIndex];
+    
+    // Update progress bar
+    updateWABulkProgressBar();
+    
+    logWABulkConsole(`Sending to ${recipient.phone} (${recipient.name})...`);
+    
+    // Map variables
+    const parameters = waBulkParamConfigs.map(val => {
+        let mapped = val;
+        mapped = mapped.replace(/\{\{name\}\}/gi, recipient.name);
+        mapped = mapped.replace(/\{\{order_id\}\}/gi, recipient.orderId);
+        return mapped;
+    });
+    
+    try {
+        const payload = {
+            to: recipient.phone,
+            type: 'template',
+            templateName: waBulkActiveTemplate,
+            parameters: parameters,
+            lang: 'en',
+            customerName: recipient.name,
+            orderId: recipient.orderId || undefined
+        };
+        
+        const res = await fetch(`${API_URL}/whatsapp/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+            waBulkSuccesses++;
+            document.getElementById('waBulkSuccessCount').textContent = waBulkSuccesses;
+            logWABulkConsole(`[SUCCESS] Sent to ${recipient.phone} ✅`);
+        } else {
+            waBulkFailures++;
+            document.getElementById('waBulkFailedCount').textContent = waBulkFailures;
+            const errMsg = data.error?.error_data?.details || data.message || 'Unknown Meta error';
+            logWABulkConsole(`[FAILED] ${recipient.phone}: ${errMsg} ❌`);
+        }
+    } catch (e) {
+        waBulkFailures++;
+        document.getElementById('waBulkFailedCount').textContent = waBulkFailures;
+        logWABulkConsole(`[NETWORK ERROR] ${recipient.phone}: ${e.message} ❌`);
+    }
+    
+    // Increment index for next item
+    waBulkIndex++;
+    
+    // Wait and continue
+    setTimeout(processNextBulkRecipient, waBulkDelayMs);
+}
+
+function finishWABulkBroadcast(status) {
+    const title = document.getElementById('waBulkProgressTitle');
+    const spinner = document.getElementById('waBulkProgressSpinner');
+    const doneBtn = document.getElementById('waBulkDoneCloseBtn');
+    const pauseBtn = document.getElementById('waBulkPauseBtn');
+    const cancelBtn = document.getElementById('waBulkCancelBtn');
+    const header = document.getElementById('waBulkProgressHeader');
+    
+    if (spinner) spinner.classList.add('hidden');
+    if (pauseBtn) pauseBtn.classList.add('hidden');
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+    
+    if (doneBtn) {
+        doneBtn.disabled = false;
+        doneBtn.textContent = 'Close Summary';
+    }
+    
+    if (status === 'COMPLETED') {
+        if (title) title.textContent = 'Broadcast Completed!';
+        if (header) {
+            header.className = 'bg-gradient-to-r from-emerald-900 to-emerald-800 px-6 py-4 flex items-center justify-between text-white flex-shrink-0 shadow-md';
+        }
+        logWABulkConsole(`\n// Broadcast finished. Total: ${waBulkQueue.length}, Success: ${waBulkSuccesses}, Failed: ${waBulkFailures}.`);
+        if (typeof showSuccessPopup === 'function') {
+            showSuccessPopup('Broadcast Complete! 📢', `Sent template to ${waBulkSuccesses} customers!`, '📢', '#0f766e');
+        }
+    } else {
+        if (title) title.textContent = 'Broadcast Aborted';
+        if (header) {
+            header.className = 'bg-gradient-to-r from-rose-900 to-rose-800 px-6 py-4 flex items-center justify-between text-white flex-shrink-0 shadow-md';
+        }
+        logWABulkConsole(`\n// Broadcast aborted. Total parsed: ${waBulkQueue.length}, Sent: ${waBulkSuccesses}, Skipped: ${waBulkQueue.length - waBulkSuccesses - waBulkFailures}.`);
+    }
+    
+    loadWAConversations();
+}
+
+function toggleWABulkBroadcastPause() {
+    const btn = document.getElementById('waBulkPauseBtn');
+    if (waBulkIsPaused) {
+        waBulkIsPaused = false;
+        if (btn) {
+            btn.textContent = 'Pause Broadcast';
+            btn.className = 'px-4 py-2 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 rounded-xl text-xs font-bold transition-all shadow-sm';
+        }
+        logWABulkConsole('// Broadcast resumed.');
+        processNextBulkRecipient();
+    } else {
+        waBulkIsPaused = true;
+        if (btn) {
+            btn.textContent = 'Resume Broadcast';
+            btn.className = 'px-4 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all shadow-sm';
+        }
+        logWABulkConsole('// Broadcast paused.');
+    }
+}
+
+function cancelWABulkBroadcast() {
+    if (!confirm('Abort active broadcast? Remaining queue items will be ignored.')) return;
+    waBulkIsCancelled = true;
+    finishWABulkBroadcast('ABORTED');
+}
+
+function closeWABulkProgressModal() {
+    const modal = document.getElementById('waBulkProgressModal');
+    if (!modal) return;
+    modal.querySelector('.transform').classList.remove('scale-100');
+    modal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => { modal.classList.add('hidden'); }, 150);
+}
+
 
 // ── Delete Conversation ───────────────────────────────────────────────────────
 async function deleteWAConversation() {

@@ -250,6 +250,20 @@ async function sendMetaMessageInternal({ to, type, text, templateName, parameter
         if (!templateName || !parameters) {
             throw new Error('templateName and parameters required.');
         }
+        const components = [{
+            type: 'body',
+            parameters: parameters.map(p => ({ type: 'text', text: String(p) }))
+        }];
+
+        if (templateName === 'order_dispatch' || templateName === 'delivered') {
+            components.push({
+                type: 'button',
+                sub_type: 'url',
+                index: '0',
+                parameters: [{ type: 'text', text: 'home' }]
+            });
+        }
+
         data = {
             messaging_product: 'whatsapp',
             to: formattedPhone,
@@ -257,10 +271,7 @@ async function sendMetaMessageInternal({ to, type, text, templateName, parameter
             template: {
                 name: templateName,
                 language: { code: lang || 'en' },
-                components: [{
-                    type: 'body',
-                    parameters: parameters.map(p => ({ type: 'text', text: String(p) }))
-                }]
+                components
             }
         };
         const tpl = TEMPLATES.find(t => t.name === templateName);
