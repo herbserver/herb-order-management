@@ -507,8 +507,66 @@ router.get('/media/:mediaId', async (req, res) => {
 async function handleChatbotReply(phone, text, customerName) {
     try {
         const cleanText = text.toLowerCase().trim();
+        customerName = customerName || 'जी';
+
+        // 1. Detect Wellness Quick Reply Buttons (Hinglish/Latin and Devnagari options)
         
-        // Find most recent order for this phone
+        // Varicose Veins Wellness Template (`varicose_veins_wellness`) Buttons:
+        // - Button 1: "Doctor se Free Call 📞"
+        // - Button 2: "Dawa Repeat Karein 🔁"
+        const isVVCall = cleanText.includes('doctor se free call') || cleanText.includes('doctor se call');
+        const isVVRepeat = cleanText.includes('dawa repeat karein') || cleanText.includes('dawa repeat');
+
+        // Joint Pain Wellness Template (`joint_pain_wellness`) Buttons:
+        // - Button 1: "Free Consultation Call 📞"
+        // - Button 2: "Main ab thik hoon! 😊"
+        const isJPCall = cleanText.includes('free consultation call') || cleanText.includes('consultation call');
+        const isJPCured = cleanText.includes('main ab thik hoon') || cleanText.includes('ab thik hoon');
+
+        // Diabetes Sugar Care Template (`diabetes_care_followup`) Buttons:
+        // - Button 1: "Sugar Report Checkup 📊"
+        // - Button 2: "Repeat Dawa Bhejein 🔁"
+        const isDBClose = cleanText.includes('sugar report checkup') || cleanText.includes('sugar report');
+        const isDBRepeat = cleanText.includes('repeat dawa bhejein') || cleanText.includes('repeat dawa');
+
+        // Weight Management Template (`weight_loss_followup`) Buttons:
+        // - Button 1: "Diet Chart Claim Karein 📋"
+        // - Button 2: "Doctor se Salah Lein 🩺"
+        const isWLDiet = cleanText.includes('diet chart claim') || cleanText.includes('claim karein');
+        const isWLCall = cleanText.includes('doctor se salah') || cleanText.includes('salah lein');
+
+        // Strength & Vitality Care Template (`vitality_strength_stamina`) Buttons:
+        // - Button 1: "Private Doctor Consult 📞"
+        // - Button 2: "Abhi repeat order karein 🔁"
+        const isVCCall = cleanText.includes('private doctor consult') || cleanText.includes('private doctor');
+        const isVCRepeat = cleanText.includes('abhi repeat order') || cleanText.includes('repeat order');
+
+        // Legacy Devnagari Wellness Buttons (for backward compatibility / older versions)
+        const isPositiveButton = cleanText.includes('काफी आराम है') || 
+                                 cleanText.includes('चलने में आराम है') || 
+                                 cleanText.includes('शुगर कंट्रोल में है') || 
+                                 cleanText.includes('वजन कम हुआ है') || 
+                                 cleanText.includes('एनर्जी अच्छी है');
+
+        const isNegativeButton = cleanText.includes('दर्द अभी भी है') || 
+                                 cleanText.includes('दर्द अभी होता है') || 
+                                 cleanText.includes('शुगर बढ़ी हुई है') || 
+                                 cleanText.includes('वजन नहीं घटा') || 
+                                 cleanText.includes('अभी भी कमजोरी है');
+
+        const isConsultationButton = cleanText.includes('मुफ्त सलाह चाहिए') || 
+                                     cleanText.includes('फ्री डाइट प्लान चाहिए') || 
+                                     cleanText.includes('vip डिस्काउंट') || 
+                                     cleanText.includes('हेल्थ एक्सपर्ट से बात करें') ||
+                                     cleanText.includes('कॉल कराएं') ||
+                                     cleanText.includes('सलाह चाहिए');
+
+        const isWellnessButton = isVVCall || isVVRepeat || isJPCall || isJPCured || 
+                                 isDBClose || isDBRepeat || isWLDiet || isWLCall || 
+                                 isVCCall || isVCRepeat || isPositiveButton || 
+                                 isNegativeButton || isConsultationButton;
+
+        // Find most recent order for this phone (optional context)
         const order = await Order.findOne({
             $or: [
                 { telNo: phone },
@@ -517,130 +575,212 @@ async function handleChatbotReply(phone, text, customerName) {
             ]
         }).sort({ createdAt: -1 });
 
-        if (!order) {
-            console.log(`ℹ️ No order context found for ${phone}, ignoring chatbot reply.`);
-            return;
-        }
+        const orderId = order ? order.orderId : 'N/A';
+        const employeeId = order ? (order.employeeId || 'System') : 'System';
+        const nameToUse = order ? (order.customerName || customerName) : customerName;
 
-        // Only handle follow-up replies for Delivered orders
-        if (order.status !== 'Delivered') {
-            console.log(`ℹ️ Order status for ${phone} is ${order.status}, skipping chatbot reply.`);
-            return;
-        }
-
-        // Standard positive and negative keywords in Hindi/Hinglish
-        const positiveKeywords = ['haan', 'han', 'yes', 'yup', 'ha', 'mil gayi', 'mil gyi', 'le li', 'shuru', 'started', 'khani'];
-        const negativeKeywords = ['nahi', 'nhi', 'no', 'nope', 'na', 'not', 'nahi mili', 'nhi mili', 'call nahi', 'baat nahi'];
-
-        let isPositive = false;
-        let isNegative = false;
-
-        for (const kw of negativeKeywords) {
-            if (cleanText.includes(kw)) {
-                isNegative = true;
-                break;
+        // If it's a general reply (not a wellness button click), apply delivered status rules to legacy follow-up
+        if (!isWellnessButton) {
+            if (!order) {
+                console.log(`ℹ️ No order context found for general reply on phone: ${phone}, ignoring.`);
+                return;
             }
-        }
-
-        if (!isNegative) {
-            for (const kw of positiveKeywords) {
-                if (cleanText.includes(kw)) {
-                    isPositive = true;
-                    break;
-                }
+            if (order.status !== 'Delivered') {
+                console.log(`ℹ️ Order status for general reply on ${phone} is ${order.status}, skipping.`);
+                return;
             }
         }
 
         let replyText = '';
+        let triggerAlert = false;
+        let alertTitle = '📞 Consultant Call Required';
+        let alertMsg = '';
+        let alertPriority = 'high';
 
-        if (isNegative) {
-            replyText = "Chinta na karein, humne aapki request register kar li hai. Humare Senior Health Consultant aapko aane wale 2-3 ghante ke andar call karenge aur dawa lene ka sahi tarika samjhayenge. Thank you! 🙏";
-            
-            // Create a high-priority system alert for the Admin
-            await Notification.create({
-                orderId: order.orderId,
-                employeeId: order.employeeId || 'System',
-                type: 'system_alert',
-                title: '📞 Consultant Call Required',
-                message: `Customer ${order.customerName} (#${order.orderId}) ne dawa shuru nahi ki ya consultant ne guide nahi kiya. Phone: ${phone}.`,
-                emoji: '📞',
-                priority: 'high',
-                data: {
-                    customerName: order.customerName,
-                    telNo: phone,
-                    orderId: order.orderId
+        // 2. Button-wise custom response router
+        if (isVVCall) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी कॉल रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nकृपया अपना फोन चालू रखें और थोड़ा धैर्य रखें। आयुर्वेद के नियम और सही परामर्श से ही पैरों के दर्द व ब्लॉकेज का संपूर्ण निदान संभव है! 🌿\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '🚨 High Priority: Varicose Veins Call Request';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested a callback from a Senior Health Expert regarding Varicose Veins. Phone: ${phone}.`;
+        }
+        else if (isVVRepeat) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nदवा रिपीट करने की आपकी रिक्वेस्ट हमारे सिस्टम में दर्ज कर ली गई है। 📦\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 ताकि आपके पते (Address) की पुष्टि की जा सके और दवा बिना किसी देरी के जल्द से जल्द रवाना की जा सके।\n\nआयुर्वेदिक कोर्स को पूरा करना ही बीमारी को जड़ से खत्म करने का एकमात्र मार्ग है! 🌿\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '📦 Urgent: Varicose Veins Dawa Repeat';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested medicine repeat (Dawa Repeat) for Varicose Veins. Phone: ${phone}.`;
+        }
+        else if (isJPCall) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी कॉल रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nकृपया अपना फोन चालू रखें और थोड़ा धैर्य रखें। आयुर्वेद के नियम और सही परामर्श से ही जोड़ों व घुटनों के दर्द का संपूर्ण निदान संभव है! 🌿\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '🚨 High Priority: Joint Pain Call Request';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested a callback from a Senior Health Expert regarding Joint Pain. Phone: ${phone}.`;
+        }
+        else if (isJPCured) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nयह जानकर हमारा मन अत्यंत प्रसन्नता और संतोष से भर गया! 😍🌿\n\nआयुर्वेद की औषधियों और आपके अनुशासन ने मिलकर यह चमत्कार कर दिखाया है। अब आप पूरी तरह स्वस्थ हैं, यह जानकर हमें बेहद खुशी हुई।\n\nभविष्य में भी अपनी दिनचर्या और खान-पान का विशेष ध्यान रखें। यदि कभी भी आपको कोई स्वास्थ्य संबंधी सलाह या मार्गदर्शन चाहिए हो, तो आप यहाँ बेझिझक मैसेज कर सकते हैं।\n\nआपके सुखी, समृद्ध और दीर्घायु जीवन की मंगल कामना करते हैं! 😇✨\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertPriority = 'medium';
+            alertTitle = 'ℹ️ Info: Joint Pain Cured Report';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) reports they are now completely fine/cured of Joint Pain. Phone: ${phone}.`;
+        }
+        else if (isDBClose) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी शुगर रिपोर्ट की जांच के लिए रिक्वेस्ट दर्ज हो गई है। 📊\n\nआप अपनी खाली पेट (Fasting) और खाने के बाद (PP) की शुगर रिपोर्ट की फोटो या रीडिंग यहाँ व्हाट्सएप पर सहेजें।\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** आपकी रिपोर्ट का गहन अध्ययन करके अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 और सही मार्गदर्शन प्रदान करेंगे।\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '📊 Urgent: Diabetes Report Verification';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested sugar report verification. Callback required. Phone: ${phone}.`;
+        }
+        else if (isDBRepeat) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nदवा रिपीट करने की आपकी रिक्वेस्ट हमारे सिस्टम में दर्ज कर ली गई है। 📦\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 ताकि आपके पते (Address) की पुष्टि की जा सके और दवा बिना किसी देरी के जल्द से जल्द रवाना की जा सके।\n\nआयुर्वेदिक कोर्स को पूरा करना ही बीमारी को जड़ से खत्म करने का एकमात्र मार्ग है! 🌿\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '📦 Urgent: Diabetes Dawa Repeat';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested medicine repeat (Dawa Repeat) for Diabetes. Phone: ${phone}.`;
+        }
+        else if (isWLDiet) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nवजन नियंत्रण के लिए आपका कस्टमाइज्ड डाइट प्लान तैयार है! 📋🥗\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट के अंदर आपको सीधे कॉल करेंगे 📞 और आपकी शारीरिक स्थिति के अनुसार सबसे बेस्ट डाइट चार्ट आपके व्हाट्सएप पर शेयर करेंगे।\n\nकृपया अपना फोन चालू रखें! 🍎\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '📋 Urgent: Diet Plan Requested';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested weight management diet plan on WhatsApp. Phone: ${phone}.`;
+        }
+        else if (isWLCall) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी सलाह रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nकृपया अपना फोन चालू रखें। आयुर्वेद के नियम और सही परामर्श से ही वजन का प्राकृतिक संतुलन संभव है! 🌿\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '🚨 High Priority: Weight Loss Consultation Request';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested weight loss consultation with a Senior Health Expert. Phone: ${phone}.`;
+        }
+        else if (isVCCall) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपकी सेहत हमारे लिए सबसे महत्वपूर्ण है। 🩺\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** को आपकी सलाह रिक्वेस्ट मिल चुकी है और वे अगले 15 मिनट के अंदर आपको इस नंबर पर सीधे संपर्क करेंगे। 📞\n\nआपकी सभी जानकारी और बातचीत बिल्कुल 100% गोपनीय रखी जाएगी। कृपया अपना फोन चालू रखें। 🌿\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '🚨 High Priority: Vitality Care Consultation Request';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested confidential strength/vitality consultation with a Senior Health Expert. Phone: ${phone}.`;
+        }
+        else if (isVCRepeat) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nदवा रिपीट करने की आपकी रिक्वेस्ट हमारे सिस्टम में दर्ज कर ली गई है। 📦\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट में आपको सीधे कॉल करेंगे 📞 ताकि आपके पते (Address) की पुष्टि की जा सके और दवा बिना किसी देरी के जल्द से जल्द रवाना की जा सके।\n\nकृपया अपना फोन चालू रखें! 🌿\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '📦 Urgent: Vitality Dawa Repeat';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested medicine repeat (Dawa Repeat) for Strength & Vitality. Phone: ${phone}.`;
+        }
+        // Legacy fallback button click detection
+        else if (isPositiveButton) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nयह जानकर बहुत खुशी हुई! 😍 आयुर्वेद के प्राकृतिक उपचार से आपके शरीर में यह सकारात्मक सुधार आया है।\n\nअपनी दवा को नियम से लेते रहें और बताए गए परहेज का पालन करें। यदि आपको आगे भी कोई मार्गदर्शन या डाइट टिप्स चाहिए, तो आप यहाँ लिख सकते हैं।\n\nआपके सदैव स्वस्थ और दीर्घायु रहने की मंगल कामना करते हैं! 🌿\n\n🙏 Herbonnaturals`;
+        } 
+        else if (isNegativeButton) {
+            replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nहम आपकी स्थिति को पूरी तरह समझते हैं। 🥺 पुरानी समस्या और नसों या जोड़ों की जकड़न को जड़ से ठीक होने में थोड़ा समय लगता है।\n\nहमारे **सीनियर हेल्थ एक्सपर्ट** अगले 15 मिनट के अंदर आपको सीधे कॉल करेंगे 📞 और दवा का सही तरीका व परहेज दोबारा समझाएंगे।\n\nकृपया अपना फोन चालू रखें और थोड़ा धैर्य रखें। धन्यवाद! 🩺\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '🚨 High Priority: Customer Reporting Pain';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) reporting pain or high symptoms via WhatsApp. Immediate callback requested by Senior Health Expert. Phone: ${phone}.`;
+        } 
+        else if (isConsultationButton) {
+            replyText = `जी बिल्कुल! आपकी कॉल रिक्वेस्ट हमारे **सीनियर हेल्थ एक्सपर्ट** टीम के पास दर्ज कर ली गई है। 📞\n\nअगले 15 मिनट के अंदर हमारे एक्सपर्ट आपको सीधे संपर्क करेंगे। कृपया अपना फोन चालू रखें। धन्यवाद! 🩺\n\n🙏 Herbonnaturals`;
+            triggerAlert = true;
+            alertTitle = '📞 Senior Health Expert Requested';
+            alertMsg = `Customer ${nameToUse} (#${orderId}) requested a call with a Senior Health Expert on WhatsApp. Phone: ${phone}.`;
+        } 
+        else {
+            // General query: Fallback to existing keyword triggers or Google Gemini AI if configured
+            const positiveKeywords = ['haan', 'han', 'yes', 'yup', 'ha', 'mil gayi', 'mil gyi', 'le li', 'shuru', 'started', 'khani'];
+            const negativeKeywords = ['nahi', 'nhi', 'no', 'nope', 'na', 'not', 'nahi mili', 'nhi mili', 'call nahi', 'baat nahi'];
+
+            let isPositiveKeyword = false;
+            let isNegativeKeyword = false;
+
+            for (const kw of negativeKeywords) {
+                if (cleanText.includes(kw)) {
+                    isNegativeKeyword = true;
+                    break;
                 }
-            });
-            console.log(`🔔 Admin alert created for Order ${order.orderId} (Negative Follow-up reply).`);
-        } else if (isPositive) {
-            replyText = "Bohot badhiya ji! Dawa ko niyamit (regularly) aur sahi tarike se lein. Agar koi bhi samasya ho, toh aap yahan likh sakte hain. Aapki acchi sehat ki kaamna karte hain! 🙏";
-        } else {
-            // General query: Use Google Gemini AI if configured
-            if (process.env.GEMINI_API_KEY) {
-                try {
-                    console.log('🧠 Querying Gemini API for smart chatbot reply...');
-                    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-                    
-                    const prompt = `Customer replied: "${text}"`;
-                    const systemInstruction = `You are the automated WhatsApp Health Consultant for "Herbonnaturals" (an ayurved Ayurvedic medicine brand).
-A customer who recently ordered has sent a reply to our 24h follow-up. Reply in a warm, polite, caring manner in Hinglish (Hindi written in English alphabets) or Hindi script.
+            }
 
-Customer Name: ${customerName}
-Order ID: ${order.orderId}
-Medicines Ordered: ${order.items && order.items.length > 0 ? order.items.map(i => i.description).join(', ') : 'Ayurvedic medicines'}
+            if (!isNegativeKeyword) {
+                for (const kw of positiveKeywords) {
+                    if (cleanText.includes(kw)) {
+                        isPositiveKeyword = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isNegativeKeyword) {
+                replyText = "चिंता न करें जी, हमने आपकी रिक्वेस्ट रजिस्टर कर ली है। हमारे सीनियर हेल्थ एक्सपर्ट आपको आने वाले 1-2 घंटे के अंदर कॉल करेंगे और पूरी मदद करेंगे। धन्यवाद! 🙏";
+                triggerAlert = true;
+                alertTitle = '📞 Consultant Call Required';
+                alertMsg = `Customer ${nameToUse} (#${orderId}) says medicine not started or not guided. Phone: ${phone}.`;
+            } else if (isPositiveKeyword) {
+                replyText = "बहुत बढ़िया जी! दवा को नियमित रूप से और सही तरीके से लें। अगर कोई भी समस्या हो, तो आप यहाँ लिख सकते हैं। आपकी अच्छी सेहत की कामना करते हैं! 🙏";
+            } else {
+                // Custom question: Use Google Gemini AI
+                if (process.env.GEMINI_API_KEY) {
+                    try {
+                        console.log('🧠 Querying Gemini API for smart chatbot reply...');
+                        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+                        
+                        const prompt = `Customer replied: "${text}"`;
+                        const systemInstruction = `You are the automated WhatsApp Senior Health Expert chatbot for "Herbonnaturals" (an Ayurvedic wellness brand).
+A customer has asked a question. Reply in a warm, extremely polite, caring manner in Hindi Devnagari script (शुद्ध हिंदी) or readable Hinglish if natural.
+
+Customer Name: ${nameToUse}
+Order ID: ${orderId}
+Medicines Context: ${order && order.items && order.items.length > 0 ? order.items.map(i => i.description).join(', ') : 'Ayurvedic wellness treatment'}
 
 Guidelines:
-1. Address them respectfully (e.g., Namaste ${customerName} ji).
-2. Answer their question about their herbal medicine or general usage instructions in 2-3 short sentences.
-3. Keep it brief and friendly.
-4. If they report pain, side effects, request a call, or have complex complaints, state: "Maine aapki request register kar li hai. Humare Senior Health Consultant aapko jald hi call karenge."
+1. Address them respectfully (e.g., नमस्ते ${nameToUse} जी).
+2. Answer their question about their Ayurvedic medicine or general usage in 2-3 short, clear sentences.
+3. Keep it brief, friendly and clinical.
+4. If they report pain, ask for a call, or have complex complaints, state: "मैंने आपकी रिक्वेस्ट दर्ज कर ली है। हमारे सीनियर हेल्थ एक्सपर्ट आपको जल्द ही कॉल करेंगे।"
 5. End with "🙏 Herbonnaturals".`;
 
-                    const geminiRes = await axios.post(geminiUrl, {
-                        contents: [{ parts: [{ text: prompt }] }],
-                        systemInstruction: { parts: [{ text: systemInstruction }] }
-                    });
+                        const geminiRes = await axios.post(geminiUrl, {
+                            contents: [{ parts: [{ text: prompt }] }],
+                            systemInstruction: { parts: [{ text: systemInstruction }] }
+                        });
 
-                    const candidateText = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (candidateText) {
-                        replyText = candidateText.trim();
-                        console.log('🤖 Gemini reply generated successfully!');
-                        
-                        // If Gemini mentioned calling them or if the customer asked to talk, alert admin
-                        if (cleanText.includes('call') || cleanText.includes('phone') || cleanText.includes('baat') || replyText.includes('call karenge')) {
-                            await Notification.create({
-                                orderId: order.orderId,
-                                employeeId: order.employeeId || 'System',
-                                type: 'system_alert',
-                                title: '📞 Consultant Call Requested',
-                                message: `Customer ${order.customerName} (#${order.orderId}) wants to discuss medicine/health. Message: "${text}"`,
-                                emoji: '📞',
-                                priority: 'high',
-                                data: {
-                                    customerName: order.customerName,
-                                    telNo: phone,
-                                    orderId: order.orderId
-                                }
-                            });
+                        const candidateText = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (candidateText) {
+                            replyText = candidateText.trim();
+                            console.log('🤖 Gemini reply generated successfully!');
+                            
+                            if (cleanText.includes('call') || cleanText.includes('phone') || cleanText.includes('baat') || replyText.includes('कॉल करेंगे') || replyText.includes('call karenge')) {
+                                triggerAlert = true;
+                                alertTitle = '📞 Senior Health Expert Requested';
+                                alertMsg = `Customer ${nameToUse} (#${orderId}) requested conversation review. Message: "${text}"`;
+                            }
                         }
+                    } catch (geminiErr) {
+                        console.error('❌ Gemini API failed, using fallback:', geminiErr.message);
+                        replyText = "नमस्ते जी! आपके संदेश के लिए धन्यवाद। हमने आपका मैसेज हमारे सीनियर हेल्थ एक्सपर्ट को भेज दिया है। वे जल्द ही आपसे संपर्क करेंगे। 🙏";
                     }
-                } catch (geminiErr) {
-                    console.error('❌ Gemini API failed, using fallback:', geminiErr.message);
-                    replyText = "Dhanyawad aapke reply ke liye. Humne aapka message support team ko forward kar diya hai. Wo aapko jald hi reply karenge. 🙏";
+                } else {
+                    replyText = "नमस्ते जी! आपके संदेश के लिए धन्यवाद। हमने आपका मैसेज हमारे सीनियर हेल्थ एक्सपर्ट को भेज दिया है। वे जल्द ही आपसे संपर्क करेंगे। 🙏";
                 }
-            } else {
-                replyText = "Dhanyawad aapke reply ke liye. Humne aapka message support team ko forward kar diya hai. Wo aapko jald hi reply karenge. 🙏";
             }
         }
 
-        // Send the reply back to the customer
+        // 3. Trigger high-priority alert in DB for admin dashboard
+        if (triggerAlert) {
+            await Notification.create({
+                orderId: orderId,
+                employeeId: employeeId,
+                type: 'system_alert',
+                title: alertTitle,
+                message: alertMsg,
+                emoji: alertTitle.includes('Dawa') || alertTitle.includes('Repeat') ? '📦' : '📞',
+                priority: alertPriority,
+                data: {
+                    customerName: nameToUse,
+                    telNo: phone,
+                    orderId: orderId
+                }
+            });
+            console.log(`🔔 Admin notification alert triggered: "${alertTitle}" for Phone: ${phone}.`);
+        }
+
+        // 4. Send the automated reply back to the customer
         console.log(`🤖 Sending automated chatbot reply to ${phone}...`);
         await sendMetaMessageInternal({
             to: phone,
             type: 'text',
             text: replyText,
-            customerName: order.customerName,
-            orderId: order.orderId
+            customerName: nameToUse,
+            orderId: orderId
         });
 
     } catch (e) {
@@ -651,3 +791,4 @@ Guidelines:
 module.exports = router;
 module.exports.TEMPLATES = TEMPLATES;
 module.exports.sendMetaMessageInternal = sendMetaMessageInternal;
+module.exports.handleChatbotReply = handleChatbotReply;
