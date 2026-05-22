@@ -101,7 +101,9 @@ const TEMPLATES = [
         desc: 'Varicose Veins (नसों की सूजन/blockage) ke purane customers ke liye',
         color: 'red',
         lang: 'hi',
-        params: ['Customer Name', 'Condition']
+        headerType: 'image',
+        defaultImageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600',
+        params: ['Customer Name']
     },
     {
         name: 'joint_pain_wellness',
@@ -109,6 +111,8 @@ const TEMPLATES = [
         desc: 'Joint Pain (जोड़ों और घुटनों के दर्द) ke purane customers ke liye',
         color: 'amber',
         lang: 'hi',
+        headerType: 'image',
+        defaultImageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600',
         params: ['Customer Name']
     },
     {
@@ -260,7 +264,7 @@ router.delete('/conversations/:phone', async (req, res) => {
 });
 
 // Helper function to send WhatsApp messages using Meta Cloud API
-async function sendMetaMessageInternal({ to, type, text, templateName, parameters, lang, customerName, orderId }) {
+async function sendMetaMessageInternal({ to, type, text, templateName, parameters, lang, customerName, orderId, imageUrl }) {
     const token = process.env.META_WA_ACCESS_TOKEN;
     const phoneId = process.env.META_WA_PHONE_NUMBER_ID;
 
@@ -296,10 +300,31 @@ async function sendMetaMessageInternal({ to, type, text, templateName, parameter
             return txt === '' ? '-' : txt;
         });
 
-        const components = [{
+        const tpl = TEMPLATES.find(t => t.name === templateName);
+        const resolvedLang = tpl?.lang || lang || 'en';
+
+        const components = [];
+
+        // Support templates with IMAGE headers
+        if (tpl?.headerType === 'image') {
+            const finalImageUrl = imageUrl || tpl.defaultImageUrl || 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600';
+            components.push({
+                type: 'header',
+                parameters: [
+                    {
+                        type: 'image',
+                        image: {
+                            link: finalImageUrl
+                        }
+                    }
+                ]
+            });
+        }
+
+        components.push({
             type: 'body',
             parameters: parameters.map(p => ({ type: 'text', text: p }))
-        }];
+        });
 
         if (templateName === 'order_dispatch' || templateName === 'delivered') {
             components.push({
@@ -309,9 +334,6 @@ async function sendMetaMessageInternal({ to, type, text, templateName, parameter
                 parameters: [{ type: 'text', text: 'home' }]
             });
         }
-
-        const tpl = TEMPLATES.find(t => t.name === templateName);
-        const resolvedLang = tpl?.lang || lang || 'en';
 
         data = {
             messaging_product: 'whatsapp',
