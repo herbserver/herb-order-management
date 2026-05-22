@@ -100,6 +100,7 @@ const TEMPLATES = [
         label: '🩸 Varicose Veins Follow-up',
         desc: 'Varicose Veins (नसों की सूजन/blockage) ke purane customers ke liye',
         color: 'red',
+        lang: 'hi',
         params: ['Customer Name', 'Condition']
     },
     {
@@ -107,6 +108,7 @@ const TEMPLATES = [
         label: '🦴 Joint Pain Follow-up',
         desc: 'Joint Pain (जोड़ों और घुटनों के दर्द) ke purane customers ke liye',
         color: 'amber',
+        lang: 'hi',
         params: ['Customer Name']
     },
     {
@@ -114,6 +116,7 @@ const TEMPLATES = [
         label: '🩸 Diabetes Sugar Care',
         desc: 'Sugar/Diabetes (मधुमेह) ke purane customers ke liye',
         color: 'blue',
+        lang: 'hi',
         params: ['Customer Name']
     },
     {
@@ -121,6 +124,7 @@ const TEMPLATES = [
         label: '⚖️ Weight Management',
         desc: 'Weight Loss (वजन नियंत्रण) aur diet routine share karne ke liye',
         color: 'teal',
+        lang: 'hi',
         params: ['Customer Name', 'Discount %']
     },
     {
@@ -128,6 +132,7 @@ const TEMPLATES = [
         label: '💪 Strength & Vitality Care',
         desc: 'Energy, Stamina (शारीरिक कमजोरी) ke wellness consultation ke liye',
         color: 'emerald',
+        lang: 'hi',
         params: ['Customer Name']
     }
 ];
@@ -305,17 +310,19 @@ async function sendMetaMessageInternal({ to, type, text, templateName, parameter
             });
         }
 
+        const tpl = TEMPLATES.find(t => t.name === templateName);
+        const resolvedLang = tpl?.lang || lang || 'en';
+
         data = {
             messaging_product: 'whatsapp',
             to: formattedPhone,
             type: 'template',
             template: {
                 name: templateName,
-                language: { code: lang || 'en' },
+                language: { code: resolvedLang },
                 components
             }
         };
-        const tpl = TEMPLATES.find(t => t.name === templateName);
         msgBody = tpl ? `[Template: ${tpl.label}]\n${parameters.join(' | ')}` : `[Template: ${templateName}]`;
     }
 
