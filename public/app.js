@@ -12064,7 +12064,7 @@ function renderWAMessages(messages, scrollToBottom = true) {
                 order_on_hold: ['Customer', 'Order ID', 'Hold Reason', 'Callback Date'],
                 order_cancelled: ['Customer', 'Order ID', 'Cancel Reason'],
                 order_remark: ['Customer', 'Order ID', 'Remark'],
-                varicose_veins_wellness: ['Customer Name', 'Target Condition'],
+                varicose_veins_wellness: ['Customer Name'],
                 joint_pain_wellness: ['Customer Name'],
                 diabetes_care_followup: ['Customer Name'],
                 weight_loss_followup: ['Customer Name', 'Discount %'],
@@ -12199,7 +12199,7 @@ async function sendWATemplate(templateName) {
     else if (templateName === 'order_on_hold') params = [name, oid, 'Call not answered', 'Jaldi'];
     else if (templateName === 'order_cancelled') params = [name, oid, 'As discussed'];
     else if (templateName === 'order_remark') params = [name, oid, 'Aapke order ke baare mein baat karni thi'];
-    else if (templateName === 'varicose_veins_wellness') params = [name, 'Varicose Veins'];
+    else if (templateName === 'varicose_veins_wellness') params = [name];
     else if (templateName === 'joint_pain_wellness') params = [name];
     else if (templateName === 'diabetes_care_followup') params = [name];
     else if (templateName === 'weight_loss_followup') params = [name, '20'];

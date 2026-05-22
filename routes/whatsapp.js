@@ -102,7 +102,7 @@ const TEMPLATES = [
         color: 'red',
         lang: 'hi',
         headerType: 'image',
-        defaultImageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600',
+        defaultImageUrl: '/wellness_banner.png',
         params: ['Customer Name']
     },
     {
@@ -112,7 +112,7 @@ const TEMPLATES = [
         color: 'amber',
         lang: 'hi',
         headerType: 'image',
-        defaultImageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600',
+        defaultImageUrl: '/wellness_banner.png',
         params: ['Customer Name']
     },
     {
@@ -264,7 +264,7 @@ router.delete('/conversations/:phone', async (req, res) => {
 });
 
 // Helper function to send WhatsApp messages using Meta Cloud API
-async function sendMetaMessageInternal({ to, type, text, templateName, parameters, lang, customerName, orderId, imageUrl }) {
+async function sendMetaMessageInternal({ to, type, text, templateName, parameters, lang, customerName, orderId, imageUrl, baseUrl }) {
     const token = process.env.META_WA_ACCESS_TOKEN;
     const phoneId = process.env.META_WA_PHONE_NUMBER_ID;
 
@@ -307,7 +307,10 @@ async function sendMetaMessageInternal({ to, type, text, templateName, parameter
 
         // Support templates with IMAGE headers
         if (tpl?.headerType === 'image') {
-            const finalImageUrl = imageUrl || tpl.defaultImageUrl || 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600';
+            let finalImageUrl = imageUrl || tpl.defaultImageUrl || '/wellness_banner.png';
+            if (finalImageUrl && finalImageUrl.startsWith('/')) {
+                finalImageUrl = (baseUrl || '') + finalImageUrl;
+            }
             components.push({
                 type: 'header',
                 parameters: [
@@ -356,7 +359,7 @@ async function sendMetaMessageInternal({ to, type, text, templateName, parameter
     });
 
     const metaMsgId = response.data?.messages?.[0]?.id || null;
-    await WhatsAppMessage.create({
+    const saved = await WhatsAppMessage.create({
         phone: formattedPhone,
         name: name,
         direction: 'out',
@@ -368,13 +371,17 @@ async function sendMetaMessageInternal({ to, type, text, templateName, parameter
         metaMsgId
     });
 
+    // Broadcast SSE to instantly show sent message on admin UI
+    broadcastSSE('newMessage', { phone: formattedPhone, name, message: saved.toObject() });
+
     return response.data;
 }
 
 // ─── POST /whatsapp/send ──────────────────────────────────────────────────────
 router.post('/send', async (req, res) => {
     try {
-        const data = await sendMetaMessageInternal(req.body);
+        const baseUrl = req.protocol + '://' + req.get('host');
+        const data = await sendMetaMessageInternal({ ...req.body, baseUrl });
         res.json({ success: true, data });
     } catch (error) {
         const errData = error.response ? error.response.data : error.message;
@@ -601,17 +608,7 @@ async function handleChatbotReply(phone, text, customerName) {
         const employeeId = order ? (order.employeeId || 'System') : 'System';
         const nameToUse = order ? (order.customerName || customerName) : customerName;
 
-        // If it's a general reply (not a wellness button click), apply delivered status rules to legacy follow-up
-        if (!isWellnessButton) {
-            if (!order) {
-                console.log(`ℹ️ No order context found for general reply on phone: ${phone}, ignoring.`);
-                return;
-            }
-            if (order.status !== 'Delivered') {
-                console.log(`ℹ️ Order status for general reply on ${phone} is ${order.status}, skipping.`);
-                return;
-            }
-        }
+        // If it's a general reply (not a wellness button click), we handle it in the router below
 
         let replyText = '';
         let triggerAlert = false;
@@ -698,45 +695,53 @@ async function handleChatbotReply(phone, text, customerName) {
             alertMsg = `Customer ${nameToUse} (#${orderId}) requested a call with a Senior Health Expert on WhatsApp. Phone: ${phone}.`;
         } 
         else {
-            // General query: Fallback to existing keyword triggers or Google Gemini AI if configured
-            const positiveKeywords = ['haan', 'han', 'yes', 'yup', 'ha', 'mil gayi', 'mil gyi', 'le li', 'shuru', 'started', 'khani'];
-            const negativeKeywords = ['nahi', 'nhi', 'no', 'nope', 'na', 'not', 'nahi mili', 'nhi mili', 'call nahi', 'baat nahi'];
+            // Check if there is a pending or shipped order to provide status details
+            if (order && (order.status === 'Pending' || order.status === 'Shipped' || order.status === 'In-Transit')) {
+                const statusHindi = order.status === 'Shipped' ? 'भेज दिया गया है (Shipped)' : 'प्रक्रिया में है (Pending)';
+                replyText = `नमस्ते ${nameToUse} जी! 🙏✨\n\nआपके ऑर्डर (#${orderId}) का स्टेटस अभी **${statusHindi}** है। 📦\n\nहमारा प्रयास है कि आपकी आयुर्वेदिक औषधियाँ जल्द से जल्द आप तक सुरक्षित पहुँचें। जैसे ही डिलीवरी का नया अपडेट मिलेगा, हम आपके साथ साझा करेंगे। 🚚\n\nयदि आपका कोई अन्य प्रश्न है, तो हमारे सीनियर हेल्थ एक्सपर्ट अगले 15 मिनट में आपसे संपर्क करेंगे।\n\n🙏 Herbonnaturals`;
+                triggerAlert = true;
+                alertTitle = '📦 Order Status Inquiry';
+                alertMsg = `Customer ${nameToUse} (#${orderId}) asked a question. Order status is ${order.status}. Callback recommended. Phone: ${phone}.`;
+            } else {
+                // General query: Fallback to existing keyword triggers or Google Gemini AI if configured
+                const positiveKeywords = ['haan', 'han', 'yes', 'yup', 'ha', 'mil gayi', 'mil gyi', 'le li', 'shuru', 'started', 'khani'];
+                const negativeKeywords = ['nahi', 'nhi', 'no', 'nope', 'na', 'not', 'nahi mili', 'nhi mili', 'call nahi', 'baat nahi'];
 
-            let isPositiveKeyword = false;
-            let isNegativeKeyword = false;
+                let isPositiveKeyword = false;
+                let isNegativeKeyword = false;
 
-            for (const kw of negativeKeywords) {
-                if (cleanText.includes(kw)) {
-                    isNegativeKeyword = true;
-                    break;
-                }
-            }
-
-            if (!isNegativeKeyword) {
-                for (const kw of positiveKeywords) {
+                for (const kw of negativeKeywords) {
                     if (cleanText.includes(kw)) {
-                        isPositiveKeyword = true;
+                        isNegativeKeyword = true;
                         break;
                     }
                 }
-            }
 
-            if (isNegativeKeyword) {
-                replyText = "चिंता न करें जी, हमने आपकी रिक्वेस्ट रजिस्टर कर ली है। हमारे सीनियर हेल्थ एक्सपर्ट आपको आने वाले 1-2 घंटे के अंदर कॉल करेंगे और पूरी मदद करेंगे। धन्यवाद! 🙏";
-                triggerAlert = true;
-                alertTitle = '📞 Consultant Call Required';
-                alertMsg = `Customer ${nameToUse} (#${orderId}) says medicine not started or not guided. Phone: ${phone}.`;
-            } else if (isPositiveKeyword) {
-                replyText = "बहुत बढ़िया जी! दवा को नियमित रूप से और सही तरीके से लें। अगर कोई भी समस्या हो, तो आप यहाँ लिख सकते हैं। आपकी अच्छी सेहत की कामना करते हैं! 🙏";
-            } else {
-                // Custom question: Use Google Gemini AI
-                if (process.env.GEMINI_API_KEY) {
-                    try {
-                        console.log('🧠 Querying Gemini API for smart chatbot reply...');
-                        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-                        
-                        const prompt = `Customer replied: "${text}"`;
-                        const systemInstruction = `You are the automated WhatsApp Senior Health Expert chatbot for "Herbonnaturals" (an Ayurvedic wellness brand).
+                if (!isNegativeKeyword) {
+                    for (const kw of positiveKeywords) {
+                        if (cleanText.includes(kw)) {
+                            isPositiveKeyword = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (isNegativeKeyword) {
+                    replyText = "चिंता न करें जी, हमने आपकी रिक्वेस्ट रजिस्टर कर ली है। हमारे सीनियर हेल्थ एक्सपर्ट आपको आने वाले 1-2 घंटे के अंदर कॉल करेंगे और पूरी मदद करेंगे। धन्यवाद! 🙏";
+                    triggerAlert = true;
+                    alertTitle = '📞 Consultant Call Required';
+                    alertMsg = `Customer ${nameToUse} (#${orderId}) says medicine not started or not guided. Phone: ${phone}.`;
+                } else if (isPositiveKeyword) {
+                    replyText = "बहुत बढ़िया जी! दवा को नियमित रूप से और सही तरीके से लें। अगर कोई भी समस्या हो, तो आप यहाँ लिख सकते हैं। आपकी अच्छी सेहत की कामना करते हैं! 🙏";
+                } else {
+                    // Custom question: Use Google Gemini AI
+                    if (process.env.GEMINI_API_KEY) {
+                        try {
+                            console.log('🧠 Querying Gemini API for smart chatbot reply...');
+                            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+                            
+                            const prompt = `Customer replied: "${text}"`;
+                            const systemInstruction = `You are the automated WhatsApp Senior Health Expert chatbot for "Herbonnaturals" (an Ayurvedic wellness brand).
 A customer has asked a question. Reply in a warm, extremely polite, caring manner in Hindi Devnagari script (शुद्ध हिंदी) or readable Hinglish if natural.
 
 Customer Name: ${nameToUse}
@@ -750,28 +755,29 @@ Guidelines:
 4. If they report pain, ask for a call, or have complex complaints, state: "मैंने आपकी रिक्वेस्ट दर्ज कर ली है। हमारे सीनियर हेल्थ एक्सपर्ट आपको जल्द ही कॉल करेंगे।"
 5. End with "🙏 Herbonnaturals".`;
 
-                        const geminiRes = await axios.post(geminiUrl, {
-                            contents: [{ parts: [{ text: prompt }] }],
-                            systemInstruction: { parts: [{ text: systemInstruction }] }
-                        });
+                            const geminiRes = await axios.post(geminiUrl, {
+                                contents: [{ parts: [{ text: prompt }] }],
+                                systemInstruction: { parts: [{ text: systemInstruction }] }
+                            });
 
-                        const candidateText = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (candidateText) {
-                            replyText = candidateText.trim();
-                            console.log('🤖 Gemini reply generated successfully!');
-                            
-                            if (cleanText.includes('call') || cleanText.includes('phone') || cleanText.includes('baat') || replyText.includes('कॉल करेंगे') || replyText.includes('call karenge')) {
-                                triggerAlert = true;
-                                alertTitle = '📞 Senior Health Expert Requested';
-                                alertMsg = `Customer ${nameToUse} (#${orderId}) requested conversation review. Message: "${text}"`;
+                            const candidateText = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (candidateText) {
+                                replyText = candidateText.trim();
+                                console.log('🤖 Gemini reply generated successfully!');
+                                
+                                if (cleanText.includes('call') || cleanText.includes('phone') || cleanText.includes('baat') || replyText.includes('कॉल करेंगे') || replyText.includes('call karenge')) {
+                                    triggerAlert = true;
+                                    alertTitle = '📞 Senior Health Expert Requested';
+                                    alertMsg = `Customer ${nameToUse} (#${orderId}) requested conversation review. Message: "${text}"`;
+                                }
                             }
+                        } catch (geminiErr) {
+                            console.error('❌ Gemini API failed, using fallback:', geminiErr.message);
+                            replyText = "नमस्ते जी! आपके संदेश के लिए धन्यवाद। हमने आपका मैसेज हमारे सीनियर हेल्थ एक्सपर्ट को भेज दिया है। वे जल्द ही आपसे संपर्क करेंगे। 🙏";
                         }
-                    } catch (geminiErr) {
-                        console.error('❌ Gemini API failed, using fallback:', geminiErr.message);
+                    } else {
                         replyText = "नमस्ते जी! आपके संदेश के लिए धन्यवाद। हमने आपका मैसेज हमारे सीनियर हेल्थ एक्सपर्ट को भेज दिया है। वे जल्द ही आपसे संपर्क करेंगे। 🙏";
                     }
-                } else {
-                    replyText = "नमस्ते जी! आपके संदेश के लिए धन्यवाद। हमने आपका मैसेज हमारे सीनियर हेल्थ एक्सपर्ट को भेज दिया है। वे जल्द ही आपसे संपर्क करेंगे। 🙏";
                 }
             }
         }
