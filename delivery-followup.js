@@ -54,7 +54,7 @@ async function checkDeliveryFollowUps() {
                     type: 'template',
                     templateName: 'delivery_followup',
                     parameters: [order.customerName, order.orderId],
-                    lang: 'hi', // Hindi language
+                    lang: 'en', // English language
                     customerName: order.customerName,
                     orderId: order.orderId
                 });
