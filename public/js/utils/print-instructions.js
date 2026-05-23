@@ -15,8 +15,10 @@ const MEDICINE_INSTRUCTIONS = {
     "pain snap prash": "सुबह और शाम एक-एक चम्मच दूध या पानी के साथ खाना खाने के बाद लें।",
     "paingesic oil spray": "सुबह और शाम प्रभावित जगह पर स्प्रे करके हल्के हाथों से मालिश करें।",
     "herbon tulsi paawan": "5 बूंद सुबह और शाम आधा गिलास पानी में मिलाकर लें।",
-    "herb on shape {hos}": "<b>Shape 1:</b> सुबह और शाम एक-एक कैप्सूल खाना खाने से पहले गुनगुने पानी के साथ लें।<br><br><b>Shape 2:</b> सुबह और शाम एक-एक कैप्सूल खाना खाने के बाद गुनगुने पानी के साथ लें।",
-    "herb on shape": "<b>Shape 1:</b> सुबह और शाम एक-एक कैप्सूल खाना खाने से पहले गुनगुने पानी के साथ लें।<br><br><b>Shape 2:</b> सुबह और शाम एक-एक कैप्सूल खाना खाने के बाद गुनगुने पानी के साथ लें।"
+    "herb on shape {hos}": "<b>Shape 1:</b> सुबह और शाम एक-एक कैप्सूल खाना खाने से पहले गुनगुने पानी के साथ लें।<br><br><b>Shape 2:</b> रात को सोते समय गुनगुने पानी के साथ लें।",
+    "herb on shape": "<b>Shape 1:</b> सुबह और शाम एक-एक कैप्सूल खाना खाने से पहले गुनगुने पानी के साथ लें।<br><br><b>Shape 2:</b> रात को सोते समय गुनगुने पानी के साथ लें।",
+    "black pills": "रात को सोने से 15 - 20 मिनट पहले 1 टैबलेट लेनी है हल्के गर्म पानी के साथ।",
+    "vedic vain's liquid": "एक ढक्कन सुबह खाना खाने के बाद गुनगुने पानी के साथ और एक ढक्कन रात को खाना खाने के बाद।"
 };
 
 const MEDICINE_MAPPING = {
@@ -101,7 +103,22 @@ const MEDICINE_MAPPING = {
     "shape": "herb on shape {hos}",
     
     // Gaumutra
-    "gaumutra": "gaumutra"
+    "gaumutra": "gaumutra",
+
+    // Black Pills
+    "black pills": "black pills",
+    "black pill": "black pills",
+    "black-pills": "black pills",
+    "blackpills": "black pills",
+
+    // Vedic Vain's Liquid
+    "vedic vain's liquid": "vedic vain's liquid",
+    "vedic vains liquid": "vedic vain's liquid",
+    "vedic vain liquid": "vedic vain's liquid",
+    "vains liquid": "vedic vain's liquid",
+    "vain liquid": "vedic vain's liquid",
+    "vedic veins liquid": "vedic vain's liquid",
+    "veins liquid": "vedic vain's liquid"
 };
 
 function normalizeMedicineName(name) {
