@@ -239,7 +239,7 @@ router.get('/:empId', async (req, res) => {
 router.put('/:empId', async (req, res) => {
     try {
         const oldId = req.params.empId.toUpperCase();
-        const { newId, name, password, phone } = req.body;
+        const { newId, name, password, phone, voicellExtension } = req.body;
         const nextId = String(newId || oldId).toUpperCase().trim();
 
         const existingEmployee = await findEmployeeRecord(oldId);
@@ -264,6 +264,10 @@ router.put('/:empId', async (req, res) => {
 
         if (phone !== undefined) {
             updates.phone = String(phone).trim();
+        }
+
+        if (voicellExtension !== undefined) {
+            updates.voicellExtension = String(voicellExtension).trim();
         }
 
         if (password) {

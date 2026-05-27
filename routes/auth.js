@@ -31,7 +31,7 @@ async function updateEmployeeRecord(oldId, newId, updates) {
 // Register Employee
 router.post('/register', async (req, res) => {
     try {
-        const { name, employeeId, password, phone } = req.body;
+        const { name, employeeId, password, phone, voicellExtension } = req.body;
         const id = String(employeeId || '').toUpperCase().trim();
 
         const existingEmployee = await findEmployeeRecord(id);
@@ -42,6 +42,7 @@ router.post('/register', async (req, res) => {
         const employeeData = {
             name,
             phone: String(phone || '').trim(),
+            voicellExtension: String(voicellExtension || '').trim(),
             password: await hashPassword(password),
             createdAt: new Date().toISOString()
         };
@@ -115,7 +116,7 @@ router.post('/reset-password', async (req, res) => {
 // Update Employee Details
 router.put('/update-employee', async (req, res) => {
     try {
-        const { oldId, newId, newName, newPassword, newPhone } = req.body;
+        const { oldId, newId, newName, newPassword, newPhone, newVoicellExtension } = req.body;
         const oId = String(oldId || '').toUpperCase().trim();
         const nId = String(newId || oldId || '').toUpperCase().trim();
 
@@ -137,6 +138,9 @@ router.put('/update-employee', async (req, res) => {
         }
         if (newPhone !== undefined) {
             updates.phone = String(newPhone).trim();
+        }
+        if (newVoicellExtension !== undefined) {
+            updates.voicellExtension = String(newVoicellExtension).trim();
         }
         if (newPassword) {
             updates.password = await hashPassword(newPassword);

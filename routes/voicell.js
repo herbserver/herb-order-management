@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { CallLog, Order } = require('../models');
+const { CallLog, Order, Employee } = require('../models');
 const { authenticateToken } = require('../auth');
 
 // Helper to map DB CallLog model to the exact format expected by the frontend
@@ -125,7 +125,7 @@ router.post('/webhook', async (req, res) => {
         try {
             const io = require('../socket-manager').getIO();
             if (io) {
-                io.emit('voicell:call', {
+                const eventPayload = {
                     type: callType,
                     status: callStatus,
                     callerNumber: normalizedPhone,
@@ -133,7 +133,26 @@ router.post('/webhook', async (req, res) => {
                     agentNumber: callLog.agentNumber,
                     duration,
                     callId: callLog._id
-                });
+                };
+
+                // Find if an employee is assigned this agent number
+                let targetEmployeeId = null;
+                if (agentNumber) {
+                    const agentEmployee = await Employee.findOne({ voicellExtension: agentNumber }).lean();
+                    if (agentEmployee) {
+                        targetEmployeeId = agentEmployee.employeeId;
+                    }
+                }
+
+                if (targetEmployeeId) {
+                    // Send strictly to that employee's room
+                    console.log(`[VOICELL WEBHOOK] Routing call popup strictly to Employee: ${targetEmployeeId}`);
+                    io.to(`employee:${targetEmployeeId}`).emit('voicell:call', eventPayload);
+                } else {
+                    // Fallback to broadcast if agent is not mapped to an employee (or to admin room if we want)
+                    console.log(`[VOICELL WEBHOOK] No employee mapped to extension ${agentNumber}. Broadcasting to all.`);
+                    io.emit('voicell:call', eventPayload);
+                }
             }
         } catch (e) { /* socket not available */ }
         
