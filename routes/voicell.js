@@ -147,7 +147,7 @@ router.post('/webhook', async (req, res) => {
 // ==================== CALL LOG APIs (Auth Required) ====================
 
 // GET /api/calls — Get all call logs with filters
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const { type, status, outcome, date, phone, page = 1, limit = 50 } = req.query;
         const filter = {};
@@ -189,7 +189,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // GET /api/calls/stats — Get call statistics
-router.get('/stats', authenticateToken, async (req, res) => {
+router.get('/stats', async (req, res) => {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -224,7 +224,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
 });
 
 // GET /api/calls/missed — Get missed calls pending callback
-router.get('/missed', authenticateToken, async (req, res) => {
+router.get('/missed', async (req, res) => {
     try {
         const calls = await CallLog.find({
             callType: 'missed',
@@ -241,7 +241,7 @@ router.get('/missed', authenticateToken, async (req, res) => {
 });
 
 // GET /api/calls/:id — Get single call log detail
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
         const call = await CallLog.findById(req.params.id).lean();
         if (!call) return res.status(404).json({ success: false, message: 'Call not found' });
@@ -325,7 +325,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // POST /api/calls/:id/notes — Add note to a call
-router.post('/:id/notes', authenticateToken, async (req, res) => {
+router.post('/:id/notes', async (req, res) => {
     try {
         // Handle both body formats (req.body.note vs req.body.text) sent by frontend
         const { note, text, addedBy } = req.body;
@@ -347,7 +347,7 @@ router.post('/:id/notes', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/calls/:id/outcome — Update call outcome
-router.put('/:id/outcome', authenticateToken, async (req, res) => {
+router.put('/:id/outcome', async (req, res) => {
     try {
         const { outcome, callbackScheduled } = req.body;
         const update = {};
@@ -365,7 +365,7 @@ router.put('/:id/outcome', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/calls/:id/callback-done — Mark callback as done
-router.put('/:id/callback-done', authenticateToken, async (req, res) => {
+router.put('/:id/callback-done', async (req, res) => {
     try {
         const call = await CallLog.findByIdAndUpdate(req.params.id, { callbackDone: true }, { new: true });
         if (!call) return res.status(404).json({ success: false, message: 'Call not found' });
@@ -378,7 +378,7 @@ router.put('/:id/callback-done', authenticateToken, async (req, res) => {
 });
 
 // GET /api/calls/customer/:phone/360 — Customer 360° view
-router.get('/customer/:phone/360', authenticateToken, async (req, res) => {
+router.get('/customer/:phone/360', async (req, res) => {
     try {
         let phone = req.params.phone.replace(/[\s\-\+]/g, '');
         let phone10 = phone;
