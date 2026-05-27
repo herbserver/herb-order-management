@@ -1055,7 +1055,25 @@
                                 <!-- Call Log Table -->
                                 <div class="mt-4 bg-white/80 backdrop-blur rounded-2xl border border-slate-200/50 overflow-hidden shadow-sm">
                                     <div id="callLogTableContainer" class="overflow-x-auto">
-                                        <div class="text-center py-12 text-slate-400 text-sm">Click Refresh to load call logs...</div>
+                                        <table class="w-full text-left whitespace-nowrap">
+                                            <thead>
+                                                <tr class="bg-slate-50 border-b border-slate-100 text-slate-500 text-[10px] uppercase font-bold tracking-wider">
+                                                    <th class="px-4 py-3">Time</th>
+                                                    <th class="px-4 py-3">Caller</th>
+                                                    <th class="px-4 py-3">Customer</th>
+                                                    <th class="px-4 py-3">Type</th>
+                                                    <th class="px-4 py-3">Agent</th>
+                                                    <th class="px-4 py-3">Status</th>
+                                                    <th class="px-4 py-3">Duration</th>
+                                                    <th class="px-4 py-3 text-right">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="callLogsTableBody">
+                                                <tr>
+                                                    <td colspan="8" class="text-center py-12 text-slate-400 text-sm">Click Refresh to load call logs...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                     <!-- Pagination -->
                                     <div id="callLogPagination" class="px-4 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50"></div>
