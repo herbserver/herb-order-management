@@ -18,6 +18,19 @@ function initEmployeeCTI() {
     try {
         ctiSocket = io();
         
+        ctiSocket.on('connect', () => {
+            try {
+                const currentUserStr = localStorage.getItem('currentUser');
+                if (currentUserStr) {
+                    const user = JSON.parse(currentUserStr);
+                    const empId = user.employeeId || user.id;
+                    if (empId) {
+                        ctiSocket.emit('join-employee-room', { employeeId: empId });
+                    }
+                }
+            } catch (e) {}
+        });
+        
         ctiSocket.on('voicell:call', (data) => {
             const currentEmployee = normalizeEmployeeUser(window.currentUser);
             if (!currentEmployee) return;

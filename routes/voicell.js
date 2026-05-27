@@ -148,6 +148,9 @@ router.post('/webhook', async (req, res) => {
                     // Send strictly to that employee's room
                     console.log(`[VOICELL WEBHOOK] Routing call popup strictly to Employee: ${targetEmployeeId}`);
                     io.to(`employee:${targetEmployeeId}`).emit('voicell:call', eventPayload);
+                    
+                    // Also notify admin for monitoring
+                    io.to(`employee:ADMIN`).emit('voicell:call', eventPayload);
                 } else {
                     // Fallback to broadcast if agent is not mapped to an employee (or to admin room if we want)
                     console.log(`[VOICELL WEBHOOK] No employee mapped to extension ${agentNumber}. Broadcasting to all.`);

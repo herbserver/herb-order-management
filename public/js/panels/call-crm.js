@@ -1042,6 +1042,20 @@ function showIncomingCallNotification(data) {
 // ==================== SOCKET.IO REAL-TIME EVENTS ====================
 if (typeof io !== 'undefined') {
     const socket = io();
+    
+    socket.on('connect', () => {
+        try {
+            const currentUserStr = localStorage.getItem('currentUser');
+            if (currentUserStr) {
+                const user = JSON.parse(currentUserStr);
+                const empId = user.employeeId || user.id;
+                if (empId) {
+                    socket.emit('join-employee-room', { employeeId: empId });
+                }
+            }
+        } catch (e) {}
+    });
+
     socket.on('voicell:call', (data) => {
         // Show incoming call notification toast
         showIncomingCallNotification(data);
