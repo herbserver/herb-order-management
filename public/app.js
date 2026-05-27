@@ -7068,7 +7068,7 @@ function toggleAdminSidebar() {
 
 function normalizeAdminTab(tab) {
     const normalizedTab = String(tab || '').toLowerCase();
-    return ['pending', 'verified', 'dispatched', 'ofd', 'undelivered', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress', 'whatsapp'].includes(normalizedTab)
+    return ['pending', 'verified', 'dispatched', 'ofd', 'undelivered', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress', 'whatsapp', 'callcrm'].includes(normalizedTab)
         ? normalizedTab
         : 'pending';
 }
@@ -7094,7 +7094,7 @@ function getAdminTabFromHash() {
 }
 
 function getActiveAdminTab() {
-    const adminTabs = ['pending', 'verified', 'dispatched', 'ofd', 'undelivered', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress'];
+    const adminTabs = ['pending', 'verified', 'dispatched', 'ofd', 'undelivered', 'delivered', 'cancelled', 'onhold', 'rto', 'employees', 'departments', 'history', 'inventory', 'progress', 'whatsapp', 'callcrm'];
     for (const tab of adminTabs) {
         const contentEl = document.getElementById(getAdminTabContentId(tab));
         if (contentEl && !contentEl.classList.contains('hidden')) return tab;
@@ -7178,6 +7178,7 @@ function switchAdminTab(tab, syncHash = true) {
     if (tab === 'onhold') loadAdminOnHold();
     if (tab === 'rto') loadRTOOrders();
     if (tab === 'whatsapp') loadWAConversations();
+    if (tab === 'callcrm' && typeof loadCallCRM === 'function') loadCallCRM();
 
     updateAdminBadges();
 

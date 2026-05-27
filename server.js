@@ -88,6 +88,7 @@ const searchRoutes = require('./routes/search');
 const fetchAwbRoutes = require('./routes/fetchAwb');
 const configRoutes = require('./routes/config');
 const whatsappRoutes = require('./routes/whatsapp');
+const voicellRoutes = require('./routes/voicell');
 
 // Mount API Routes
 app.use('/api/auth', authRoutes);
@@ -105,6 +106,8 @@ app.use('/api/search', searchRoutes);
 app.use('/api/fetch-awb', fetchAwbRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/voicell', voicellRoutes);
+app.use('/api/calls', voicellRoutes);
 
 // Compatibility Mounts (Legacy URLs)
 app.use('/api', authRoutes);

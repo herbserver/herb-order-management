@@ -306,6 +306,44 @@ const whatsappMessageSchema = new mongoose.Schema({
 });
 whatsappMessageSchema.index({ phone: 1, timestamp: -1 });
 
+// CallLog Schema - Voicell IVR Call CRM
+const callLogSchema = new mongoose.Schema({
+    // Voicell Data (from webhook)
+    voicellCallId: { type: String, index: true },
+    callerNumber: { type: String, required: true, index: true },   // Customer phone
+    agentNumber: { type: String },          // Agent who answered
+    callType: { type: String, enum: ['incoming', 'outgoing', 'missed'], default: 'incoming', index: true },
+    callStatus: { type: String, enum: ['ringing', 'answered', 'missed', 'busy', 'failed', 'completed'], default: 'ringing' },
+    duration: { type: Number, default: 0 },  // seconds
+    recordingUrl: { type: String },
+    dtmfInput: { type: String },             // IVR keypress
+
+    // CRM Data (added by agent)
+    customerName: { type: String },
+    linkedOrderIds: [{ type: String }],
+    callNotes: [{
+        note: String,
+        addedBy: String,
+        addedAt: { type: Date, default: Date.now }
+    }],
+    callOutcome: { type: String, enum: ['order_placed', 'inquiry', 'complaint', 'feedback', 'follow_up', 'no_response', 'callback_scheduled', 'other'], default: 'inquiry' },
+    callbackScheduled: { type: Date },
+    callbackDone: { type: Boolean, default: false },
+
+    // Raw webhook payload for debugging
+    rawPayload: { type: mongoose.Schema.Types.Mixed },
+
+    timestamp: { type: Date, default: Date.now, index: true }
+}, {
+    timestamps: true,
+    collection: 'call_logs'
+});
+
+callLogSchema.index({ callerNumber: 1, timestamp: -1 });
+callLogSchema.index({ callType: 1, timestamp: -1 });
+callLogSchema.index({ callOutcome: 1 });
+callLogSchema.index({ callbackScheduled: 1, callbackDone: 1 });
+
 // Create models
 const Order = mongoose.model('Order', orderSchema);
 const Department = mongoose.model('Department', departmentSchema);
@@ -315,6 +353,7 @@ const Notification = mongoose.model('Notification', notificationSchema);
 const AppConfig = mongoose.model('AppConfig', appConfigSchema);
 const PincodeEntry = mongoose.model('PincodeEntry', pincodeEntrySchema);
 const WhatsAppMessage = mongoose.model('WhatsAppMessage', whatsappMessageSchema);
+const CallLog = mongoose.model('CallLog', callLogSchema);
 
 module.exports = {
     Order,
@@ -324,5 +363,6 @@ module.exports = {
     Notification,
     AppConfig,
     PincodeEntry,
-    WhatsAppMessage
+    WhatsAppMessage,
+    CallLog
 };

@@ -162,12 +162,21 @@
                             <span class="flex-1 text-left">Export Data</span>
                         </button>
                     </div>
-                    <!-- WhatsApp Chat -->
+                    <!-- CRM Section -->
                     <div class="px-3 mb-2">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2 mt-4">
+                            CRM</p>
                         <button onclick="switchAdminTab('whatsapp')" id="adminTabWhatsapp"
                             class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-green-50 hover:text-green-700 transition-all">
                             <span class="text-lg">&#128241;</span>
-                            <span class="flex-1 text-left">WhatsApp Chat</span>
+                            <span class="flex-1 text-left">WhatsApp Hub</span>
+                        </button>
+                        <button onclick="switchAdminTab('callcrm')" id="adminTabCallcrm"
+                            class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-violet-50 hover:text-violet-700 transition-all">
+                            <span class="text-lg">📞</span>
+                            <span class="flex-1 text-left">Call CRM</span>
+                            <span id="missedCallCount"
+                                class="bg-red-100 text-red-600 px-2.5 py-0.5 rounded-full text-[10px] font-bold hidden">0</span>
                         </button>
                     </div>
                 </nav>
@@ -958,6 +967,112 @@
                             </div>
                             <div id="waTemplatePanelList" class="p-4 space-y-3.5 overflow-y-auto flex-1 bg-slate-50/50 wa-scrollbar">
                                 <div class="flex justify-center py-6 text-slate-400 text-xs">Loading templates...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- CALL CRM TAB -->
+                    <div id="adminCallcrmTab" class="hidden animate-fadeIn">
+                        <div class="space-y-5" style="height: calc(100vh - 120px); overflow-y: auto;">
+                            <!-- Call CRM Header -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-200">
+                                        <span class="text-white text-lg">📞</span>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xl font-black text-slate-800">Call CRM</h2>
+                                        <p class="text-xs text-slate-500 font-medium">Voicell IVR Integration • Live Call Tracking</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="loadCallCRM()" class="px-4 py-2 bg-violet-100 text-violet-700 rounded-xl text-xs font-bold hover:bg-violet-200 transition-all">🔄 Refresh</button>
+                                </div>
+                            </div>
+
+                            <!-- Stats Cards -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-blue-200">
+                                    <p class="text-blue-100 text-[10px] font-bold uppercase tracking-wider">Total Today</p>
+                                    <p id="callStatTotal" class="text-3xl font-black mt-1">—</p>
+                                </div>
+                                <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-200">
+                                    <p class="text-emerald-100 text-[10px] font-bold uppercase tracking-wider">Answered</p>
+                                    <p id="callStatAnswered" class="text-3xl font-black mt-1">—</p>
+                                </div>
+                                <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-4 text-white shadow-lg shadow-red-200">
+                                    <p class="text-red-100 text-[10px] font-bold uppercase tracking-wider">Missed</p>
+                                    <p id="callStatMissed" class="text-3xl font-black mt-1">—</p>
+                                </div>
+                                <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg shadow-amber-200">
+                                    <p class="text-amber-100 text-[10px] font-bold uppercase tracking-wider">Pending Callbacks</p>
+                                    <p id="callStatCallbacks" class="text-3xl font-black mt-1">—</p>
+                                </div>
+                            </div>
+
+                            <!-- Sub-tabs: All Calls | Missed Calls -->
+                            <div class="flex gap-2 border-b border-slate-200 pb-0">
+                                <button onclick="switchCallSubTab('all')" id="callSubTabAll" class="call-sub-tab px-5 py-2.5 text-sm font-bold text-violet-700 border-b-2 border-violet-600 transition-all">📋 All Calls</button>
+                                <button onclick="switchCallSubTab('missed')" id="callSubTabMissed" class="call-sub-tab px-5 py-2.5 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-red-600 transition-all">❌ Missed Calls</button>
+                            </div>
+
+                            <!-- All Calls Panel -->
+                            <div id="callPanelAll">
+                                <!-- Filters -->
+                                <div class="bg-white/80 backdrop-blur rounded-2xl border border-slate-200/50 p-4 flex flex-wrap gap-3 items-end shadow-sm">
+                                    <div class="min-w-[130px]">
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Type</label>
+                                        <select id="callFilterType" onchange="loadCallLogs()" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-500 bg-white">
+                                            <option value="">All Types</option>
+                                            <option value="incoming">📞 Incoming</option>
+                                            <option value="missed">❌ Missed</option>
+                                            <option value="outgoing">📤 Outgoing</option>
+                                        </select>
+                                    </div>
+                                    <div class="min-w-[130px]">
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Outcome</label>
+                                        <select id="callFilterOutcome" onchange="loadCallLogs()" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-500 bg-white">
+                                            <option value="">All Outcomes</option>
+                                            <option value="order_placed">🛒 Order Placed</option>
+                                            <option value="inquiry">❓ Inquiry</option>
+                                            <option value="complaint">😡 Complaint</option>
+                                            <option value="feedback">💬 Feedback</option>
+                                            <option value="follow_up">🔄 Follow Up</option>
+                                            <option value="callback_scheduled">📅 Callback</option>
+                                            <option value="no_response">🔇 No Response</option>
+                                        </select>
+                                    </div>
+                                    <div class="min-w-[150px]">
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Date</label>
+                                        <input type="date" id="callFilterDate" onchange="loadCallLogs()" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-500 bg-white">
+                                    </div>
+                                    <div class="flex-1 min-w-[180px]">
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Search Phone</label>
+                                        <input type="text" id="callFilterPhone" placeholder="Enter phone number..." onkeyup="if(event.key==='Enter')loadCallLogs()" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-500 bg-white">
+                                    </div>
+                                    <button onclick="loadCallLogs()" class="px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-violet-200 hover:shadow-violet-300 transition-all">🔍 Search</button>
+                                </div>
+
+                                <!-- Call Log Table -->
+                                <div class="mt-4 bg-white/80 backdrop-blur rounded-2xl border border-slate-200/50 overflow-hidden shadow-sm">
+                                    <div id="callLogTableContainer" class="overflow-x-auto">
+                                        <div class="text-center py-12 text-slate-400 text-sm">Click Refresh to load call logs...</div>
+                                    </div>
+                                    <!-- Pagination -->
+                                    <div id="callLogPagination" class="px-4 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50"></div>
+                                </div>
+                            </div>
+
+                            <!-- Missed Calls Panel -->
+                            <div id="callPanelMissed" class="hidden">
+                                <div class="bg-white/80 backdrop-blur rounded-2xl border border-slate-200/50 overflow-hidden shadow-sm">
+                                    <div class="px-5 py-4 bg-gradient-to-r from-red-50 to-rose-50 border-b border-red-100">
+                                        <h3 class="text-sm font-black text-red-700">❌ Missed Calls — Pending Callback</h3>
+                                        <p class="text-[10px] text-red-500 mt-0.5">These customers called but no one answered. Call them back!</p>
+                                    </div>
+                                    <div id="missedCallsList" class="p-4">
+                                        <div class="text-center py-8 text-slate-400 text-sm">Loading missed calls...</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2125,6 +2240,8 @@
     <script src="js/panels/department.js?v=2" defer></script>
     <!-- Employee Panel (Moved after app.js to override legacy functions) -->
     <script src="js/panels/employee.js?v=17" defer></script>
+    <!-- Call CRM Panel -->
+    <script src="js/panels/call-crm.js?v=1" defer></script>
 
     <!-- EXISTING STANDALONE MODULES -->
     <!-- Temporarily disabled - causing 404 errors -->
