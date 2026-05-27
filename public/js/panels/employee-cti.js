@@ -35,12 +35,8 @@ function initEmployeeCTI() {
             const currentEmployee = normalizeEmployeeUser(window.currentUser);
             if (!currentEmployee) return;
 
-            const empPhone = currentEmployee.phone;
-            
-            // If the employee has a phone number assigned AND it matches the call's agent number
-            if (empPhone && data.agentNumber && String(data.agentNumber).endsWith(String(empPhone).replace('91', ''))) {
-                showLiveScreenPop(data);
-            }
+            // Server already routed to correct employee room, so just show it!
+            showLiveScreenPop(data);
         });
         
     } catch (e) {
@@ -136,13 +132,37 @@ async function showLiveScreenPop(callData) {
                     ` : '<div class="text-center text-slate-400 text-sm italic mb-6">No previous order history found.</div>'}
 
                     <!-- Actions -->
-                    <div class="flex gap-3">
+                    <div class="flex gap-3 mb-4">
                         <button onclick="dismissCtiModal()" class="flex-1 py-3 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-colors">
                             Dismiss
                         </button>
                         <button onclick="openCtiCustomerProfile('${callData.callerNumber}')" class="flex-[2] py-3 px-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition-all flex justify-center items-center gap-2">
                             <span>📋</span> Open Profile
                         </button>
+                    </div>
+
+                    <!-- Quick Feedback -->
+                    <div class="pt-4 border-t border-slate-200">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <span>📝</span> Quick Call Feedback
+                        </p>
+                        <div class="space-y-3">
+                            <select id="ctiOutcome_${callData.callId}" class="w-full p-2.5 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:border-indigo-400 outline-none bg-white transition-all">
+                                <option value="inquiry">❓ General Inquiry</option>
+                                <option value="order_placed">🛒 Order Placed</option>
+                                <option value="complaint">😤 Complaint</option>
+                                <option value="feedback">⭐ Feedback</option>
+                                <option value="follow_up">📋 Follow Up Needed</option>
+                                <option value="no_response">📵 No Response / Disconnected</option>
+                                <option value="other">📌 Other</option>
+                            </select>
+                            
+                            <textarea id="ctiNote_${callData.callId}" rows="2" placeholder="Add any quick notes about the call..." class="w-full p-3 border-2 border-slate-200 rounded-xl text-sm focus:border-indigo-400 outline-none transition-all resize-none"></textarea>
+                            
+                            <button onclick="submitCtiFeedback('${callData.callId}', this)" class="w-full bg-slate-800 text-white py-3 rounded-xl text-xs font-bold hover:bg-slate-700 transition-all shadow-md">
+                                Save Details to CRM
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -154,6 +174,60 @@ async function showLiveScreenPop(callData) {
     if (existing) existing.remove();
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function submitCtiFeedback(callId, btn) {
+    if (!callId) return;
+    
+    const outcomeSelect = document.getElementById(`ctiOutcome_${callId}`);
+    const noteTextarea = document.getElementById(`ctiNote_${callId}`);
+    const outcome = outcomeSelect ? outcomeSelect.value : 'inquiry';
+    const note = noteTextarea ? noteTextarea.value.trim() : '';
+
+    if (!note && outcome === 'inquiry') {
+        alert('Please select a specific outcome or add a note before saving.');
+        return;
+    }
+
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Saving...';
+    btn.disabled = true;
+
+    try {
+        const token = localStorage.getItem('token');
+        
+        // 1. Update Outcome
+        await fetch(`/api/calls/${callId}/outcome`, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ outcome })
+        });
+
+        // 2. Add Note (if any)
+        if (note) {
+            await fetch(`/api/calls/${callId}/notes`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: note })
+            });
+        }
+
+        // Show Success
+        btn.innerHTML = '✅ Saved Successfully';
+        btn.classList.replace('bg-slate-800', 'bg-emerald-600');
+        btn.classList.replace('hover:bg-slate-700', 'hover:bg-emerald-500');
+        
+        // Auto dismiss after 2 seconds
+        setTimeout(() => {
+            dismissCtiModal();
+        }, 2000);
+
+    } catch (e) {
+        console.error('Feedback save error:', e);
+        alert('Error saving feedback. Please try again.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
 }
 
 function dismissCtiModal() {
