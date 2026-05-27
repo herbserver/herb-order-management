@@ -435,14 +435,14 @@ async function viewCallDetail(callId) {
                             </h4>
                             
                             <div class="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm">
-                                ${latestOrder ? \`
+                                ${latestOrder ? `
                                     <div class="flex items-center justify-between mb-2">
-                                        <span class="text-xs font-bold text-slate-500">Latest Order #\${latestOrder.orderId}</span>
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600">\${latestOrder.status}</span>
+                                        <span class="text-xs font-bold text-slate-500">Latest Order #${latestOrder.orderId}</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600">${latestOrder.status}</span>
                                     </div>
                                     <div class="w-full bg-slate-100 h-2 rounded-full mt-4 overflow-hidden flex">
                                         <!-- Simple visual progress based on status -->
-                                        <div class="h-full \${latestOrder.status==='Delivered'?'w-full bg-emerald-500':
+                                        <div class="h-full ${latestOrder.status==='Delivered'?'w-full bg-emerald-500':
                                                            latestOrder.status==='OFD'?'w-3/4 bg-blue-500':
                                                            latestOrder.status==='Dispatched'?'w-1/2 bg-amber-500':
                                                            latestOrder.status==='Cancelled'||latestOrder.status==='RTO'?'w-full bg-rose-500':
@@ -453,7 +453,7 @@ async function viewCallDetail(callId) {
                                         <span>Dispatched</span>
                                         <span>Delivered</span>
                                     </div>
-                                \` : '<p class="text-xs text-slate-400 font-medium py-4 text-center">No active orders</p>'}
+                                ` : '<p class="text-xs text-slate-400 font-medium py-4 text-center">No active orders</p>'}
                             </div>
                         </div>
                     </div>
