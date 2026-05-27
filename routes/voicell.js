@@ -123,7 +123,7 @@ router.post('/webhook', async (req, res) => {
         
         // Emit socket event for real-time UI update
         try {
-            const io = require('../socket-manager').getIO();
+            const io = require('../socket-manager').getIo();
             if (io) {
                 const eventPayload = {
                     type: callType,
@@ -157,7 +157,9 @@ router.post('/webhook', async (req, res) => {
                     io.emit('voicell:call', eventPayload);
                 }
             }
-        } catch (e) { /* socket not available */ }
+        } catch (e) { 
+            console.error('[VOICELL WEBHOOK] Socket emit error:', e);
+        }
         
         res.status(200).json({ success: true, message: 'Call logged', id: callLog._id });
     } catch (error) {
