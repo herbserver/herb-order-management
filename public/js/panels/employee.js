@@ -18,7 +18,8 @@ function normalizeEmployeeUser(user) {
         ...user,
         id,
         employeeId: user.employeeId || id,
-        name: user.name || user.employeeName || ''
+        name: user.name || user.employeeName || '',
+        phone: user.phone || ''
     };
 }
 

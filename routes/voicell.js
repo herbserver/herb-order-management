@@ -36,10 +36,10 @@ router.post('/webhook', async (req, res) => {
         console.log('[VOICELL WEBHOOK] Received:', JSON.stringify(payload));
         
         // Extract common fields (adjust based on actual Voicell payload)
-        const callerNumber = payload.caller_number || payload.callerNumber || payload.from || payload.caller || '';
-        const agentNumber = payload.agent_number || payload.agentNumber || payload.to || payload.agent || '';
-        const callId = payload.call_id || payload.callId || payload.id || '';
-        const status = payload.status || payload.call_status || payload.event || '';
+        const callerNumber = payload.cli || payload.caller_number || payload.callerNumber || payload.from || payload.caller || '';
+        const agentNumber = payload.to || payload.agent_number || payload.agentNumber || payload.agent || '';
+        const callId = payload.uniqueid || payload.call_id || payload.callId || payload.id || '';
+        const status = payload.event || payload.status || payload.call_status || '';
         const duration = parseInt(payload.duration || payload.call_duration || 0);
         const recording = payload.recording_url || payload.recordingUrl || payload.recording || '';
         const dtmf = payload.dtmf || payload.dtmf_input || '';
@@ -58,7 +58,7 @@ router.post('/webhook', async (req, res) => {
         } else if (statusLower.includes('answer') || statusLower.includes('complete') || statusLower.includes('connected')) {
             callType = 'incoming';
             callStatus = 'completed';
-        } else if (statusLower.includes('ring')) {
+        } else if (statusLower.includes('ring') || status === 'IN' || status === 'TA' || statusLower === 'in' || statusLower === 'ta') {
             callStatus = 'ringing';
         } else if (statusLower.includes('fail')) {
             callStatus = 'failed';
@@ -130,6 +130,7 @@ router.post('/webhook', async (req, res) => {
                     status: callStatus,
                     callerNumber: normalizedPhone,
                     customerName: callLog.customerName,
+                    agentNumber: callLog.agentNumber,
                     duration,
                     callId: callLog._id
                 });

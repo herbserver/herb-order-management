@@ -192,6 +192,7 @@ const departmentSchema = new mongoose.Schema({
 const employeeSchema = new mongoose.Schema({
     employeeId: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true, trim: true },
+    phone: { type: String, trim: true },
     password: { type: String, required: true },
     createdAt: String
 }, {

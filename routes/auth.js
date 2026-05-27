@@ -31,7 +31,7 @@ async function updateEmployeeRecord(oldId, newId, updates) {
 // Register Employee
 router.post('/register', async (req, res) => {
     try {
-        const { name, employeeId, password } = req.body;
+        const { name, employeeId, password, phone } = req.body;
         const id = String(employeeId || '').toUpperCase().trim();
 
         const existingEmployee = await findEmployeeRecord(id);
@@ -41,6 +41,7 @@ router.post('/register', async (req, res) => {
 
         const employeeData = {
             name,
+            phone: String(phone || '').trim(),
             password: await hashPassword(password),
             createdAt: new Date().toISOString()
         };
@@ -48,7 +49,7 @@ router.post('/register', async (req, res) => {
         await createEmployeeRecord(id, employeeData);
 
         console.log(`✅ New Employee Registered: ${name} (${id})`);
-        res.json({ success: true, message: 'Registration successful!', employee: { id, name } });
+        res.json({ success: true, message: 'Registration successful!', employee: { id, name, phone: employeeData.phone } });
     } catch (error) {
         console.error('❌ Registration error:', error.message);
         res.status(500).json({ success: false, message: 'Registration failed. Please try again.' });
@@ -74,6 +75,7 @@ router.post('/login', async (req, res) => {
         const token = generateToken({
             id,
             name: employee.name,
+            phone: employee.phone,
             role: 'employee'
         });
 
@@ -82,7 +84,7 @@ router.post('/login', async (req, res) => {
             success: true,
             message: 'Login successful!',
             token,
-            employee: { id, name: employee.name }
+            employee: { id, name: employee.name, phone: employee.phone }
         });
     } catch (error) {
         console.error('❌ Login error:', error.message);
@@ -113,7 +115,7 @@ router.post('/reset-password', async (req, res) => {
 // Update Employee Details
 router.put('/update-employee', async (req, res) => {
     try {
-        const { oldId, newId, newName, newPassword } = req.body;
+        const { oldId, newId, newName, newPassword, newPhone } = req.body;
         const oId = String(oldId || '').toUpperCase().trim();
         const nId = String(newId || oldId || '').toUpperCase().trim();
 
@@ -133,18 +135,21 @@ router.put('/update-employee', async (req, res) => {
         if (newName) {
             updates.name = newName;
         }
+        if (newPhone !== undefined) {
+            updates.phone = String(newPhone).trim();
+        }
         if (newPassword) {
             updates.password = await hashPassword(newPassword);
         }
 
         const updatedEmployee = await updateEmployeeRecord(oId, nId, updates);
-        await dataAccess.updateEmployeeOrders(oId, nId, newName);
+        await dataAccess.updateEmployeeOrders(oId, nId, newName || updatedEmployee.name);
 
         console.log(`👤 Employee Updated & Orders Synced: ${oId} -> ${nId} (${updatedEmployee.name})`);
         res.json({
             success: true,
             message: 'Employee updated successfully!',
-            employee: { id: nId, name: updatedEmployee.name }
+            employee: { id: nId, name: updatedEmployee.name, phone: updatedEmployee.phone }
         });
     } catch (error) {
         console.error('❌ Update employee error:', error.message);

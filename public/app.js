@@ -8077,7 +8077,7 @@ async function loadEmployees(startDate = '', endDate = '') {
                     </div>
                     
                     <div class="flex gap-2 mt-4">
-                        <button onclick="event.stopPropagation(); showEditEmployeeModal('${emp.id}', '${emp.name}')" 
+                        <button onclick="event.stopPropagation(); showEditEmployeeModal('${emp.id}', '${emp.name}', '${emp.phone || ''}')" 
                             class="flex-1 bg-orange-50 text-orange-600 font-bold py-2 rounded-xl text-xs hover:bg-orange-100 transition-colors flex items-center justify-center gap-2 border border-orange-100">
                             <span>✏️</span> Edit
                         </button>
@@ -8256,7 +8256,7 @@ async function viewEmployeeProfile(empId, startDate = '', endDate = '') {
                                 <h3 class="text-3xl font-black tracking-tight mb-1">${emp.name || 'Unknown'}</h3>
                                 <div class="flex items-center gap-2">
                                     <p class="opacity-80 font-mono text-sm bg-indigo-500/30 inline-block px-3 py-1 rounded-lg border border-indigo-400/30">${emp.id}</p>
-                                    <button onclick="showEditEmployeeModal('${emp.id}', '${emp.name}')" class="bg-white/20 hover:bg-white/40 text-white px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 border border-white/20">
+                                    <button onclick="showEditEmployeeModal('${emp.id}', '${emp.name}', '${emp.phone || ''}')" class="bg-white/20 hover:bg-white/40 text-white px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 border border-white/20">
                                         <span>✏️</span> Edit Details
                                     </button>
                                 </div>
@@ -11644,10 +11644,11 @@ async function syncShiprocketStatus() {
 }
 
 // ==================== EMPLOYEE EDIT FUNCTIONS ====================
-function showEditEmployeeModal(empId, name) {
+function showEditEmployeeModal(empId, name, phone = '') {
     document.getElementById('editEmpOldId').value = empId;
     document.getElementById('editEmpNewId').value = empId;
     document.getElementById('editEmpName').value = name;
+    document.getElementById('editEmpPhone').value = phone;
     document.getElementById('editEmpPass').value = ''; // Clean password field
 
     document.getElementById('editEmployeeModal').classList.remove('hidden');
@@ -11658,6 +11659,7 @@ async function saveEmployeeChanges() {
         const oldId = document.getElementById('editEmpOldId').value;
         const newId = document.getElementById('editEmpNewId').value.trim();
         const newName = document.getElementById('editEmpName').value.trim();
+        const newPhone = document.getElementById('editEmpPhone').value.trim();
         const newPassword = document.getElementById('editEmpPass').value.trim();
 
         if (!newId || !newName) return alert('Name aur ID required hain!');
@@ -11669,7 +11671,7 @@ async function saveEmployeeChanges() {
         const res = await fetch(`${API_URL}/employees/${oldId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ newId, name: newName, password: newPassword })
+            body: JSON.stringify({ newId, name: newName, password: newPassword, phone: newPhone })
         });
 
         // Robust JSON handling

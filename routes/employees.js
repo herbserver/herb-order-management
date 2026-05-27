@@ -157,6 +157,7 @@ router.get('/', async (req, res) => {
             return {
                 id: employee.employeeId,
                 name: employee.name,
+                phone: employee.phone || '',
                 createdAt: employee.createdAt,
                 totalOrders: stats.totalOrders || 0,
                 pendingOrders: stats.pendingOrders || 0,
@@ -238,7 +239,7 @@ router.get('/:empId', async (req, res) => {
 router.put('/:empId', async (req, res) => {
     try {
         const oldId = req.params.empId.toUpperCase();
-        const { newId, name, password } = req.body;
+        const { newId, name, password, phone } = req.body;
         const nextId = String(newId || oldId).toUpperCase().trim();
 
         const existingEmployee = await findEmployeeRecord(oldId);
@@ -261,6 +262,10 @@ router.put('/:empId', async (req, res) => {
             updatedName = name;
         }
 
+        if (phone !== undefined) {
+            updates.phone = String(phone).trim();
+        }
+
         if (password) {
             const { hashPassword } = require('../auth');
             updates.password = await hashPassword(password);
@@ -279,7 +284,7 @@ router.put('/:empId', async (req, res) => {
         res.json({
             success: true,
             message: 'Employee updated successfully!',
-            employee: { id: nextId, name: updatedName }
+            employee: { id: nextId, name: updatedName, phone: updatedEmployee.phone }
         });
     } catch (error) {
         console.error('Employee update error:', error.message);
