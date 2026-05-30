@@ -1665,6 +1665,7 @@ var PRODUCT_LIST = PRODUCT_LIST || [
     { name: "Tea-1500", rate: 1500 },
     { name: "Tea-1800", rate: 1800 },
     { name: "Tea-400", rate: 400 },
+    { name: "Vains Clean Capsules", rate: 1599 },
     { name: "Vedic Vain's Liquid", rate: 2499 },
     { name: "Vedic-Cap", rate: 1399 },
     { name: "Vedic-Tab", rate: 1199 },
@@ -3242,9 +3243,15 @@ async function loadEmpProgress() {
 
         const startDate = document.getElementById('empProgressStartDate')?.value || '';
         const endDate = document.getElementById('empProgressEndDate')?.value || '';
-
-        if (startDate) orders = orders.filter(o => o.timestamp && o.timestamp >= startDate);
-        if (endDate) orders = orders.filter(o => o.timestamp && o.timestamp <= endDate + 'T23:59:59');
+        if (startDate || endDate) {
+            const startMs = startDate ? new Date(startDate + 'T00:00:00+05:30').getTime() : 0;
+            const endMs = endDate ? new Date(endDate + 'T23:59:59.999+05:30').getTime() : Infinity;
+            orders = orders.filter(o => {
+                if (!o.timestamp) return false;
+                const time = new Date(o.timestamp).getTime();
+                return time >= startMs && time <= endMs;
+            });
+        }
 
         // Calculate stats with amounts
         const calcStats = (statusFilter) => {

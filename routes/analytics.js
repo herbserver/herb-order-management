@@ -115,16 +115,6 @@ router.get('/range', async (req, res) => {
         const { startDate, endDate, employeeId } = req.query;
         let orders = await dataAccess.getOrdersForStats(startDate, endDate);
 
-        if (startDate && endDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-            orders = orders.filter(o => {
-                const d = new Date(o.timestamp);
-                return d >= start && d <= end;
-            });
-        }
 
         if (employeeId && employeeId !== 'all') {
             orders = orders.filter(o => o.employeeId === employeeId.toUpperCase());

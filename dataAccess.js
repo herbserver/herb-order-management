@@ -236,10 +236,8 @@ async function getDashboardStats(startDate = null, endDate = null) {
 
     let dateQuery = {};
     if (startDate && endDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
+        const start = new Date(`${startDate}T00:00:00+05:30`);
+        const end = new Date(`${endDate}T23:59:59.999+05:30`);
         dateQuery.timestamp = { $gte: start.toISOString(), $lte: end.toISOString() };
     }
 
@@ -556,8 +554,8 @@ async function getOrdersForStats(startDate, endDate) {
 
     if (!startDate || !endDate) return await getAllOrders();
     // Implementation can be simple find since it's used for exports/logs mostly now
-    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+    const start = new Date(`${startDate}T00:00:00+05:30`);
+    const end = new Date(`${endDate}T23:59:59.999+05:30`);
     return await Order.find({ timestamp: { $gte: start.toISOString(), $lte: end.toISOString() } }).lean();
 }
 
@@ -579,22 +577,14 @@ async function getOrdersByStatus(status, page = 1, limit = 0, startDate = null, 
     // Date Filter Construction
     let dateQuery = { status: status };
     if (startDate || endDate) {
-        if (startDate === endDate && startDate) {
-            // Optimization for single day search (Today/Yesterday)
-            // Use Regex to match start of ISO string: ^2026-02-09
-            dateQuery[dateField] = { $regex: `^${startDate}` };
-        } else {
-            dateQuery[dateField] = {};
-            if (startDate) {
-                const start = new Date(startDate);
-                start.setHours(0, 0, 0, 0);
-                dateQuery[dateField].$gte = start.toISOString();
-            }
-            if (endDate) {
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                dateQuery[dateField].$lte = end.toISOString();
-            }
+        dateQuery[dateField] = {};
+        if (startDate) {
+            const start = new Date(`${startDate}T00:00:00+05:30`);
+            dateQuery[dateField].$gte = start.toISOString();
+        }
+        if (endDate) {
+            const end = new Date(`${endDate}T23:59:59.999+05:30`);
+            dateQuery[dateField].$lte = end.toISOString();
         }
     }
 
@@ -618,8 +608,8 @@ async function getOrdersByStatus(status, page = 1, limit = 0, startDate = null, 
 
     // Date Filtering for JSON
     if (startDate || endDate) {
-        const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
-        const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+        const start = startDate ? new Date(`${startDate}T00:00:00+05:30`).getTime() : null;
+        const end = endDate ? new Date(`${endDate}T23:59:59.999+05:30`).getTime() : null;
 
         filtered = filtered.filter(o => {
             // Support nested fields like cancellationInfo.cancelledAt

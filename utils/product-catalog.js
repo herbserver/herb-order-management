@@ -20,6 +20,7 @@ const DEFAULT_PRODUCT_CATALOG = [
     { name: 'Tea-1500', rate: 1500 },
     { name: 'Tea-1800', rate: 1800 },
     { name: 'Tea-400', rate: 400 },
+    { name: "Vains Clean Capsules", rate: 1599, aliases: ['Vains Clean', 'Vains Clean Cap'] },
     { name: "Vedic Vain's Liquid", rate: 2499 },
     { name: 'Vedic-Cap', rate: 1399, aliases: ['Vedic Cap'] },
     { name: 'Vedic-Tab', rate: 1199, aliases: ['Vedic Tab'] },

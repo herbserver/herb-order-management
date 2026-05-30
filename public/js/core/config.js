@@ -49,6 +49,7 @@ window.DEFAULT_PRODUCT_LIST = window.DEFAULT_PRODUCT_LIST || [
     { name: 'Tea-1500', price: 1500 },
     { name: 'Tea-1800', price: 1800 },
     { name: 'Tea-400', price: 400 },
+    { name: "Vains Clean Capsules", price: 1599 },
     { name: "Vedic Vain's Liquid", price: 2499 },
     { name: 'Vedic-Cap', price: 1399 },
     { name: 'Vedic-Tab', price: 1199 },
