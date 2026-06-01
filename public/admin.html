@@ -823,129 +823,174 @@
                     <div id="adminDepartmentsTab" class="hidden animate-fadeIn space-y-6"></div>
                     <div id="adminHistoryTab" class="hidden animate-fadeIn space-y-6"></div>
                     <!-- WHATSAPP CHAT TAB -->
-                    <div id="adminWhatsappTab" class="hidden animate-fadeIn">
+                    <div id="adminWhatsappTab" class="hidden animate-fadeIn -mx-4 sm:-mx-6 -my-4 sm:-my-6">
+                        <style>
+                            /* WhatsApp Web Clone Specific Styles */
+                            .wa-web-bg {
+                                background-color: #efeae2;
+                                background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239ca3af' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+                            }
+                            .wa-bubble-out {
+                                background-color: #d9fdd3;
+                                border-radius: 7.5px;
+                                position: relative;
+                                box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+                            }
+                            .wa-bubble-out::after {
+                                content: '';
+                                position: absolute;
+                                top: 0;
+                                right: -8px;
+                                width: 0;
+                                height: 0;
+                                border-top: 0px solid transparent;
+                                border-left: 10px solid #d9fdd3;
+                                border-bottom: 10px solid transparent;
+                            }
+                            .wa-bubble-in {
+                                background-color: #ffffff;
+                                border-radius: 7.5px;
+                                position: relative;
+                                box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+                            }
+                            .wa-bubble-in::after {
+                                content: '';
+                                position: absolute;
+                                top: 0;
+                                left: -8px;
+                                width: 0;
+                                height: 0;
+                                border-top: 0px solid transparent;
+                                border-right: 10px solid #ffffff;
+                                border-bottom: 10px solid transparent;
+                            }
+                            .wa-chat-hover:hover { background-color: #f5f6f6; cursor: pointer; }
+                            .wa-chat-active { background-color: #f0f2f5; cursor: pointer; }
+                            .wa-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+                            .wa-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(11,20,26,.2); border-radius: 10px;}
+                            .wa-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                            .wa-panel-header { background-color: #f0f2f5; color: #54656f; }
+                            .wa-search-bg { background-color: #f0f2f5; }
+                        </style>
                         <!-- Two column layout: conversations + chat -->
-                        <div class="flex gap-0 rounded-2xl overflow-hidden border border-slate-200/40 shadow-xl bg-white/70 backdrop-blur-md" style="height: calc(100vh - 120px);">
+                        <div class="flex gap-0 overflow-hidden bg-white" style="height: calc(100vh - 65px);">
                             <!-- LEFT: Conversation List -->
-                            <div class="w-72 flex-shrink-0 flex flex-col border-r border-slate-200/50 bg-slate-50/40">
+                            <div class="w-80 flex-shrink-0 flex flex-col border-r border-[#e9edef] bg-white">
                                 <!-- Sidebar Header -->
-                                <div class="px-4 py-4.5 bg-gradient-to-r from-teal-950 to-slate-900 text-white flex items-center justify-between flex-shrink-0 shadow-md">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 bg-teal-500 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-md shadow-teal-500/20 logo-float">W</div>
-                                        <div>
-                                            <span class="font-bold text-xs tracking-wider block leading-none">WhatsApp Hub</span>
-                                            <span class="text-[9px] text-teal-300 font-semibold mt-1 block leading-none">Herb On Naturals</span>
-                                        </div>
+                                <div class="px-4 py-3 wa-panel-header flex items-center justify-between flex-shrink-0 border-b border-[#e9edef]">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center font-black text-lg text-white">W</div>
                                     </div>
-                                    <button onclick="loadWAConversations()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95" title="Refresh">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                    </button>
+                                    <div class="flex items-center gap-3 text-[#54656f]">
+                                        <button onclick="loadWAConversations()" class="p-2 hover:bg-[#d9d9d9] rounded-full transition-all" title="Refresh">
+                                            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2.75a9.25 9.25 0 1 0 4.737 17.197l-1.432-1.432A7.25 7.25 0 1 1 19.25 12h-2.148l2.898 2.898L22.898 12H21.25A9.25 9.25 0 0 0 12 2.75z"></path></svg>
+                                        </button>
+                                        <button onclick="openWANewChatModal()" class="p-2 hover:bg-[#d9d9d9] rounded-full transition-all" title="New Chat">
+                                            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19.005 3.175H4.674C3.642 3.175 3 3.789 3 4.821V21.02l3.544-3.514h12.461c1.033 0 2.064-1.06 2.064-2.093V4.821c-.001-1.032-1.032-1.646-2.064-1.646zm-4.989 9.869H7.041V11.1h6.975v1.944zm3-4H7.041V7.1h9.975v1.944z"></path></svg>
+                                        </button>
+                                        <button onclick="openWABulkSendModal()" class="p-2 hover:bg-[#d9d9d9] rounded-full transition-all" title="Bulk Send">
+                                            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 7a2 2 0 1 0-.001-4.001A2 2 0 0 0 12 7zm0 2a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 9zm0 6a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 15z"></path></svg>
+                                        </button>
+                                    </div>
                                 </div>
                                 <!-- Sidebar Search -->
-                                <div class="px-3.5 py-2.5 bg-white border-b border-slate-100 flex-shrink-0">
-                                    <div class="relative flex items-center">
-                                        <span class="absolute left-3 text-slate-400 text-xs">🔍</span>
-                                        <input type="text" id="waSearchInput" placeholder="Search customer or phone..." class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200/60 focus:border-teal-500/30 rounded-xl text-xs outline-none transition-all focus:bg-white focus:ring-2 focus:ring-teal-100/50 shadow-inner font-medium text-slate-700" oninput="filterWAConversations(this.value)">
+                                <div class="px-3 py-2 bg-white border-b border-[#e9edef] flex-shrink-0">
+                                    <div class="relative flex items-center wa-search-bg rounded-lg">
+                                        <span class="absolute left-4 text-[#54656f]">
+                                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M15.009 13.805h-.636l-.22-.219a5.184 5.184 0 0 0 1.256-3.386 5.207 5.207 0 1 0-5.207 5.208 5.183 5.183 0 0 0 3.385-1.255l.221.22v.635l4.004 3.999 1.194-1.195-3.997-4.007zm-4.808 0a3.605 3.605 0 1 1 0-7.21 3.605 3.605 0 0 1 0 7.21z"></path></svg>
+                                        </span>
+                                        <input type="text" id="waSearchInput" placeholder="Search customer or phone..." class="w-full pl-10 pr-4 py-2 bg-transparent text-[13px] outline-none text-[#111b21] placeholder-[#54656f]" oninput="filterWAConversations(this.value)">
                                     </div>
                                 </div>
                                 <!-- Sidebar Filters -->
-                                <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-100 flex-shrink-0 flex gap-1.5 overflow-x-auto scrollbar-hide wa-scrollbar">
-                                    <button id="waFilterAll" onclick="filterWAByTab('all')" class="wa-filter-chip active">All</button>
-                                    <button id="waFilterUnread" onclick="filterWAByTab('unread')" class="wa-filter-chip">Unread</button>
-                                    <button id="waFilterCall" onclick="filterWAByTab('call')" class="wa-filter-chip">Callbacks</button>
-                                    <button id="waFilterWellness" onclick="filterWAByTab('wellness')" class="wa-filter-chip">Wellness</button>
-                                </div>
-                                <!-- Sidebar Actions -->
-                                <div class="px-3.5 py-2.5 bg-slate-50/50 border-b border-slate-100 flex-shrink-0 flex gap-2">
-                                    <button onclick="openWANewChatModal()" class="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-[10px] font-bold shadow-md hover:shadow-teal-100/50 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-1.5">
-                                        <span>💬</span> New Chat
-                                    </button>
-                                    <button onclick="openWABulkSendModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-[10px] font-bold shadow-md hover:shadow-slate-800/10 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-1.5">
-                                        <span>📢</span> Bulk Send
-                                    </button>
+                                <div class="px-3.5 py-2 bg-white border-b border-[#e9edef] flex-shrink-0 flex gap-2 overflow-x-auto scrollbar-hide wa-scrollbar">
+                                    <button id="waFilterAll" onclick="filterWAByTab('all')" class="px-3 py-1.5 rounded-full bg-[#f0f2f5] text-[#54656f] text-xs font-medium hover:bg-[#e9edef] active:bg-[#d9d9d9]">All</button>
+                                    <button id="waFilterUnread" onclick="filterWAByTab('unread')" class="px-3 py-1.5 rounded-full bg-[#f0f2f5] text-[#54656f] text-xs font-medium hover:bg-[#e9edef]">Unread</button>
+                                    <button id="waFilterCall" onclick="filterWAByTab('call')" class="px-3 py-1.5 rounded-full bg-[#f0f2f5] text-[#54656f] text-xs font-medium hover:bg-[#e9edef]">Callbacks</button>
+                                    <button id="waFilterWellness" onclick="filterWAByTab('wellness')" class="px-3 py-1.5 rounded-full bg-[#f0f2f5] text-[#54656f] text-xs font-medium hover:bg-[#e9edef]">Wellness</button>
                                 </div>
                                 <!-- Conversations -->
-                                <div id="waConversationList" class="flex-1 overflow-y-auto bg-white py-1 wa-scrollbar">
+                                <div id="waConversationList" class="flex-1 overflow-y-auto bg-white py-0 wa-scrollbar">
                                     <div class="flex flex-col items-center justify-center h-full text-slate-400 p-6">
                                         <div class="text-4xl mb-3 opacity-60">💬</div>
-                                        <p class="text-xs font-semibold text-slate-500 text-center">Click load to view chats</p>
-                                        <button onclick="loadWAConversations()" class="mt-4 px-4 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 shadow-sm transition-all hover:scale-[1.02]">Load Conversations</button>
+                                        <p class="text-xs text-[#54656f] text-center">Click load to view chats</p>
+                                        <button onclick="loadWAConversations()" class="mt-4 px-4 py-2 bg-[#00a884] text-white rounded-full text-sm font-semibold hover:bg-[#008f6f] shadow-sm transition-all">Load Conversations</button>
                                     </div>
                                 </div>
                             </div>
                             <!-- RIGHT: Chat Window -->
-                            <div class="flex-1 flex flex-col min-w-0 bg-slate-50/50">
+                            <div class="flex-1 flex flex-col min-w-0 bg-[#f0f2f5]">
                                 <!-- Empty State -->
-                                <div id="waChatEmpty" class="flex-1 flex flex-col items-center justify-center p-8 text-center" style="background: radial-gradient(circle at center, #ffffff 0%, #f8fafc 100%);">
-                                    <div class="w-16 h-16 bg-gradient-to-tr from-teal-50 to-teal-100/80 rounded-3xl flex items-center justify-center text-4xl shadow-md border border-teal-200/30 mb-5 float-bubble" style="animation: floatBubble 4s infinite ease-in-out;">💬</div>
-                                    <h3 class="text-sm font-black text-slate-800 mb-1.5 tracking-wide">WhatsApp Business Inbox</h3>
-                                    <p class="text-xs text-slate-400 text-center max-w-sm leading-relaxed">Select a conversation from the left sidebar to start chatting. You can send free-text messages within the 24-hour active window or send templates anytime.</p>
+                                <div id="waChatEmpty" class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#f0f2f5] border-b-[6px] border-[#25D366] h-full">
+                                    <div class="w-64 h-64 mb-6 opacity-30">
+                                        <svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-[#54656f]"><path d="M12 0C5.373 0 0 5.373 0 12c0 2.115.545 4.103 1.503 5.86L0 24l6.305-1.465A11.933 11.933 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm6.173 17.202c-.25.714-1.428 1.34-1.99 1.416-.525.071-1.205.143-3.32-.732-2.545-1.054-4.186-3.64-4.312-3.805-.125-.165-1.03-1.373-1.03-2.618s.642-1.84 .867-2.09c.224-.25.485-.313.648-.313.165 0 .328 0 .468.006.15.006.353-.058.548.411.196.47 .665 1.635.726 1.761.061.125.101.272.019.438-.083.165-.125.27-.25.412-.125.143-.264.313-.382.433-.125.125-.262.263-.119.51.144.246.643 1.06 1.379 1.716.947.842 1.745 1.107 1.993 1.23.248.125.394.102.539-.063.144-.165.62-.726.786-.976.166-.25.333-.207.561-.125.228.083 1.442.684 1.691.808.248.125.413.188.473.292.06.104.06.603-.19 1.317z"/></svg>
+                                    </div>
+                                    <h3 class="text-3xl font-light text-[#41525d] mb-4">WhatsApp Web</h3>
+                                    <p class="text-sm text-[#54656f] text-center max-w-md leading-relaxed">Select a conversation from the left sidebar to start chatting. You can send free-text messages within the 24-hour active window or send templates anytime.</p>
                                 </div>
                                 <!-- Active Chat -->
-                                <div id="waChatActive" class="hidden flex-1 flex flex-col min-h-0 bg-slate-50">
+                                <div id="waChatActive" class="hidden flex-1 flex flex-col min-h-0 bg-white">
                                     <!-- Chat Header -->
-                                    <div class="px-5 py-3 bg-gradient-to-r from-teal-950 to-slate-900 text-white flex items-center gap-3.5 flex-shrink-0 shadow-md relative z-10">
-                                        <div id="waChatAvatar" class="w-9 h-9 bg-gradient-to-tr from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-sm border border-white/10">?</div>
+                                    <div class="px-4 py-2.5 wa-panel-header flex items-center gap-4 flex-shrink-0 border-b border-[#e9edef] relative z-10 cursor-pointer">
+                                        <div id="waChatAvatar" class="w-10 h-10 bg-[#dfe5e7] rounded-full flex items-center justify-center text-[#54656f] text-xl overflow-hidden flex-shrink-0">
+                                            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2zm0 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 14.2a7.2 7.2 0 0 1-6-3.22c.03-1.99 4-3.08 6-3.08s5.97 1.09 6 3.08a7.2 7.2 0 0 1-6 3.22z"></path></svg>
+                                        </div>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-1.5">
-                                                <p id="waChatName" class="font-bold text-xs truncate leading-none">Customer</p>
-                                                <span class="inline-flex w-1.5 h-1.5 bg-emerald-400 rounded-full wa-pulse-glow" title="Active"></span>
+                                                <p id="waChatName" class="font-normal text-base text-[#111b21] truncate">Customer</p>
                                             </div>
-                                            <div class="flex items-center gap-2 mt-1">
-                                                <p id="waChatPhone" class="text-[10px] text-slate-400 truncate font-semibold">+91 XXXXXXXXXX</p>
-                                                <span id="wa24hBadge" class="hidden bg-emerald-500/20 text-emerald-300 text-[8px] font-black px-1.5 py-0.5 rounded border border-emerald-500/30 tracking-wider">ACTIVE 24H</span>
+                                            <div class="flex items-center gap-2 mt-0.5">
+                                                <p id="waChatPhone" class="text-[13px] text-[#54656f] truncate">+91 XXXXXXXXXX</p>
+                                                <span id="wa24hBadge" class="hidden text-[#00a884] text-[11px] font-medium">Active 24h</span>
                                             </div>
                                         </div>
-                                        <div class="flex items-center gap-1.5 flex-shrink-0">
-                                            <button onclick="openWATemplatePanel()" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 text-white hover:text-white rounded-xl text-[10px] font-bold flex items-center gap-1.5 transition-all hover:scale-102 active:scale-98">
-                                                <span>📋</span> Templates
+                                        <div class="flex items-center gap-3 flex-shrink-0 text-[#54656f]">
+                                            <button onclick="event.stopPropagation(); openWATemplatePanel()" class="p-2 hover:bg-[#d9d9d9] rounded-full transition-all" title="Templates">
+                                                <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h10v2H7v-2zm0 5h10v2H7v-2zm0-10h10v2H7V5z"></path></svg>
                                             </button>
-                                            <button onclick="deleteWAConversation()" title="Delete Chat" class="p-1.5 hover:bg-red-500/20 text-slate-300 hover:text-red-400 rounded-xl flex-shrink-0 transition-all font-bold text-xs">
-                                                🗑️
-                                            </button>
-                                            <button onclick="closeWAChat()" class="p-1.5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl flex-shrink-0 transition-all font-bold text-xs">
-                                                ✕
+                                            <button onclick="event.stopPropagation(); closeWAChat()" class="p-2 hover:bg-[#d9d9d9] rounded-full transition-all" title="Close Chat">
+                                                <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
                                             </button>
                                         </div>
                                     </div>
                                     <!-- Main Window Split Columns Container -->
-                                    <div class="flex-1 flex flex-row min-h-0 overflow-hidden">
+                                    <div class="flex-1 flex flex-row min-h-0 overflow-hidden relative">
                                         <!-- LEFT: Chat History & Composer -->
-                                        <div class="flex-1 flex flex-col min-h-0 border-r border-slate-200/50">
+                                        <div class="flex-1 flex flex-col min-h-0 relative">
                                             <!-- Message History -->
-                                            <div id="waChatMessages" class="flex-1 overflow-y-auto p-5 wa-scrollbar" style="background: radial-gradient(circle at center, #ffffff 0%, #f1f5f9 100%);">
-                                                <div id="waMessagesContent" class="space-y-3"></div>
+                                            <div id="waChatMessages" class="flex-1 overflow-y-auto p-5 wa-scrollbar wa-web-bg" style="z-index: 1;">
+                                                <div id="waMessagesContent" class="space-y-2 max-w-3xl mx-auto flex flex-col pb-4"></div>
                                             </div>
                                             <!-- Quick Emojis Selection Drawer -->
-                                            <div id="waEmojiDrawer" class="hidden px-4 py-2 bg-slate-50 border-t border-slate-100 flex-shrink-0 flex gap-2 overflow-x-auto scrollbar-hide">
-                                                <button onclick="injectWAEmoji('👍')" class="hover:scale-125 transition-all p-1 text-sm select-none">👍</button>
-                                                <button onclick="injectWAEmoji('❤️')" class="hover:scale-125 transition-all p-1 text-sm select-none">❤️</button>
-                                                <button onclick="injectWAEmoji('🙏')" class="hover:scale-125 transition-all p-1 text-sm select-none">🙏</button>
-                                                <button onclick="injectWAEmoji('😊')" class="hover:scale-125 transition-all p-1 text-sm select-none">😊</button>
-                                                <button onclick="injectWAEmoji('🌿')" class="hover:scale-125 transition-all p-1 text-sm select-none">🌿</button>
-                                                <button onclick="injectWAEmoji('📞')" class="hover:scale-125 transition-all p-1 text-sm select-none">📞</button>
-                                                <button onclick="injectWAEmoji('📦')" class="hover:scale-125 transition-all p-1 text-sm select-none">📦</button>
-                                                <button onclick="injectWAEmoji('❌')" class="hover:scale-125 transition-all p-1 text-sm select-none">❌</button>
+                                            <div id="waEmojiDrawer" class="hidden px-4 py-2 bg-[#f0f2f5] border-t border-[#e9edef] flex-shrink-0 flex gap-4 overflow-x-auto scrollbar-hide z-10">
+                                                <button onclick="injectWAEmoji('👍')" class="hover:scale-125 transition-all text-2xl select-none">👍</button>
+                                                <button onclick="injectWAEmoji('❤️')" class="hover:scale-125 transition-all text-2xl select-none">❤️</button>
+                                                <button onclick="injectWAEmoji('🙏')" class="hover:scale-125 transition-all text-2xl select-none">🙏</button>
+                                                <button onclick="injectWAEmoji('😊')" class="hover:scale-125 transition-all text-2xl select-none">😊</button>
+                                                <button onclick="injectWAEmoji('🌿')" class="hover:scale-125 transition-all text-2xl select-none">🌿</button>
+                                                <button onclick="injectWAEmoji('📞')" class="hover:scale-125 transition-all text-2xl select-none">📞</button>
+                                                <button onclick="injectWAEmoji('📦')" class="hover:scale-125 transition-all text-2xl select-none">📦</button>
+                                                <button onclick="injectWAEmoji('❌')" class="hover:scale-125 transition-all text-2xl select-none">❌</button>
                                             </div>
                                             <!-- Message Compose Bar -->
-                                            <div class="px-4 py-3.5 bg-white border-t border-slate-100 flex-shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.015)]">
-                                                <div class="flex items-end gap-2.5">
-                                                    <button onclick="toggleWAEmojiDrawer()" class="p-2 text-slate-400 hover:text-teal-600 rounded-xl hover:bg-slate-50 transition-all flex-shrink-0 font-bold" title="Insert Emojis">
-                                                        😀
-                                                    </button>
-                                                    <div class="flex-1 bg-slate-50 border border-slate-200/80 focus-within:border-teal-500/50 focus-within:ring-2 focus-within:ring-teal-100 rounded-2xl px-4 py-2.5 transition-all shadow-inner">
-                                                        <textarea id="waMessageInput" placeholder="Type your message here..." rows="1" class="w-full outline-none text-[13px] resize-none bg-transparent text-slate-700 placeholder-slate-400 leading-relaxed font-medium" style="max-height:80px;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendWAFreeMessage()}"></textarea>
-                                                    </div>
-                                                    <button onclick="sendWAFreeMessage()" id="waSendBtn" class="w-9 h-9 bg-teal-600 text-white rounded-xl flex items-center justify-center shadow-md hover:bg-teal-700 hover:shadow-teal-100/50 hover:scale-105 active:scale-95 transition-all flex-shrink-0">
-                                                        <svg class="w-4 h-4 transform rotate-45 -translate-x-[1px] translate-y-[1px]" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                                                    </button>
+                                            <div class="px-4 py-3 bg-[#f0f2f5] flex-shrink-0 z-10 flex items-end gap-3">
+                                                <button onclick="toggleWAEmojiDrawer()" class="p-2 text-[#54656f] hover:text-[#111b21] transition-all flex-shrink-0 mb-1" title="Insert Emojis">
+                                                    <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12c0 6.628 5.373 12 12 12s12-5.372 12-12C24 5.373 18.627 0 12 0zm0 22c-5.514 0-10-4.486-10-10S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10zm0-17.5c-2.336 0-4.444.896-6 2.375L7.414 8.29C8.583 7.153 10.203 6.5 12 6.5s3.417.653 4.586 1.789L18 6.875C16.444 5.396 14.336 4.5 12 4.5zM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm-3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"></path></svg>
+                                                </button>
+                                                <button class="p-2 text-[#54656f] hover:text-[#111b21] transition-all flex-shrink-0 mb-1" title="Attach">
+                                                    <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M1.816 15.556v.002c0 1.502.584 2.912 1.646 3.972s2.472 1.647 3.974 1.647a5.58 5.58 0 0 0 3.972-1.645l9.547-9.548c.769-.768 1.147-1.767 1.058-2.817-.079-.968-.548-1.927-1.319-2.698-1.594-1.592-4.068-1.711-5.517-.262l-7.916 7.915c-.881.881-.792 2.25.214 3.261.959.958 2.423 1.053 3.263.215l5.511-5.512c.28-.28.267-.722.053-.936l-.244-.244c-.191-.191-.567-.349-.957.04l-5.506 5.506c-.18.18-.635.127-.976-.214-.098-.097-.576-.613-.213-.973l7.915-7.917c.818-.817 2.267-.699 3.23.262.5.501.802 1.1.849 1.685.051.573-.156 1.111-.589 1.543l-9.547 9.549a3.97 3.97 0 0 1-2.829 1.171 3.975 3.975 0 0 1-2.83-1.173 3.973 3.973 0 0 1-1.172-2.828c0-1.071.415-2.076 1.172-2.83l7.209-7.211c.157-.157.264-.579.028-.814L11.5 4.36a.57.57 0 0 0-.834.018l-7.205 7.207a5.577 5.577 0 0 0-1.645 3.971z"></path></svg>
+                                                </button>
+                                                <div class="flex-1 bg-white rounded-lg px-4 py-2 text-[15px] shadow-sm flex items-center">
+                                                    <textarea id="waMessageInput" placeholder="Type a message" rows="1" class="w-full outline-none resize-none bg-transparent text-[#111b21] placeholder-[#54656f] leading-[20px] font-normal" style="max-height:100px; min-height:20px;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendWAFreeMessage()}"></textarea>
                                                 </div>
-                                                <p class="text-[9px] text-slate-400 text-center font-bold mt-2">Free messages are supported only within the active 24h customer window</p>
+                                                <button onclick="sendWAFreeMessage()" id="waSendBtn" class="p-2 text-[#54656f] hover:text-[#111b21] transition-all flex-shrink-0 mb-1">
+                                                    <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M1.101 21.757 23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"></path></svg>
+                                                </button>
                                             </div>
                                         </div>
 
-                                        <!-- RIGHT: Dynamic Profile Panel -->
-                                        <div id="waCustomerProfilePanel" class="w-72 bg-white border-l border-slate-200/50 flex flex-col flex-shrink-0 min-h-0 animate-fadeIn overflow-y-auto wa-scrollbar">
+                                        <!-- RIGHT: Dynamic Profile Panel (Contact Info Style) -->
+                                        <div id="waCustomerProfilePanel" class="w-[350px] bg-[#f0f2f5] border-l border-[#e9edef] flex flex-col flex-shrink-0 min-h-0 animate-fadeIn z-20 overflow-y-auto wa-scrollbar">
                                             <!-- Dynamic CRM data will be injected here -->
                                         </div>
                                     </div>
@@ -953,20 +998,20 @@
                             </div>
                         </div>
                         <!-- Template Slide Panel -->
-                        <div id="waTemplatePanel" class="hidden fixed inset-y-0 right-0 w-88 backdrop-blur-md bg-white/95 shadow-2xl z-50 flex flex-col border-l border-slate-200/80 transition-all duration-300">
-                            <div class="px-4.5 py-4 bg-gradient-to-r from-teal-950 to-slate-900 text-white flex items-center justify-between flex-shrink-0 shadow-md">
-                                <div>
-                                    <span class="font-bold text-xs tracking-wider block">📋 Send Template Message</span>
-                                    <p class="text-[9px] text-teal-400 font-semibold mt-0.5">Approved Meta Templates</p>
-                                </div>
-                                <button onclick="closeWATemplatePanel()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white transition-all font-bold">✕</button>
+                        <div id="waTemplatePanel" class="hidden fixed inset-y-0 right-0 w-[400px] bg-white shadow-2xl z-50 flex flex-col border-l border-[#e9edef] transition-all duration-300">
+                            <div class="px-6 py-4 wa-panel-header flex items-center gap-6 flex-shrink-0 h-16 shadow-sm z-10">
+                                <button onclick="closeWATemplatePanel()" class="text-[#54656f] font-bold text-lg hover:text-[#111b21] transition-colors">✕</button>
+                                <span class="font-normal text-lg text-[#111b21]">Send Template</span>
                             </div>
                             <!-- Template search bar -->
-                            <div class="px-4 py-2 bg-slate-50 border-b border-slate-100 flex-shrink-0">
-                                <input type="text" id="waTemplateSearch" placeholder="Search templates..." class="w-full px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] outline-none font-semibold text-slate-700" oninput="filterWATemplates(this.value)">
+                            <div class="px-4 py-2 bg-white border-b border-[#e9edef] flex-shrink-0">
+                                <div class="wa-search-bg rounded-lg px-3 py-1 flex items-center">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" class="text-[#54656f]"><path fill="currentColor" d="M15.009 13.805h-.636l-.22-.219a5.184 5.184 0 0 0 1.256-3.386 5.207 5.207 0 1 0-5.207 5.208 5.183 5.183 0 0 0 3.385-1.255l.221.22v.635l4.004 3.999 1.194-1.195-3.997-4.007zm-4.808 0a3.605 3.605 0 1 1 0-7.21 3.605 3.605 0 0 1 0 7.21z"></path></svg>
+                                    <input type="text" id="waTemplateSearch" placeholder="Search templates..." class="w-full bg-transparent pl-4 py-1 outline-none text-[15px] text-[#111b21]" oninput="filterWATemplates(this.value)">
+                                </div>
                             </div>
-                            <div id="waTemplatePanelList" class="p-4 space-y-3.5 overflow-y-auto flex-1 bg-slate-50/50 wa-scrollbar">
-                                <div class="flex justify-center py-6 text-slate-400 text-xs">Loading templates...</div>
+                            <div id="waTemplatePanelList" class="p-4 space-y-4 overflow-y-auto flex-1 bg-[#f0f2f5] wa-scrollbar">
+                                <div class="flex justify-center py-6 text-[#54656f] text-sm">Loading templates...</div>
                             </div>
                         </div>
                     </div>

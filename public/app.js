@@ -12011,26 +12011,26 @@ function renderWAConversations(convs) {
         }
 
         return `<button onclick="openWAChat('${c.phone}','${(c.name || 'Customer').replace(/'/g, "\\'")}','${c.orderId || ''}')"
-            class="w-[calc(100%-0.75rem)] flex items-center gap-3 px-3.5 py-3 border border-slate-100/30 transition-all duration-200 text-left wa-conv-item ${isActive ? 'active' : ''}">
-            <div class="w-10 h-10 bg-gradient-to-tr ${grad} rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm flex-shrink-0 relative">
+            class="w-full flex items-center px-3 py-2 transition-colors duration-200 text-left wa-conv-item ${isActive ? 'wa-chat-active' : 'bg-white wa-chat-hover'}">
+            <div class="w-[49px] h-[49px] rounded-full overflow-hidden mr-3 flex-shrink-0 bg-[#dfe5e7] flex items-center justify-center text-[#54656f] font-medium text-lg relative">
                 ${initials}
-                ${c.unread > 0 ? '<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-teal-500 border-2 border-white rounded-full wa-pulse-glow"></span>' : ''}
             </div>
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between">
-                    <span class="font-extrabold text-xs text-slate-800 truncate">${c.name || 'Customer'}</span>
-                    <span class="text-[9px] ${c.unread > 0 ? 'text-teal-600 font-black' : 'text-slate-400'} flex-shrink-0 ml-1 font-semibold">${timeStr}</span>
+            <div class="flex-1 flex flex-col justify-center min-w-0 h-full border-b border-[#f0f2f5] pb-2 pt-1">
+                <div class="flex justify-between items-center mb-0.5">
+                    <span class="text-[#111b21] text-[16px] font-normal truncate flex-1">${c.name || 'Customer'}</span>
+                    <span class="text-[12px] ${c.unread > 0 ? 'text-[#00a884] font-medium' : 'text-[#667781]'}">${timeStr}</span>
                 </div>
-                <div class="flex items-center gap-1.5 mt-0.5">
-                    <p class="text-[10px] text-slate-400 font-semibold">${c.phone}</p>
-                    ${tagsHtml}
-                </div>
-                <div class="flex items-center mt-1">
-                    ${tickHtml}
-                    <p class="text-[10px] ${c.unread > 0 ? 'text-slate-700 font-bold' : 'text-slate-400'} truncate font-medium">${c.lastMsg || ''}</p>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-1 min-w-0">
+                        ${tickHtml}
+                        <span class="text-[13px] text-[#667781] truncate">${c.lastMsg || ''}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${tagsHtml}
+                        ${c.unread > 0 ? `<div class="bg-[#00a884] text-white rounded-full min-w-[20px] h-[20px] flex items-center justify-center text-[11px] font-medium px-1.5">${c.unread}</div>` : ''}
+                    </div>
                 </div>
             </div>
-            ${c.unread > 0 && !isActive ? `<span class="w-4 h-4 bg-teal-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold flex-shrink-0 shadow-sm">${c.unread}</span>` : ''}
         </button>`;
     }).join('');
 }
@@ -12228,11 +12228,11 @@ function renderWAMessages(messages, scrollToBottom = true) {
                 + '<div class="flex items-center justify-between border-t border-slate-100 pt-2"><span class="text-[9px] text-slate-400 font-semibold italic">Auto-sent template</span><div class="flex items-center gap-1.5"><span class="text-[9px] text-slate-400 font-medium">' + timeStr + '</span>' + tickHtml + '</div></div>'
                 + '</div></div>';
         } else if (isOut) {
-            html += '<div class="flex justify-end mb-2.5"><div class="wa-bubble-out px-4 py-2.5 max-w-[75%]">'
+            html += '<div class="flex justify-end mb-1"><div class="wa-bubble-out px-2 py-1.5 max-w-[75%]">'
                 + (isFailed ? '<p class="text-[10px] text-red-500 font-bold mb-1">Failed to send</p>' : '')
                 + mediaHtml
-                + '<p class="text-[13px] text-slate-800 whitespace-pre-wrap leading-relaxed font-medium">' + waEscapeHtml(msg.body || '') + '</p>'
-                + '<div class="flex items-center justify-end gap-1 mt-1.5"><span class="text-[9px] text-slate-400 font-medium">' + timeStr + '</span>' + tickHtml + '</div></div></div>';
+                + '<p class="text-[14px] text-[#111b21] whitespace-pre-wrap leading-[20px] font-normal" style="word-wrap: break-word;">' + waEscapeHtml(msg.body || '') + '</p>'
+                + '<div class="flex items-center justify-end gap-1 mt-0.5"><span class="text-[11px] text-[#667781] font-normal">' + timeStr + '</span>' + tickHtml + '</div></div></div>';
         } else {
             // For old media messages without mediaId, show styled placeholder
             let placeholderHtml = '';
@@ -12245,13 +12245,13 @@ function renderWAMessages(messages, scrollToBottom = true) {
                 else if (msg.body.startsWith('[Location')) placeholderHtml = '<div class="bg-slate-100 rounded-lg px-4 py-3 mb-1.5 flex items-center gap-2 text-slate-500"><span class="text-xl">📍</span><span class="text-xs font-medium">Location</span></div>';
             }
 
-            html += '<div class="flex justify-start mb-2.5"><div class="wa-bubble-in px-4 py-2.5 max-w-[75%]">'
+            html += '<div class="flex justify-start mb-1"><div class="wa-bubble-in px-2 py-1.5 max-w-[75%]">'
                 + mediaHtml
                 + placeholderHtml
                 + (hasMedia && msg.type !== 'document' && msg.body && !['[Image]', '[Video]', '[Voice Message]', '[Sticker]'].includes(msg.body)
-                    ? '<p class="text-[13px] text-slate-800 whitespace-pre-wrap leading-relaxed font-medium">' + waEscapeHtml(msg.body) + '</p>'
-                    : (!hasMedia && !placeholderHtml ? '<p class="text-[13px] text-slate-800 whitespace-pre-wrap leading-relaxed font-medium">' + waEscapeHtml(msg.body || '') + '</p>' : ''))
-                + '<span class="text-[9px] text-slate-400 block text-right mt-1.5 font-medium">' + timeStr + '</span></div></div>';
+                    ? '<p class="text-[14px] text-[#111b21] whitespace-pre-wrap leading-[20px] font-normal" style="word-wrap: break-word;">' + waEscapeHtml(msg.body) + '</p>'
+                    : (!hasMedia && !placeholderHtml ? '<p class="text-[14px] text-[#111b21] whitespace-pre-wrap leading-[20px] font-normal" style="word-wrap: break-word;">' + waEscapeHtml(msg.body || '') + '</p>' : ''))
+                + '<span class="text-[11px] text-[#667781] block text-right mt-0.5 font-normal">' + timeStr + '</span></div></div>';
         }
     });
     msgContent.innerHTML = html;
