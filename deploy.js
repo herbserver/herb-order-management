@@ -13,8 +13,9 @@ const config = {
 
 const filesToUpload = [
   { local: 'public/app.js', remote: '/var/www/oms-app/public/app.js' },
-  { local: 'public/js/core/config.js', remote: '/var/www/oms-app/public/js/core/config.js' },
-  { local: 'utils/product-catalog.js', remote: '/var/www/oms-app/utils/product-catalog.js' }
+  { local: 'public/admin.html', remote: '/var/www/oms-app/public/admin.html' },
+  { local: 'public/employee.html', remote: '/var/www/oms-app/public/employee.html' },
+  { local: 'public/js/panels/employee.js', remote: '/var/www/oms-app/public/js/panels/employee.js' }
 ];
 
 conn.on('ready', () => {

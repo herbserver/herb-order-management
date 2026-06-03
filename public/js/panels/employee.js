@@ -1060,13 +1060,6 @@ function getEmployeeItemsPerPage() {
 function getMyOrdersDateValue() {
     const input = document.getElementById('myOrdersDate');
     if (!input) return '';
-    if (!input.value) {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        input.value = `${yyyy}-${mm}-${dd}`;
-    }
     return input.value || '';
 }
 
@@ -1147,10 +1140,10 @@ async function loadMyOrders(page = null) {
         if (selectedDate) {
             params.set('startDate', selectedDate);
             params.set('endDate', selectedDate);
-            params.set('dateField', 'date');
-        } else {
-            params.set('status', activeStatuses);
+            params.set('dateField', 'timestamp'); // Filter by system timestamp instead of user-entered date
         }
+        // No status filter is applied, allowing full history to be fetched
+        
         const res = await fetch(`${API_URL}/employees/${employeeId}?${params.toString()}`);
         const data = await res.json();
 

@@ -433,7 +433,7 @@
                                         <span
                                             class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
                                         <input type="text" id="myOrdersSearch" placeholder="Search Mobile/Name/ID..."
-                                            oninput="filterMyOrders(this.value)"
+                                            onkeypress="if(event.key === 'Enter') globalSearchOrder(this.value)"
                                             class="w-full pl-8 pr-4 py-2 border-2 border-slate-100 rounded-xl text-xs focus:border-blue-400 outline-none transition-all bg-white" />
                                     </div>
                                     <button type="button" onclick="loadMyOrders()"
